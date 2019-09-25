@@ -28,7 +28,11 @@ defmodule Predicator.Machine do
   }
 
   def new(instructions, context \\ %{}, opts \\ []) do
-    do_new(instructions, context, opts)
+    if context == nil do
+      do_new(instructions, %{}, opts)
+    else
+      do_new(instructions, context, opts)
+    end
   end
 
   defp do_new(instructions, %{__struct__: _} = context, opts) do
