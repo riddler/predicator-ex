@@ -18,7 +18,8 @@ defmodule Predicator.Parser do
       logical_and  → logical_not ( "AND" logical_not )*
       logical_not  → "NOT" logical_not | comparison
       comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
-      primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | "(" expression ")"
+      primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
+      function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
       list         → "[" ( expression ( "," expression )* )? "]"
 
   ## Examples
@@ -54,6 +55,7 @@ defmodule Predicator.Parser do
   - `{:logical_not, operand}` - A logical NOT expression
   - `{:list, elements}` - A list literal
   - `{:membership, operator, left, right}` - A membership operation (in/contains)
+  - `{:function_call, name, arguments}` - A function call with arguments
   """
   @type ast ::
           {:literal, value()}
@@ -64,6 +66,7 @@ defmodule Predicator.Parser do
           | {:logical_or, ast(), ast()}
           | {:logical_not, ast()}
           | {:list, [ast()]}
+          | {:function_call, binary(), [ast()]}
 
   @typedoc """
   Comparison operators in the AST.
@@ -338,6 +341,11 @@ defmodule Predicator.Parser do
     {:ok, {:identifier, value}, advance(state)}
   end
 
+  # Parse function call
+  defp parse_primary_token(state, {:function_name, _line, _col, _len, name}) do
+    parse_function_call(state, name)
+  end
+
   # Parse parenthesized expression
   defp parse_primary_token(state, {:lparen, _line, _col, _len, _value}) do
     paren_state = advance(state)
@@ -367,7 +375,7 @@ defmodule Predicator.Parser do
 
   # Handle unexpected tokens
   defp parse_primary_token(_state, {type, line, col, _len, value}) do
-    expected = "number, string, boolean, date, datetime, identifier, list, or '('"
+    expected = "number, string, boolean, date, datetime, identifier, function call, list, or '('"
     {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col}
   end
 
@@ -423,6 +431,7 @@ defmodule Predicator.Parser do
   defp format_token(:lbracket, _value), do: "'['"
   defp format_token(:rbracket, _value), do: "']'"
   defp format_token(:comma, _value), do: "','"
+  defp format_token(:function_name, value), do: "function '#{value}'"
   defp format_token(:eof, _value), do: "end of input"
 
   # Parse list literals: [element1, element2, ...]
@@ -474,6 +483,77 @@ defmodule Predicator.Parser do
 
           _token ->
             # No more elements
+            {:ok, new_acc, new_state}
+        end
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse function call: function_name(arg1, arg2, ...)
+  @spec parse_function_call(parser_state(), binary()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_function_call(state, function_name) do
+    # Consume function name token
+    func_state = advance(state)
+
+    case peek_token(func_state) do
+      {:lparen, _line, _col, _len, _value} ->
+        # Consume opening parenthesis
+        paren_state = advance(func_state)
+
+        case peek_token(paren_state) do
+          # Empty argument list
+          {:rparen, _line, _col, _len, _value} ->
+            {:ok, {:function_call, function_name, []}, advance(paren_state)}
+
+          # Non-empty argument list
+          _token ->
+            case parse_function_arguments(paren_state, []) do
+              {:ok, arguments, final_state} ->
+                case peek_token(final_state) do
+                  {:rparen, _line, _col, _len, _value} ->
+                    {:ok, {:function_call, function_name, Enum.reverse(arguments)},
+                     advance(final_state)}
+
+                  {type, line, col, _len, value} ->
+                    {:error, "Expected ')' but found #{format_token(type, value)}", line, col}
+
+                  nil ->
+                    {:error, "Expected ')' but reached end of input", 1, 1}
+                end
+
+              {:error, message, line, col} ->
+                {:error, message, line, col}
+            end
+        end
+
+      {type, line, col, _len, value} ->
+        {:error, "Expected '(' after function name but found #{format_token(type, value)}", line,
+         col}
+
+      nil ->
+        {:error, "Expected '(' after function name but reached end of input", 1, 1}
+    end
+  end
+
+  # Parse function arguments recursively
+  @spec parse_function_arguments(parser_state(), [ast()]) ::
+          {:ok, [ast()], parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_function_arguments(state, acc) do
+    case parse_expression(state) do
+      {:ok, argument, new_state} ->
+        new_acc = [argument | acc]
+
+        case peek_token(new_state) do
+          {:comma, _line, _col, _len, _value} ->
+            # More arguments, consume comma and continue
+            comma_state = advance(new_state)
+            parse_function_arguments(comma_state, new_acc)
+
+          _token ->
+            # No more arguments
             {:ok, new_acc, new_state}
         end
 

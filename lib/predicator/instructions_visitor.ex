@@ -23,6 +23,10 @@ defmodule Predicator.InstructionsVisitor do
       iex> ast = {:logical_and, {:literal, true}, {:literal, false}}
       iex> Predicator.InstructionsVisitor.visit(ast, [])
       [["lit", true], ["lit", false], ["and"]]
+
+      iex> ast = {:function_call, "len", [{:identifier, "name"}]}
+      iex> Predicator.InstructionsVisitor.visit(ast, [])
+      [["load", "name"], ["call", "len", 1]]
   """
 
   @behaviour Predicator.Visitor
@@ -113,6 +117,17 @@ defmodule Predicator.InstructionsVisitor do
     op_instruction = [[map_membership_op(op)]]
 
     left_instructions ++ right_instructions ++ op_instruction
+  end
+
+  def visit({:function_call, function_name, arguments}, opts) do
+    # Post-order traversal: arguments first (in order), then function call
+    arg_instructions =
+      arguments
+      |> Enum.flat_map(fn arg -> visit(arg, opts) end)
+
+    call_instruction = [["call", function_name, length(arguments)]]
+
+    arg_instructions ++ call_instruction
   end
 
   # Helper function to map AST comparison operators to instruction format

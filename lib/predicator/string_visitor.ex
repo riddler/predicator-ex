@@ -31,6 +31,10 @@ defmodule Predicator.StringVisitor do
       iex> ast = {:logical_not, {:literal, true}}
       iex> Predicator.StringVisitor.visit(ast, [])
       "NOT true"
+
+      iex> ast = {:function_call, "len", [{:identifier, "name"}]}
+      iex> Predicator.StringVisitor.visit(ast, [])
+      "len(name)"
   """
 
   @behaviour Predicator.Visitor
@@ -161,6 +165,12 @@ defmodule Predicator.StringVisitor do
       :explicit -> "(#{left_str}#{spacing}#{op_str}#{spacing}#{right_str})"
       _other -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
     end
+  end
+
+  def visit({:function_call, function_name, arguments}, opts) do
+    arg_strings = Enum.map(arguments, fn arg -> visit(arg, opts) end)
+    args_str = Enum.join(arg_strings, ", ")
+    "#{function_name}(#{args_str})"
   end
 
   # Helper functions

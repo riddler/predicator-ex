@@ -57,6 +57,7 @@ defmodule Predicator.Lexer do
           | {:comma, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:in_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:contains_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:eof, pos_integer(), pos_integer(), pos_integer(), nil}
 
   @typedoc """
@@ -164,12 +165,32 @@ defmodule Predicator.Lexer do
         token = {:integer, line, col, consumed, number}
         tokenize_chars(remaining, line, col + consumed, [token | tokens])
 
-      # Identifiers
+      # Identifiers (including potential function calls)
       c when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or c == ?_ ->
         {identifier, remaining, consumed} = take_identifier([char | rest])
-        {token_type, value} = classify_identifier(identifier)
-        token = {token_type, line, col, consumed, value}
-        tokenize_chars(remaining, line, col + consumed, [token | tokens])
+
+        # Check if this is a function call by looking ahead for '('
+        case skip_whitespace(remaining) do
+          [?( | _] ->
+            # Check if this identifier is a keyword that should not become a function
+            case classify_identifier(identifier) do
+              {:identifier, _} ->
+                # This is a regular identifier followed by '(', so it's a function call
+                token = {:function_name, line, col, consumed, identifier}
+                tokenize_chars(remaining, line, col + consumed, [token | tokens])
+
+              {token_type, value} ->
+                # This is a keyword, keep it as the keyword (don't make it a function)
+                token = {token_type, line, col, consumed, value}
+                tokenize_chars(remaining, line, col + consumed, [token | tokens])
+            end
+
+          _ ->
+            # Regular identifier or keyword
+            {token_type, value} = classify_identifier(identifier)
+            token = {token_type, line, col, consumed, value}
+            tokenize_chars(remaining, line, col + consumed, [token | tokens])
+        end
 
       # Operators
       ?> ->
@@ -302,6 +323,14 @@ defmodule Predicator.Lexer do
   defp classify_identifier("CONTAINS"), do: {:contains_op, "CONTAINS"}
   defp classify_identifier("contains"), do: {:contains_op, "contains"}
   defp classify_identifier(id), do: {:identifier, id}
+
+  # Helper function to skip whitespace characters for lookahead
+  @spec skip_whitespace(charlist()) :: charlist()
+  defp skip_whitespace([?\s | rest]), do: skip_whitespace(rest)
+  defp skip_whitespace([?\t | rest]), do: skip_whitespace(rest)
+  defp skip_whitespace([?\n | rest]), do: skip_whitespace(rest)
+  defp skip_whitespace([?\r | rest]), do: skip_whitespace(rest)
+  defp skip_whitespace(chars), do: chars
 
   @spec take_string(charlist(), binary(), pos_integer()) ::
           {:ok, binary(), charlist(), pos_integer()} | {:error, binary()}
