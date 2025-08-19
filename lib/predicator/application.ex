@@ -5,11 +5,13 @@ defmodule Predicator.Application do
 
   use Application
 
+  alias Predicator.Functions.{Registry, SystemFunctions}
+
   @impl Application
   def start(_type, _args) do
     # Initialize the function registry and register system functions immediately
-    Predicator.Functions.Registry.start_registry()
-    Predicator.Functions.SystemFunctions.register_all()
+    Registry.start_registry()
+    SystemFunctions.register_all()
 
     # Start supervisor with empty children list since initialization is done
     children = []

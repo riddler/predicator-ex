@@ -1,4 +1,4 @@
-defmodule Predicator.InstructionsVisitor do
+defmodule Predicator.Visitors.InstructionsVisitor do
   @moduledoc """
   Visitor that converts AST nodes to stack machine instructions.
 
@@ -9,23 +9,23 @@ defmodule Predicator.InstructionsVisitor do
   ## Examples
 
       iex> ast = {:literal, 42}
-      iex> Predicator.InstructionsVisitor.visit(ast, [])
+      iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["lit", 42]]
 
       iex> ast = {:identifier, "score"}
-      iex> Predicator.InstructionsVisitor.visit(ast, [])
+      iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["load", "score"]]
 
       iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
-      iex> Predicator.InstructionsVisitor.visit(ast, [])
+      iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
       iex> ast = {:logical_and, {:literal, true}, {:literal, false}}
-      iex> Predicator.InstructionsVisitor.visit(ast, [])
+      iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["lit", true], ["lit", false], ["and"]]
 
       iex> ast = {:function_call, "len", [{:identifier, "name"}]}
-      iex> Predicator.InstructionsVisitor.visit(ast, [])
+      iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["load", "name"], ["call", "len", 1]]
   """
 

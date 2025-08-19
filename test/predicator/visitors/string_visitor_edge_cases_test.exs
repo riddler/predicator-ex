@@ -1,7 +1,7 @@
-defmodule Predicator.StringVisitorEdgeCasesTest do
+defmodule Predicator.Visitors.StringVisitorEdgeCasesTest do
   use ExUnit.Case, async: true
 
-  alias Predicator.StringVisitor
+  alias Predicator.Visitors.StringVisitor
 
   describe "edge cases" do
     test "handles function calls with empty arguments" do
