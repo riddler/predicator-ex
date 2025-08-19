@@ -22,3 +22,6 @@ erl_crash.dump
 /config/
 
 src/*.erl
+
+.claude/
+old/
