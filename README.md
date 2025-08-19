@@ -183,7 +183,12 @@ list         → "[" ( expression ( "," expression )* )? "]"
 - **Parser** (`Predicator.Parser`): Builds Abstract Syntax Tree with error reporting  
 - **Compiler** (`Predicator.Compiler`): Converts AST to executable instructions
 - **Evaluator** (`Predicator.Evaluator`): Executes instructions against data
-- **StringVisitor** (`Predicator.StringVisitor`): Converts AST back to expressions
+- **Visitors**: AST transformation modules
+  - **StringVisitor** (`Predicator.Visitors.StringVisitor`): Converts AST back to expressions
+  - **InstructionsVisitor** (`Predicator.Visitors.InstructionsVisitor`): Converts AST to instructions
+- **Functions**: Function system components
+  - **SystemFunctions** (`Predicator.Functions.SystemFunctions`): Built-in system functions
+  - **Registry** (`Predicator.Functions.Registry`): Function registration and dispatch
 
 ## Error Handling
 
@@ -198,6 +203,38 @@ iex> Predicator.evaluate("score AND", %{})
 ```
 
 ## Advanced Usage
+
+### Custom Function Registration
+
+You can register your own custom functions for use in expressions:
+
+```elixir
+# Register a simple function
+Predicator.register_function("double", 1, fn [n], _context ->
+  {:ok, n * 2}
+end)
+
+# Use in expressions
+iex> Predicator.evaluate("double(score) > 100", %{"score" => 60})
+{:ok, true}
+
+# Context-aware function
+Predicator.register_function("user_role", 0, fn [], context ->
+  {:ok, Map.get(context, "current_user_role", "guest")}
+end)
+
+iex> Predicator.evaluate("user_role() = \"admin\"", %{"current_user_role" => "admin"})
+{:ok, true}
+
+# Function with error handling
+Predicator.register_function("divide", 2, fn [a, b], _context ->
+  if b == 0 do
+    {:error, "Division by zero"}
+  else
+    {:ok, a / b}
+  end
+end)
+```
 
 ### String Formatting Options
 
