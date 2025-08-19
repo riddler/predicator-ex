@@ -66,13 +66,22 @@ defmodule Predicator.Types do
   @type instruction_list :: [instruction()]
 
   @typedoc """
-  The result of evaluating a predicate.
+  The result of evaluating a predicate from public API functions.
 
   Returns:
-  - `boolean()` - the final evaluation result
+  - `{:ok, value()}` - successful evaluation with result value
   - `{:error, term()}` - evaluation error with details
   """
-  @type result :: boolean() | {:error, term()}
+  @type result :: {:ok, value()} | {:error, term()}
+
+  @typedoc """
+  The internal result of evaluating a predicate from Evaluator functions.
+
+  Returns:
+  - `value()` - the final evaluation result value
+  - `{:error, term()}` - evaluation error with details
+  """
+  @type internal_result :: value() | {:error, term()}
 
   @typedoc """
   The internal state of the stack machine evaluator.

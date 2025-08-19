@@ -24,45 +24,59 @@ A secure, non-evaluative condition engine for processing end-user boolean predic
 
 ```elixir
 # Basic evaluation
-iex> Predicator.evaluate("score > 85", %{"score" => 92})
+iex> Predicator.evaluate!("score > 85", %{"score" => 92})
 true
 
 # String comparisons  
-iex> Predicator.evaluate("name = \"Alice\"", %{"name" => "Alice"})
+iex> Predicator.evaluate!("name = \"Alice\"", %{"name" => "Alice"})
 true
 
 # Date and datetime literals
-iex> Predicator.evaluate("#2024-01-15# > #2024-01-10#", %{})
+iex> Predicator.evaluate!("#2024-01-15# > #2024-01-10#", %{})
 true
 
-iex> Predicator.evaluate("created_at < #2024-01-15T10:30:00Z#", %{"created_at" => ~U[2024-01-10 09:00:00Z]})
+iex> Predicator.evaluate!("created_at < #2024-01-15T10:30:00Z#", %{"created_at" => ~U[2024-01-10 09:00:00Z]})
 true
 
 # List literals and membership
-iex> Predicator.evaluate("role in [\"admin\", \"manager\"]", %{"role" => "admin"})
+iex> Predicator.evaluate!("role in [\"admin\", \"manager\"]", %{"role" => "admin"})
 true
 
-iex> Predicator.evaluate("[1, 2, 3] contains 2", %{})
+iex> Predicator.evaluate!("[1, 2, 3] contains 2", %{})
 true
 
 # Logical operators with proper precedence
-iex> Predicator.evaluate("score > 85 AND age >= 18", %{"score" => 92, "age" => 25})
+iex> Predicator.evaluate!("score > 85 AND age >= 18", %{"score" => 92, "age" => 25})
 true
 
-iex> Predicator.evaluate("role = \"admin\" OR role = \"manager\"", %{"role" => "admin"})  
+iex> Predicator.evaluate!("role = \"admin\" OR role = \"manager\"", %{"role" => "admin"})  
 true
 
-iex> Predicator.evaluate("NOT expired AND active", %{"expired" => false, "active" => true})
+iex> Predicator.evaluate!("NOT expired AND active", %{"expired" => false, "active" => true})
 true
 
 # Complex expressions with parentheses
-iex> Predicator.evaluate("(score > 85 OR admin) AND active", %{"score" => 80, "admin" => true, "active" => true})
+iex> Predicator.evaluate!("(score > 85 OR admin) AND active", %{"score" => 80, "admin" => true, "active" => true})
 true
 
 # Compile once, evaluate many times for performance
 iex> {:ok, instructions} = Predicator.compile("score > threshold AND active")
-iex> Predicator.evaluate(instructions, %{"score" => 95, "threshold" => 80, "active" => true})
+iex> Predicator.evaluate!(instructions, %{"score" => 95, "threshold" => 80, "active" => true})
 true
+
+# Using evaluate/2 (returns {:ok, result} or {:error, message})
+iex> Predicator.evaluate("score > 85", %{"score" => 92})
+{:ok, true}
+
+iex> Predicator.evaluate("invalid >> syntax", %{})
+{:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>' at line 1, column 10"}
+
+# Using evaluate/1 for expressions without context (strings or instruction lists)
+iex> Predicator.evaluate("#2024-01-15# > #2024-01-10#")
+{:ok, true}
+
+iex> Predicator.evaluate([["lit", 42]])
+{:ok, 42}
 
 # Round-trip: parse and decompile expressions
 iex> {:ok, ast} = Predicator.parse("score > 85 AND #2024-01-15# in dates")
@@ -144,7 +158,7 @@ iex> Predicator.evaluate("score >> 85", %{})
 {:error, "Unexpected character '>' at line 1, column 8"}
 
 iex> Predicator.evaluate("score AND", %{})
-{:error, "Expected number, string, boolean, identifier, or '(' but found end of input at line 1, column 1"}
+{:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input at line 1, column 1"}
 ```
 
 ## Advanced Usage

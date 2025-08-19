@@ -8,16 +8,16 @@ defmodule Predicator do
 
   ## Basic Usage
 
-  The simplest way to use Predicator is with the `execute/2` function:
+  The simplest way to use Predicator is with the `evaluate/2` function:
 
       iex> instructions = [["lit", 42]]
-      iex> Predicator.execute(instructions)
-      42
+      iex> Predicator.evaluate(instructions)
+      {:ok, 42}
 
       iex> instructions = [["load", "score"]]
       iex> context = %{"score" => 85}
-      iex> Predicator.execute(instructions, context)
-      85
+      iex> Predicator.evaluate(instructions, context)
+      {:ok, 85}
 
   ## Instruction Format
 
@@ -49,6 +49,47 @@ defmodule Predicator do
   alias Predicator.{Compiler, Evaluator, Lexer, Parser, Types}
 
   @doc """
+  Evaluates a predicate expression or instruction list with an empty context.
+
+  This is a convenience function for evaluating expressions that don't require
+  any context variables, such as literal comparisons or expressions with only
+  constants.
+
+  ## Parameters
+
+  - `input` - String expression or instruction list to evaluate
+
+  ## Returns
+
+  - `{:ok, result}` on successful evaluation
+  - `{:error, reason}` if parsing or execution fails
+
+  ## Examples
+
+      # Simple literal expressions
+      iex> Predicator.evaluate("true")
+      {:ok, true}
+
+      iex> Predicator.evaluate("#2024-01-15# > #2024-01-10#")
+      {:ok, true}
+
+      iex> Predicator.evaluate("2 in [1, 2, 3]")
+      {:ok, true}
+
+      # Instruction lists without context
+      iex> Predicator.evaluate([["lit", 42]])
+      {:ok, 42}
+
+      # Parse errors are returned
+      iex> Predicator.evaluate("invalid >> syntax")
+      {:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>' at line 1, column 10"}
+  """
+  @spec evaluate(binary() | Types.instruction_list()) :: Types.result()
+  def evaluate(input) do
+    evaluate(input, %{})
+  end
+
+  @doc """
   Evaluates a predicate expression or instruction list with an optional context.
 
   This is the main entry point for Predicator evaluation. It accepts either:
@@ -62,47 +103,54 @@ defmodule Predicator do
 
   ## Returns
 
-  - The evaluation result (boolean, value, or `:undefined`)
+  - `{:ok, result}` on successful evaluation
   - `{:error, reason}` if parsing or execution fails
 
   ## Examples
 
       # String expressions (compiled automatically)
       iex> Predicator.evaluate("score > 85", %{"score" => 90})
-      true
+      {:ok, true}
 
       iex> Predicator.evaluate("name = \\"John\\"", %{"name" => "John"})
-      true
+      {:ok, true}
 
       iex> Predicator.evaluate("age >= 18", %{"age" => 16})
-      false
+      {:ok, false}
 
       # Pre-compiled instruction lists (maximum performance)
       iex> Predicator.evaluate([["load", "score"], ["lit", 85], ["compare", "GT"]], %{"score" => 90})
-      true
+      {:ok, true}
 
-      iex> Predicator.evaluate([["lit", 42]])
-      42
+      iex> Predicator.evaluate([["lit", 42]], %{})
+      {:ok, 42}
 
       # Parse errors are returned  
       iex> Predicator.evaluate("score >", %{})
       {:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input at line 1, column 8"}
   """
   @spec evaluate(binary() | Types.instruction_list(), Types.context()) :: Types.result()
-  def evaluate(input, context \\ %{})
+  def evaluate(input, context)
 
   def evaluate(expression, context) when is_binary(expression) and is_map(context) do
     with {:ok, tokens} <- Lexer.tokenize(expression),
          {:ok, ast} <- Parser.parse(tokens) do
       instructions = Compiler.to_instructions(ast)
-      Evaluator.evaluate(instructions, context)
+
+      case Evaluator.evaluate(instructions, context) do
+        {:error, reason} -> {:error, reason}
+        result -> {:ok, result}
+      end
     else
       {:error, message, line, column} -> {:error, "#{message} at line #{line}, column #{column}"}
     end
   end
 
   def evaluate(instructions, context) when is_list(instructions) and is_map(context) do
-    Evaluator.evaluate(instructions, context)
+    case Evaluator.evaluate(instructions, context) do
+      {:error, reason} -> {:error, reason}
+      result -> {:ok, result}
+    end
   end
 
   @doc """
@@ -123,11 +171,11 @@ defmodule Predicator do
       # Predicator.evaluate!("score >", %{})
   """
   @spec evaluate!(binary() | Types.instruction_list(), Types.context()) ::
-          boolean() | Types.value()
+          Types.value()
   def evaluate!(input, context \\ %{}) do
     case evaluate(input, context) do
+      {:ok, result} -> result
       {:error, reason} -> raise "Evaluation failed: #{reason}"
-      result -> result
     end
   end
 
@@ -235,59 +283,6 @@ defmodule Predicator do
       {:ok, instructions} -> instructions
       {:error, reason} -> raise "Compilation failed: #{reason}"
     end
-  end
-
-  @doc """
-  Executes a list of instructions with an optional context.
-
-  This is the main entry point for evaluating predicator instructions.
-  Instructions are executed in order using a stack machine, and the
-  final result is returned.
-
-  ## Parameters
-
-  - `instructions` - List of instructions to execute
-  - `context` - Optional context map with variable bindings (default: `%{}`)
-
-  ## Returns
-
-  - The final value from the top of the stack
-  - `{:error, reason}` if execution fails
-
-  ## Examples
-
-      # Literal values
-      iex> Predicator.execute([["lit", 42]])
-      42
-
-      iex> Predicator.execute([["lit", true]])
-      true
-
-      # Loading from context
-      iex> Predicator.execute([["load", "score"]], %{"score" => 85})
-      85
-
-      # Missing variables return :undefined
-      iex> Predicator.execute([["load", "missing"]], %{})
-      :undefined
-
-      # Multiple instructions (last value wins)
-      iex> instructions = [["lit", 1], ["lit", 2], ["lit", 3]]
-      iex> Predicator.execute(instructions)
-      3
-
-      # Comparison operations  
-      iex> instructions = [["load", "score"], ["lit", 85], ["compare", "GT"]]
-      iex> Predicator.execute(instructions, %{"score" => 90})
-      true
-
-      iex> instructions = [["load", "age"], ["lit", 18], ["compare", "GTE"]]
-      iex> Predicator.execute(instructions, %{"age" => 16})
-      false
-  """
-  @spec execute(Types.instruction_list(), Types.context()) :: Types.result()
-  def execute(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
-    Evaluator.evaluate(instructions, context)
   end
 
   @doc """

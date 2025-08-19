@@ -42,7 +42,7 @@ defmodule Predicator.Evaluator do
       iex> Predicator.Evaluator.evaluate([["load", "missing"]], %{})
       :undefined
   """
-  @spec evaluate(Types.instruction_list(), Types.context()) :: Types.result()
+  @spec evaluate(Types.instruction_list(), Types.context()) :: Types.internal_result()
   def evaluate(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
     evaluator = %__MODULE__{
       instructions: instructions,
@@ -78,7 +78,7 @@ defmodule Predicator.Evaluator do
       # This would raise an exception:
       # Predicator.Evaluator.evaluate!([["unknown_op"]], %{})
   """
-  @spec evaluate!(Types.instruction_list(), Types.context()) :: boolean() | :undefined
+  @spec evaluate!(Types.instruction_list(), Types.context()) :: Types.value()
   def evaluate!(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
     case evaluate(instructions, context) do
       {:error, reason} -> raise "Evaluation failed: #{reason}"
