@@ -1,9 +1,9 @@
-defmodule Predicator.InstructionsVisitorTest do
+defmodule Predicator.Visitors.InstructionsVisitorTest do
   use ExUnit.Case, async: true
 
-  alias Predicator.InstructionsVisitor
+  alias Predicator.Visitors.InstructionsVisitor
 
-  doctest Predicator.InstructionsVisitor
+  doctest Predicator.Visitors.InstructionsVisitor
 
   describe "visit/2 - literal nodes" do
     test "generates lit instruction for integer literal" do

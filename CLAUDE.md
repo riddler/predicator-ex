@@ -4,7 +4,7 @@ This document provides context for Claude Code when working on the Predicator pr
 
 ## Project Overview
 
-Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT) with proper precedence, date/datetime literals, list literals, and membership operators (in, contains).
+Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT) with proper precedence, date/datetime literals, list literals, membership operators (in, contains), and function calls with built-in system functions.
 
 ## Architecture
 
@@ -22,7 +22,8 @@ logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
 logical_not  → ("NOT" | "not") logical_not | comparison
 comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
-primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | "(" expression ")"
+primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | function_call | "(" expression ")"
+function_call → IDENTIFIER "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
 ```
 
@@ -32,7 +33,12 @@ list         → "[" ( expression ( "," expression )* )? "]"
 - **Parser** (`lib/predicator/parser.ex`): Recursive descent parser building AST
 - **Compiler** (`lib/predicator/compiler.ex`): Converts AST to executable instructions  
 - **Evaluator** (`lib/predicator/evaluator.ex`): Executes instructions against data
-- **StringVisitor** (`lib/predicator/string_visitor.ex`): Converts AST back to strings
+- **Visitors** (`lib/predicator/visitors/`): AST transformation modules
+  - **StringVisitor**: Converts AST back to strings
+  - **InstructionsVisitor**: Converts AST to executable instructions
+- **Functions** (`lib/predicator/functions/`): Function system components
+  - **SystemFunctions**: Built-in system functions (len, upper, abs, max, etc.)
+  - **Registry**: Custom function registration and dispatch
 - **Main API** (`lib/predicator.ex`): Public interface with convenience functions
 
 ## Development Commands
@@ -93,21 +99,44 @@ lib/predicator/
 ├── parser.ex          # Recursive descent parser  
 ├── compiler.ex        # AST to instructions conversion
 ├── evaluator.ex       # Instruction execution engine
-├── string_visitor.ex  # AST to string decompilation
 ├── visitor.ex         # Visitor behavior definition
-├── types.ex          # Type specifications
-└── application.ex    # OTP application
+├── types.ex           # Type specifications
+├── application.ex     # OTP application
+├── functions/         # Function system components
+│   ├── system_functions.ex  # Built-in functions (len, upper, abs, etc.)
+│   └── registry.ex          # Function registration and dispatch
+└── visitors/          # AST transformation modules
+    ├── string_visitor.ex      # AST to string decompilation  
+    └── instructions_visitor.ex # AST to instructions conversion
 
 test/predicator/
 ├── lexer_test.exs
 ├── parser_test.exs  
 ├── compiler_test.exs
 ├── evaluator_test.exs
-├── string_visitor_test.exs
-└── predicator_test.exs  # Integration tests
+├── predicator_test.exs        # Integration tests
+├── functions/                 # Function system tests
+│   ├── system_functions_test.exs
+│   └── registry_test.exs
+└── visitors/                  # Visitor tests
+    ├── string_visitor_test.exs
+    └── instructions_visitor_test.exs
 ```
 
 ## Recent Additions (2025)
+
+### Function Call System
+- **Built-in Functions**: System functions automatically available
+  - **String functions**: `len(string)`, `upper(string)`, `lower(string)`, `trim(string)`
+  - **Numeric functions**: `abs(number)`, `max(a, b)`, `min(a, b)`
+  - **Date functions**: `year(date)`, `month(date)`, `day(date)`
+- **Custom Functions**: Register anonymous functions with `Predicator.register_function/3`
+- **Function Registry**: ETS-based registry with arity validation and error handling
+- **Examples**: 
+  - `len(name) > 5` 
+  - `upper(status) = "ACTIVE"`
+  - `year(created_date) = 2024`
+  - `max(score1, score2) > 85`
 
 ### Date and DateTime Support
 - **Syntax**: `#2024-01-15#` (date), `#2024-01-15T10:30:00Z#` (datetime)

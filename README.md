@@ -19,6 +19,7 @@ A secure, non-evaluative condition engine for processing end-user boolean predic
 - 📅 **Date Support**: Native date and datetime literals with ISO 8601 format
 - 📋 **Lists**: List literals with membership operations (`in`, `contains`)
 - 🧠 **Smart Logic**: Logical operators with proper precedence (`AND`, `OR`, `NOT`)
+- 🔧 **Functions**: Built-in functions for string, numeric, and date operations
 
 ## Quick Start
 
@@ -59,6 +60,16 @@ true
 iex> Predicator.evaluate!("(score > 85 OR admin) AND active", %{"score" => 80, "admin" => true, "active" => true})
 true
 
+# Built-in functions
+iex> Predicator.evaluate!("len(name) > 3", %{"name" => "Alice"})
+true
+
+iex> Predicator.evaluate!("upper(role) = \"ADMIN\"", %{"role" => "admin"})
+true
+
+iex> Predicator.evaluate!("year(created_at) = 2024", %{"created_at" => ~D[2024-03-15]})
+true
+
 # Compile once, evaluate many times for performance
 iex> {:ok, instructions} = Predicator.compile("score > threshold AND active")
 iex> Predicator.evaluate!(instructions, %{"score" => 95, "threshold" => 80, "active" => true})
@@ -69,7 +80,7 @@ iex> Predicator.evaluate("score > 85", %{"score" => 92})
 {:ok, true}
 
 iex> Predicator.evaluate("invalid >> syntax", %{})
-{:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>' at line 1, column 10"}
+{:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>' at line 1, column 10"}
 
 # Using evaluate/1 for expressions without context (strings or instruction lists)
 iex> Predicator.evaluate("#2024-01-15# > #2024-01-10#")
@@ -109,6 +120,30 @@ iex> Predicator.decompile(ast)
 | `in`     | Element in collection | `role in ["admin", "manager"]` |
 | `contains` | Collection contains element | `[1, 2, 3] contains 2` |
 
+### Built-in Functions
+
+#### String Functions
+| Function | Description | Example |
+|----------|-------------|---------|
+| `len(string)` | String length | `len(name) > 3` |
+| `upper(string)` | Convert to uppercase | `upper(role) = "ADMIN"` |
+| `lower(string)` | Convert to lowercase | `lower(name) = "alice"` |
+| `trim(string)` | Remove whitespace | `len(trim(input)) > 0` |
+
+#### Numeric Functions  
+| Function | Description | Example |
+|----------|-------------|---------|
+| `abs(number)` | Absolute value | `abs(balance) < 100` |
+| `max(a, b)` | Maximum of two numbers | `max(score1, score2) > 85` |
+| `min(a, b)` | Minimum of two numbers | `min(age, 65) >= 18` |
+
+#### Date Functions
+| Function | Description | Example |
+|----------|-------------|---------|
+| `year(date)` | Extract year | `year(created_at) = 2024` |
+| `month(date)` | Extract month | `month(birthday) = 12` |
+| `day(date)` | Extract day | `day(deadline) <= 15` |
+
 ## Data Types
 
 - **Numbers**: `42`, `-17` (integers)
@@ -137,7 +172,8 @@ logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
 logical_not  → ("NOT" | "not") logical_not | comparison
 comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
-primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | "(" expression ")"
+primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
+function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
 ```
 
@@ -147,7 +183,12 @@ list         → "[" ( expression ( "," expression )* )? "]"
 - **Parser** (`Predicator.Parser`): Builds Abstract Syntax Tree with error reporting  
 - **Compiler** (`Predicator.Compiler`): Converts AST to executable instructions
 - **Evaluator** (`Predicator.Evaluator`): Executes instructions against data
-- **StringVisitor** (`Predicator.StringVisitor`): Converts AST back to expressions
+- **Visitors**: AST transformation modules
+  - **StringVisitor** (`Predicator.Visitors.StringVisitor`): Converts AST back to expressions
+  - **InstructionsVisitor** (`Predicator.Visitors.InstructionsVisitor`): Converts AST to instructions
+- **Functions**: Function system components
+  - **SystemFunctions** (`Predicator.Functions.SystemFunctions`): Built-in system functions
+  - **Registry** (`Predicator.Functions.Registry`): Function registration and dispatch
 
 ## Error Handling
 
@@ -158,10 +199,42 @@ iex> Predicator.evaluate("score >> 85", %{})
 {:error, "Unexpected character '>' at line 1, column 8"}
 
 iex> Predicator.evaluate("score AND", %{})
-{:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input at line 1, column 1"}
+{:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input at line 1, column 1"}
 ```
 
 ## Advanced Usage
+
+### Custom Function Registration
+
+You can register your own custom functions for use in expressions:
+
+```elixir
+# Register a simple function
+Predicator.register_function("double", 1, fn [n], _context ->
+  {:ok, n * 2}
+end)
+
+# Use in expressions
+iex> Predicator.evaluate("double(score) > 100", %{"score" => 60})
+{:ok, true}
+
+# Context-aware function
+Predicator.register_function("user_role", 0, fn [], context ->
+  {:ok, Map.get(context, "current_user_role", "guest")}
+end)
+
+iex> Predicator.evaluate("user_role() = \"admin\"", %{"current_user_role" => "admin"})
+{:ok, true}
+
+# Function with error handling
+Predicator.register_function("divide", 2, fn [a, b], _context ->
+  if b == 0 do
+    {:error, "Division by zero"}
+  else
+    {:ok, a / b}
+  end
+end)
+```
 
 ### String Formatting Options
 

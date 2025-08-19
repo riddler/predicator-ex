@@ -1,9 +1,9 @@
-defmodule Predicator.StringVisitorTest do
+defmodule Predicator.Visitors.StringVisitorTest do
   use ExUnit.Case, async: true
 
-  alias Predicator.StringVisitor
+  alias Predicator.Visitors.StringVisitor
 
-  doctest Predicator.StringVisitor
+  doctest Predicator.Visitors.StringVisitor
 
   describe "visit/2 - literal nodes" do
     test "converts integer literal to string" do

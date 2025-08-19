@@ -1,4 +1,4 @@
-defmodule Predicator.StringVisitor do
+defmodule Predicator.Visitors.StringVisitor do
   @moduledoc """
   Visitor that converts AST nodes back to string expressions.
 
@@ -9,28 +9,32 @@ defmodule Predicator.StringVisitor do
   ## Examples
 
       iex> ast = {:literal, 42}
-      iex> Predicator.StringVisitor.visit(ast, [])
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "42"
 
       iex> ast = {:identifier, "score"}
-      iex> Predicator.StringVisitor.visit(ast, [])
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "score"
 
       iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
-      iex> Predicator.StringVisitor.visit(ast, [])
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "score > 85"
 
       iex> ast = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
-      iex> Predicator.StringVisitor.visit(ast, [])
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       ~s(name = "John")
 
       iex> ast = {:logical_and, {:literal, true}, {:literal, false}}
-      iex> Predicator.StringVisitor.visit(ast, [])
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "true AND false"
 
       iex> ast = {:logical_not, {:literal, true}}
-      iex> Predicator.StringVisitor.visit(ast, [])
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "NOT true"
+
+      iex> ast = {:function_call, "len", [{:identifier, "name"}]}
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
+      "len(name)"
   """
 
   @behaviour Predicator.Visitor
@@ -161,6 +165,12 @@ defmodule Predicator.StringVisitor do
       :explicit -> "(#{left_str}#{spacing}#{op_str}#{spacing}#{right_str})"
       _other -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
     end
+  end
+
+  def visit({:function_call, function_name, arguments}, opts) do
+    arg_strings = Enum.map(arguments, fn arg -> visit(arg, opts) end)
+    args_str = Enum.join(arg_strings, ", ")
+    "#{function_name}(#{args_str})"
   end
 
   # Helper functions

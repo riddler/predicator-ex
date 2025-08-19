@@ -157,7 +157,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input",
               1, 1} = result
     end
 
@@ -167,7 +167,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input",
               1, 8} = result
     end
 
@@ -177,7 +177,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>'",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'",
               1,
               1} =
                result
@@ -189,7 +189,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>'",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'",
               1,
               9} =
                result
@@ -229,7 +229,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>'",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'",
               1,
               9} =
                result
@@ -276,7 +276,7 @@ defmodule Predicator.ParserTest do
       assert {:error, message, 1, 10} = result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found ')'"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found ')'"
     end
 
     test "handles comparison operator followed by EOF" do
@@ -289,7 +289,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input",
               1, 8} = result
     end
 
@@ -297,17 +297,17 @@ defmodule Predicator.ParserTest do
       # Test different token types that would fail in primary position
       test_cases = [
         {[:gt],
-         "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>'"},
+         "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'"},
         {[:lt],
-         "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '<'"},
+         "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '<'"},
         {[:gte],
-         "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>='"},
+         "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>='"},
         {[:lte],
-         "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '<='"},
+         "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '<='"},
         {[:eq],
-         "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '='"},
+         "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '='"},
         {[:ne],
-         "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '!='"}
+         "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '!='"}
       ]
 
       for {token_types, expected_message} <- test_cases do
@@ -360,7 +360,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found ')'",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found ')'",
               1,
               1} =
                result
@@ -376,7 +376,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found ')'",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found ')'",
               1,
               2} =
                result
@@ -568,7 +568,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input",
               1, 9} = result
     end
 
@@ -582,7 +582,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input",
               1, 8} = result
     end
 
@@ -595,7 +595,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input",
               1, 4} = result
     end
 
@@ -729,7 +729,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found 'AND'",
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found 'AND'",
               1, 1} = result
     end
 

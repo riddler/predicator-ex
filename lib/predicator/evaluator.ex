@@ -4,8 +4,20 @@ defmodule Predicator.Evaluator do
 
   The evaluator executes a list of instructions using a stack machine approach.
   Instructions operate on a stack, with the most recent values at the top (head of list).
+
+  Supported instruction types:
+  - `["lit", value]` - Push literal value onto stack
+  - `["load", variable_name]` - Load variable from context onto stack  
+  - `["compare", operator]` - Compare top two stack values with operator
+  - `["and"]` - Logical AND of top two boolean values
+  - `["or"]` - Logical OR of top two boolean values
+  - `["not"]` - Logical NOT of top boolean value
+  - `["in"]` - Membership test (element in collection)
+  - `["contains"]` - Membership test (collection contains element)
+  - `["call", function_name, arg_count]` - Call function with arguments from stack
   """
 
+  alias Predicator.Functions.Registry
   alias Predicator.Types
 
   @typedoc "Internal evaluator state"
@@ -187,6 +199,12 @@ defmodule Predicator.Evaluator do
     execute_membership(evaluator, :contains)
   end
 
+  # Function call instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["call", function_name, arg_count])
+       when is_binary(function_name) and is_integer(arg_count) and arg_count >= 0 do
+    execute_function_call(evaluator, function_name, arg_count)
+  end
+
   # Unknown instruction - catch-all clause
   defp execute_instruction(%__MODULE__{}, unknown) do
     {:error, "Unknown instruction: #{inspect(unknown)}"}
@@ -334,6 +352,27 @@ defmodule Predicator.Evaluator do
   defp execute_membership(%__MODULE__{stack: stack}, operation) do
     {:error,
      "#{String.upcase(to_string(operation))} requires two values on stack, got: #{length(stack)}"}
+  end
+
+  @spec execute_function_call(t(), binary(), non_neg_integer()) :: {:ok, t()} | {:error, term()}
+  defp execute_function_call(%__MODULE__{stack: stack} = evaluator, function_name, arg_count) do
+    if length(stack) >= arg_count do
+      # Extract arguments from stack (they're in reverse order)
+      {args, remaining_stack} = Enum.split(stack, arg_count)
+      # Reverse args to get correct order (stack is LIFO)
+      function_args = Enum.reverse(args)
+
+      case Registry.call(function_name, function_args, evaluator.context) do
+        {:ok, result} ->
+          {:ok, %__MODULE__{evaluator | stack: [result | remaining_stack]}}
+
+        {:error, message} ->
+          {:error, message}
+      end
+    else
+      {:error,
+       "Function #{function_name}() expects #{arg_count} arguments, but only #{length(stack)} values on stack"}
+    end
   end
 
   @spec load_from_context(Types.context(), binary()) :: Types.value()

@@ -19,7 +19,8 @@ defmodule Predicator.Compiler do
       # "digraph {...}"
   """
 
-  alias Predicator.{InstructionsVisitor, Parser, StringVisitor, Visitor}
+  alias Predicator.{Parser, Visitor}
+  alias Predicator.Visitors.{InstructionsVisitor, StringVisitor}
 
   @doc """
   Converts an AST to stack machine instructions.

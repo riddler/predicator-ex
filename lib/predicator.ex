@@ -47,6 +47,7 @@ defmodule Predicator do
   """
 
   alias Predicator.{Compiler, Evaluator, Lexer, Parser, Types}
+  alias Predicator.Functions.{Registry, SystemFunctions}
 
   @doc """
   Evaluates a predicate expression or instruction list with an empty context.
@@ -82,7 +83,7 @@ defmodule Predicator do
 
       # Parse errors are returned
       iex> Predicator.evaluate("invalid >> syntax")
-      {:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>' at line 1, column 10"}
+      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>' at line 1, column 10"}
   """
   @spec evaluate(binary() | Types.instruction_list()) :: Types.result()
   def evaluate(input) do
@@ -127,7 +128,7 @@ defmodule Predicator do
 
       # Parse errors are returned  
       iex> Predicator.evaluate("score >", %{})
-      {:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input at line 1, column 8"}
+      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input at line 1, column 8"}
   """
   @spec evaluate(binary() | Types.instruction_list(), Types.context()) :: Types.result()
   def evaluate(input, context)
@@ -201,7 +202,7 @@ defmodule Predicator do
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
       iex> Predicator.compile("score >")
-      {:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input at line 1, column 8"}
+      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input at line 1, column 8"}
   """
   @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile(expression) when is_binary(expression) do
@@ -343,5 +344,79 @@ defmodule Predicator do
   @spec run_evaluator(Evaluator.t()) :: {:ok, Evaluator.t()} | {:error, term()}
   def run_evaluator(%Evaluator{} = evaluator) do
     Evaluator.run(evaluator)
+  end
+
+  # Custom Function Registration API
+
+  @doc """
+  Registers a custom function with the given name, arity, and implementation.
+
+  This is a convenience wrapper around `Predicator.FunctionRegistry.register_function/3`.
+
+  ## Parameters
+
+  - `name` - Function name as it will appear in expressions
+  - `arity` - Number of arguments the function expects
+  - `impl` - Function implementation that takes `(args, context)` and returns `{:ok, result}` or `{:error, message}`
+
+  ## Examples
+
+      # Simple function without context
+      Predicator.register_function("double", 1, fn [n], _context ->
+        {:ok, n * 2}
+      end)
+
+      # Function that uses context
+      Predicator.register_function("user_role", 0, fn [], context ->
+        {:ok, Map.get(context, "user_role", "guest")}
+      end)
+
+      # Use the function in expressions
+      Predicator.evaluate("double(5)") # => {:ok, 10}
+      Predicator.evaluate("user_role() = \"admin\"", %{"user_role" => "admin"}) # => {:ok, true}
+  """
+  @spec register_function(binary(), non_neg_integer(), function()) :: :ok
+  def register_function(name, arity, impl) do
+    Registry.register_function(name, arity, impl)
+  end
+
+  @doc """
+  Lists all registered functions (both built-in and custom).
+
+  Returns information about each registered function including name and arity.
+  Built-in functions like len, max, etc. are included in the results.
+
+  ## Examples
+
+      iex> # Register system functions first to ensure they're available
+      iex> Predicator.Functions.SystemFunctions.register_all()
+      :ok
+      iex> functions = Predicator.list_custom_functions()
+      iex> Enum.any?(functions, fn f -> f.name == "len" end)
+      true
+      iex> Enum.any?(functions, fn f -> f.name == "max" end)
+      true
+  """
+  @spec list_custom_functions() :: [map()]
+  def list_custom_functions do
+    Registry.list_functions()
+    |> Enum.map(fn %{name: name, arity: arity} -> %{name: name, arity: arity} end)
+  end
+
+  @doc """
+  Clears all registered custom functions but preserves built-in functions.
+
+  This is primarily useful for testing scenarios where you want to reset 
+  custom functions without losing the built-in ones (len, max, etc.).
+
+  ## Examples
+
+      iex> Predicator.clear_custom_functions()
+      :ok
+  """
+  @spec clear_custom_functions() :: :ok
+  def clear_custom_functions do
+    Registry.clear_registry()
+    SystemFunctions.register_all()
   end
 end

@@ -50,7 +50,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
 
       assert message =~ "line 1, column 8"
     end
@@ -60,7 +60,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>'"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'"
     end
   end
 
@@ -179,7 +179,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
 
       assert message =~ "line 1, column 8"
     end

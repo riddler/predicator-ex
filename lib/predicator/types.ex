@@ -46,6 +46,9 @@ defmodule Predicator.Types do
   - `["and"]` - Logical AND of top two boolean values
   - `["or"]` - Logical OR of top two boolean values  
   - `["not"]` - Logical NOT of top boolean value
+  - `["in"]` - Membership test (element in collection)
+  - `["contains"]` - Membership test (collection contains element)
+  - `["call", binary(), integer()]` - Call built-in function with arguments from stack
 
   ## Examples
 
@@ -55,6 +58,7 @@ defmodule Predicator.Types do
       ["and"]               # Pop two boolean values, push AND result
       ["or"]                # Pop two boolean values, push OR result
       ["not"]               # Pop one boolean value, push NOT result
+      ["call", "len", 1]    # Pop 1 argument, call len function, push result
   """
   @type instruction :: [binary() | value()]
 

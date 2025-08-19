@@ -1,0 +1,226 @@
+defmodule Predicator.Functions.SystemFunctions do
+  @moduledoc """
+  Built-in helper functions for use in predicator expressions.
+
+  This module provides a collection of utility functions that can be called
+  within predicator expressions using function call syntax. These functions
+  operate on values from the evaluation context and return computed results.
+
+  ## Available Functions
+
+  ### String Functions
+  - `len(string)` - Returns the length of a string
+  - `upper(string)` - Converts string to uppercase
+  - `lower(string)` - Converts string to lowercase
+  - `trim(string)` - Removes leading and trailing whitespace
+
+  ### Numeric Functions
+  - `abs(number)` - Returns the absolute value of a number
+  - `max(a, b)` - Returns the larger of two numbers
+  - `min(a, b)` - Returns the smaller of two numbers
+
+  ### Date Functions
+  - `year(date)` - Extracts the year from a date or datetime
+  - `month(date)` - Extracts the month from a date or datetime
+  - `day(date)` - Extracts the day from a date or datetime
+
+  ## Examples
+
+      iex> Predicator.BuiltInFunctions.call("len", ["hello"])
+      {:ok, 5}
+
+      iex> Predicator.BuiltInFunctions.call("upper", ["world"])
+      {:ok, "WORLD"}
+
+      iex> Predicator.BuiltInFunctions.call("max", [10, 5])
+      {:ok, 10}
+
+      iex> Predicator.BuiltInFunctions.call("unknown", [])
+      {:error, "Unknown function: unknown"}
+  """
+
+  alias Predicator.Functions.Registry
+  alias Predicator.Types
+
+  @type function_result :: {:ok, Types.value()} | {:error, binary()}
+
+  @doc """
+  Registers all built-in functions with the function registry.
+
+  This should be called during application startup to make built-in functions
+  available through the unified registry interface.
+
+  ## Examples
+
+      iex> Predicator.BuiltInFunctions.register_all()
+      :ok
+  """
+  @spec register_all :: :ok
+  def register_all do
+    # String functions
+    Registry.register_function("len", 1, &call_len/2)
+    Registry.register_function("upper", 1, &call_upper/2)
+    Registry.register_function("lower", 1, &call_lower/2)
+    Registry.register_function("trim", 1, &call_trim/2)
+
+    # Numeric functions
+    Registry.register_function("abs", 1, &call_abs/2)
+    Registry.register_function("max", 2, &call_max/2)
+    Registry.register_function("min", 2, &call_min/2)
+
+    # Date functions
+    Registry.register_function("year", 1, &call_year/2)
+    Registry.register_function("month", 1, &call_month/2)
+    Registry.register_function("day", 1, &call_day/2)
+
+    :ok
+  end
+
+  # String function implementations
+
+  @spec call_len([Types.value()], Types.context()) :: function_result()
+  defp call_len([value], _context) when is_binary(value) do
+    {:ok, String.length(value)}
+  end
+
+  defp call_len([_value], _context) do
+    {:error, "len() expects a string argument"}
+  end
+
+  defp call_len(_args, _context) do
+    {:error, "len() expects exactly 1 argument"}
+  end
+
+  @spec call_upper([Types.value()], Types.context()) :: function_result()
+  defp call_upper([value], _context) when is_binary(value) do
+    {:ok, String.upcase(value)}
+  end
+
+  defp call_upper([_value], _context) do
+    {:error, "upper() expects a string argument"}
+  end
+
+  defp call_upper(_args, _context) do
+    {:error, "upper() expects exactly 1 argument"}
+  end
+
+  @spec call_lower([Types.value()], Types.context()) :: function_result()
+  defp call_lower([value], _context) when is_binary(value) do
+    {:ok, String.downcase(value)}
+  end
+
+  defp call_lower([_value], _context) do
+    {:error, "lower() expects a string argument"}
+  end
+
+  defp call_lower(_args, _context) do
+    {:error, "lower() expects exactly 1 argument"}
+  end
+
+  @spec call_trim([Types.value()], Types.context()) :: function_result()
+  defp call_trim([value], _context) when is_binary(value) do
+    {:ok, String.trim(value)}
+  end
+
+  defp call_trim([_value], _context) do
+    {:error, "trim() expects a string argument"}
+  end
+
+  defp call_trim(_args, _context) do
+    {:error, "trim() expects exactly 1 argument"}
+  end
+
+  # Numeric function implementations
+
+  @spec call_abs([Types.value()], Types.context()) :: function_result()
+  defp call_abs([value], _context) when is_integer(value) do
+    {:ok, abs(value)}
+  end
+
+  defp call_abs([_value], _context) do
+    {:error, "abs() expects a numeric argument"}
+  end
+
+  defp call_abs(_args, _context) do
+    {:error, "abs() expects exactly 1 argument"}
+  end
+
+  @spec call_max([Types.value()], Types.context()) :: function_result()
+  defp call_max([a, b], _context) when is_integer(a) and is_integer(b) do
+    {:ok, max(a, b)}
+  end
+
+  defp call_max([_a, _b], _context) do
+    {:error, "max() expects two numeric arguments"}
+  end
+
+  defp call_max(_args, _context) do
+    {:error, "max() expects exactly 2 arguments"}
+  end
+
+  @spec call_min([Types.value()], Types.context()) :: function_result()
+  defp call_min([a, b], _context) when is_integer(a) and is_integer(b) do
+    {:ok, min(a, b)}
+  end
+
+  defp call_min([_a, _b], _context) do
+    {:error, "min() expects two numeric arguments"}
+  end
+
+  defp call_min(_args, _context) do
+    {:error, "min() expects exactly 2 arguments"}
+  end
+
+  # Date function implementations
+
+  @spec call_year([Types.value()], Types.context()) :: function_result()
+  defp call_year([%Date{year: year}], _context) do
+    {:ok, year}
+  end
+
+  defp call_year([%DateTime{year: year}], _context) do
+    {:ok, year}
+  end
+
+  defp call_year([_value], _context) do
+    {:error, "year() expects a date or datetime argument"}
+  end
+
+  defp call_year(_args, _context) do
+    {:error, "year() expects exactly 1 argument"}
+  end
+
+  @spec call_month([Types.value()], Types.context()) :: function_result()
+  defp call_month([%Date{month: month}], _context) do
+    {:ok, month}
+  end
+
+  defp call_month([%DateTime{month: month}], _context) do
+    {:ok, month}
+  end
+
+  defp call_month([_value], _context) do
+    {:error, "month() expects a date or datetime argument"}
+  end
+
+  defp call_month(_args, _context) do
+    {:error, "month() expects exactly 1 argument"}
+  end
+
+  @spec call_day([Types.value()], Types.context()) :: function_result()
+  defp call_day([%Date{day: day}], _context) do
+    {:ok, day}
+  end
+
+  defp call_day([%DateTime{day: day}], _context) do
+    {:ok, day}
+  end
+
+  defp call_day([_value], _context) do
+    {:error, "day() expects a date or datetime argument"}
+  end
+
+  defp call_day(_args, _context) do
+    {:error, "day() expects exactly 1 argument"}
+  end
+end

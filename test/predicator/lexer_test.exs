@@ -557,4 +557,109 @@ defmodule Predicator.LexerTest do
               ]} = Lexer.tokenize(input)
     end
   end
+
+  describe "function calls" do
+    test "tokenizes simple function call" do
+      input = "len(name)"
+
+      assert {:ok,
+              [
+                {:function_name, 1, 1, 3, "len"},
+                {:lparen, 1, 4, 1, "("},
+                {:identifier, 1, 5, 4, "name"},
+                {:rparen, 1, 9, 1, ")"},
+                {:eof, 1, 10, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "tokenizes function call with whitespace" do
+      input = "upper ( name )"
+
+      assert {:ok,
+              [
+                {:function_name, 1, 1, 5, "upper"},
+                {:lparen, 1, 7, 1, "("},
+                {:identifier, 1, 9, 4, "name"},
+                {:rparen, 1, 14, 1, ")"},
+                {:eof, 1, 15, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "tokenizes function call with multiple arguments" do
+      input = "max(score, 100)"
+
+      assert {:ok,
+              [
+                {:function_name, 1, 1, 3, "max"},
+                {:lparen, 1, 4, 1, "("},
+                {:identifier, 1, 5, 5, "score"},
+                {:comma, 1, 10, 1, ","},
+                {:integer, 1, 12, 3, 100},
+                {:rparen, 1, 15, 1, ")"},
+                {:eof, 1, 16, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "tokenizes function call in expression" do
+      input = "len(name) > 5"
+
+      assert {:ok,
+              [
+                {:function_name, 1, 1, 3, "len"},
+                {:lparen, 1, 4, 1, "("},
+                {:identifier, 1, 5, 4, "name"},
+                {:rparen, 1, 9, 1, ")"},
+                {:gt, 1, 11, 1, ">"},
+                {:integer, 1, 13, 1, 5},
+                {:eof, 1, 14, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "tokenizes nested function calls" do
+      input = "upper(trim(name))"
+
+      assert {:ok,
+              [
+                {:function_name, 1, 1, 5, "upper"},
+                {:lparen, 1, 6, 1, "("},
+                {:function_name, 1, 7, 4, "trim"},
+                {:lparen, 1, 11, 1, "("},
+                {:identifier, 1, 12, 4, "name"},
+                {:rparen, 1, 16, 1, ")"},
+                {:rparen, 1, 17, 1, ")"},
+                {:eof, 1, 18, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "distinguishes function calls from parenthesized expressions" do
+      # This should be a regular identifier with parentheses (not a function call)
+      input = "name AND (score > 85)"
+
+      assert {:ok,
+              [
+                {:identifier, 1, 1, 4, "name"},
+                {:and_op, 1, 6, 3, "AND"},
+                {:lparen, 1, 10, 1, "("},
+                {:identifier, 1, 11, 5, "score"},
+                {:gt, 1, 17, 1, ">"},
+                {:integer, 1, 19, 2, 85},
+                {:rparen, 1, 21, 1, ")"},
+                {:eof, 1, 22, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "handles keywords that could be function names" do
+      # "not" is a keyword, so "not(" should NOT be a function call - it stays as NOT keyword
+      input = "not(active)"
+
+      assert {:ok,
+              [
+                {:not_op, 1, 1, 3, "not"},
+                {:lparen, 1, 4, 1, "("},
+                {:identifier, 1, 5, 6, "active"},
+                {:rparen, 1, 11, 1, ")"},
+                {:eof, 1, 12, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+  end
 end
