@@ -156,6 +156,15 @@ defmodule Predicator.Evaluator do
       ["compare", operator] when operator in ["GT", "LT", "EQ", "GTE", "LTE", "NE"] ->
         execute_compare(evaluator, operator)
 
+      ["and"] ->
+        execute_logical_and(evaluator)
+
+      ["or"] ->
+        execute_logical_or(evaluator)
+
+      ["not"] ->
+        execute_logical_not(evaluator)
+
       unknown ->
         {:error, "Unknown instruction: #{inspect(unknown)}"}
     end
@@ -206,6 +215,53 @@ defmodule Predicator.Evaluator do
   @spec push_stack(t(), Types.value()) :: t()
   defp push_stack(%__MODULE__{stack: stack} = evaluator, value) do
     %__MODULE__{evaluator | stack: [value | stack]}
+  end
+
+  @spec execute_logical_and(t()) :: {:ok, t()} | {:error, term()}
+  defp execute_logical_and(%__MODULE__{stack: [right | [left | rest]]} = evaluator)
+       when is_boolean(left) and is_boolean(right) do
+    result = left and right
+    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+  end
+
+  defp execute_logical_and(%__MODULE__{stack: [right | [left | _rest]]}) do
+    {:error,
+     "Logical AND requires two boolean values, got: #{inspect(left)} and #{inspect(right)}"}
+  end
+
+  defp execute_logical_and(%__MODULE__{stack: stack}) do
+    {:error, "Logical AND requires two values on stack, got: #{length(stack)}"}
+  end
+
+  @spec execute_logical_or(t()) :: {:ok, t()} | {:error, term()}
+  defp execute_logical_or(%__MODULE__{stack: [right | [left | rest]]} = evaluator)
+       when is_boolean(left) and is_boolean(right) do
+    result = left or right
+    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+  end
+
+  defp execute_logical_or(%__MODULE__{stack: [right | [left | _rest]]}) do
+    {:error,
+     "Logical OR requires two boolean values, got: #{inspect(left)} and #{inspect(right)}"}
+  end
+
+  defp execute_logical_or(%__MODULE__{stack: stack}) do
+    {:error, "Logical OR requires two values on stack, got: #{length(stack)}"}
+  end
+
+  @spec execute_logical_not(t()) :: {:ok, t()} | {:error, term()}
+  defp execute_logical_not(%__MODULE__{stack: [value | rest]} = evaluator)
+       when is_boolean(value) do
+    result = not value
+    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+  end
+
+  defp execute_logical_not(%__MODULE__{stack: [value | _rest]}) do
+    {:error, "Logical NOT requires a boolean value, got: #{inspect(value)}"}
+  end
+
+  defp execute_logical_not(%__MODULE__{stack: []}) do
+    {:error, "Logical NOT requires one value on stack, got: 0"}
   end
 
   @spec load_from_context(Types.context(), binary()) :: Types.value()

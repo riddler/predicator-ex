@@ -19,6 +19,10 @@ defmodule Predicator.InstructionsVisitor do
       iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
       iex> Predicator.InstructionsVisitor.visit(ast, [])
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
+
+      iex> ast = {:logical_and, {:literal, true}, {:literal, false}}
+      iex> Predicator.InstructionsVisitor.visit(ast, [])
+      [["lit", true], ["lit", false], ["and"]]
   """
 
   @behaviour Predicator.Visitor
@@ -59,6 +63,32 @@ defmodule Predicator.InstructionsVisitor do
     op_instruction = [["compare", map_comparison_op(op)]]
 
     left_instructions ++ right_instructions ++ op_instruction
+  end
+
+  def visit({:logical_and, left, right}, opts) do
+    # Post-order traversal: left operand, right operand, then operator
+    left_instructions = visit(left, opts)
+    right_instructions = visit(right, opts)
+    op_instruction = [["and"]]
+
+    left_instructions ++ right_instructions ++ op_instruction
+  end
+
+  def visit({:logical_or, left, right}, opts) do
+    # Post-order traversal: left operand, right operand, then operator
+    left_instructions = visit(left, opts)
+    right_instructions = visit(right, opts)
+    op_instruction = [["or"]]
+
+    left_instructions ++ right_instructions ++ op_instruction
+  end
+
+  def visit({:logical_not, operand}, opts) do
+    # Post-order traversal: operand first, then operator
+    operand_instructions = visit(operand, opts)
+    op_instruction = [["not"]]
+
+    operand_instructions ++ op_instruction
   end
 
   # Helper function to map AST comparison operators to instruction format

@@ -376,4 +376,189 @@ defmodule Predicator.StringVisitorTest do
       assert result == "temp < -10"
     end
   end
+
+  describe "visit/2 - logical operators" do
+    test "formats simple logical AND" do
+      ast = {:logical_and, {:literal, true}, {:literal, false}}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "true AND false"
+    end
+
+    test "formats simple logical OR" do
+      ast = {:logical_or, {:literal, true}, {:literal, false}}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "true OR false"
+    end
+
+    test "formats simple logical NOT" do
+      ast = {:logical_not, {:literal, true}}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "NOT true"
+    end
+
+    test "formats logical AND with comparisons" do
+      ast =
+        {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
+         {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}}
+
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "score > 85 AND age >= 18"
+    end
+
+    test "formats logical OR with comparisons" do
+      ast =
+        {:logical_or, {:comparison, :eq, {:identifier, "role"}, {:literal, "admin"}},
+         {:comparison, :eq, {:identifier, "role"}, {:literal, "manager"}}}
+
+      result = StringVisitor.visit(ast, [])
+
+      assert result == ~s(role = "admin" OR role = "manager")
+    end
+
+    test "formats logical NOT with comparison" do
+      ast = {:logical_not, {:comparison, :eq, {:identifier, "expired"}, {:literal, true}}}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "NOT expired = true"
+    end
+
+    test "formats nested logical NOT" do
+      ast = {:logical_not, {:logical_not, {:literal, false}}}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "NOT NOT false"
+    end
+
+    test "formats complex nested logical expression" do
+      # (score > 85 AND age >= 18) OR admin = true
+      ast =
+        {:logical_or,
+         {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
+          {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}},
+         {:comparison, :eq, {:identifier, "admin"}, {:literal, true}}}
+
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "score > 85 AND age >= 18 OR admin = true"
+    end
+
+    test "formats logical operators with compact spacing" do
+      ast = {:logical_and, {:literal, true}, {:literal, false}}
+      result = StringVisitor.visit(ast, spacing: :compact)
+
+      assert result == "trueANDfalse"
+    end
+
+    test "formats logical operators with verbose spacing" do
+      ast = {:logical_or, {:literal, true}, {:literal, false}}
+      result = StringVisitor.visit(ast, spacing: :verbose)
+
+      assert result == "true  OR  false"
+    end
+
+    test "formats logical operators with explicit parentheses" do
+      ast = {:logical_and, {:literal, true}, {:literal, false}}
+      result = StringVisitor.visit(ast, parentheses: :explicit)
+
+      assert result == "(true AND false)"
+    end
+
+    test "formats logical NOT with explicit parentheses" do
+      ast = {:logical_not, {:literal, true}}
+      result = StringVisitor.visit(ast, parentheses: :explicit)
+
+      assert result == "(NOT true)"
+    end
+
+    test "formats logical NOT with no parentheses mode" do
+      ast = {:logical_not, {:literal, false}}
+      result = StringVisitor.visit(ast, parentheses: :none)
+
+      assert result == "NOT false"
+    end
+
+    test "formats complex logical expression with all formatting options" do
+      ast = {:logical_not, {:logical_and, {:literal, true}, {:literal, false}}}
+      result = StringVisitor.visit(ast, spacing: :verbose, parentheses: :explicit)
+
+      assert result == "(NOT  (true  AND  false))"
+    end
+
+    test "formats left-associative AND operations" do
+      # ((true AND false) AND true)
+      ast = {:logical_and, {:logical_and, {:literal, true}, {:literal, false}}, {:literal, true}}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "true AND false AND true"
+    end
+
+    test "formats left-associative OR operations" do
+      # ((true OR false) OR true)
+      ast = {:logical_or, {:logical_or, {:literal, true}, {:literal, false}}, {:literal, true}}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "true OR false OR true"
+    end
+
+    test "formats mixed comparison and logical operations" do
+      # score > 85 AND NOT expired
+      ast =
+        {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
+         {:logical_not, {:identifier, "expired"}}}
+
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "score > 85 AND NOT expired"
+    end
+  end
+
+  describe "visit/2 - integration with parser" do
+    test "round-trip with logical AND expression" do
+      alias Predicator.{Lexer, Parser}
+
+      expression = "score > 85 AND age >= 18"
+      {:ok, tokens} = Lexer.tokenize(expression)
+      {:ok, ast} = Parser.parse(tokens)
+      result = StringVisitor.visit(ast, [])
+
+      assert result == expression
+    end
+
+    test "round-trip with logical OR expression" do
+      alias Predicator.{Lexer, Parser}
+
+      expression = ~s(role = "admin" OR role = "manager")
+      {:ok, tokens} = Lexer.tokenize(expression)
+      {:ok, ast} = Parser.parse(tokens)
+      result = StringVisitor.visit(ast, [])
+
+      assert result == expression
+    end
+
+    test "round-trip with logical NOT expression" do
+      alias Predicator.{Lexer, Parser}
+
+      expression = "NOT expired = true"
+      {:ok, tokens} = Lexer.tokenize(expression)
+      {:ok, ast} = Parser.parse(tokens)
+      result = StringVisitor.visit(ast, [])
+
+      assert result == expression
+    end
+
+    test "round-trip with complex logical expression" do
+      alias Predicator.{Lexer, Parser}
+
+      expression = "score > 85 AND age >= 18 OR admin = true"
+      {:ok, tokens} = Lexer.tokenize(expression)
+      {:ok, ast} = Parser.parse(tokens)
+      result = StringVisitor.visit(ast, [])
+
+      assert result == expression
+    end
+  end
 end

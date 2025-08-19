@@ -167,6 +167,22 @@ defmodule Predicator do
   end
 
   @doc """
+  Parses an expression string into an Abstract Syntax Tree.
+
+  ## Examples
+
+      iex> Predicator.parse("score > 85")
+      {:ok, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}}
+  """
+  @spec parse(binary()) :: {:ok, Parser.ast()} | {:error, binary(), pos_integer(), pos_integer()}
+  def parse(expression) when is_binary(expression) do
+    case Lexer.tokenize(expression) do
+      {:ok, tokens} -> Parser.parse(tokens)
+      {:error, message, line, column} -> {:error, message, line, column}
+    end
+  end
+
+  @doc """
   Converts an AST back to a string representation.
 
   This function takes an Abstract Syntax Tree and generates a readable string

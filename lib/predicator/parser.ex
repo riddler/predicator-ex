@@ -7,9 +7,12 @@ defmodule Predicator.Parser do
 
   ## Grammar
 
-  The parser implements this grammar:
+  The parser implements this grammar with proper operator precedence:
 
-      expression   → comparison
+      expression   → logical_or
+      logical_or   → logical_and ( "OR" logical_and )*
+      logical_and  → logical_not ( "AND" logical_not )*
+      logical_not  → "NOT" logical_not | comparison
       comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" ) primary )?
       primary      → NUMBER | STRING | BOOLEAN | IDENTIFIER | "(" expression ")"
 
@@ -22,6 +25,10 @@ defmodule Predicator.Parser do
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("(age >= 18)")
       iex> Predicator.Parser.parse(tokens)
       {:ok, {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}}
+
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("score > 85 AND age >= 18")
+      iex> Predicator.Parser.parse(tokens)
+      {:ok, {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}, {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}}}
   """
 
   alias Predicator.Lexer
@@ -37,11 +44,17 @@ defmodule Predicator.Parser do
   - `{:literal, value}` - A literal value (number, string, boolean)
   - `{:identifier, name}` - A variable reference
   - `{:comparison, operator, left, right}` - A comparison expression
+  - `{:logical_and, left, right}` - A logical AND expression
+  - `{:logical_or, left, right}` - A logical OR expression
+  - `{:logical_not, operand}` - A logical NOT expression
   """
   @type ast ::
           {:literal, value()}
           | {:identifier, binary()}
           | {:comparison, comparison_op(), ast(), ast()}
+          | {:logical_and, ast(), ast()}
+          | {:logical_or, ast(), ast()}
+          | {:logical_not, ast()}
 
   @typedoc """
   Comparison operators in the AST.
@@ -114,7 +127,97 @@ defmodule Predicator.Parser do
   @spec parse_expression(parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
   defp parse_expression(state) do
-    parse_comparison(state)
+    parse_logical_or(state)
+  end
+
+  # Parse logical OR expressions (lowest precedence)
+  @spec parse_logical_or(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_logical_or(state) do
+    case parse_logical_and(state) do
+      {:ok, left, new_state} ->
+        parse_logical_or_rest(left, new_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  @spec parse_logical_or_rest(ast(), parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_logical_or_rest(left, state) do
+    case peek_token(state) do
+      {:or_op, _line, _col, _len, _value} ->
+        or_state = advance(state)
+
+        case parse_logical_and(or_state) do
+          {:ok, right, final_state} ->
+            ast = {:logical_or, left, right}
+            parse_logical_or_rest(ast, final_state)
+
+          {:error, message, line, col} ->
+            {:error, message, line, col}
+        end
+
+      _token ->
+        {:ok, left, state}
+    end
+  end
+
+  # Parse logical AND expressions (middle precedence)
+  @spec parse_logical_and(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_logical_and(state) do
+    case parse_logical_not(state) do
+      {:ok, left, new_state} ->
+        parse_logical_and_rest(left, new_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  @spec parse_logical_and_rest(ast(), parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_logical_and_rest(left, state) do
+    case peek_token(state) do
+      {:and_op, _line, _col, _len, _value} ->
+        and_state = advance(state)
+
+        case parse_logical_not(and_state) do
+          {:ok, right, final_state} ->
+            ast = {:logical_and, left, right}
+            parse_logical_and_rest(ast, final_state)
+
+          {:error, message, line, col} ->
+            {:error, message, line, col}
+        end
+
+      _token ->
+        {:ok, left, state}
+    end
+  end
+
+  # Parse logical NOT expressions (highest precedence)
+  @spec parse_logical_not(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_logical_not(state) do
+    case peek_token(state) do
+      {:not_op, _line, _col, _len, _value} ->
+        not_state = advance(state)
+
+        case parse_logical_not(not_state) do
+          {:ok, operand, final_state} ->
+            ast = {:logical_not, operand}
+            {:ok, ast, final_state}
+
+          {:error, message, line, col} ->
+            {:error, message, line, col}
+        end
+
+      _token ->
+        parse_comparison(state)
+    end
   end
 
   # Parse comparison expressions
@@ -238,6 +341,9 @@ defmodule Predicator.Parser do
   defp format_token(:lte, _value), do: "'<='"
   defp format_token(:eq, _value), do: "'='"
   defp format_token(:ne, _value), do: "'!='"
+  defp format_token(:and_op, _value), do: "'AND'"
+  defp format_token(:or_op, _value), do: "'OR'"
+  defp format_token(:not_op, _value), do: "'NOT'"
   defp format_token(:lparen, _value), do: "'('"
   defp format_token(:rparen, _value), do: "')'"
   defp format_token(:eof, _value), do: "end of input"

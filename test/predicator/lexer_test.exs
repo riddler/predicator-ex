@@ -77,6 +77,52 @@ defmodule Predicator.LexerTest do
                {:eof, 1, 6, 0, nil}
              ]
     end
+
+    test "tokenizes uppercase logical operators" do
+      assert {:ok, tokens} = Lexer.tokenize("AND")
+
+      assert tokens == [
+               {:and_op, 1, 1, 3, "AND"},
+               {:eof, 1, 4, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("OR")
+
+      assert tokens == [
+               {:or_op, 1, 1, 2, "OR"},
+               {:eof, 1, 3, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("NOT")
+
+      assert tokens == [
+               {:not_op, 1, 1, 3, "NOT"},
+               {:eof, 1, 4, 0, nil}
+             ]
+    end
+
+    test "tokenizes lowercase logical operators" do
+      assert {:ok, tokens} = Lexer.tokenize("and")
+
+      assert tokens == [
+               {:and_op, 1, 1, 3, "and"},
+               {:eof, 1, 4, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("or")
+
+      assert tokens == [
+               {:or_op, 1, 1, 2, "or"},
+               {:eof, 1, 3, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("not")
+
+      assert tokens == [
+               {:not_op, 1, 1, 3, "not"},
+               {:eof, 1, 4, 0, nil}
+             ]
+    end
   end
 
   describe "tokenize/1 - string literals" do
