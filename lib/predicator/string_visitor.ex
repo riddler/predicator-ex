@@ -23,6 +23,14 @@ defmodule Predicator.StringVisitor do
       iex> ast = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
       iex> Predicator.StringVisitor.visit(ast, [])
       ~s(name = "John")
+
+      iex> ast = {:logical_and, {:literal, true}, {:literal, false}}
+      iex> Predicator.StringVisitor.visit(ast, [])
+      "true AND false"
+
+      iex> ast = {:logical_not, {:literal, true}}
+      iex> Predicator.StringVisitor.visit(ast, [])
+      "NOT true"
   """
 
   @behaviour Predicator.Visitor
@@ -94,6 +102,39 @@ defmodule Predicator.StringVisitor do
       :explicit -> "(#{left_str}#{spacing}#{op_str}#{spacing}#{right_str})"
       :none -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
       :minimal -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
+    end
+  end
+
+  def visit({:logical_and, left, right}, opts) do
+    left_str = visit(left, opts)
+    right_str = visit(right, opts)
+    spacing = get_spacing(opts)
+
+    case get_parentheses_mode(opts) do
+      :explicit -> "(#{left_str}#{spacing}AND#{spacing}#{right_str})"
+      _other -> "#{left_str}#{spacing}AND#{spacing}#{right_str}"
+    end
+  end
+
+  def visit({:logical_or, left, right}, opts) do
+    left_str = visit(left, opts)
+    right_str = visit(right, opts)
+    spacing = get_spacing(opts)
+
+    case get_parentheses_mode(opts) do
+      :explicit -> "(#{left_str}#{spacing}OR#{spacing}#{right_str})"
+      _other -> "#{left_str}#{spacing}OR#{spacing}#{right_str}"
+    end
+  end
+
+  def visit({:logical_not, operand}, opts) do
+    operand_str = visit(operand, opts)
+    spacing = get_spacing(opts)
+
+    case get_parentheses_mode(opts) do
+      :explicit -> "(NOT#{spacing}#{operand_str})"
+      :none -> "NOT#{spacing}#{operand_str}"
+      :minimal -> "NOT#{spacing}#{operand_str}"
     end
   end
 

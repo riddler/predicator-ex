@@ -27,6 +27,16 @@ iex> Predicator.evaluate("name = \"Alice\"", %{"name" => "Alice"})
 iex> Predicator.evaluate("(age >= 18) = true", %{"age" => 25})
 {:ok, true}
 
+# Logical operators
+iex> Predicator.evaluate("score > 85 AND age >= 18", %{"score" => 92, "age" => 25})
+{:ok, true}
+
+iex> Predicator.evaluate("role = \"admin\" OR role = \"manager\"", %{"role" => "admin"})  
+{:ok, true}
+
+iex> Predicator.evaluate("NOT expired = true", %{"expired" => false})
+{:ok, true}
+
 # Compile once, evaluate many times
 iex> {:ok, instructions} = Predicator.compile("score > threshold")
 iex> Predicator.evaluate(instructions, %{"score" => 95, "threshold" => 80})
@@ -48,6 +58,9 @@ iex> Predicator.decompile(ast)
 | `<=`     | Less than or equal | `count <= 5` |
 | `=`      | Equal | `status = "active"` |
 | `!=`     | Not equal | `role != "guest"` |
+| `AND`    | Logical AND | `score > 85 AND age >= 18` |
+| `OR`     | Logical OR | `role = "admin" OR role = "manager"` |
+| `NOT`    | Logical NOT | `NOT expired = true` |
 
 ## Data Types
 
@@ -63,7 +76,7 @@ Predicator uses a multi-stage compilation pipeline:
 ```
 Expression String → Lexer → Parser → Compiler → Instructions
      ↓              ↓        ↓         ↓           ↓
-"score > 85"   → Tokens → AST → Instructions → Evaluation
+"score > 85 AND age >= 18" → Tokens → AST → Instructions → Evaluation
 ```
 
 ### Core Components
@@ -82,7 +95,7 @@ Predicator provides detailed error information with exact positioning:
 iex> Predicator.evaluate("score >> 85", %{})
 {:error, "Unexpected character '>' at line 1, column 8"}
 
-iex> Predicator.evaluate("score >", %{})
+iex> Predicator.evaluate("score AND", %{})
 {:error, "Expected number, string, boolean, identifier, or '(' but found end of input at line 1, column 1"}
 ```
 

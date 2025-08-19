@@ -4,7 +4,7 @@ This document provides context for Claude Code when working on the Predicator pr
 
 ## Project Overview
 
-Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution.
+Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports comparison operators (>, <, >=, <=, =, !=) and logical operators (AND, OR, NOT) with proper precedence.
 
 ## Architecture
 
@@ -12,6 +12,17 @@ Predicator is a secure, non-evaluative condition engine for processing end-user 
 Expression String → Lexer → Parser → Compiler → Instructions → Evaluator
                                     ↓
                               StringVisitor (decompile)
+```
+
+### Grammar with Operator Precedence
+
+```
+expression   → logical_or
+logical_or   → logical_and ( "OR" logical_and )*
+logical_and  → logical_not ( "AND" logical_not )*
+logical_not  → "NOT" logical_not | comparison
+comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" ) primary )?
+primary      → NUMBER | STRING | BOOLEAN | IDENTIFIER | "(" expression ")"
 ```
 
 ### Core Components

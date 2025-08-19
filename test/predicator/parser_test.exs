@@ -359,4 +359,247 @@ defmodule Predicator.ParserTest do
                result
     end
   end
+
+  describe "logical operators" do
+    test "parses simple AND expression" do
+      tokens = [
+        {:identifier, 1, 1, 5, "score"},
+        {:gt, 1, 7, 1, ">"},
+        {:integer, 1, 9, 2, 85},
+        {:and_op, 1, 12, 3, "AND"},
+        {:identifier, 1, 16, 3, "age"},
+        {:gte, 1, 20, 2, ">="},
+        {:integer, 1, 23, 2, 18},
+        {:eof, 1, 25, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
+               {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}}} = result
+    end
+
+    test "parses simple OR expression" do
+      tokens = [
+        {:identifier, 1, 1, 4, "role"},
+        {:eq, 1, 6, 1, "="},
+        {:string, 1, 8, 7, "admin"},
+        {:or_op, 1, 16, 2, "OR"},
+        {:identifier, 1, 19, 4, "role"},
+        {:eq, 1, 24, 1, "="},
+        {:string, 1, 26, 9, "manager"},
+        {:eof, 1, 36, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:logical_or, {:comparison, :eq, {:identifier, "role"}, {:literal, "admin"}},
+               {:comparison, :eq, {:identifier, "role"}, {:literal, "manager"}}}} = result
+    end
+
+    test "parses simple NOT expression" do
+      tokens = [
+        {:not_op, 1, 1, 3, "NOT"},
+        {:identifier, 1, 5, 7, "expired"},
+        {:eq, 1, 13, 1, "="},
+        {:boolean, 1, 15, 4, true},
+        {:eof, 1, 19, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok, {:logical_not, {:comparison, :eq, {:identifier, "expired"}, {:literal, true}}}} =
+               result
+    end
+
+    test "parses nested NOT expression" do
+      tokens = [
+        {:not_op, 1, 1, 3, "NOT"},
+        {:not_op, 1, 5, 3, "NOT"},
+        {:boolean, 1, 9, 4, true},
+        {:eof, 1, 13, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok, {:logical_not, {:logical_not, {:literal, true}}}} = result
+    end
+
+    test "parses operator precedence correctly - AND has higher precedence than OR" do
+      # true OR false AND true should parse as: true OR (false AND true)
+      tokens = [
+        {:boolean, 1, 1, 4, true},
+        {:or_op, 1, 6, 2, "OR"},
+        {:boolean, 1, 9, 5, false},
+        {:and_op, 1, 15, 3, "AND"},
+        {:boolean, 1, 19, 4, true},
+        {:eof, 1, 23, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:logical_or, {:literal, true}, {:logical_and, {:literal, false}, {:literal, true}}}} =
+               result
+    end
+
+    test "parses operator precedence correctly - NOT has highest precedence" do
+      # NOT false AND true should parse as: (NOT false) AND true
+      tokens = [
+        {:not_op, 1, 1, 3, "NOT"},
+        {:boolean, 1, 5, 5, false},
+        {:and_op, 1, 11, 3, "AND"},
+        {:boolean, 1, 15, 4, true},
+        {:eof, 1, 19, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok, {:logical_and, {:logical_not, {:literal, false}}, {:literal, true}}} = result
+    end
+
+    test "parses complex precedence expression" do
+      # NOT false OR true AND false should parse as: (NOT false) OR (true AND false)
+      tokens = [
+        {:not_op, 1, 1, 3, "NOT"},
+        {:boolean, 1, 5, 5, false},
+        {:or_op, 1, 11, 2, "OR"},
+        {:boolean, 1, 14, 4, true},
+        {:and_op, 1, 19, 3, "AND"},
+        {:boolean, 1, 23, 5, false},
+        {:eof, 1, 28, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:logical_or, {:logical_not, {:literal, false}},
+               {:logical_and, {:literal, true}, {:literal, false}}}} = result
+    end
+
+    test "parses left-associative AND operations" do
+      # true AND false AND true should parse as: (true AND false) AND true
+      tokens = [
+        {:boolean, 1, 1, 4, true},
+        {:and_op, 1, 6, 3, "AND"},
+        {:boolean, 1, 10, 5, false},
+        {:and_op, 1, 16, 3, "AND"},
+        {:boolean, 1, 20, 4, true},
+        {:eof, 1, 24, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:logical_and, {:logical_and, {:literal, true}, {:literal, false}},
+               {:literal, true}}} = result
+    end
+
+    test "parses left-associative OR operations" do
+      # true OR false OR true should parse as: (true OR false) OR true
+      tokens = [
+        {:boolean, 1, 1, 4, true},
+        {:or_op, 1, 6, 2, "OR"},
+        {:boolean, 1, 9, 5, false},
+        {:or_op, 1, 15, 2, "OR"},
+        {:boolean, 1, 18, 4, true},
+        {:eof, 1, 22, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:logical_or, {:logical_or, {:literal, true}, {:literal, false}}, {:literal, true}}} =
+               result
+    end
+
+    test "parses parenthesized logical expressions" do
+      # (true OR false) AND true
+      tokens = [
+        {:lparen, 1, 1, 1, "("},
+        {:boolean, 1, 2, 4, true},
+        {:or_op, 1, 7, 2, "OR"},
+        {:boolean, 1, 10, 5, false},
+        {:rparen, 1, 15, 1, ")"},
+        {:and_op, 1, 17, 3, "AND"},
+        {:boolean, 1, 21, 4, true},
+        {:eof, 1, 25, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:logical_and, {:logical_or, {:literal, true}, {:literal, false}}, {:literal, true}}} =
+               result
+    end
+
+    test "handles error when AND missing right operand" do
+      tokens = [
+        {:boolean, 1, 1, 4, true},
+        {:and_op, 1, 6, 3, "AND"},
+        {:eof, 1, 9, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:error,
+              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
+              9} = result
+    end
+
+    test "handles error when OR missing right operand" do
+      tokens = [
+        {:boolean, 1, 1, 4, true},
+        {:or_op, 1, 6, 2, "OR"},
+        {:eof, 1, 8, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:error,
+              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
+              8} = result
+    end
+
+    test "handles error when NOT missing operand" do
+      tokens = [
+        {:not_op, 1, 1, 3, "NOT"},
+        {:eof, 1, 4, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:error,
+              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
+              4} = result
+    end
+
+    test "complex mixed expression with comparisons and logical operators" do
+      # score > 85 AND age >= 18 OR admin = true
+      tokens = [
+        {:identifier, 1, 1, 5, "score"},
+        {:gt, 1, 7, 1, ">"},
+        {:integer, 1, 9, 2, 85},
+        {:and_op, 1, 12, 3, "AND"},
+        {:identifier, 1, 16, 3, "age"},
+        {:gte, 1, 20, 2, ">="},
+        {:integer, 1, 23, 2, 18},
+        {:or_op, 1, 26, 2, "OR"},
+        {:identifier, 1, 29, 5, "admin"},
+        {:eq, 1, 35, 1, "="},
+        {:boolean, 1, 37, 4, true},
+        {:eof, 1, 41, 0, nil}
+      ]
+
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:logical_or,
+               {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
+                {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}},
+               {:comparison, :eq, {:identifier, "admin"}, {:literal, true}}}} = result
+    end
+  end
 end

@@ -45,6 +45,9 @@ defmodule Predicator.Lexer do
           | {:lte, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:eq, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:ne, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:and_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:or_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:not_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:lparen, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:rparen, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:eof, pos_integer(), pos_integer(), pos_integer(), nil}
@@ -101,6 +104,18 @@ defmodule Predicator.Lexer do
         {:eq, 1, 6, 1, "="},
         {:string, 1, 8, 6, "John"},
         {:eof, 1, 14, 0, nil}
+      ]}
+
+      iex> Predicator.Lexer.tokenize("score > 85 AND age >= 18")
+      {:ok, [
+        {:identifier, 1, 1, 5, "score"},
+        {:gt, 1, 7, 1, ">"},
+        {:integer, 1, 9, 2, 85},
+        {:and_op, 1, 12, 3, "AND"},
+        {:identifier, 1, 16, 3, "age"},
+        {:gte, 1, 20, 2, ">="},
+        {:integer, 1, 23, 2, 18},
+        {:eof, 1, 25, 0, nil}
       ]}
   """
   @spec tokenize(binary()) :: result()
@@ -245,6 +260,9 @@ defmodule Predicator.Lexer do
   @spec classify_identifier(binary()) :: {atom(), binary() | boolean()}
   defp classify_identifier("true"), do: {:boolean, true}
   defp classify_identifier("false"), do: {:boolean, false}
+  defp classify_identifier("AND"), do: {:and_op, "AND"}
+  defp classify_identifier("OR"), do: {:or_op, "OR"}
+  defp classify_identifier("NOT"), do: {:not_op, "NOT"}
   defp classify_identifier(id), do: {:identifier, id}
 
   @spec take_string(charlist(), binary(), pos_integer()) ::

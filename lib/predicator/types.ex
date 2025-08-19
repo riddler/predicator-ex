@@ -41,12 +41,18 @@ defmodule Predicator.Types do
   - `["lit", value()]` - Push literal value onto stack  
   - `["load", binary()]` - Load variable from context onto stack
   - `["compare", binary()]` - Compare top two stack values with operator
+  - `["and"]` - Logical AND of top two boolean values
+  - `["or"]` - Logical OR of top two boolean values  
+  - `["not"]` - Logical NOT of top boolean value
 
   ## Examples
 
       ["lit", 42]           # Push literal 42 onto stack
       ["load", "score"]     # Load variable 'score' from context
       ["compare", "GT"]     # Pop two values, compare with >, push result
+      ["and"]               # Pop two boolean values, push AND result
+      ["or"]                # Pop two boolean values, push OR result
+      ["not"]               # Pop one boolean value, push NOT result
   """
   @type instruction :: [binary() | value()]
 

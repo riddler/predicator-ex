@@ -221,4 +221,159 @@ defmodule Predicator.EvaluatorTest do
       end
     end
   end
+
+  describe "logical operators" do
+    test "evaluates logical AND with true values" do
+      instructions = [["lit", true], ["lit", true], ["and"]]
+      assert Evaluator.evaluate(instructions) == true
+    end
+
+    test "evaluates logical AND with false values" do
+      instructions = [["lit", false], ["lit", false], ["and"]]
+      assert Evaluator.evaluate(instructions) == false
+    end
+
+    test "evaluates logical AND with mixed values" do
+      instructions = [["lit", true], ["lit", false], ["and"]]
+      assert Evaluator.evaluate(instructions) == false
+
+      instructions = [["lit", false], ["lit", true], ["and"]]
+      assert Evaluator.evaluate(instructions) == false
+    end
+
+    test "evaluates logical OR with true values" do
+      instructions = [["lit", true], ["lit", true], ["or"]]
+      assert Evaluator.evaluate(instructions) == true
+    end
+
+    test "evaluates logical OR with false values" do
+      instructions = [["lit", false], ["lit", false], ["or"]]
+      assert Evaluator.evaluate(instructions) == false
+    end
+
+    test "evaluates logical OR with mixed values" do
+      instructions = [["lit", true], ["lit", false], ["or"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      instructions = [["lit", false], ["lit", true], ["or"]]
+      assert Evaluator.evaluate(instructions) == true
+    end
+
+    test "evaluates logical NOT with true value" do
+      instructions = [["lit", true], ["not"]]
+      assert Evaluator.evaluate(instructions) == false
+    end
+
+    test "evaluates logical NOT with false value" do
+      instructions = [["lit", false], ["not"]]
+      assert Evaluator.evaluate(instructions) == true
+    end
+
+    test "returns error for logical AND with non-boolean values" do
+      instructions = [["lit", 42], ["lit", true], ["and"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, _message} = result
+      assert match?({:error, "Logical AND requires two boolean values" <> _}, result)
+    end
+
+    test "returns error for logical AND with insufficient stack" do
+      instructions = [["lit", true], ["and"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, "Logical AND requires two values on stack, got: 1"} = result
+    end
+
+    test "returns error for logical AND with empty stack" do
+      instructions = [["and"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, "Logical AND requires two values on stack, got: 0"} = result
+    end
+
+    test "returns error for logical OR with non-boolean values" do
+      instructions = [["lit", "hello"], ["lit", false], ["or"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, _message} = result
+      assert match?({:error, "Logical OR requires two boolean values" <> _}, result)
+    end
+
+    test "returns error for logical OR with insufficient stack" do
+      instructions = [["lit", false], ["or"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, "Logical OR requires two values on stack, got: 1"} = result
+    end
+
+    test "returns error for logical OR with empty stack" do
+      instructions = [["or"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, "Logical OR requires two values on stack, got: 0"} = result
+    end
+
+    test "returns error for logical NOT with non-boolean value" do
+      instructions = [["lit", 123], ["not"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, "Logical NOT requires a boolean value, got: 123"} = result
+    end
+
+    test "returns error for logical NOT with empty stack" do
+      instructions = [["not"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, "Logical NOT requires one value on stack, got: 0"} = result
+    end
+
+    test "complex logical expression with variables" do
+      # (score > 85 AND age >= 18) OR admin = true
+      instructions = [
+        ["load", "score"],
+        ["lit", 85],
+        ["compare", "GT"],
+        ["load", "age"],
+        ["lit", 18],
+        ["compare", "GTE"],
+        ["and"],
+        ["load", "admin"],
+        ["lit", true],
+        ["compare", "EQ"],
+        ["or"]
+      ]
+
+      context = %{"score" => 90, "age" => 20, "admin" => false}
+      assert Evaluator.evaluate(instructions, context) == true
+
+      context = %{"score" => 80, "age" => 16, "admin" => false}
+      assert Evaluator.evaluate(instructions, context) == false
+
+      context = %{"score" => 80, "age" => 16, "admin" => true}
+      assert Evaluator.evaluate(instructions, context) == true
+    end
+
+    test "nested NOT expressions" do
+      # NOT (NOT true)
+      instructions = [["lit", true], ["not"], ["not"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      # NOT (NOT (NOT false))
+      instructions = [["lit", false], ["not"], ["not"], ["not"]]
+      assert Evaluator.evaluate(instructions) == true
+    end
+
+    test "mixed comparison and logical operations" do
+      # score > 85 AND NOT expired
+      instructions = [
+        ["load", "score"],
+        ["lit", 85],
+        ["compare", "GT"],
+        ["load", "expired"],
+        ["not"],
+        ["and"]
+      ]
+
+      context = %{"score" => 90, "expired" => false}
+      assert Evaluator.evaluate(instructions, context) == true
+
+      context = %{"score" => 80, "expired" => false}
+      assert Evaluator.evaluate(instructions, context) == false
+
+      context = %{"score" => 90, "expired" => true}
+      assert Evaluator.evaluate(instructions, context) == false
+    end
+  end
 end
