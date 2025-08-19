@@ -160,22 +160,27 @@ defmodule Predicator.Parser do
   @spec parse_logical_or_rest(ast(), parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
   defp parse_logical_or_rest(left, state) do
-    case peek_token(state) do
-      {:or_op, _line, _col, _len, _value} ->
-        or_state = advance(state)
+    token = peek_token(state)
+    parse_logical_or_rest_token(left, state, token)
+  end
 
-        case parse_logical_and(or_state) do
-          {:ok, right, final_state} ->
-            ast = {:logical_or, left, right}
-            parse_logical_or_rest(ast, final_state)
+  # Parse OR operator token
+  defp parse_logical_or_rest_token(left, state, {:or_op, _line, _col, _len, _value}) do
+    or_state = advance(state)
 
-          {:error, message, line, col} ->
-            {:error, message, line, col}
-        end
+    case parse_logical_and(or_state) do
+      {:ok, right, final_state} ->
+        ast = {:logical_or, left, right}
+        parse_logical_or_rest(ast, final_state)
 
-      _token ->
-        {:ok, left, state}
+      {:error, message, line, col} ->
+        {:error, message, line, col}
     end
+  end
+
+  # No OR operator, return left operand
+  defp parse_logical_or_rest_token(left, state, _token) do
+    {:ok, left, state}
   end
 
   # Parse logical AND expressions (middle precedence)
@@ -194,44 +199,54 @@ defmodule Predicator.Parser do
   @spec parse_logical_and_rest(ast(), parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
   defp parse_logical_and_rest(left, state) do
-    case peek_token(state) do
-      {:and_op, _line, _col, _len, _value} ->
-        and_state = advance(state)
+    token = peek_token(state)
+    parse_logical_and_rest_token(left, state, token)
+  end
 
-        case parse_logical_not(and_state) do
-          {:ok, right, final_state} ->
-            ast = {:logical_and, left, right}
-            parse_logical_and_rest(ast, final_state)
+  # Parse AND operator token
+  defp parse_logical_and_rest_token(left, state, {:and_op, _line, _col, _len, _value}) do
+    and_state = advance(state)
 
-          {:error, message, line, col} ->
-            {:error, message, line, col}
-        end
+    case parse_logical_not(and_state) do
+      {:ok, right, final_state} ->
+        ast = {:logical_and, left, right}
+        parse_logical_and_rest(ast, final_state)
 
-      _token ->
-        {:ok, left, state}
+      {:error, message, line, col} ->
+        {:error, message, line, col}
     end
+  end
+
+  # No AND operator, return left operand
+  defp parse_logical_and_rest_token(left, state, _token) do
+    {:ok, left, state}
   end
 
   # Parse logical NOT expressions (highest precedence)
   @spec parse_logical_not(parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
   defp parse_logical_not(state) do
-    case peek_token(state) do
-      {:not_op, _line, _col, _len, _value} ->
-        not_state = advance(state)
+    token = peek_token(state)
+    parse_logical_not_token(state, token)
+  end
 
-        case parse_logical_not(not_state) do
-          {:ok, operand, final_state} ->
-            ast = {:logical_not, operand}
-            {:ok, ast, final_state}
+  # Parse NOT operator token
+  defp parse_logical_not_token(state, {:not_op, _line, _col, _len, _value}) do
+    not_state = advance(state)
 
-          {:error, message, line, col} ->
-            {:error, message, line, col}
-        end
+    case parse_logical_not(not_state) do
+      {:ok, operand, final_state} ->
+        ast = {:logical_not, operand}
+        {:ok, ast, final_state}
 
-      _token ->
-        parse_comparison(state)
+      {:error, message, line, col} ->
+        {:error, message, line, col}
     end
+  end
+
+  # No NOT operator, parse comparison
+  defp parse_logical_not_token(state, _token) do
+    parse_comparison(state)
   end
 
   # Parse comparison expressions
@@ -289,55 +304,66 @@ defmodule Predicator.Parser do
   @spec parse_primary(parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
   defp parse_primary(state) do
-    case peek_token(state) do
-      # Literals
-      {:integer, _line, _col, _len, value} ->
-        {:ok, {:literal, value}, advance(state)}
+    token = peek_token(state)
+    parse_primary_token(state, token)
+  end
 
-      {:string, _line, _col, _len, value} ->
-        {:ok, {:literal, value}, advance(state)}
+  # Parse integer literal
+  defp parse_primary_token(state, {:integer, _line, _col, _len, value}) do
+    {:ok, {:literal, value}, advance(state)}
+  end
 
-      {:boolean, _line, _col, _len, value} ->
-        {:ok, {:literal, value}, advance(state)}
+  # Parse string literal
+  defp parse_primary_token(state, {:string, _line, _col, _len, value}) do
+    {:ok, {:literal, value}, advance(state)}
+  end
 
-      # Identifiers
-      {:identifier, _line, _col, _len, value} ->
-        {:ok, {:identifier, value}, advance(state)}
+  # Parse boolean literal
+  defp parse_primary_token(state, {:boolean, _line, _col, _len, value}) do
+    {:ok, {:literal, value}, advance(state)}
+  end
 
-      # Parenthesized expressions
-      {:lparen, _line, _col, _len, _value} ->
-        paren_state = advance(state)
+  # Parse identifier
+  defp parse_primary_token(state, {:identifier, _line, _col, _len, value}) do
+    {:ok, {:identifier, value}, advance(state)}
+  end
 
-        case parse_expression(paren_state) do
-          {:ok, expr, expr_state} ->
-            case peek_token(expr_state) do
-              {:rparen, _line, _col, _len, _value} ->
-                {:ok, expr, advance(expr_state)}
+  # Parse parenthesized expression
+  defp parse_primary_token(state, {:lparen, _line, _col, _len, _value}) do
+    paren_state = advance(state)
 
-              {type, line, col, _len, value} ->
-                {:error, "Expected ')' but found #{format_token(type, value)}", line, col}
+    case parse_expression(paren_state) do
+      {:ok, expr, expr_state} ->
+        case peek_token(expr_state) do
+          {:rparen, _line, _col, _len, _value} ->
+            {:ok, expr, advance(expr_state)}
 
-              nil ->
-                {:error, "Expected ')' but reached end of input", 1, 1}
-            end
+          {type, line, col, _len, value} ->
+            {:error, "Expected ')' but found #{format_token(type, value)}", line, col}
 
-          {:error, message, line, col} ->
-            {:error, message, line, col}
+          nil ->
+            {:error, "Expected ')' but reached end of input", 1, 1}
         end
 
-      # List literals
-      {:lbracket, _line, _col, _len, _value} ->
-        parse_list(state)
-
-      # Unexpected tokens
-      {type, line, col, _len, value} ->
-        expected = "number, string, boolean, identifier, list, or '('"
-        {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col}
-
-      # End of input
-      nil ->
-        {:error, "Unexpected end of input", 1, 1}
+      {:error, message, line, col} ->
+        {:error, message, line, col}
     end
+  end
+
+  # Parse list literal
+  defp parse_primary_token(state, {:lbracket, _line, _col, _len, _value}) do
+    parse_list(state)
+  end
+
+  # Handle unexpected tokens
+  defp parse_primary_token(_state, {type, line, col, _len, value}) do
+    expected = "number, string, boolean, identifier, list, or '('"
+    {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col}
+  end
+
+  # Handle end of input
+  defp parse_primary_token(_state, nil) do
+    {:error, "Unexpected end of input", 1, 1}
   end
 
   # Helper functions
