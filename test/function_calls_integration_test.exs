@@ -2,12 +2,12 @@ defmodule FunctionCallsIntegrationTest do
   use ExUnit.Case, async: true
 
   import Predicator
-  alias Predicator.{BuiltInFunctions, FunctionRegistry}
+  alias Predicator.Functions.{Registry, SystemFunctions}
 
   setup do
-    # Ensure built-in functions are available
-    FunctionRegistry.clear_registry()
-    BuiltInFunctions.register_all()
+    # Ensure system functions are available
+    Registry.clear_registry()
+    SystemFunctions.register_all()
     :ok
   end
 

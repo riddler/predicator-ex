@@ -46,7 +46,8 @@ defmodule Predicator do
   3. The final result is the top value on the stack when execution completes
   """
 
-  alias Predicator.{BuiltInFunctions, Compiler, Evaluator, FunctionRegistry, Lexer, Parser, Types}
+  alias Predicator.{Compiler, Evaluator, Lexer, Parser, Types}
+  alias Predicator.Functions.{Registry, SystemFunctions}
 
   @doc """
   Evaluates a predicate expression or instruction list with an empty context.
@@ -376,7 +377,7 @@ defmodule Predicator do
   """
   @spec register_function(binary(), non_neg_integer(), function()) :: :ok
   def register_function(name, arity, impl) do
-    FunctionRegistry.register_function(name, arity, impl)
+    Registry.register_function(name, arity, impl)
   end
 
   @doc """
@@ -387,8 +388,8 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> # Register built-ins first to ensure they're available
-      iex> Predicator.BuiltInFunctions.register_all()
+      iex> # Register system functions first to ensure they're available
+      iex> Predicator.Functions.SystemFunctions.register_all()
       :ok
       iex> functions = Predicator.list_custom_functions()
       iex> Enum.any?(functions, fn f -> f.name == "len" end)
@@ -398,7 +399,7 @@ defmodule Predicator do
   """
   @spec list_custom_functions() :: [map()]
   def list_custom_functions do
-    FunctionRegistry.list_functions()
+    Registry.list_functions()
     |> Enum.map(fn %{name: name, arity: arity} -> %{name: name, arity: arity} end)
   end
 
@@ -415,7 +416,7 @@ defmodule Predicator do
   """
   @spec clear_custom_functions() :: :ok
   def clear_custom_functions do
-    FunctionRegistry.clear_registry()
-    BuiltInFunctions.register_all()
+    Registry.clear_registry()
+    SystemFunctions.register_all()
   end
 end

@@ -1,4 +1,4 @@
-defmodule Predicator.FunctionRegistry do
+defmodule Predicator.Functions.Registry do
   @moduledoc """
   Function registry for custom predicator functions.
 

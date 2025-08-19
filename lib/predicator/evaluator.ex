@@ -17,7 +17,7 @@ defmodule Predicator.Evaluator do
   - `["call", function_name, arg_count]` - Call function with arguments from stack
   """
 
-  alias Predicator.FunctionRegistry
+  alias Predicator.Functions.Registry
   alias Predicator.Types
 
   @typedoc "Internal evaluator state"
@@ -362,7 +362,7 @@ defmodule Predicator.Evaluator do
       # Reverse args to get correct order (stack is LIFO)
       function_args = Enum.reverse(args)
 
-      case FunctionRegistry.call(function_name, function_args, evaluator.context) do
+      case Registry.call(function_name, function_args, evaluator.context) do
         {:ok, result} ->
           {:ok, %__MODULE__{evaluator | stack: [result | remaining_stack]}}
 

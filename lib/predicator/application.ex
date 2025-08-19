@@ -8,8 +8,8 @@ defmodule Predicator.Application do
   @impl Application
   def start(_type, _args) do
     children = [
-      # Initialize the function registry and register built-in functions
-      Predicator.RegistryInitializer
+      # Initialize the function registry and register system functions
+      Predicator.Functions.Initializer
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -1,4 +1,4 @@
-defmodule Predicator.BuiltInFunctions do
+defmodule Predicator.Functions.SystemFunctions do
   @moduledoc """
   Built-in helper functions for use in predicator expressions.
 
@@ -39,7 +39,7 @@ defmodule Predicator.BuiltInFunctions do
       {:error, "Unknown function: unknown"}
   """
 
-  alias Predicator.FunctionRegistry
+  alias Predicator.Functions.Registry
   alias Predicator.Types
 
   @type function_result :: {:ok, Types.value()} | {:error, binary()}
@@ -58,20 +58,20 @@ defmodule Predicator.BuiltInFunctions do
   @spec register_all :: :ok
   def register_all do
     # String functions
-    FunctionRegistry.register_function("len", 1, &call_len/2)
-    FunctionRegistry.register_function("upper", 1, &call_upper/2)
-    FunctionRegistry.register_function("lower", 1, &call_lower/2)
-    FunctionRegistry.register_function("trim", 1, &call_trim/2)
+    Registry.register_function("len", 1, &call_len/2)
+    Registry.register_function("upper", 1, &call_upper/2)
+    Registry.register_function("lower", 1, &call_lower/2)
+    Registry.register_function("trim", 1, &call_trim/2)
 
     # Numeric functions
-    FunctionRegistry.register_function("abs", 1, &call_abs/2)
-    FunctionRegistry.register_function("max", 2, &call_max/2)
-    FunctionRegistry.register_function("min", 2, &call_min/2)
+    Registry.register_function("abs", 1, &call_abs/2)
+    Registry.register_function("max", 2, &call_max/2)
+    Registry.register_function("min", 2, &call_min/2)
 
     # Date functions
-    FunctionRegistry.register_function("year", 1, &call_year/2)
-    FunctionRegistry.register_function("month", 1, &call_month/2)
-    FunctionRegistry.register_function("day", 1, &call_day/2)
+    Registry.register_function("year", 1, &call_year/2)
+    Registry.register_function("month", 1, &call_month/2)
+    Registry.register_function("day", 1, &call_day/2)
 
     :ok
   end
