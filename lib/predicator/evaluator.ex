@@ -14,11 +14,11 @@ defmodule Predicator.Evaluator do
   - `["not"]` - Logical NOT of top boolean value
   - `["in"]` - Membership test (element in collection)
   - `["contains"]` - Membership test (collection contains element)
-  - `["call", function_name, arg_count]` - Call built-in function with arguments from stack
+  - `["call", function_name, arg_count]` - Call function with arguments from stack
   """
 
+  alias Predicator.FunctionRegistry
   alias Predicator.Types
-  alias Predicator.BuiltInFunctions
 
   @typedoc "Internal evaluator state"
   @type t :: %__MODULE__{
@@ -362,7 +362,7 @@ defmodule Predicator.Evaluator do
       # Reverse args to get correct order (stack is LIFO)
       function_args = Enum.reverse(args)
 
-      case BuiltInFunctions.call(function_name, function_args) do
+      case FunctionRegistry.call(function_name, function_args, evaluator.context) do
         {:ok, result} ->
           {:ok, %__MODULE__{evaluator | stack: [result | remaining_stack]}}
 

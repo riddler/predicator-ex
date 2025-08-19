@@ -8,8 +8,8 @@ defmodule Predicator.Application do
   @impl Application
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: Predicator.Worker.start_link(arg)
-      # {Predicator.Worker, arg}
+      # Initialize the function registry and register built-in functions
+      Predicator.RegistryInitializer
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

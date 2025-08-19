@@ -2,6 +2,14 @@ defmodule FunctionCallsIntegrationTest do
   use ExUnit.Case, async: true
 
   import Predicator
+  alias Predicator.{BuiltInFunctions, FunctionRegistry}
+
+  setup do
+    # Ensure built-in functions are available
+    FunctionRegistry.clear_registry()
+    BuiltInFunctions.register_all()
+    :ok
+  end
 
   describe "function calls end-to-end" do
     test "evaluates simple string function" do
@@ -57,16 +65,16 @@ defmodule FunctionCallsIntegrationTest do
     end
 
     test "returns error for unknown function" do
-      assert {:error, _} = evaluate("unknown(123)")
+      assert {:error, _msg} = evaluate("unknown(123)")
     end
 
     test "returns error for wrong argument count" do
-      assert {:error, _} = evaluate("len()")
-      assert {:error, _} = evaluate("len(\"a\", \"b\")")
+      assert {:error, _msg} = evaluate("len()")
+      assert {:error, _msg} = evaluate(~s|len("a", "b")|)
     end
 
     test "returns error for wrong argument type" do
-      assert {:error, _} = evaluate("len(123)")
+      assert {:error, _msg} = evaluate("len(123)")
     end
   end
 

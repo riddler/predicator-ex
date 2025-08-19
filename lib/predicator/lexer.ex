@@ -1,4 +1,7 @@
 defmodule Predicator.Lexer do
+  # Disable credo checks that are inherent to recursive descent parsing
+  # credo:disable-for-this-file Credo.Check.Refactor.Nesting
+
   @moduledoc """
   Lexical analyzer for predicator expressions.
 
@@ -171,10 +174,10 @@ defmodule Predicator.Lexer do
 
         # Check if this is a function call by looking ahead for '('
         case skip_whitespace(remaining) do
-          [?( | _] ->
+          [?( | _rest] ->
             # Check if this identifier is a keyword that should not become a function
             case classify_identifier(identifier) do
-              {:identifier, _} ->
+              {:identifier, _value} ->
                 # This is a regular identifier followed by '(', so it's a function call
                 token = {:function_name, line, col, consumed, identifier}
                 tokenize_chars(remaining, line, col + consumed, [token | tokens])
@@ -185,7 +188,7 @@ defmodule Predicator.Lexer do
                 tokenize_chars(remaining, line, col + consumed, [token | tokens])
             end
 
-          _ ->
+          _no_function_call ->
             # Regular identifier or keyword
             {token_type, value} = classify_identifier(identifier)
             token = {token_type, line, col, consumed, value}
