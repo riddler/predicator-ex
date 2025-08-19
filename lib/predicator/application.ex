@@ -7,10 +7,12 @@ defmodule Predicator.Application do
 
   @impl Application
   def start(_type, _args) do
-    children = [
-      # Initialize the function registry and register system functions
-      Predicator.Functions.Initializer
-    ]
+    # Initialize the function registry and register system functions immediately
+    Predicator.Functions.Registry.start_registry()
+    Predicator.Functions.SystemFunctions.register_all()
+
+    # Start supervisor with empty children list since initialization is done
+    children = []
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
