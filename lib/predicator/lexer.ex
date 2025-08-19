@@ -209,6 +209,18 @@ defmodule Predicator.Lexer do
         token = {:rparen, line, col, 1, ")"}
         tokenize_chars(rest, line, col + 1, [token | tokens])
 
+      ?[ ->
+        token = {:lbracket, line, col, 1, "["}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?] ->
+        token = {:rbracket, line, col, 1, "]"}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?, ->
+        token = {:comma, line, col, 1, ","}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
       # String literals
       ?" ->
         case take_string(rest, "", 1) do
@@ -266,6 +278,10 @@ defmodule Predicator.Lexer do
   defp classify_identifier("and"), do: {:and_op, "and"}
   defp classify_identifier("or"), do: {:or_op, "or"}
   defp classify_identifier("not"), do: {:not_op, "not"}
+  defp classify_identifier("IN"), do: {:in_op, "IN"}
+  defp classify_identifier("in"), do: {:in_op, "in"}
+  defp classify_identifier("CONTAINS"), do: {:contains_op, "CONTAINS"}
+  defp classify_identifier("contains"), do: {:contains_op, "contains"}
   defp classify_identifier(id), do: {:identifier, id}
 
   @spec take_string(charlist(), binary(), pos_integer()) ::

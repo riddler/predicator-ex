@@ -157,8 +157,8 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
-              1} = result
+              "Expected number, string, boolean, identifier, list, or '(' but found end of input",
+              1, 1} = result
     end
 
     test "returns error for incomplete comparison" do
@@ -167,8 +167,8 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
-              8} = result
+              "Expected number, string, boolean, identifier, list, or '(' but found end of input",
+              1, 8} = result
     end
 
     test "returns error for invalid left operand" do
@@ -176,7 +176,9 @@ defmodule Predicator.ParserTest do
       tokens = [{:gt, 1, 1, 1, ">"}, {:integer, 1, 3, 2, 85}, {:eof, 1, 5, 0, nil}]
       result = Parser.parse(tokens)
 
-      assert {:error, "Expected number, string, boolean, identifier, or '(' but found '>'", 1, 1} =
+      assert {:error, "Expected number, string, boolean, identifier, list, or '(' but found '>'",
+              1,
+              1} =
                result
     end
 
@@ -185,7 +187,9 @@ defmodule Predicator.ParserTest do
 
       result = Parser.parse(tokens)
 
-      assert {:error, "Expected number, string, boolean, identifier, or '(' but found '>'", 1, 9} =
+      assert {:error, "Expected number, string, boolean, identifier, list, or '(' but found '>'",
+              1,
+              9} =
                result
     end
 
@@ -222,7 +226,9 @@ defmodule Predicator.ParserTest do
 
       result = Parser.parse(tokens)
 
-      assert {:error, "Expected number, string, boolean, identifier, or '(' but found '>'", 1, 9} =
+      assert {:error, "Expected number, string, boolean, identifier, list, or '(' but found '>'",
+              1,
+              9} =
                result
     end
   end
@@ -265,7 +271,7 @@ defmodule Predicator.ParserTest do
 
       result = Parser.parse(tokens)
       assert {:error, message, 1, 10} = result
-      assert message =~ "Expected number, string, boolean, identifier, or '(' but found ')'"
+      assert message =~ "Expected number, string, boolean, identifier, list, or '(' but found ')'"
     end
 
     test "handles comparison operator followed by EOF" do
@@ -278,19 +284,19 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
-              8} = result
+              "Expected number, string, boolean, identifier, list, or '(' but found end of input",
+              1, 8} = result
     end
 
     test "handles unexpected token types in primary position" do
       # Test different token types that would fail in primary position
       test_cases = [
-        {[:gt], "Expected number, string, boolean, identifier, or '(' but found '>'"},
-        {[:lt], "Expected number, string, boolean, identifier, or '(' but found '<'"},
-        {[:gte], "Expected number, string, boolean, identifier, or '(' but found '>='"},
-        {[:lte], "Expected number, string, boolean, identifier, or '(' but found '<='"},
-        {[:eq], "Expected number, string, boolean, identifier, or '(' but found '='"},
-        {[:ne], "Expected number, string, boolean, identifier, or '(' but found '!='"}
+        {[:gt], "Expected number, string, boolean, identifier, list, or '(' but found '>'"},
+        {[:lt], "Expected number, string, boolean, identifier, list, or '(' but found '<'"},
+        {[:gte], "Expected number, string, boolean, identifier, list, or '(' but found '>='"},
+        {[:lte], "Expected number, string, boolean, identifier, list, or '(' but found '<='"},
+        {[:eq], "Expected number, string, boolean, identifier, list, or '(' but found '='"},
+        {[:ne], "Expected number, string, boolean, identifier, list, or '(' but found '!='"}
       ]
 
       for {token_types, expected_message} <- test_cases do
@@ -342,7 +348,9 @@ defmodule Predicator.ParserTest do
 
       result = Parser.parse(tokens)
 
-      assert {:error, "Expected number, string, boolean, identifier, or '(' but found ')'", 1, 1} =
+      assert {:error, "Expected number, string, boolean, identifier, list, or '(' but found ')'",
+              1,
+              1} =
                result
     end
 
@@ -355,7 +363,9 @@ defmodule Predicator.ParserTest do
 
       result = Parser.parse(tokens)
 
-      assert {:error, "Expected number, string, boolean, identifier, or '(' but found ')'", 1, 2} =
+      assert {:error, "Expected number, string, boolean, identifier, list, or '(' but found ')'",
+              1,
+              2} =
                result
     end
   end
@@ -545,8 +555,8 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
-              9} = result
+              "Expected number, string, boolean, identifier, list, or '(' but found end of input",
+              1, 9} = result
     end
 
     test "handles error when OR missing right operand" do
@@ -559,8 +569,8 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
-              8} = result
+              "Expected number, string, boolean, identifier, list, or '(' but found end of input",
+              1, 8} = result
     end
 
     test "handles error when NOT missing operand" do
@@ -572,8 +582,8 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       assert {:error,
-              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
-              4} = result
+              "Expected number, string, boolean, identifier, list, or '(' but found end of input",
+              1, 4} = result
     end
 
     test "complex mixed expression with comparisons and logical operators" do

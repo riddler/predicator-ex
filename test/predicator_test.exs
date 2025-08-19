@@ -54,7 +54,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, identifier, or '(' but found end of input"
+               "Expected number, string, boolean, identifier, list, or '(' but found end of input"
 
       assert message =~ "line 1, column 8"
     end
@@ -62,7 +62,7 @@ defmodule PredicatorTest do
     test "returns error for invalid syntax" do
       result = Predicator.evaluate("score > >", %{})
       assert {:error, message} = result
-      assert message =~ "Expected number, string, boolean, identifier, or '(' but found '>'"
+      assert message =~ "Expected number, string, boolean, identifier, list, or '(' but found '>'"
     end
   end
 
@@ -184,7 +184,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, identifier, or '(' but found end of input"
+               "Expected number, string, boolean, identifier, list, or '(' but found end of input"
 
       assert message =~ "line 1, column 8"
     end
@@ -752,6 +752,153 @@ defmodule PredicatorTest do
 
       result = Predicator.evaluate("verified and active or user = \"admin\"", context)
       assert result == true
+    end
+  end
+
+  describe "list literals and membership operators" do
+    test "evaluates list literals" do
+      assert Predicator.evaluate("[1, 2, 3]", %{}) == [1, 2, 3]
+      assert Predicator.evaluate("[]", %{}) == []
+      assert Predicator.evaluate(~s(["admin", "manager"]), %{}) == ["admin", "manager"]
+      assert Predicator.evaluate("[true, false]", %{}) == [true, false]
+    end
+
+    test "evaluates 'in' operator with literals" do
+      assert Predicator.evaluate("1 in [1, 2, 3]", %{}) == true
+      assert Predicator.evaluate("4 in [1, 2, 3]", %{}) == false
+      assert Predicator.evaluate(~s("admin" in ["admin", "manager"]), %{}) == true
+      assert Predicator.evaluate(~s("user" in ["admin", "manager"]), %{}) == false
+      assert Predicator.evaluate("true in [true, false]", %{}) == true
+      assert Predicator.evaluate("false in [true]", %{}) == false
+    end
+
+    test "evaluates 'contains' operator with literals" do
+      assert Predicator.evaluate("[1, 2, 3] contains 2", %{}) == true
+      assert Predicator.evaluate("[1, 2, 3] contains 4", %{}) == false
+      assert Predicator.evaluate(~s(["admin", "manager"] contains "admin"), %{}) == true
+      assert Predicator.evaluate(~s(["admin", "manager"] contains "user"), %{}) == false
+      assert Predicator.evaluate("[true, false] contains false", %{}) == true
+      assert Predicator.evaluate("[true] contains false", %{}) == false
+    end
+
+    test "evaluates 'in' operator with variables" do
+      context = %{"role" => "admin", "permissions" => ["read", "write"]}
+
+      assert Predicator.evaluate(~s(role in ["admin", "manager"]), context) == true
+      assert Predicator.evaluate(~s(role in ["user", "guest"]), context) == false
+      assert Predicator.evaluate(~s("write" in permissions), context) == true
+      assert Predicator.evaluate(~s("delete" in permissions), context) == false
+    end
+
+    test "evaluates 'contains' operator with variables" do
+      context = %{"roles" => ["admin", "manager"], "active" => true}
+
+      assert Predicator.evaluate(~s(roles contains "admin"), context) == true
+      assert Predicator.evaluate(~s(roles contains "user"), context) == false
+      assert Predicator.evaluate("[true, false] contains active", context) == true
+    end
+
+    test "works with lowercase membership operators" do
+      assert Predicator.evaluate("1 in [1, 2, 3]", %{}) == true
+      assert Predicator.evaluate("1 IN [1, 2, 3]", %{}) == true
+      assert Predicator.evaluate("[1, 2] contains 1", %{}) == true
+      assert Predicator.evaluate("[1, 2] CONTAINS 1", %{}) == true
+    end
+
+    test "combines with logical operators" do
+      context = %{"role" => "admin", "active" => true, "permissions" => ["read", "write"]}
+
+      assert Predicator.evaluate(~s(role in ["admin", "manager"] AND active), context) == true
+      assert Predicator.evaluate(~s(role in ["admin", "manager"] OR active), context) == true
+      assert Predicator.evaluate(~s(NOT role in ["user", "guest"]), context) == true
+      assert Predicator.evaluate(~s(permissions contains "write" AND active), context) == true
+    end
+
+    test "handles empty lists" do
+      assert Predicator.evaluate("1 in []", %{}) == false
+      assert Predicator.evaluate("[] contains 1", %{}) == false
+    end
+
+    test "handles type mismatches" do
+      # Different types should not match
+      assert Predicator.evaluate(~s("1" in [1, 2, 3]), %{}) == false
+      assert Predicator.evaluate(~s(1 in ["1", "2", "3"]), %{}) == false
+      assert Predicator.evaluate("[1, 2, 3] contains \"1\"", %{}) == false
+    end
+
+    test "returns :undefined for missing variables" do
+      assert Predicator.evaluate("missing_var in [1, 2, 3]", %{}) == :undefined
+      assert Predicator.evaluate("[1, 2, 3] contains missing_var", %{}) == :undefined
+    end
+
+    test "parses list expressions correctly" do
+      {:ok, ast} = Predicator.parse("[1, 2, 3]")
+      assert match?({:list, [_literal1, _literal2, _literal3]}, ast)
+
+      {:ok, ast} = Predicator.parse("1 in [1, 2, 3]")
+      assert match?({:membership, :in, {:literal, 1}, {:list, _elements}}, ast)
+
+      {:ok, ast} = Predicator.parse("[1, 2] contains 1")
+      assert match?({:membership, :contains, {:list, _elements}, {:literal, 1}}, ast)
+    end
+
+    test "compiles list expressions correctly" do
+      {:ok, instructions} = Predicator.compile("[1, 2, 3]")
+      assert instructions == [["lit", [1, 2, 3]]]
+
+      {:ok, instructions} = Predicator.compile("1 in [1, 2, 3]")
+      assert instructions == [["lit", 1], ["lit", [1, 2, 3]], ["in"]]
+
+      {:ok, instructions} = Predicator.compile("[1, 2] contains 1")
+      assert instructions == [["lit", [1, 2]], ["lit", 1], ["contains"]]
+    end
+
+    test "decompiles list expressions" do
+      {:ok, ast} = Predicator.parse("[1, 2, 3]")
+      assert Predicator.decompile(ast) == "[1, 2, 3]"
+
+      {:ok, ast} = Predicator.parse("1 in [1, 2, 3]")
+      assert Predicator.decompile(ast) == "1 IN [1, 2, 3]"
+
+      {:ok, ast} = Predicator.parse("[1, 2] contains 1")
+      assert Predicator.decompile(ast) == "[1, 2] CONTAINS 1"
+    end
+
+    test "works with complex expressions" do
+      context = %{
+        "user_roles" => ["admin", "manager"],
+        "permissions" => ["read", "write", "delete"],
+        "active" => true
+      }
+
+      result =
+        Predicator.evaluate(
+          ~s(user_roles contains "admin" AND permissions contains "delete"),
+          context
+        )
+
+      assert result == true
+
+      result =
+        Predicator.evaluate(
+          ~s(user_roles contains "guest" OR permissions contains "read"),
+          context
+        )
+
+      assert result == true
+
+      result = Predicator.evaluate(~s(NOT user_roles contains "guest" AND active), context)
+      assert result == true
+    end
+
+    test "handles error cases" do
+      # IN with non-list on right side
+      result = Predicator.evaluate("1 in 2", %{})
+      assert {:error, _message} = result
+
+      # CONTAINS with non-list on left side
+      result = Predicator.evaluate("1 contains 2", %{})
+      assert {:error, _message} = result
     end
   end
 end
