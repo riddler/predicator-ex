@@ -1,100 +1,37 @@
 defmodule PredicatorTest do
-  use ExUnit.Case
-  import Predicator
+  use ExUnit.Case, async: true
+
   doctest Predicator
 
-  @moduletag :parsing
+  describe "execute/2 API" do
+    test "executes simple literal instruction" do
+      assert Predicator.execute([["lit", 42]]) == 42
+    end
 
-  describe "BETWEEN" do
-    test "not currently supported" do
-      assert {:error, _} = Predicator.compile("age between 5 and 10")
+    test "executes load instruction with context" do
+      context = %{"score" => 85}
+      assert Predicator.execute([["load", "score"]], context) == 85
+    end
+
+    test "handles missing context variables" do
+      assert Predicator.execute([["load", "missing"]], %{}) == :undefined
     end
   end
 
-  describe "BLANK" do
-    test "not currently supported" do
-      assert {:error, _} = Predicator.compile("name blank")
-    end
-  end
+  describe "evaluator/2 and run_evaluator/1" do
+    test "creates and runs evaluator" do
+      evaluator = Predicator.evaluator([["lit", 42]])
+      {:ok, final_state} = Predicator.run_evaluator(evaluator)
 
-  describe "ENDSWITH" do
-    test "not currently supported" do
-      assert {:error, _} = Predicator.compile("name ends with 'stuff'")
-    end
-  end
-
-  describe "EQ" do
-    test "compiles" do
-      assert {:ok, _} = Predicator.compile("foo = 1")
+      assert final_state.stack == [42]
+      assert final_state.halted == true
     end
 
-    test "returns true if the equality is true" do
-      assert Predicator.matches?("foo = 1", foo: 1) == true
-    end
+    test "evaluator preserves context" do
+      context = %{"x" => 10}
+      evaluator = Predicator.evaluator([["load", "x"]], context)
 
-    test "returns false if the equality is untrue" do
-      assert Predicator.matches?("foo = 1", foo: 2) == false
-    end
-  end
-
-  describe "GT" do
-    test "compiles" do
-      assert {:ok, _} = Predicator.compile("foo > 1")
-    end
-
-    test "returns true if the inequality is true" do
-      assert Predicator.matches?("foo > 1", foo: 2) == true
-    end
-
-    test "returns false if the inequality is untrue" do
-      assert Predicator.matches?("foo > 1", foo: 1) == false
-    end
-  end
-
-  describe "IN" do
-    test "not currently supported" do
-      assert {:error, _} = Predicator.compile("foo in [1, 2, 3]")
-    end
-  end
-
-  describe "JUMP" do
-  end
-
-  describe "LT" do
-    test "compiles" do
-      assert {:ok, _} = Predicator.compile("foo < 1")
-    end
-
-    test "returns true if the inequality is true" do
-      assert Predicator.matches?("foo < 1", foo: 0) == true
-    end
-
-    test "returns false if the inequality is untrue" do
-      assert Predicator.matches?("foo < 1", foo: 1) == false
-    end
-  end
-
-  describe "NOTIN" do
-    test "not currently supported" do
-      assert {:error, _} = Predicator.compile("foo not in [1, 2, 3]")
-    end
-  end
-
-  describe "PRESENT" do
-    test "not currently supported" do
-      assert {:error, _} = Predicator.compile("name present")
-    end
-  end
-
-  describe "STARTSWITH" do
-    test "not currently supported" do
-      assert {:error, _} = Predicator.compile("name starts with 'stuff'")
-    end
-  end
-
-  describe "OR" do
-    test "not currently supported" do
-      assert {:error, _} = Predicator.compile("true or false")
+      assert evaluator.context == context
     end
   end
 end
