@@ -11,7 +11,7 @@ defmodule PredicatorTest do
 
     test "evaluates with different operators" do
       context = %{"x" => 10}
-      
+
       assert Predicator.evaluate("x > 5", context) == true
       assert Predicator.evaluate("x < 5", context) == false
       assert Predicator.evaluate("x >= 10", context) == true
@@ -22,14 +22,14 @@ defmodule PredicatorTest do
 
     test "evaluates string comparisons" do
       context = %{"name" => "John"}
-      
+
       assert Predicator.evaluate("name = \"John\"", context) == true
       assert Predicator.evaluate("name != \"Jane\"", context) == true
     end
 
     test "evaluates boolean comparisons" do
       context = %{"active" => true}
-      
+
       assert Predicator.evaluate("active = true", context) == true
       assert Predicator.evaluate("active != false", context) == true
     end
@@ -52,7 +52,10 @@ defmodule PredicatorTest do
     test "returns error for parse failures" do
       result = Predicator.evaluate("score >", %{})
       assert {:error, message} = result
-      assert message =~ "Expected number, string, boolean, identifier, or '(' but found end of input"
+
+      assert message =~
+               "Expected number, string, boolean, identifier, or '(' but found end of input"
+
       assert message =~ "line 1, column 8"
     end
 
@@ -114,13 +117,13 @@ defmodule PredicatorTest do
   describe "compile/1" do
     test "compiles simple expression" do
       {:ok, instructions} = Predicator.compile("score > 85")
-      
+
       expected = [
         ["load", "score"],
         ["lit", 85],
         ["compare", "GT"]
       ]
-      
+
       assert instructions == expected
     end
 
@@ -142,44 +145,47 @@ defmodule PredicatorTest do
 
     test "compiles string expressions" do
       {:ok, instructions} = Predicator.compile("name = \"John\"")
-      
+
       expected = [
         ["load", "name"],
         ["lit", "John"],
         ["compare", "EQ"]
       ]
-      
+
       assert instructions == expected
     end
 
     test "compiles boolean expressions" do
       {:ok, instructions} = Predicator.compile("active = true")
-      
+
       expected = [
         ["load", "active"],
         ["lit", true],
         ["compare", "EQ"]
       ]
-      
+
       assert instructions == expected
     end
 
     test "handles parentheses" do
       {:ok, instructions} = Predicator.compile("(score > 85)")
-      
+
       expected = [
         ["load", "score"],
         ["lit", 85],
         ["compare", "GT"]
       ]
-      
+
       assert instructions == expected
     end
 
     test "returns error for invalid syntax" do
       result = Predicator.compile("score >")
       assert {:error, message} = result
-      assert message =~ "Expected number, string, boolean, identifier, or '(' but found end of input"
+
+      assert message =~
+               "Expected number, string, boolean, identifier, or '(' but found end of input"
+
       assert message =~ "line 1, column 8"
     end
   end
@@ -187,13 +193,13 @@ defmodule PredicatorTest do
   describe "compile!/1" do
     test "compiles successfully" do
       instructions = Predicator.compile!("score > 85")
-      
+
       expected = [
         ["load", "score"],
         ["lit", 85],
         ["compare", "GT"]
       ]
-      
+
       assert instructions == expected
     end
 
@@ -208,7 +214,7 @@ defmodule PredicatorTest do
     test "pre-compiled instructions are faster for repeated evaluation" do
       # Compile once
       {:ok, instructions} = Predicator.compile("score > 85")
-      
+
       # Use many times with different contexts
       contexts = [
         %{"score" => 90},
@@ -216,26 +222,28 @@ defmodule PredicatorTest do
         %{"score" => 95},
         %{"score" => 70}
       ]
-      
-      results = Enum.map(contexts, fn context ->
-        Predicator.evaluate(instructions, context)
-      end)
-      
+
+      results =
+        Enum.map(contexts, fn context ->
+          Predicator.evaluate(instructions, context)
+        end)
+
       assert results == [true, false, true, false]
     end
 
     test "string expressions work but are slower due to compilation" do
       expression = "score > 85"
-      
+
       contexts = [
         %{"score" => 90},
         %{"score" => 80}
       ]
-      
-      results = Enum.map(contexts, fn context ->
-        Predicator.evaluate(expression, context)
-      end)
-      
+
+      results =
+        Enum.map(contexts, fn context ->
+          Predicator.evaluate(expression, context)
+        end)
+
       assert results == [true, false]
     end
   end

@@ -95,7 +95,7 @@ defmodule Predicator.Parser do
       {:ok, ast, final_state} ->
         # Ensure we consumed all tokens (except EOF)
         case peek_token(final_state) do
-          {:eof, _, _, _, _} ->
+          {:eof, _line, _col, _len, _value} ->
             {:ok, ast}
 
           {type, line, col, _len, value} ->
@@ -140,7 +140,7 @@ defmodule Predicator.Parser do
             end
 
           # Not a comparison, return the primary expression
-          _ ->
+          _token ->
             {:ok, left, new_state}
         end
 
@@ -225,14 +225,13 @@ defmodule Predicator.Parser do
   defp format_token(:string, value), do: "string \"#{value}\""
   defp format_token(:boolean, value), do: "boolean '#{value}'"
   defp format_token(:identifier, value), do: "identifier '#{value}'"
-  defp format_token(:gt, _), do: "'>'"
-  defp format_token(:lt, _), do: "'<'"
-  defp format_token(:gte, _), do: "'>='"
-  defp format_token(:lte, _), do: "'<='"
-  defp format_token(:eq, _), do: "'='"
-  defp format_token(:ne, _), do: "'!='"
-  defp format_token(:lparen, _), do: "'('"
-  defp format_token(:rparen, _), do: "')'"
-  defp format_token(:eof, _), do: "end of input"
-  defp format_token(type, value), do: "'#{value}' (#{type})"
+  defp format_token(:gt, _value), do: "'>'"
+  defp format_token(:lt, _value), do: "'<'"
+  defp format_token(:gte, _value), do: "'>='"
+  defp format_token(:lte, _value), do: "'<='"
+  defp format_token(:eq, _value), do: "'='"
+  defp format_token(:ne, _value), do: "'!='"
+  defp format_token(:lparen, _value), do: "'('"
+  defp format_token(:rparen, _value), do: "')'"
+  defp format_token(:eof, _value), do: "end of input"
 end

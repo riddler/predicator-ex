@@ -46,7 +46,7 @@ defmodule Predicator do
   3. The final result is the top value on the stack when execution completes
   """
 
-  alias Predicator.{Evaluator, Lexer, Parser, Compiler, Types}
+  alias Predicator.{Compiler, Evaluator, Lexer, Parser, Types}
 
   @doc """
   Evaluates a predicate expression or instruction list with an optional context.
@@ -98,7 +98,6 @@ defmodule Predicator do
       Evaluator.evaluate(instructions, context)
     else
       {:error, message, line, column} -> {:error, "#{message} at line #{line}, column #{column}"}
-      {:error, message} -> {:error, message}
     end
   end
 
@@ -123,7 +122,8 @@ defmodule Predicator do
       # This would raise an exception:
       # Predicator.evaluate!("score >", %{})
   """
-  @spec evaluate!(binary() | Types.instruction_list(), Types.context()) :: boolean() | Types.value()
+  @spec evaluate!(binary() | Types.instruction_list(), Types.context()) ::
+          boolean() | Types.value()
   def evaluate!(input, context \\ %{}) do
     case evaluate(input, context) do
       {:error, reason} -> raise "Evaluation failed: #{reason}"
@@ -163,7 +163,6 @@ defmodule Predicator do
       {:ok, instructions}
     else
       {:error, message, line, column} -> {:error, "#{message} at line #{line}, column #{column}"}
-      {:error, message} -> {:error, message}
     end
   end
 

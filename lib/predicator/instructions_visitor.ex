@@ -40,7 +40,7 @@ defmodule Predicator.InstructionsVisitor do
 
   List of instructions in the format `[["operation", ...args]]`
   """
-  @impl true
+  @impl Predicator.Visitor
   @spec visit(Parser.ast(), keyword()) :: [[binary() | term()]]
   def visit(ast_node, _opts \\ [])
 

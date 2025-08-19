@@ -119,7 +119,7 @@ defmodule Predicator.LexerTest do
     end
 
     test "tokenizes string with newline escape" do
-      # Input: "line1\nline2" (with escaped newline) 
+      # Input: "line1\nline2" (with escaped newline)
       input = "\"line1\\nline2\""
       assert {:ok, tokens} = Lexer.tokenize(input)
 

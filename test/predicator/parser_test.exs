@@ -139,7 +139,7 @@ defmodule Predicator.ParserTest do
     end
 
     test "handles mixed types" do
-      {:ok, tokens} = Lexer.tokenize("\"apple\" > \"banana\"")
+      {:ok, tokens} = Lexer.tokenize(~s("apple" > "banana"))
 
       expected = {:comparison, :gt, {:literal, "apple"}, {:literal, "banana"}}
       assert Parser.parse(tokens) == {:ok, expected}
@@ -243,6 +243,113 @@ defmodule Predicator.ParserTest do
 
       expected = {:comparison, :gte, {:identifier, "score"}, {:identifier, "threshold"}}
       assert Parser.parse(tokens) == {:ok, expected}
+    end
+  end
+
+  describe "parse/1 - additional error coverage" do
+    test "returns error when parentheses reach end of input without closing" do
+      # This creates tokens that end abruptly inside parentheses
+      tokens = [
+        {:lparen, 1, 1, 1, "("},
+        {:identifier, 1, 2, 5, "score"}
+        # Note: no closing paren and no EOF token to test nil case
+      ]
+      
+      result = Parser.parse(tokens)
+      assert {:error, "Expected ')' but reached end of input", 1, 1} = result
+    end
+
+    test "handles nested error propagation from inner expressions" do
+      # Test error propagation through parentheses
+      {:ok, tokens} = Lexer.tokenize("(score > )")
+      
+      result = Parser.parse(tokens)
+      assert {:error, message, 1, 10} = result
+      assert message =~ "Expected number, string, boolean, identifier, or '(' but found ')'"
+    end
+
+    test "handles comparison operator followed by EOF" do
+      tokens = [
+        {:identifier, 1, 1, 5, "score"},
+        {:gt, 1, 7, 1, ">"},
+        {:eof, 1, 8, 0, nil}
+      ]
+      
+      result = Parser.parse(tokens)
+      assert {:error, "Expected number, string, boolean, identifier, or '(' but found end of input", 1, 8} = result
+    end
+
+    test "handles unexpected token types in primary position" do
+      # Test different token types that would fail in primary position
+      test_cases = [
+        {[:gt], "Expected number, string, boolean, identifier, or '(' but found '>'"},
+        {[:lt], "Expected number, string, boolean, identifier, or '(' but found '<'"},
+        {[:gte], "Expected number, string, boolean, identifier, or '(' but found '>='"},
+        {[:lte], "Expected number, string, boolean, identifier, or '(' but found '<='"},
+        {[:eq], "Expected number, string, boolean, identifier, or '(' but found '='"},
+        {[:ne], "Expected number, string, boolean, identifier, or '(' but found '!='"}
+      ]
+
+      for {token_types, expected_message} <- test_cases do
+        [token_type] = token_types
+        tokens = [{token_type, 1, 1, 1, to_string(token_type)}, {:eof, 1, 2, 0, nil}]
+        
+        result = Parser.parse(tokens)
+        assert {:error, ^expected_message, 1, 1} = result
+      end
+    end
+
+    test "format_token function handles all token types correctly" do
+      # Test various invalid token placements to ensure format_token is exercised
+      
+      # Test operators in primary position (should be rejected)
+      operator_tokens = [
+        {:gt, 1, 1, 1, ">"},
+        {:lt, 1, 1, 1, "<"},
+        {:gte, 1, 1, 2, ">="},
+        {:lte, 1, 1, 2, "<="},
+        {:eq, 1, 1, 1, "="},
+        {:ne, 1, 1, 2, "!="}
+      ]
+
+      for token <- operator_tokens do
+        tokens = [token, {:eof, 1, 3, 0, nil}]
+        result = Parser.parse(tokens)
+        assert {:error, _message, 1, 1} = result
+      end
+      
+      # Test parentheses and other tokens in wrong positions
+      other_tokens = [
+        {:rparen, 1, 1, 1, ")"},
+        {:eof, 1, 1, 0, nil}
+      ]
+      
+      for token <- other_tokens do
+        tokens = [token, {:eof, 1, 3, 0, nil}]
+        result = Parser.parse(tokens)
+        assert {:error, _message, 1, 1} = result
+      end
+    end
+
+    test "handles rparen token in unexpected position" do
+      tokens = [
+        {:rparen, 1, 1, 1, ")"},
+        {:eof, 1, 2, 0, nil}
+      ]
+      
+      result = Parser.parse(tokens)
+      assert {:error, "Expected number, string, boolean, identifier, or '(' but found ')'", 1, 1} = result
+    end
+
+    test "handles empty expression inside parentheses" do
+      tokens = [
+        {:lparen, 1, 1, 1, "("},
+        {:rparen, 1, 2, 1, ")"},
+        {:eof, 1, 3, 0, nil}
+      ]
+      
+      result = Parser.parse(tokens)
+      assert {:error, "Expected number, string, boolean, identifier, or '(' but found ')'", 1, 2} = result
     end
   end
 end

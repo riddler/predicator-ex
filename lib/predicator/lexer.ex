@@ -151,7 +151,7 @@ defmodule Predicator.Lexer do
             token = {:gte, line, col, 2, ">="}
             tokenize_chars(rest2, line, col + 2, [token | tokens])
 
-          _ ->
+          _rest ->
             token = {:gt, line, col, 1, ">"}
             tokenize_chars(rest, line, col + 1, [token | tokens])
         end
@@ -162,7 +162,7 @@ defmodule Predicator.Lexer do
             token = {:lte, line, col, 2, "<="}
             tokenize_chars(rest2, line, col + 2, [token | tokens])
 
-          _ ->
+          _rest ->
             token = {:lt, line, col, 1, "<"}
             tokenize_chars(rest, line, col + 1, [token | tokens])
         end
@@ -173,7 +173,7 @@ defmodule Predicator.Lexer do
             token = {:ne, line, col, 2, "!="}
             tokenize_chars(rest2, line, col + 2, [token | tokens])
 
-          _ ->
+          _rest ->
             {:error, "Unexpected character '!'", line, col}
         end
 
@@ -202,7 +202,7 @@ defmodule Predicator.Lexer do
         end
 
       # Unknown character
-      _ ->
+      _char ->
         {:error, "Unexpected character '#{[char]}'", line, col}
     end
   end

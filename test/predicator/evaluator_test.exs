@@ -207,7 +207,7 @@ defmodule Predicator.EvaluatorTest do
 
     test "raises exception for evaluation errors" do
       instructions = [["unknown_operation"]]
-      
+
       assert_raise RuntimeError, ~r/Evaluation failed:/, fn ->
         Evaluator.evaluate!(instructions)
       end
@@ -215,7 +215,7 @@ defmodule Predicator.EvaluatorTest do
 
     test "raises exception for empty stack error" do
       instructions = []
-      
+
       assert_raise RuntimeError, ~r/Evaluation failed:/, fn ->
         Evaluator.evaluate!(instructions)
       end
