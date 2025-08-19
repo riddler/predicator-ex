@@ -46,7 +46,144 @@ defmodule Predicator do
   3. The final result is the top value on the stack when execution completes
   """
 
-  alias Predicator.{Evaluator, Types}
+  alias Predicator.{Evaluator, Lexer, Parser, Compiler, Types}
+
+  @doc """
+  Evaluates a predicate expression or instruction list with an optional context.
+
+  This is the main entry point for Predicator evaluation. It accepts either:
+  - A string expression (e.g., "score > 85") which gets compiled automatically
+  - A pre-compiled instruction list for maximum performance
+
+  ## Parameters
+
+  - `input` - String expression or instruction list
+  - `context` - Optional context map with variable bindings (default: `%{}`)
+
+  ## Returns
+
+  - The evaluation result (boolean, value, or `:undefined`)
+  - `{:error, reason}` if parsing or execution fails
+
+  ## Examples
+
+      # String expressions (compiled automatically)
+      iex> Predicator.evaluate("score > 85", %{"score" => 90})
+      true
+
+      iex> Predicator.evaluate("name = \\"John\\"", %{"name" => "John"})
+      true
+
+      iex> Predicator.evaluate("age >= 18", %{"age" => 16})
+      false
+
+      # Pre-compiled instruction lists (maximum performance)
+      iex> Predicator.evaluate([["load", "score"], ["lit", 85], ["compare", "GT"]], %{"score" => 90})
+      true
+
+      iex> Predicator.evaluate([["lit", 42]])
+      42
+
+      # Parse errors are returned  
+      iex> Predicator.evaluate("score >", %{})
+      {:error, "Expected number, string, boolean, identifier, or '(' but found end of input at line 1, column 8"}
+  """
+  @spec evaluate(binary() | Types.instruction_list(), Types.context()) :: Types.result()
+  def evaluate(input, context \\ %{})
+
+  def evaluate(expression, context) when is_binary(expression) and is_map(context) do
+    with {:ok, tokens} <- Lexer.tokenize(expression),
+         {:ok, ast} <- Parser.parse(tokens) do
+      instructions = Compiler.to_instructions(ast)
+      Evaluator.evaluate(instructions, context)
+    else
+      {:error, message, line, column} -> {:error, "#{message} at line #{line}, column #{column}"}
+      {:error, message} -> {:error, message}
+    end
+  end
+
+  def evaluate(instructions, context) when is_list(instructions) and is_map(context) do
+    Evaluator.evaluate(instructions, context)
+  end
+
+  @doc """
+  Evaluates a predicate expression or instruction list, raising on errors.
+
+  Similar to `evaluate/2` but raises an exception for error results instead
+  of returning error tuples. Follows the Elixir convention of bang functions.
+
+  ## Examples
+
+      iex> Predicator.evaluate!("score > 85", %{"score" => 90})
+      true
+
+      iex> Predicator.evaluate!([["lit", 42]])
+      42
+
+      # This would raise an exception:
+      # Predicator.evaluate!("score >", %{})
+  """
+  @spec evaluate!(binary() | Types.instruction_list(), Types.context()) :: boolean() | Types.value()
+  def evaluate!(input, context \\ %{}) do
+    case evaluate(input, context) do
+      {:error, reason} -> raise "Evaluation failed: #{reason}"
+      result -> result
+    end
+  end
+
+  @doc """
+  Compiles a string expression to instruction list.
+
+  This function allows you to pre-compile expressions for maximum performance
+  when evaluating the same expression multiple times with different contexts.
+
+  ## Parameters
+
+  - `expression` - String expression to compile
+
+  ## Returns
+
+  - `{:ok, instructions}` - Successfully compiled instructions
+  - `{:error, message}` - Parse error with details
+
+  ## Examples
+
+      iex> {:ok, instructions} = Predicator.compile("score > 85")
+      iex> instructions
+      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+
+      iex> Predicator.compile("score >")
+      {:error, "Expected number, string, boolean, identifier, or '(' but found end of input at line 1, column 8"}
+  """
+  @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
+  def compile(expression) when is_binary(expression) do
+    with {:ok, tokens} <- Lexer.tokenize(expression),
+         {:ok, ast} <- Parser.parse(tokens) do
+      instructions = Compiler.to_instructions(ast)
+      {:ok, instructions}
+    else
+      {:error, message, line, column} -> {:error, "#{message} at line #{line}, column #{column}"}
+      {:error, message} -> {:error, message}
+    end
+  end
+
+  @doc """
+  Compiles a string expression to instruction list, raising on errors.
+
+  Similar to `compile/1` but raises an exception for parse errors.
+
+  ## Examples
+
+      iex> Predicator.compile!("score > 85")
+      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+  """
+  @spec compile!(binary()) :: Types.instruction_list()
+  def compile!(expression) when is_binary(expression) do
+    case compile(expression) do
+      {:ok, instructions} -> instructions
+      {:error, reason} -> raise "Compilation failed: #{reason}"
+    end
+  end
 
   @doc """
   Executes a list of instructions with an optional context.

@@ -62,6 +62,31 @@ defmodule Predicator.Evaluator do
   end
 
   @doc """
+  Evaluates a list of instructions with the given context, raising on errors.
+
+  Similar to `evaluate/2` but raises an exception for error results instead
+  of returning error tuples. Follows the Elixir convention of bang functions.
+
+  ## Examples
+
+      iex> Predicator.Evaluator.evaluate!([["lit", 42]], %{})
+      42
+
+      iex> Predicator.Evaluator.evaluate!([["load", "score"]], %{"score" => 85})
+      85
+
+      # This would raise an exception:
+      # Predicator.Evaluator.evaluate!([["unknown_op"]], %{})
+  """
+  @spec evaluate!(Types.instruction_list(), Types.context()) :: boolean() | :undefined
+  def evaluate!(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
+    case evaluate(instructions, context) do
+      {:error, reason} -> raise "Evaluation failed: #{reason}"
+      result -> result
+    end
+  end
+
+  @doc """
   Runs the evaluator until it halts or encounters an error.
 
   Returns `{:ok, final_state}` on success or `{:error, reason}` on failure.

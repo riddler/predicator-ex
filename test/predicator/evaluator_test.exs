@@ -181,4 +181,44 @@ defmodule Predicator.EvaluatorTest do
       assert final_evaluator.halted
     end
   end
+
+  describe "evaluate!/2" do
+    test "returns result directly for successful evaluation" do
+      instructions = [["lit", 42]]
+      assert Evaluator.evaluate!(instructions) == 42
+    end
+
+    test "returns result for load instruction" do
+      instructions = [["load", "score"]]
+      context = %{"score" => 85}
+      assert Evaluator.evaluate!(instructions, context) == 85
+    end
+
+    test "returns result for comparison instruction" do
+      instructions = [["load", "x"], ["lit", 5], ["compare", "GT"]]
+      context = %{"x" => 10}
+      assert Evaluator.evaluate!(instructions, context) == true
+    end
+
+    test "returns :undefined for missing context" do
+      instructions = [["load", "missing"]]
+      assert Evaluator.evaluate!(instructions) == :undefined
+    end
+
+    test "raises exception for evaluation errors" do
+      instructions = [["unknown_operation"]]
+      
+      assert_raise RuntimeError, ~r/Evaluation failed:/, fn ->
+        Evaluator.evaluate!(instructions)
+      end
+    end
+
+    test "raises exception for empty stack error" do
+      instructions = []
+      
+      assert_raise RuntimeError, ~r/Evaluation failed:/, fn ->
+        Evaluator.evaluate!(instructions)
+      end
+    end
+  end
 end
