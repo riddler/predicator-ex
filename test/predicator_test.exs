@@ -652,4 +652,106 @@ defmodule PredicatorTest do
       assert result == true
     end
   end
+
+  describe "lowercase logical operators" do
+    test "evaluates lowercase 'and' operator" do
+      assert Predicator.evaluate("true and false", %{}) == false
+      assert Predicator.evaluate("true and true", %{}) == true
+      assert Predicator.evaluate("false and false", %{}) == false
+    end
+
+    test "evaluates lowercase 'or' operator" do
+      assert Predicator.evaluate("true or false", %{}) == true
+      assert Predicator.evaluate("false or false", %{}) == false
+      assert Predicator.evaluate("false or true", %{}) == true
+    end
+
+    test "evaluates lowercase 'not' operator" do
+      assert Predicator.evaluate("not true", %{}) == false
+      assert Predicator.evaluate("not false", %{}) == true
+    end
+
+    test "works with boolean variables from context" do
+      context = %{"active" => true, "expired" => false, "verified" => true}
+
+      assert Predicator.evaluate("active and verified", context) == true
+      assert Predicator.evaluate("active and expired", context) == false
+      assert Predicator.evaluate("active or expired", context) == true
+      assert Predicator.evaluate("expired or verified", context) == true
+      assert Predicator.evaluate("not expired", context) == true
+      assert Predicator.evaluate("not active", context) == false
+    end
+
+    test "combines with comparisons" do
+      context = %{"score" => 85, "age" => 20, "admin" => false}
+
+      assert Predicator.evaluate("score >= 80 and age >= 18", context) == true
+      assert Predicator.evaluate("score >= 90 and age >= 18", context) == false
+      assert Predicator.evaluate("score >= 90 or admin", context) == false
+      assert Predicator.evaluate("not admin and score >= 80", context) == true
+    end
+
+    test "respects operator precedence with lowercase operators" do
+      # not false or false and true should be: (not false) or (false and true) = true or false = true
+      context = %{"expired" => true, "role" => "user", "score" => 90}
+
+      result =
+        Predicator.evaluate("not expired = false or role = \"user\" and score > 85", context)
+
+      assert result == true
+    end
+
+    test "works with mixed case operators" do
+      context = %{"active" => true, "admin" => false, "score" => 90}
+
+      # Mix uppercase and lowercase
+      assert Predicator.evaluate("active AND not admin", context) == true
+      assert Predicator.evaluate("active and NOT admin", context) == true
+      assert Predicator.evaluate("active or admin", context) == true
+    end
+
+    test "compiles lowercase operators correctly" do
+      {:ok, instructions} = Predicator.compile("true and false")
+      assert instructions == [["lit", true], ["lit", false], ["and"]]
+
+      {:ok, instructions} = Predicator.compile("true or false")
+      assert instructions == [["lit", true], ["lit", false], ["or"]]
+
+      {:ok, instructions} = Predicator.compile("not true")
+      assert instructions == [["lit", true], ["not"]]
+    end
+
+    test "parses lowercase operators correctly" do
+      {:ok, ast} = Predicator.parse("true and false")
+      assert match?({:logical_and, {:literal, true}, {:literal, false}}, ast)
+
+      {:ok, ast} = Predicator.parse("true or false")
+      assert match?({:logical_or, {:literal, true}, {:literal, false}}, ast)
+
+      {:ok, ast} = Predicator.parse("not true")
+      assert match?({:logical_not, {:literal, true}}, ast)
+    end
+
+    test "decompiles to preserve original case" do
+      # Note: Decompilation uses StringVisitor which formats based on AST
+      # The original case is preserved in the token value
+      {:ok, ast} = Predicator.parse("active and expired")
+      decompiled = Predicator.decompile(ast)
+      # StringVisitor uses uppercase in output
+      assert decompiled == "active AND expired"
+    end
+
+    test "works with complex expressions" do
+      context = %{"user" => "admin", "active" => true, "score" => 95, "verified" => false}
+
+      result = Predicator.evaluate("user = \"admin\" and active and score > 90", context)
+      assert result == true
+
+      result = Predicator.evaluate("not verified or (active and score > 85)", context)
+      assert result == true
+
+      result = Predicator.evaluate("verified and active or user = \"admin\"", context)
+      assert result == true
+    end
+  end
 end

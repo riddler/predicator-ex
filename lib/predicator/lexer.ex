@@ -263,6 +263,9 @@ defmodule Predicator.Lexer do
   defp classify_identifier("AND"), do: {:and_op, "AND"}
   defp classify_identifier("OR"), do: {:or_op, "OR"}
   defp classify_identifier("NOT"), do: {:not_op, "NOT"}
+  defp classify_identifier("and"), do: {:and_op, "and"}
+  defp classify_identifier("or"), do: {:or_op, "or"}
+  defp classify_identifier("not"), do: {:not_op, "not"}
   defp classify_identifier(id), do: {:identifier, id}
 
   @spec take_string(charlist(), binary(), pos_integer()) ::
