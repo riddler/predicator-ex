@@ -128,6 +128,9 @@ defmodule Predicator.Evaluator do
         value = load_from_context(evaluator.context, variable_name)
         {:ok, push_stack(evaluator, value)}
 
+      ["compare", operator] when operator in ["GT", "LT", "EQ", "GTE", "LTE", "NE"] ->
+        execute_compare(evaluator, operator)
+
       unknown ->
         {:error, "Unknown instruction: #{inspect(unknown)}"}
     end
@@ -140,6 +143,40 @@ defmodule Predicator.Evaluator do
   end
 
   defp advance_instruction_pointer({:error, reason}), do: {:error, reason}
+
+  @spec execute_compare(t(), binary()) :: {:ok, t()} | {:error, term()}
+  defp execute_compare(%__MODULE__{stack: [right | [left | rest]]} = evaluator, operator) do
+    result = compare_values(left, right, operator)
+    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+  end
+
+  defp execute_compare(%__MODULE__{stack: stack}, _operator) do
+    {:error, "Comparison requires two values on stack, got: #{length(stack)}"}
+  end
+
+  # Custom guard for type matching
+  defguard types_match(a, b)
+           when (is_integer(a) and is_integer(b)) or
+                  (is_boolean(a) and is_boolean(b)) or
+                  (is_binary(a) and is_binary(b)) or
+                  (is_list(a) and is_list(b))
+
+  @spec compare_values(Types.value(), Types.value(), binary()) :: Types.value()
+  defp compare_values(:undefined, _right, _operator), do: :undefined
+  defp compare_values(_left, :undefined, _operator), do: :undefined
+
+  defp compare_values(left, right, operator) when types_match(left, right) do
+    case operator do
+      "GT" -> left > right
+      "LT" -> left < right
+      "EQ" -> left == right
+      "GTE" -> left >= right
+      "LTE" -> left <= right
+      "NE" -> left != right
+    end
+  end
+
+  defp compare_values(_left, _right, _operator), do: :undefined
 
   @spec push_stack(t(), Types.value()) :: t()
   defp push_stack(%__MODULE__{stack: stack} = evaluator, value) do

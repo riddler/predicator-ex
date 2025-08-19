@@ -40,11 +40,13 @@ defmodule Predicator.Types do
   Currently supported instructions:
   - `["lit", value()]` - Push literal value onto stack  
   - `["load", binary()]` - Load variable from context onto stack
+  - `["compare", binary()]` - Compare top two stack values with operator
 
   ## Examples
 
       ["lit", 42]           # Push literal 42 onto stack
       ["load", "score"]     # Load variable 'score' from context
+      ["compare", "GT"]     # Pop two values, compare with >, push result
   """
   @type instruction :: [binary() | value()]
 

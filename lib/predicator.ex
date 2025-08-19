@@ -28,6 +28,7 @@ defmodule Predicator do
   Currently supported instructions:
   - `["lit", value]` - Push a literal value onto the stack
   - `["load", variable_name]` - Load a variable from context onto the stack
+  - `["compare", operator]` - Compare top two stack values (GT, LT, EQ, GTE, LTE, NE)
 
   ## Context
 
@@ -85,6 +86,15 @@ defmodule Predicator do
       iex> instructions = [["lit", 1], ["lit", 2], ["lit", 3]]
       iex> Predicator.execute(instructions)
       3
+
+      # Comparison operations  
+      iex> instructions = [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      iex> Predicator.execute(instructions, %{"score" => 90})
+      true
+
+      iex> instructions = [["load", "age"], ["lit", 18], ["compare", "GTE"]]
+      iex> Predicator.execute(instructions, %{"age" => 16})
+      false
   """
   @spec execute(Types.instruction_list(), Types.context()) :: Types.result()
   def execute(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
