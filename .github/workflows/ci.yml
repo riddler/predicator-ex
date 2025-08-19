@@ -139,6 +139,7 @@ jobs:
         with:
           files: ./cover/excoveralls.json
           fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   credo:
     name: Static Analysis (Credo)
