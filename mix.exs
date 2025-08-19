@@ -2,7 +2,7 @@ defmodule Predicator.MixProject do
   use Mix.Project
 
   @version "1.0.0"
-  @source_url "https://github.com/predicator/predicator_elixir"
+  @source_url "https://github.com/riddler/predicator-ex"
 
   def project do
     [
