@@ -1,49 +1,76 @@
-defmodule Predicator.Mixfile do
+defmodule Predicator.MixProject do
   use Mix.Project
 
-  def project() do
+  @version "1.0.0"
+  @source_url "https://github.com/predicator/predicator_elixir"
+
+  def project do
     [
       app: :predicator,
-      version: "0.7.2",
-      elixir: "~> 1.6",
-      build_embedded: Mix.env == :prod,
-      start_permanent: Mix.env == :prod,
+      version: @version,
+      elixir: "~> 1.11",
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
+      docs: docs(),
+      description: description(),
       package: package(),
       aliases: aliases(),
-      description: description(),
-      deps: deps()
-    ]
-  end
-
-  def description(), do: "Predicate Evaluator"
-
-  def package() do
-    [
-      name: :predicator,
-      maintainers: ["Joshua Richardson"],
-      licenses: ["MIT"],
-      docs: [extras: ["README.md"]],
-      links: %{"GitHub" => "https://github.com/predicator/predicator_elixir"}
-    ]
-  end
-
-  defp aliases() do
-    [compile: "compile --warnings-as-errors"]
-  end
-
-  def application() do
-    [
-      mod: {Predicator.Application, []},
-      extra_applications: [
-        :logger
+      preferred_cli_env: [
+        "test.watch": :test
       ]
     ]
   end
 
-  defp deps() do
+  def application do
     [
-      {:dialyxir, "~> 1.0.0-rc.4", only: [:dev], runtime: false},
-      {:ex_doc, "~> 0.19.0", only: :dev},
+      extra_applications: [:logger],
+      mod: {Predicator.Application, []}
+    ]
+  end
+
+  defp deps do
+    [
+      # Development and testing
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:mix_test_watch, "~> 1.2", only: [:dev, :test], runtime: false}
+    ]
+  end
+
+  defp description do
+    "A secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir"
+  end
+
+  defp package do
+    [
+      name: :predicator,
+      files: ~w(lib mix.exs README.md LICENSE CHANGELOG.md),
+      licenses: ["MIT"],
+      links: %{"GitHub" => @source_url},
+      maintainers: ["Predicator Team"]
+    ]
+  end
+
+  defp docs do
+    [
+      name: "Predicator",
+      source_ref: "v#{@version}",
+      canonical: "https://hexdocs.pm/predicator",
+      source_url: @source_url,
+      extras: ["README.md", "CHANGELOG.md"],
+      groups_for_modules: [
+        Core: [Predicator, Predicator.Types],
+        Evaluation: [Predicator.Evaluator],
+        Compilation: [],
+        Errors: []
+      ]
+    ]
+  end
+
+  defp aliases do
+    [
+      "test.watch": ["test.watch --stale"]
     ]
   end
 end

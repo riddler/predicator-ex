@@ -1,31 +1,21 @@
 # Predicator
 
-[predicator_elixir](https://hexdocs.pm/predicator) is a predicate evaluator for compiled rules from the [predicator](https://github.com/predicator/predicator) ruby gem
+**TODO: Add description**
 
-### Installation
+## Installation
 
-The package can be installed by:
+If [available in Hex](https://hex.pm/docs/publish), the package can be installed
+by adding `predicator` to your list of dependencies in `mix.exs`:
 
-1. Adding to your list of dependencies in `mix.exs`:
+```elixir
+def deps do
+  [
+    {:predicator, "~> 0.1.0"}
+  ]
+end
+```
 
-  ```elixir
-  def deps do
-    [{:predicator, "~> 0.7"}]
-  end
-  ```
-
-  or if you want to use the ecto types for predicator you can add the predicator_ecto lib.
-
-  ```elixir
-  def deps do
-    [
-      {:predicator, "~> 0.7"},
-      {:predicator_ecto, ">= 0.0.0"},
-    ]
-  end
-  ```
-
-### Using
-
-_Currently has working Evaluator for Predicator instructions & limited lexing and parsing_
+Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
+and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
+be found at <https://hexdocs.pm/predicator>.
 

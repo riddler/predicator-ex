@@ -1,100 +1,153 @@
 defmodule Predicator do
   @moduledoc """
-  Documentation for Predicator.
+  A secure, non-evaluative condition engine for processing end-user boolean predicates.
 
-  Lexer and Parser currently only compatible with 0.4.0 predicate syntax
+  Predicator transforms string conditions into executable instructions that can be
+  safely evaluated without direct code execution. It uses a stack-based virtual machine
+  to process instructions and supports flexible context-based condition checking.
+
+  ## Basic Usage
+
+  The simplest way to use Predicator is with the `execute/2` function:
+
+      iex> instructions = [["lit", 42]]
+      iex> Predicator.execute(instructions)
+      42
+
+      iex> instructions = [["load", "score"]]
+      iex> context = %{"score" => 85}
+      iex> Predicator.execute(instructions, context)
+      85
+
+  ## Instruction Format
+
+  Instructions are lists where:
+  - First element is the operation name (string)
+  - Remaining elements are operation arguments
+
+  Currently supported instructions:
+  - `["lit", value]` - Push a literal value onto the stack
+  - `["load", variable_name]` - Load a variable from context onto the stack
+
+  ## Context
+
+  The context is a map containing variable bindings. Both string and atom keys
+  are supported for flexibility:
+
+      %{"score" => 85, "name" => "Alice"}
+      %{score: 85, name: "Alice"}
+
+  ## Architecture
+
+  Predicator uses a stack-based evaluation model:
+  1. Instructions are processed sequentially
+  2. Each instruction manipulates a stack
+  3. The final result is the top value on the stack when execution completes
   """
-  alias Predicator.Evaluator
 
-  @lexer :predicate_lexer
-  @atom_parser :atom_instruction_parser
-  @string_parser :string_instruction_parser
-
-  @type token_key_t ::
-  :atom_key_inst
-  | :string_key_inst
-
-  @type predicate :: String.t | charlist
+  alias Predicator.{Evaluator, Types}
 
   @doc """
-  Currently only compatible with 0.4.0 predicate syntax
-  leex_string/1 takes string or charlist and returns a lexed tuple for parsing.
+  Executes a list of instructions with an optional context.
 
-  iex> leex_string('10 > 5')
-  {:ok, [{:lit, 1, 10}, {:comparator, 1, :GT}, {:lit, 1, 5}], 1}
+  This is the main entry point for evaluating predicator instructions.
+  Instructions are executed in order using a stack machine, and the
+  final result is returned.
 
-  iex> leex_string("apple > 5532")
-  {:ok, [{:load, 1, :apple}, {:comparator, 1, :GT}, {:lit, 1, 5532}], 1}
+  ## Parameters
+
+  - `instructions` - List of instructions to execute
+  - `context` - Optional context map with variable bindings (default: `%{}`)
+
+  ## Returns
+
+  - The final value from the top of the stack
+  - `{:error, reason}` if execution fails
+
+  ## Examples
+
+      # Literal values
+      iex> Predicator.execute([["lit", 42]])
+      42
+
+      iex> Predicator.execute([["lit", true]])
+      true
+
+      # Loading from context
+      iex> Predicator.execute([["load", "score"]], %{"score" => 85})
+      85
+
+      # Missing variables return :undefined
+      iex> Predicator.execute([["load", "missing"]], %{})
+      :undefined
+
+      # Multiple instructions (last value wins)
+      iex> instructions = [["lit", 1], ["lit", 2], ["lit", 3]]
+      iex> Predicator.execute(instructions)
+      3
   """
-  @spec leex_string(predicate) :: {:ok|:error, list|tuple, non_neg_integer()}
-  def leex_string(str) when is_binary(str), do: str |> to_charlist |> leex_string
-  def leex_string(str) when is_list(str), do: @lexer.string(str)
-
-
-  @doc """
-  Currently only compatible with 0.4.0 predicate syntax
-  parse_lexed/1 takes a leexed token(list or tup) and returns a predicate. It also
-  can take optional atom for type of token keys to return. options are `:string_ey_inst` & `:atom_key_inst`
-
-  iex> parse_lexed({:ok, [{:load, 1, :apple}, {:comparator, 1, :GT}, {:lit, 1, 5532}], 1})
-  {:ok, [["load", :apple], ["lit", 5532], ["comparator", "GT"]]}
-
-  iex> parse_lexed({:ok, [{:load, 1, :apple}, {:comparator, 1, :GT}, {:lit, 1, 5532}], 1}, :string_key_inst)
-  {:ok, [["load", :apple], ["lit", 5532], ["comparator", "GT"]]}
-
-  iex> parse_lexed([{:load, 1, :apple}, {:comparator, 1, :GT}, {:lit, 1, 5532}], :atom_key_inst)
-  {:ok, [[:load, :apple], [:lit, 5532], [:comparator, :GT]]}
-  """
-  @spec parse_lexed(list, token_key_t) :: {:ok|:error, list|tuple}
-  def parse_lexed(token, opt \\ :string_key_inst)
-  def parse_lexed(token, :string_key_inst) when is_list(token), do: @string_parser.parse(token)
-  def parse_lexed({_, token, _}, :string_key_inst), do: @string_parser.parse(token)
-
-  def parse_lexed(token, :atom_key_inst) when is_list(token), do: @atom_parser.parse(token)
-  def parse_lexed({_, token, _}, :atom_key_inst), do: @atom_parser.parse(token)
-
-
-  @doc """
-  Currently only compatible with 0.4.0 predicate syntax
-  leex_and_parse/1 takes a string or charlist and does all lexing and parsing then
-  returns the predicate.
-
-  iex> leex_and_parse("13 > 12")
-  [["lit", 13], ["lit", 12], ["comparator", "GT"]]
-
-  iex> leex_and_parse('532 == 532', :atom_key_inst)
-  [[:lit, 532], [:lit, 532], [:comparator, :EQ]]
-  """
-  @spec leex_and_parse(String.t) :: list|{:error, any(), non_neg_integer}
-  def leex_and_parse(str, token_type \\ :string_key_inst) do
-    with {:ok, tokens, _} <- leex_string(str),
-         {:ok, predicate} <- parse_lexed(tokens, token_type) do
-      predicate
-    end
+  @spec execute(Types.instruction_list(), Types.context()) :: Types.result()
+  def execute(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
+    Evaluator.evaluate(instructions, context)
   end
 
   @doc """
-  eval/3 takes a predicate set, a context struct and options
+  Creates a new evaluator state for low-level instruction processing.
+
+  This function is useful when you need fine-grained control over the
+  evaluation process or want to inspect the evaluator state.
+
+  ## Parameters
+
+  - `instructions` - List of instructions to prepare for execution
+  - `context` - Optional context map with variable bindings (default: `%{}`)
+
+  ## Returns
+
+  An `%Predicator.Evaluator{}` struct ready for execution.
+
+  ## Examples
+
+      iex> evaluator = Predicator.evaluator([["lit", 42]])
+      iex> evaluator.instructions
+      [["lit", 42]]
+
+      iex> evaluator = Predicator.evaluator([["load", "x"]], %{"x" => 10})
+      iex> evaluator.context
+      %{"x" => 10}
   """
-  def eval(inst, context \\ %{}, opts \\ [map_type: :string])
-  def eval(inst, context, opts), do: Evaluator.execute(inst, context, opts)
-
-  def compile(predicate) do
-    with {:ok, tokens, _} <- leex_string(predicate),
-         {:ok, predicate} <- parse_lexed(tokens, :string_key_inst) do
-      {:ok, predicate}
-    else
-      {:error, _} = err -> err
-      {:error, left, right} -> {:error, {left, right}}
-    end
+  @spec evaluator(Types.instruction_list(), Types.context()) :: Evaluator.t()
+  def evaluator(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
+    %Evaluator{
+      instructions: instructions,
+      context: context
+    }
   end
 
-  def matches?(predicate, context) when is_list(context) do
-    matches?(predicate, Map.new(context))
-  end
-  def matches?(predicate, context) when is_binary(predicate) or is_list(predicate) do
-    with {:ok, predicate} <- compile(predicate) do
-      eval(predicate, context)
-    end
+  @doc """
+  Runs an evaluator until completion.
+
+  This provides direct access to the low-level evaluator API for cases
+  where you need more control than the `execute/2` function provides.
+
+  ## Parameters
+
+  - `evaluator` - An `%Predicator.Evaluator{}` struct
+
+  ## Returns
+
+  - `{:ok, final_evaluator_state}` on success
+  - `{:error, reason}` on failure
+
+  ## Examples
+
+      iex> evaluator = Predicator.evaluator([["lit", 42]])
+      iex> {:ok, final_state} = Predicator.run_evaluator(evaluator)
+      iex> final_state.stack
+      [42]
+  """
+  @spec run_evaluator(Evaluator.t()) :: {:ok, Evaluator.t()} | {:error, term()}
+  def run_evaluator(%Evaluator{} = evaluator) do
+    Evaluator.run(evaluator)
   end
 end
