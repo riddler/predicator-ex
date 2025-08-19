@@ -124,14 +124,14 @@ defmodule Predicator.EvaluatorTest do
     test "returns error for invalid instruction" do
       instructions = [["invalid_op"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Unknown instruction: " <> _} = result
+      assert {:error, "Unknown instruction: " <> _error_msg} = result
     end
 
     test "returns error for malformed instruction" do
       # missing argument
       instructions = [["lit"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Unknown instruction: " <> _} = result
+      assert {:error, "Unknown instruction: " <> _error_msg} = result
     end
   end
 

@@ -50,7 +50,7 @@ defmodule Predicator.Evaluator do
     }
 
     case run(evaluator) do
-      {:ok, %__MODULE__{stack: [result | _]}} ->
+      {:ok, %__MODULE__{stack: [result | _rest]}} ->
         result
 
       {:ok, %__MODULE__{stack: []}} ->

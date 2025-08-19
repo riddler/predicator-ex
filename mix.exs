@@ -15,8 +15,19 @@ defmodule Predicator.MixProject do
       description: description(),
       package: package(),
       aliases: aliases(),
+      test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
-        "test.watch": :test
+        "test.watch": :test,
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test,
+        "coveralls.json": :test,
+        quality: :test,
+        "quality.check": :test,
+        "test.coverage": :test,
+        "test.coverage.html": :test,
+        "test.coverage.detail": :test
       ]
     ]
   end
@@ -34,7 +45,8 @@ defmodule Predicator.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:mix_test_watch, "~> 1.2", only: [:dev, :test], runtime: false}
+      {:mix_test_watch, "~> 1.2", only: [:dev, :test], runtime: false},
+      {:excoveralls, "~> 0.18", only: :test}
     ]
   end
 
@@ -70,7 +82,17 @@ defmodule Predicator.MixProject do
 
   defp aliases do
     [
-      "test.watch": ["test.watch --stale"]
+      "test.watch": ["test.watch --stale"],
+      quality: ["format", "credo --strict", "coveralls", "dialyzer"],
+      "quality.check": [
+        "format --check-formatted",
+        "credo --strict",
+        "coveralls",
+        "dialyzer"
+      ],
+      "test.coverage": ["coveralls"],
+      "test.coverage.html": ["coveralls.html"],
+      "test.coverage.detail": ["coveralls.detail"]
     ]
   end
 end
