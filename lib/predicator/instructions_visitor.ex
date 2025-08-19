@@ -91,6 +91,30 @@ defmodule Predicator.InstructionsVisitor do
     operand_instructions ++ op_instruction
   end
 
+  def visit({:list, elements}, _opts) do
+    # For list literals with only literal values, create a single "lit" instruction
+    # For more complex lists, this would need more sophisticated handling
+    case all_literals?(elements) do
+      true ->
+        literal_values = Enum.map(elements, fn {:literal, value} -> value end)
+        [["lit", literal_values]]
+
+      false ->
+        # For now, we'll require all list elements to be literals
+        # TODO: Handle mixed expressions in lists
+        raise "Non-literal list elements are not yet supported"
+    end
+  end
+
+  def visit({:membership, op, left, right}, opts) do
+    # Post-order traversal: operands first, then operator
+    left_instructions = visit(left, opts)
+    right_instructions = visit(right, opts)
+    op_instruction = [[map_membership_op(op)]]
+
+    left_instructions ++ right_instructions ++ op_instruction
+  end
+
   # Helper function to map AST comparison operators to instruction format
   @spec map_comparison_op(Parser.comparison_op()) :: binary()
   defp map_comparison_op(:gt), do: "GT"
@@ -99,4 +123,18 @@ defmodule Predicator.InstructionsVisitor do
   defp map_comparison_op(:lte), do: "LTE"
   defp map_comparison_op(:eq), do: "EQ"
   defp map_comparison_op(:ne), do: "NE"
+
+  # Helper function to map AST membership operators to instruction format
+  @spec map_membership_op(Parser.membership_op()) :: binary()
+  defp map_membership_op(:in), do: "in"
+  defp map_membership_op(:contains), do: "contains"
+
+  # Helper function to check if all elements in a list are literals
+  @spec all_literals?([Parser.ast()]) :: boolean()
+  defp all_literals?(elements) do
+    Enum.all?(elements, fn
+      {:literal, _value} -> true
+      _other -> false
+    end)
+  end
 end

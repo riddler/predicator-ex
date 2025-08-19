@@ -123,6 +123,76 @@ defmodule Predicator.LexerTest do
                {:eof, 1, 4, 0, nil}
              ]
     end
+
+    test "tokenizes membership operators" do
+      assert {:ok, tokens} = Lexer.tokenize("IN")
+
+      assert tokens == [
+               {:in_op, 1, 1, 2, "IN"},
+               {:eof, 1, 3, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("in")
+
+      assert tokens == [
+               {:in_op, 1, 1, 2, "in"},
+               {:eof, 1, 3, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("CONTAINS")
+
+      assert tokens == [
+               {:contains_op, 1, 1, 8, "CONTAINS"},
+               {:eof, 1, 9, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("contains")
+
+      assert tokens == [
+               {:contains_op, 1, 1, 8, "contains"},
+               {:eof, 1, 9, 0, nil}
+             ]
+    end
+  end
+
+  describe "tokenize/1 - list literals" do
+    test "tokenizes empty list" do
+      assert {:ok, tokens} = Lexer.tokenize("[]")
+
+      assert tokens == [
+               {:lbracket, 1, 1, 1, "["},
+               {:rbracket, 1, 2, 1, "]"},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+
+    test "tokenizes list with commas" do
+      assert {:ok, tokens} = Lexer.tokenize("[1, 2, 3]")
+
+      assert tokens == [
+               {:lbracket, 1, 1, 1, "["},
+               {:integer, 1, 2, 1, 1},
+               {:comma, 1, 3, 1, ","},
+               {:integer, 1, 5, 1, 2},
+               {:comma, 1, 6, 1, ","},
+               {:integer, 1, 8, 1, 3},
+               {:rbracket, 1, 9, 1, "]"},
+               {:eof, 1, 10, 0, nil}
+             ]
+    end
+
+    test "tokenizes string list" do
+      assert {:ok, tokens} = Lexer.tokenize(~s(["admin", "manager"]))
+
+      assert tokens == [
+               {:lbracket, 1, 1, 1, "["},
+               {:string, 1, 2, 7, "admin"},
+               {:comma, 1, 9, 1, ","},
+               {:string, 1, 11, 9, "manager"},
+               {:rbracket, 1, 20, 1, "]"},
+               {:eof, 1, 21, 0, nil}
+             ]
+    end
   end
 
   describe "tokenize/1 - string literals" do

@@ -1,4 +1,8 @@
 defmodule Predicator.Parser do
+  # Disable credo checks that are inherent to recursive descent parsing
+  # credo:disable-for-this-file Credo.Check.Refactor.Nesting
+  # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
+
   @moduledoc """
   Recursive descent parser for predicator expressions.
 
@@ -13,8 +17,9 @@ defmodule Predicator.Parser do
       logical_or   → logical_and ( "OR" logical_and )*
       logical_and  → logical_not ( "AND" logical_not )*
       logical_not  → "NOT" logical_not | comparison
-      comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" ) primary )?
-      primary      → NUMBER | STRING | BOOLEAN | IDENTIFIER | "(" expression ")"
+      comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
+      primary      → NUMBER | STRING | BOOLEAN | IDENTIFIER | list | "(" expression ")"
+      list         → "[" ( expression ( "," expression )* )? "]"
 
   ## Examples
 
@@ -36,30 +41,39 @@ defmodule Predicator.Parser do
   @typedoc """
   A value that can appear in literals.
   """
-  @type value :: boolean() | integer() | binary()
+  @type value :: boolean() | integer() | binary() | [value()]
 
   @typedoc """
   Abstract Syntax Tree node types.
 
-  - `{:literal, value}` - A literal value (number, string, boolean)
+  - `{:literal, value}` - A literal value (number, string, boolean, list)
   - `{:identifier, name}` - A variable reference
   - `{:comparison, operator, left, right}` - A comparison expression
   - `{:logical_and, left, right}` - A logical AND expression
   - `{:logical_or, left, right}` - A logical OR expression
   - `{:logical_not, operand}` - A logical NOT expression
+  - `{:list, elements}` - A list literal
+  - `{:membership, operator, left, right}` - A membership operation (in/contains)
   """
   @type ast ::
           {:literal, value()}
           | {:identifier, binary()}
           | {:comparison, comparison_op(), ast(), ast()}
+          | {:membership, membership_op(), ast(), ast()}
           | {:logical_and, ast(), ast()}
           | {:logical_or, ast(), ast()}
           | {:logical_not, ast()}
+          | {:list, [ast()]}
 
   @typedoc """
   Comparison operators in the AST.
   """
   @type comparison_op :: :gt | :lt | :gte | :lte | :eq | :ne
+
+  @typedoc """
+  Membership operators in the AST.
+  """
+  @type membership_op :: :in | :contains
 
   @typedoc """
   Parser result - either success with AST or error with details.
@@ -226,7 +240,6 @@ defmodule Predicator.Parser do
   # parse right operand -> construct AST, with proper error propagation at each step.
   @spec parse_comparison(parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
-  # credo:disable-for-lines:27 Credo.Check.Refactor.Nesting
   defp parse_comparison(state) do
     case parse_primary(state) do
       {:ok, left, new_state} ->
@@ -240,6 +253,21 @@ defmodule Predicator.Parser do
             case parse_primary(op_state) do
               {:ok, right, final_state} ->
                 ast = {:comparison, operator, left, right}
+                {:ok, ast, final_state}
+
+              {:error, message, line, col} ->
+                {:error, message, line, col}
+            end
+
+          # Membership operators
+          {op_type, _line, _col, _len, _value}
+          when op_type in [:in_op, :contains_op] ->
+            operator = map_membership_operator(op_type)
+            op_state = advance(new_state)
+
+            case parse_primary(op_state) do
+              {:ok, right, final_state} ->
+                ast = {:membership, operator, left, right}
                 {:ok, ast, final_state}
 
               {:error, message, line, col} ->
@@ -260,8 +288,6 @@ defmodule Predicator.Parser do
   # This function handles multiple token types and nested error cases - inherent parser complexity
   @spec parse_primary(parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
-  # credo:disable-for-lines:46 Credo.Check.Refactor.CyclomaticComplexity
-  # credo:disable-for-lines:46 Credo.Check.Refactor.Nesting
   defp parse_primary(state) do
     case peek_token(state) do
       # Literals
@@ -299,9 +325,13 @@ defmodule Predicator.Parser do
             {:error, message, line, col}
         end
 
+      # List literals
+      {:lbracket, _line, _col, _len, _value} ->
+        parse_list(state)
+
       # Unexpected tokens
       {type, line, col, _len, value} ->
-        expected = "number, string, boolean, identifier, or '('"
+        expected = "number, string, boolean, identifier, list, or '('"
         {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col}
 
       # End of input
@@ -330,6 +360,10 @@ defmodule Predicator.Parser do
   defp map_operator(:eq), do: :eq
   defp map_operator(:ne), do: :ne
 
+  @spec map_membership_operator(atom()) :: membership_op()
+  defp map_membership_operator(:in_op), do: :in
+  defp map_membership_operator(:contains_op), do: :contains
+
   @spec format_token(atom(), term()) :: binary()
   defp format_token(:integer, value), do: "number '#{value}'"
   defp format_token(:string, value), do: "string \"#{value}\""
@@ -344,7 +378,69 @@ defmodule Predicator.Parser do
   defp format_token(:and_op, _value), do: "'AND'"
   defp format_token(:or_op, _value), do: "'OR'"
   defp format_token(:not_op, _value), do: "'NOT'"
+  defp format_token(:in_op, _value), do: "'IN'"
+  defp format_token(:contains_op, _value), do: "'CONTAINS'"
   defp format_token(:lparen, _value), do: "'('"
   defp format_token(:rparen, _value), do: "')'"
+  defp format_token(:lbracket, _value), do: "'['"
+  defp format_token(:rbracket, _value), do: "']'"
+  defp format_token(:comma, _value), do: "','"
   defp format_token(:eof, _value), do: "end of input"
+
+  # Parse list literals: [element1, element2, ...]
+  @spec parse_list(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_list(state) do
+    # Consume opening bracket
+    bracket_state = advance(state)
+
+    case peek_token(bracket_state) do
+      # Empty list
+      {:rbracket, _line, _col, _len, _value} ->
+        {:ok, {:list, []}, advance(bracket_state)}
+
+      # Non-empty list
+      _token ->
+        case parse_list_elements(bracket_state, []) do
+          {:ok, elements, final_state} ->
+            case peek_token(final_state) do
+              {:rbracket, _line, _col, _len, _value} ->
+                {:ok, {:list, Enum.reverse(elements)}, advance(final_state)}
+
+              {type, line, col, _len, value} ->
+                {:error, "Expected ']' but found #{format_token(type, value)}", line, col}
+
+              nil ->
+                {:error, "Expected ']' but reached end of input", 1, 1}
+            end
+
+          {:error, message, line, col} ->
+            {:error, message, line, col}
+        end
+    end
+  end
+
+  # Parse list elements recursively
+  @spec parse_list_elements(parser_state(), [ast()]) ::
+          {:ok, [ast()], parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_list_elements(state, acc) do
+    case parse_expression(state) do
+      {:ok, element, new_state} ->
+        new_acc = [element | acc]
+
+        case peek_token(new_state) do
+          {:comma, _line, _col, _len, _value} ->
+            # More elements, consume comma and continue
+            comma_state = advance(new_state)
+            parse_list_elements(comma_state, new_acc)
+
+          _token ->
+            # No more elements
+            {:ok, new_acc, new_state}
+        end
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
 end

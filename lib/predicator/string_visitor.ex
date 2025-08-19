@@ -138,6 +138,23 @@ defmodule Predicator.StringVisitor do
     end
   end
 
+  def visit({:list, elements}, opts) do
+    element_strings = Enum.map(elements, fn element -> visit(element, opts) end)
+    "[#{Enum.join(element_strings, ", ")}]"
+  end
+
+  def visit({:membership, op, left, right}, opts) do
+    left_str = visit(left, opts)
+    right_str = visit(right, opts)
+    op_str = format_membership_operator(op)
+    spacing = get_spacing(opts)
+
+    case get_parentheses_mode(opts) do
+      :explicit -> "(#{left_str}#{spacing}#{op_str}#{spacing}#{right_str})"
+      _other -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
+    end
+  end
+
   # Helper functions
 
   @spec format_operator(Parser.comparison_op()) :: binary()
@@ -147,6 +164,10 @@ defmodule Predicator.StringVisitor do
   defp format_operator(:lte), do: "<="
   defp format_operator(:eq), do: "="
   defp format_operator(:ne), do: "!="
+
+  @spec format_membership_operator(Parser.membership_op()) :: binary()
+  defp format_membership_operator(:in), do: "IN"
+  defp format_membership_operator(:contains), do: "CONTAINS"
 
   @spec get_spacing(keyword()) :: binary()
   defp get_spacing(opts) do

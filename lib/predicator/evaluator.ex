@@ -1,4 +1,7 @@
 defmodule Predicator.Evaluator do
+  # Disable credo checks that are inherent to instruction execution logic
+  # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
+
   @moduledoc """
   Stack-based evaluator for predicator instructions.
 
@@ -165,6 +168,12 @@ defmodule Predicator.Evaluator do
       ["not"] ->
         execute_logical_not(evaluator)
 
+      ["in"] ->
+        execute_membership(evaluator, :in)
+
+      ["contains"] ->
+        execute_membership(evaluator, :contains)
+
       unknown ->
         {:error, "Unknown instruction: #{inspect(unknown)}"}
     end
@@ -211,6 +220,12 @@ defmodule Predicator.Evaluator do
   end
 
   defp compare_values(_left, _right, _operator), do: :undefined
+
+  @spec values_equal?(Types.value(), Types.value()) :: boolean()
+  defp values_equal?(:undefined, _value), do: false
+  defp values_equal?(_value, :undefined), do: false
+  defp values_equal?(left, right) when types_match(left, right), do: left == right
+  defp values_equal?(_left, _right), do: false
 
   @spec push_stack(t(), Types.value()) :: t()
   defp push_stack(%__MODULE__{stack: stack} = evaluator, value) do
@@ -262,6 +277,48 @@ defmodule Predicator.Evaluator do
 
   defp execute_logical_not(%__MODULE__{stack: []}) do
     {:error, "Logical NOT requires one value on stack, got: 0"}
+  end
+
+  @spec execute_membership(t(), :in | :contains) :: {:ok, t()} | {:error, term()}
+  defp execute_membership(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :in) do
+    # left IN right - check if left is a member of right (list)
+    case {left, right} do
+      {:undefined, _value} ->
+        {:ok, %__MODULE__{evaluator | stack: [:undefined | rest]}}
+
+      {_value, :undefined} ->
+        {:ok, %__MODULE__{evaluator | stack: [:undefined | rest]}}
+
+      {_value, list} when is_list(list) ->
+        result = Enum.any?(list, fn item -> values_equal?(left, item) end)
+        {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+
+      {_value, non_list} ->
+        {:error, "IN operator requires a list on the right side, got: #{inspect(non_list)}"}
+    end
+  end
+
+  defp execute_membership(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :contains) do
+    # left CONTAINS right - check if left (list) contains right (value)
+    case {left, right} do
+      {:undefined, _value} ->
+        {:ok, %__MODULE__{evaluator | stack: [:undefined | rest]}}
+
+      {_value, :undefined} ->
+        {:ok, %__MODULE__{evaluator | stack: [:undefined | rest]}}
+
+      {list, _value} when is_list(list) ->
+        result = Enum.any?(list, fn item -> values_equal?(item, right) end)
+        {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+
+      {non_list, _value} ->
+        {:error, "CONTAINS operator requires a list on the left side, got: #{inspect(non_list)}"}
+    end
+  end
+
+  defp execute_membership(%__MODULE__{stack: stack}, operation) do
+    {:error,
+     "#{String.upcase(to_string(operation))} requires two values on stack, got: #{length(stack)}"}
   end
 
   @spec load_from_context(Types.context(), binary()) :: Types.value()
