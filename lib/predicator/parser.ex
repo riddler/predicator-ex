@@ -18,7 +18,7 @@ defmodule Predicator.Parser do
       logical_and  → logical_not ( "AND" logical_not )*
       logical_not  → "NOT" logical_not | comparison
       comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
-      primary      → NUMBER | STRING | BOOLEAN | IDENTIFIER | list | "(" expression ")"
+      primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | "(" expression ")"
       list         → "[" ( expression ( "," expression )* )? "]"
 
   ## Examples
@@ -41,12 +41,12 @@ defmodule Predicator.Parser do
   @typedoc """
   A value that can appear in literals.
   """
-  @type value :: boolean() | integer() | binary() | [value()]
+  @type value :: boolean() | integer() | binary() | [value()] | Date.t() | DateTime.t()
 
   @typedoc """
   Abstract Syntax Tree node types.
 
-  - `{:literal, value}` - A literal value (number, string, boolean, list)
+  - `{:literal, value}` - A literal value (number, string, boolean, list, date, datetime)
   - `{:identifier, name}` - A variable reference
   - `{:comparison, operator, left, right}` - A comparison expression
   - `{:logical_and, left, right}` - A logical AND expression
@@ -323,6 +323,16 @@ defmodule Predicator.Parser do
     {:ok, {:literal, value}, advance(state)}
   end
 
+  # Parse date literal
+  defp parse_primary_token(state, {:date, _line, _col, _len, value}) do
+    {:ok, {:literal, value}, advance(state)}
+  end
+
+  # Parse datetime literal
+  defp parse_primary_token(state, {:datetime, _line, _col, _len, value}) do
+    {:ok, {:literal, value}, advance(state)}
+  end
+
   # Parse identifier
   defp parse_primary_token(state, {:identifier, _line, _col, _len, value}) do
     {:ok, {:identifier, value}, advance(state)}
@@ -357,7 +367,7 @@ defmodule Predicator.Parser do
 
   # Handle unexpected tokens
   defp parse_primary_token(_state, {type, line, col, _len, value}) do
-    expected = "number, string, boolean, identifier, list, or '('"
+    expected = "number, string, boolean, date, datetime, identifier, list, or '('"
     {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col}
   end
 
@@ -394,6 +404,8 @@ defmodule Predicator.Parser do
   defp format_token(:integer, value), do: "number '#{value}'"
   defp format_token(:string, value), do: "string \"#{value}\""
   defp format_token(:boolean, value), do: "boolean '#{value}'"
+  defp format_token(:date, value), do: "date '#{Date.to_iso8601(value)}'"
+  defp format_token(:datetime, value), do: "datetime '#{DateTime.to_iso8601(value)}'"
   defp format_token(:identifier, value), do: "identifier '#{value}'"
   defp format_token(:gt, _value), do: "'>'"
   defp format_token(:lt, _value), do: "'<'"

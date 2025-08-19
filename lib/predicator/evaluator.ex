@@ -215,7 +215,9 @@ defmodule Predicator.Evaluator do
            when (is_integer(a) and is_integer(b)) or
                   (is_boolean(a) and is_boolean(b)) or
                   (is_binary(a) and is_binary(b)) or
-                  (is_list(a) and is_list(b))
+                  (is_list(a) and is_list(b)) or
+                  (is_struct(a, Date) and is_struct(b, Date)) or
+                  (is_struct(a, DateTime) and is_struct(b, DateTime))
 
   @spec compare_values(Types.value(), Types.value(), binary()) :: Types.value()
   defp compare_values(:undefined, _right, _operator), do: :undefined

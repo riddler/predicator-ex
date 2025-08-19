@@ -41,12 +41,35 @@ defmodule Predicator.TypesTest do
       assert Types.types_match?([1, 2], ["a", "b"])
     end
 
+    test "matches dates" do
+      date1 = ~D[2024-01-15]
+      date2 = ~D[2024-01-20]
+      assert Types.types_match?(date1, date2)
+    end
+
+    test "matches datetimes" do
+      {:ok, dt1, _offset1} = DateTime.from_iso8601("2024-01-15T10:00:00Z")
+      {:ok, dt2, _offset2} = DateTime.from_iso8601("2024-01-20T15:30:00Z")
+      assert Types.types_match?(dt1, dt2)
+    end
+
     test "does not match different types" do
       refute Types.types_match?(1, "hello")
       refute Types.types_match?(true, 42)
       refute Types.types_match?("test", [])
       refute Types.types_match?([], true)
       refute Types.types_match?(:undefined, nil)
+
+      # Date/DateTime cross-type matching
+      date = ~D[2024-01-15]
+      {:ok, datetime, _offset} = DateTime.from_iso8601("2024-01-15T10:00:00Z")
+      refute Types.types_match?(date, datetime)
+      refute Types.types_match?(datetime, date)
+
+      # Date/DateTime with other types
+      refute Types.types_match?(date, "2024-01-15")
+      refute Types.types_match?(datetime, 123_456_789)
+      refute Types.types_match?(date, true)
     end
   end
 end

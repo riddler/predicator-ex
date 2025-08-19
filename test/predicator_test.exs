@@ -54,7 +54,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, identifier, list, or '(' but found end of input"
+               "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input"
 
       assert message =~ "line 1, column 8"
     end
@@ -62,7 +62,9 @@ defmodule PredicatorTest do
     test "returns error for invalid syntax" do
       result = Predicator.evaluate("score > >", %{})
       assert {:error, message} = result
-      assert message =~ "Expected number, string, boolean, identifier, list, or '(' but found '>'"
+
+      assert message =~
+               "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found '>'"
     end
   end
 
@@ -184,7 +186,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, identifier, list, or '(' but found end of input"
+               "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input"
 
       assert message =~ "line 1, column 8"
     end
@@ -899,6 +901,172 @@ defmodule PredicatorTest do
       # CONTAINS with non-list on left side
       result = Predicator.evaluate("1 contains 2", %{})
       assert {:error, _message} = result
+    end
+  end
+
+  describe "date literals and comparisons" do
+    test "evaluates date literals" do
+      result = Predicator.evaluate("#2024-01-15#", %{})
+      assert result == ~D[2024-01-15]
+    end
+
+    test "evaluates datetime literals" do
+      result = Predicator.evaluate("#2024-01-15T10:30:00Z#", %{})
+      expected = DateTime.from_iso8601("2024-01-15T10:30:00Z") |> elem(1)
+      assert result == expected
+    end
+
+    test "evaluates date comparisons with literals" do
+      assert Predicator.evaluate("#2024-01-15# > #2024-01-10#", %{}) == true
+      assert Predicator.evaluate("#2024-01-15# < #2024-01-10#", %{}) == false
+      assert Predicator.evaluate("#2024-01-15# >= #2024-01-15#", %{}) == true
+      assert Predicator.evaluate("#2024-01-15# <= #2024-01-15#", %{}) == true
+      assert Predicator.evaluate("#2024-01-15# = #2024-01-15#", %{}) == true
+      assert Predicator.evaluate("#2024-01-15# != #2024-01-10#", %{}) == true
+    end
+
+    test "evaluates datetime comparisons with literals" do
+      dt1 = "#2024-01-15T10:30:00Z#"
+      dt2 = "#2024-01-15T09:30:00Z#"
+      dt3 = "#2024-01-15T10:30:00Z#"
+
+      assert Predicator.evaluate("#{dt1} > #{dt2}", %{}) == true
+      assert Predicator.evaluate("#{dt1} < #{dt2}", %{}) == false
+      assert Predicator.evaluate("#{dt1} >= #{dt3}", %{}) == true
+      assert Predicator.evaluate("#{dt1} <= #{dt3}", %{}) == true
+      assert Predicator.evaluate("#{dt1} = #{dt3}", %{}) == true
+      assert Predicator.evaluate("#{dt1} != #{dt2}", %{}) == true
+    end
+
+    test "evaluates date comparisons with variables" do
+      context = %{
+        "start_date" => ~D[2024-01-15],
+        "end_date" => ~D[2024-01-20]
+      }
+
+      assert Predicator.evaluate("start_date < end_date", context) == true
+      assert Predicator.evaluate("start_date > end_date", context) == false
+      assert Predicator.evaluate("start_date <= start_date", context) == true
+      assert Predicator.evaluate("#2024-01-18# > start_date", context) == true
+      assert Predicator.evaluate("#2024-01-18# < end_date", context) == true
+    end
+
+    test "evaluates datetime comparisons with variables" do
+      {:ok, start_dt, _offset1} = DateTime.from_iso8601("2024-01-15T10:00:00Z")
+      {:ok, end_dt, _offset2} = DateTime.from_iso8601("2024-01-15T18:00:00Z")
+
+      context = %{
+        "meeting_start" => start_dt,
+        "meeting_end" => end_dt
+      }
+
+      assert Predicator.evaluate("meeting_start < meeting_end", context) == true
+      assert Predicator.evaluate("#2024-01-15T14:00:00Z# > meeting_start", context) == true
+      assert Predicator.evaluate("#2024-01-15T14:00:00Z# < meeting_end", context) == true
+    end
+
+    test "handles mixed date and datetime comparisons" do
+      # Different types should not match
+      result = Predicator.evaluate("#2024-01-15# > #2024-01-15T10:00:00Z#", %{})
+      assert result == :undefined
+    end
+
+    test "combines with logical operators" do
+      context = %{
+        "start_date" => ~D[2024-01-15],
+        "end_date" => ~D[2024-01-20],
+        "active" => true
+      }
+
+      assert Predicator.evaluate("start_date < end_date AND active", context) == true
+      assert Predicator.evaluate("start_date > end_date OR active", context) == true
+      assert Predicator.evaluate("NOT start_date > end_date", context) == true
+    end
+
+    test "works in list membership operations" do
+      dates = [~D[2024-01-15], ~D[2024-01-16], ~D[2024-01-17]]
+      context = %{"dates" => dates}
+
+      assert Predicator.evaluate("#2024-01-15# in dates", context) == true
+      assert Predicator.evaluate("#2024-01-18# in dates", context) == false
+      assert Predicator.evaluate("dates contains #2024-01-16#", context) == true
+      assert Predicator.evaluate("dates contains #2024-01-18#", context) == false
+    end
+
+    test "handles :undefined for missing date variables" do
+      assert Predicator.evaluate("missing_date > #2024-01-15#", %{}) == :undefined
+      assert Predicator.evaluate("#2024-01-15# < missing_date", %{}) == :undefined
+    end
+
+    test "parses date expressions correctly" do
+      {:ok, ast} = Predicator.parse("#2024-01-15#")
+      assert match?({:literal, %Date{}}, ast)
+
+      {:ok, ast} = Predicator.parse("#2024-01-15T10:30:00Z#")
+      assert match?({:literal, %DateTime{}}, ast)
+
+      {:ok, ast} = Predicator.parse("#2024-01-15# > #2024-01-10#")
+      assert match?({:comparison, :gt, {:literal, %Date{}}, {:literal, %Date{}}}, ast)
+    end
+
+    test "compiles date expressions correctly" do
+      {:ok, instructions} = Predicator.compile("#2024-01-15#")
+      assert [["lit", %Date{}]] = instructions
+
+      {:ok, instructions} = Predicator.compile("#2024-01-15# > #2024-01-10#")
+      assert [["lit", %Date{}], ["lit", %Date{}], ["compare", "GT"]] = instructions
+    end
+
+    test "decompiles date expressions" do
+      {:ok, ast} = Predicator.parse("#2024-01-15#")
+      assert Predicator.decompile(ast) == "#2024-01-15#"
+
+      {:ok, ast} = Predicator.parse("#2024-01-15T10:30:00Z#")
+      decompiled = Predicator.decompile(ast)
+      assert String.starts_with?(decompiled, "#2024-01-15T10:30:00")
+      assert String.ends_with?(decompiled, "#")
+
+      {:ok, ast} = Predicator.parse("#2024-01-15# > #2024-01-10#")
+      assert Predicator.decompile(ast) == "#2024-01-15# > #2024-01-10#"
+    end
+
+    test "handles error cases" do
+      # Invalid date format
+      result = Predicator.evaluate("#invalid-date#", %{})
+      assert {:error, _message} = result
+
+      # Syntax errors
+      result = Predicator.evaluate("#2024-01-15", %{})
+      assert {:error, _message} = result
+    end
+
+    test "works with complex expressions" do
+      {:ok, start_dt, _offset1} = DateTime.from_iso8601("2024-01-15T09:00:00Z")
+      {:ok, end_dt, _offset2} = DateTime.from_iso8601("2024-01-15T17:00:00Z")
+
+      context = %{
+        "event_start" => start_dt,
+        "event_end" => end_dt,
+        "published" => true,
+        "deadline" => ~D[2024-01-20]
+      }
+
+      # Complex date and boolean logic
+      result =
+        Predicator.evaluate(
+          "published AND event_start < #2024-01-15T12:00:00Z# AND deadline > #2024-01-18#",
+          context
+        )
+
+      assert result == true
+
+      result =
+        Predicator.evaluate(
+          "(event_start > #2024-01-15T10:00:00Z# OR published) AND deadline < #2024-01-19#",
+          context
+        )
+
+      assert result == false
     end
   end
 end

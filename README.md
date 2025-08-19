@@ -1,5 +1,10 @@
 # Predicator
 
+[![CI](https://github.com/riddler/predicator-ex/actions/workflows/ci.yml/badge.svg)](https://github.com/riddler/predicator-ex/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/riddler/predicator-ex/branch/master/graph/badge.svg)](https://codecov.io/gh/riddler/predicator-ex)
+[![Hex.pm Version](https://img.shields.io/hexpm/v/predicator.svg)](https://hex.pm/packages/predicator)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/predicator/)
+
 A secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. Predicator allows you to safely evaluate user-defined expressions without the security risks of dynamic code execution.
 
 ## Features
@@ -11,72 +16,115 @@ A secure, non-evaluative condition engine for processing end-user boolean predic
 - 🎨 **Flexible**: Support for literals, identifiers, comparisons, and parentheses
 - 📊 **Observable**: Detailed error reporting with line/column information
 - 🔄 **Reversible**: Convert AST back to string expressions with formatting options
+- 📅 **Date Support**: Native date and datetime literals with ISO 8601 format
+- 📋 **Lists**: List literals with membership operations (`in`, `contains`)
+- 🧠 **Smart Logic**: Logical operators with proper precedence (`AND`, `OR`, `NOT`)
 
 ## Quick Start
 
 ```elixir
 # Basic evaluation
 iex> Predicator.evaluate("score > 85", %{"score" => 92})
-{:ok, true}
+true
 
 # String comparisons  
 iex> Predicator.evaluate("name = \"Alice\"", %{"name" => "Alice"})
-{:ok, true}
+true
 
-# Complex expressions with parentheses
-iex> Predicator.evaluate("(age >= 18) = true", %{"age" => 25})
-{:ok, true}
+# Date and datetime literals
+iex> Predicator.evaluate("#2024-01-15# > #2024-01-10#", %{})
+true
 
-# Logical operators
+iex> Predicator.evaluate("created_at < #2024-01-15T10:30:00Z#", %{"created_at" => ~U[2024-01-10 09:00:00Z]})
+true
+
+# List literals and membership
+iex> Predicator.evaluate("role in [\"admin\", \"manager\"]", %{"role" => "admin"})
+true
+
+iex> Predicator.evaluate("[1, 2, 3] contains 2", %{})
+true
+
+# Logical operators with proper precedence
 iex> Predicator.evaluate("score > 85 AND age >= 18", %{"score" => 92, "age" => 25})
-{:ok, true}
+true
 
 iex> Predicator.evaluate("role = \"admin\" OR role = \"manager\"", %{"role" => "admin"})  
-{:ok, true}
+true
 
-iex> Predicator.evaluate("NOT expired = true", %{"expired" => false})
-{:ok, true}
+iex> Predicator.evaluate("NOT expired AND active", %{"expired" => false, "active" => true})
+true
 
-# Compile once, evaluate many times
-iex> {:ok, instructions} = Predicator.compile("score > threshold")
-iex> Predicator.evaluate(instructions, %{"score" => 95, "threshold" => 80})
-{:ok, true}
+# Complex expressions with parentheses
+iex> Predicator.evaluate("(score > 85 OR admin) AND active", %{"score" => 80, "admin" => true, "active" => true})
+true
 
-# Decompile AST back to expressions
-iex> {:ok, ast} = Predicator.parse("score > 85")
+# Compile once, evaluate many times for performance
+iex> {:ok, instructions} = Predicator.compile("score > threshold AND active")
+iex> Predicator.evaluate(instructions, %{"score" => 95, "threshold" => 80, "active" => true})
+true
+
+# Round-trip: parse and decompile expressions
+iex> {:ok, ast} = Predicator.parse("score > 85 AND #2024-01-15# in dates")
 iex> Predicator.decompile(ast)
-"score > 85"
+"score > 85 AND #2024-01-15# IN dates"
 ```
 
 ## Supported Operations
 
+### Comparison Operators
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `>`      | Greater than | `score > 85` |
-| `<`      | Less than | `age < 30` |
+| `>`      | Greater than | `score > 85`, `#2024-01-15# > #2024-01-10#` |
+| `<`      | Less than | `age < 30`, `created_at < #2024-01-15T10:00:00Z#` |
 | `>=`     | Greater than or equal | `points >= 100` |
 | `<=`     | Less than or equal | `count <= 5` |
-| `=`      | Equal | `status = "active"` |
+| `=`      | Equal | `status = "active"`, `date = #2024-01-15#` |
 | `!=`     | Not equal | `role != "guest"` |
-| `AND`    | Logical AND | `score > 85 AND age >= 18` |
-| `OR`     | Logical OR | `role = "admin" OR role = "manager"` |
-| `NOT`    | Logical NOT | `NOT expired = true` |
+
+### Logical Operators
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `AND`    | Logical AND (case-insensitive) | `score > 85 AND age >= 18` |
+| `OR`     | Logical OR (case-insensitive) | `role = "admin" OR role = "manager"` |
+| `NOT`    | Logical NOT (case-insensitive) | `NOT expired` |
+
+### Membership Operators
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `in`     | Element in collection | `role in ["admin", "manager"]` |
+| `contains` | Collection contains element | `[1, 2, 3] contains 2` |
 
 ## Data Types
 
-- **Numbers**: `42`, `3.14` (parsed as integers or floats)
-- **Strings**: `"hello"`, `"world"` (double-quoted)
-- **Booleans**: `true`, `false`
-- **Identifiers**: `score`, `user_name`, `is_active`
+- **Numbers**: `42`, `-17` (integers)
+- **Strings**: `"hello"`, `"world"` (double-quoted with escape sequences)
+- **Booleans**: `true`, `false` (or plain identifiers like `active`, `expired`)
+- **Dates**: `#2024-01-15#` (ISO 8601 date format)
+- **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with timezone)
+- **Lists**: `[1, 2, 3]`, `["admin", "manager"]` (homogeneous collections)
+- **Identifiers**: `score`, `user_name`, `is_active` (variable references)
 
 ## Architecture
 
 Predicator uses a multi-stage compilation pipeline:
 
 ```
-Expression String → Lexer → Parser → Compiler → Instructions
-     ↓              ↓        ↓         ↓           ↓
-"score > 85 AND age >= 18" → Tokens → AST → Instructions → Evaluation
+Expression String → Lexer → Parser → Compiler → Instructions → Evaluator
+     ↓              ↓        ↓         ↓           ↓            ↓
+"score > 85 AND #2024-01-15# in dates" → Tokens → AST → Instructions → Result
+```
+
+### Grammar
+
+```ebnf
+expression   → logical_or
+logical_or   → logical_and ( ("OR" | "or") logical_and )*
+logical_and  → logical_not ( ("AND" | "and") logical_not )*
+logical_not  → ("NOT" | "not") logical_not | comparison
+comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
+primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | "(" expression ")"
+list         → "[" ( expression ( "," expression )* )? "]"
 ```
 
 ### Core Components
@@ -158,7 +206,13 @@ mix dialyzer           # Type checking
 
 ### Test Coverage
 
-Current coverage: **93.7%** overall, **96.2%** on core components.
+Current coverage: **92.6%** overall with comprehensive testing across all components:
+
+- **Lexer**: 100% (including date/datetime tokenization)
+- **Types**: 100% (including date type checking)  
+- **Evaluator**: 90.1% (all operations and error conditions)
+- **Parser**: 86.8% (complex expressions and edge cases)
+- **StringVisitor**: 94.8% (formatting and decompilation)
 
 ```bash
 mix test.coverage.html  # Generate HTML coverage report

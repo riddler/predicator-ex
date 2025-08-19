@@ -14,9 +14,11 @@ defmodule Predicator.Types do
   - `integer()` - numeric values  
   - `binary()` - string values
   - `list()` - lists of values
+  - `Date.t()` - date values
+  - `DateTime.t()` - datetime values
   - `:undefined` - represents undefined/null values
   """
-  @type value :: boolean() | integer() | binary() | list() | :undefined
+  @type value :: boolean() | integer() | binary() | list() | Date.t() | DateTime.t() | :undefined
 
   @typedoc """
   The evaluation context containing variable bindings.
@@ -112,6 +114,8 @@ defmodule Predicator.Types do
   - booleans  
   - binaries (strings)
   - lists
+  - dates
+  - datetimes
 
   ## Examples
 
@@ -129,5 +133,7 @@ defmodule Predicator.Types do
   def types_match?(a, b) when is_boolean(a) and is_boolean(b), do: true
   def types_match?(a, b) when is_binary(a) and is_binary(b), do: true
   def types_match?(a, b) when is_list(a) and is_list(b), do: true
+  def types_match?(%Date{} = _a, %Date{} = _b), do: true
+  def types_match?(%DateTime{} = _a, %DateTime{} = _b), do: true
   def types_match?(_a, _b), do: false
 end

@@ -86,7 +86,7 @@ defmodule Predicator do
 
       # Parse errors are returned  
       iex> Predicator.evaluate("score >", %{})
-      {:error, "Expected number, string, boolean, identifier, list, or '(' but found end of input at line 1, column 8"}
+      {:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input at line 1, column 8"}
   """
   @spec evaluate(binary() | Types.instruction_list(), Types.context()) :: Types.result()
   def evaluate(input, context \\ %{})
@@ -153,7 +153,7 @@ defmodule Predicator do
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
       iex> Predicator.compile("score >")
-      {:error, "Expected number, string, boolean, identifier, list, or '(' but found end of input at line 1, column 8"}
+      {:error, "Expected number, string, boolean, date, datetime, identifier, list, or '(' but found end of input at line 1, column 8"}
   """
   @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile(expression) when is_binary(expression) do

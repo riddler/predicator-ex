@@ -87,6 +87,14 @@ defmodule Predicator.StringVisitor do
     "[#{Enum.join(items, ", ")}]"
   end
 
+  def visit({:literal, %Date{} = value}, _opts) do
+    "##{Date.to_iso8601(value)}#"
+  end
+
+  def visit({:literal, %DateTime{} = value}, _opts) do
+    "##{DateTime.to_iso8601(value)}#"
+  end
+
   def visit({:identifier, name}, _opts) when is_binary(name) do
     name
   end
