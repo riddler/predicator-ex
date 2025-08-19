@@ -419,7 +419,7 @@ defmodule Predicator.LexerTest do
     end
 
     test "returns error with correct position" do
-      assert {:error, "Unexpected character '#'", 1, 9} = Lexer.tokenize("score > #")
+      assert {:error, "Unterminated date literal", 1, 9} = Lexer.tokenize("score > #")
     end
 
     test "returns error on multiline with correct position" do
@@ -447,6 +447,114 @@ defmodule Predicator.LexerTest do
       assert tokens == [
                {:eof, 2, 4, 0, nil}
              ]
+    end
+  end
+
+  describe "date literal tokenization" do
+    test "tokenizes valid date literals" do
+      assert {:ok,
+              [
+                {:date, 1, 1, 12, ~D[2024-01-15]},
+                {:eof, 1, 13, 0, nil}
+              ]} = Lexer.tokenize("#2024-01-15#")
+    end
+
+    test "tokenizes valid datetime literals" do
+      input = "#2024-01-15T10:30:00Z#"
+      {:ok, tokens} = Lexer.tokenize(input)
+
+      assert [
+               {:datetime, 1, 1, 22, %DateTime{}},
+               {:eof, 1, 23, 0, nil}
+             ] = tokens
+    end
+
+    test "handles date with comparison" do
+      input = "#2024-01-15# > #2024-01-10#"
+
+      assert {:ok,
+              [
+                {:date, 1, 1, 12, ~D[2024-01-15]},
+                {:gt, 1, 14, 1, ">"},
+                {:date, 1, 16, 12, ~D[2024-01-10]},
+                {:eof, 1, 28, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "returns error for invalid date format" do
+      assert {:error, "Invalid date format: not-a-date", 1, 1} = Lexer.tokenize("#not-a-date#")
+    end
+
+    test "returns error for invalid datetime format" do
+      assert {:error, "Invalid datetime format: 2024-01-15T25:00:00Z", 1, 1} =
+               Lexer.tokenize("#2024-01-15T25:00:00Z#")
+    end
+
+    test "returns error for unterminated date literal" do
+      assert {:error, "Unterminated date literal", 1, 1} = Lexer.tokenize("#2024-01-15")
+      assert {:error, "Unterminated date literal", 1, 9} = Lexer.tokenize("score > #")
+    end
+  end
+
+  describe "additional edge cases for coverage" do
+    test "handles carriage return characters" do
+      input = "score > 85\r\nAND age >= 18"
+      {:ok, tokens} = Lexer.tokenize(input)
+
+      # Should handle \r properly and continue on next line
+      # identifier, gt, integer, and_op, identifier, gte, integer, eof
+      assert length(tokens) == 8
+      assert {:and_op, 2, 1, 3, "AND"} = Enum.at(tokens, 3)
+    end
+
+    test "handles escaped characters in strings" do
+      input = ~s("Hello \\\"World\\\" with \\n newline")
+
+      assert {:ok,
+              [
+                {:string, 1, 1, 33, "Hello \"World\" with \n newline"},
+                {:eof, 1, 34, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "handles all escape sequences" do
+      input = ~s("Test \\t\\r\\n\\\\ sequences")
+
+      assert {:ok,
+              [
+                {:string, 1, 1, 25, "Test \t\r\n\\ sequences"},
+                {:eof, 1, 26, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "handles unknown escape sequences as literal characters" do
+      input = ~s("Unknown \\x escape")
+
+      assert {:ok,
+              [
+                {:string, 1, 1, 19, "Unknown x escape"},
+                {:eof, 1, 20, 0, nil}
+              ]} = Lexer.tokenize(input)
+    end
+
+    test "tokenizes numbers at start of input" do
+      assert {:ok,
+              [
+                {:integer, 1, 1, 3, 123},
+                {:eof, 1, 4, 0, nil}
+              ]} = Lexer.tokenize("123")
+    end
+
+    test "handles identifiers with numbers and underscores" do
+      input = "test_var_123 = value_2"
+
+      assert {:ok,
+              [
+                {:identifier, 1, 1, 12, "test_var_123"},
+                {:eq, 1, 14, 1, "="},
+                {:identifier, 1, 16, 7, "value_2"},
+                {:eof, 1, 23, 0, nil}
+              ]} = Lexer.tokenize(input)
     end
   end
 end

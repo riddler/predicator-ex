@@ -4,7 +4,7 @@ This document provides context for Claude Code when working on the Predicator pr
 
 ## Project Overview
 
-Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports comparison operators (>, <, >=, <=, =, !=) and logical operators (AND, OR, NOT) with proper precedence.
+Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT) with proper precedence, date/datetime literals, list literals, and membership operators (in, contains).
 
 ## Architecture
 
@@ -18,11 +18,12 @@ Expression String → Lexer → Parser → Compiler → Instructions → Evaluat
 
 ```
 expression   → logical_or
-logical_or   → logical_and ( "OR" logical_and )*
-logical_and  → logical_not ( "AND" logical_not )*
-logical_not  → "NOT" logical_not | comparison
-comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" ) primary )?
-primary      → NUMBER | STRING | BOOLEAN | IDENTIFIER | "(" expression ")"
+logical_or   → logical_and ( ("OR" | "or") logical_and )*
+logical_and  → logical_not ( ("AND" | "and") logical_not )*
+logical_not  → ("NOT" | "not") logical_not | comparison
+comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
+primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | "(" expression ")"
+list         → "[" ( expression ( "," expression )* )? "]"
 ```
 
 ### Core Components
@@ -54,9 +55,13 @@ mix dialyzer              # Type checking
 ```
 
 ### Coverage Stats
-- **Overall**: 93.7%
-- **StringVisitor**: 96.2% 
-- **Target**: >90% for all components
+- **Overall**: 92.6%
+- **Lexer**: 100% (date/datetime tokenization)
+- **Types**: 100% (date type checking)
+- **Evaluator**: 90.1% (all operations and errors)
+- **Parser**: 86.8% (complex expressions) 
+- **StringVisitor**: 94.8% (formatting)
+- **Target**: >90% for all components ✅
 
 ## Key Design Decisions
 
@@ -102,6 +107,25 @@ test/predicator/
 └── predicator_test.exs  # Integration tests
 ```
 
+## Recent Additions (2025)
+
+### Date and DateTime Support
+- **Syntax**: `#2024-01-15#` (date), `#2024-01-15T10:30:00Z#` (datetime)
+- **Lexer**: Added date tokenization with ISO 8601 parsing
+- **Parser**: Extended AST to support date literals
+- **Evaluator**: Date/datetime comparisons and membership operations
+- **StringVisitor**: Round-trip formatting `#date#` syntax
+
+### List Literals and Membership
+- **Syntax**: `[1, 2, 3]`, `["admin", "manager"]`
+- **Operators**: `in` (element in list), `contains` (list contains element)
+- **Examples**: `role in ["admin", "manager"]`, `[1, 2, 3] contains 2`
+
+### Logical Operator Enhancements
+- **Case-insensitive**: Both `AND`/`and`, `OR`/`or`, `NOT`/`not` supported
+- **Pattern matching**: Refactored evaluator and parser to use pattern matching over case statements
+- **Plain boolean expressions**: Support for `active`, `expired` without `= true`
+
 ## Common Tasks
 
 ### Adding New Operators
@@ -114,12 +138,12 @@ test/predicator/
 7. Add comprehensive tests
 
 ### Adding New Data Types
-1. Update lexer tokenization
-2. Update parser grammar  
-3. Update type specifications
-4. Add evaluation support
-5. Add string visitor support
-6. Add tests for all components
+1. Update lexer tokenization (see date implementation)
+2. Update parser grammar and AST types
+3. Update type specifications in `types.ex`
+4. Add evaluation support with type checking
+5. Add string visitor formatting support
+6. Add tests for all pipeline components
 
 ### Debugging Issues
 - Use `mix test --trace` for detailed test output
@@ -134,6 +158,8 @@ test/predicator/
 - **Property Testing**: Comprehensive input validation
 - **Error Path Testing**: All error conditions covered
 - **Round-trip Testing**: AST → String → AST consistency
+- **Current Test Count**: 428 tests (64 doctests + 364 regular tests)
+- **Coverage**: 92.6% overall, 100% on critical components
 
 ## Code Standards
 

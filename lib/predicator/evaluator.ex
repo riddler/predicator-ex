@@ -42,7 +42,7 @@ defmodule Predicator.Evaluator do
       iex> Predicator.Evaluator.evaluate([["load", "missing"]], %{})
       :undefined
   """
-  @spec evaluate(Types.instruction_list(), Types.context()) :: Types.result()
+  @spec evaluate(Types.instruction_list(), Types.context()) :: Types.internal_result()
   def evaluate(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
     evaluator = %__MODULE__{
       instructions: instructions,
@@ -78,7 +78,7 @@ defmodule Predicator.Evaluator do
       # This would raise an exception:
       # Predicator.Evaluator.evaluate!([["unknown_op"]], %{})
   """
-  @spec evaluate!(Types.instruction_list(), Types.context()) :: boolean() | :undefined
+  @spec evaluate!(Types.instruction_list(), Types.context()) :: Types.value()
   def evaluate!(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
     case evaluate(instructions, context) do
       {:error, reason} -> raise "Evaluation failed: #{reason}"
@@ -215,7 +215,9 @@ defmodule Predicator.Evaluator do
            when (is_integer(a) and is_integer(b)) or
                   (is_boolean(a) and is_boolean(b)) or
                   (is_binary(a) and is_binary(b)) or
-                  (is_list(a) and is_list(b))
+                  (is_list(a) and is_list(b)) or
+                  (is_struct(a, Date) and is_struct(b, Date)) or
+                  (is_struct(a, DateTime) and is_struct(b, DateTime))
 
   @spec compare_values(Types.value(), Types.value(), binary()) :: Types.value()
   defp compare_values(:undefined, _right, _operator), do: :undefined

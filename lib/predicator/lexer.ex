@@ -39,6 +39,8 @@ defmodule Predicator.Lexer do
           | {:integer, pos_integer(), pos_integer(), pos_integer(), integer()}
           | {:string, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:boolean, pos_integer(), pos_integer(), pos_integer(), boolean()}
+          | {:date, pos_integer(), pos_integer(), pos_integer(), Date.t()}
+          | {:datetime, pos_integer(), pos_integer(), pos_integer(), DateTime.t()}
           | {:gt, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:lt, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:gte, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -50,6 +52,11 @@ defmodule Predicator.Lexer do
           | {:not_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:lparen, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:rparen, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:lbracket, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:rbracket, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:comma, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:in_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:contains_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:eof, pos_integer(), pos_integer(), pos_integer(), nil}
 
   @typedoc """
@@ -233,6 +240,18 @@ defmodule Predicator.Lexer do
             {:error, message, line, col}
         end
 
+      # Date literals
+      ?# ->
+        case take_date(rest, "", 1) do
+          {:ok, date_value, remaining, consumed, token_type} ->
+            # +1 for opening #
+            token = {token_type, line, col, consumed + 1, date_value}
+            tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
+
+          {:error, message} ->
+            {:error, message, line, col}
+        end
+
       # Unknown character
       _char ->
         {:error, "Unexpected character '#{[char]}'", line, col}
@@ -308,5 +327,42 @@ defmodule Predicator.Lexer do
 
   defp take_string([c | rest], acc, count) do
     take_string(rest, acc <> <<c>>, count + 1)
+  end
+
+  @spec take_date(charlist(), binary(), pos_integer()) ::
+          {:ok, Date.t() | DateTime.t(), charlist(), pos_integer(), :date | :datetime}
+          | {:error, binary()}
+  defp take_date([], _acc, _count), do: {:error, "Unterminated date literal"}
+
+  defp take_date([?# | rest], acc, count) do
+    case parse_date_content(acc) do
+      {:ok, date_value, token_type} ->
+        {:ok, date_value, rest, count, token_type}
+
+      {:error, message} ->
+        {:error, message}
+    end
+  end
+
+  defp take_date([c | rest], acc, count) do
+    take_date(rest, acc <> <<c>>, count + 1)
+  end
+
+  @spec parse_date_content(binary()) ::
+          {:ok, Date.t() | DateTime.t(), :date | :datetime} | {:error, binary()}
+  defp parse_date_content(content) do
+    if String.contains?(content, "T") do
+      # Check for DateTime first (contains T)
+      case DateTime.from_iso8601(content) do
+        {:ok, datetime, _offset} -> {:ok, datetime, :datetime}
+        {:error, _reason} -> {:error, "Invalid datetime format: #{content}"}
+      end
+    else
+      # Try Date format
+      case Date.from_iso8601(content) do
+        {:ok, date} -> {:ok, date, :date}
+        {:error, _reason} -> {:error, "Invalid date format: #{content}"}
+      end
+    end
   end
 end

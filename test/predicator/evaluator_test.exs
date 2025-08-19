@@ -376,4 +376,171 @@ defmodule Predicator.EvaluatorTest do
       assert Evaluator.evaluate(instructions, context) == false
     end
   end
+
+  describe "date and datetime evaluation" do
+    test "evaluates date comparisons" do
+      date1 = ~D[2024-01-15]
+      date2 = ~D[2024-01-20]
+
+      # Date GT
+      instructions = [["lit", date2], ["lit", date1], ["compare", "GT"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      # Date LT
+      instructions = [["lit", date1], ["lit", date2], ["compare", "LT"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      # Date EQ
+      instructions = [["lit", date1], ["lit", date1], ["compare", "EQ"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      # Date NE
+      instructions = [["lit", date1], ["lit", date2], ["compare", "NE"]]
+      assert Evaluator.evaluate(instructions) == true
+    end
+
+    test "evaluates datetime comparisons" do
+      {:ok, dt1, _offset1} = DateTime.from_iso8601("2024-01-15T10:00:00Z")
+      {:ok, dt2, _offset2} = DateTime.from_iso8601("2024-01-15T15:00:00Z")
+
+      # DateTime GT
+      instructions = [["lit", dt2], ["lit", dt1], ["compare", "GT"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      # DateTime GTE (equal)
+      instructions = [["lit", dt1], ["lit", dt1], ["compare", "GTE"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      # DateTime LTE
+      instructions = [["lit", dt1], ["lit", dt2], ["compare", "LTE"]]
+      assert Evaluator.evaluate(instructions) == true
+    end
+
+    test "date and datetime membership operations" do
+      dates = [~D[2024-01-15], ~D[2024-01-16]]
+      {:ok, dt1, _offset1} = DateTime.from_iso8601("2024-01-15T10:00:00Z")
+      {:ok, dt2, _offset2} = DateTime.from_iso8601("2024-01-15T15:00:00Z")
+      datetimes = [dt1, dt2]
+
+      # Date IN list
+      instructions = [["lit", ~D[2024-01-15]], ["lit", dates], ["in"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      # Date NOT IN list
+      instructions = [["lit", ~D[2024-01-17]], ["lit", dates], ["in"]]
+      assert Evaluator.evaluate(instructions) == false
+
+      # DateTime CONTAINS
+      instructions = [["lit", datetimes], ["lit", dt1], ["contains"]]
+      assert Evaluator.evaluate(instructions) == true
+
+      # DateTime NOT CONTAINS
+      {:ok, dt3, _offset3} = DateTime.from_iso8601("2024-01-20T10:00:00Z")
+      instructions = [["lit", datetimes], ["lit", dt3], ["contains"]]
+      assert Evaluator.evaluate(instructions) == false
+    end
+  end
+
+  describe "error handling edge cases" do
+    test "handles unknown instruction gracefully" do
+      instructions = [["unknown_instruction", "arg"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "Unknown instruction"
+    end
+
+    test "handles comparison with insufficient stack values" do
+      # Only one value on stack
+      instructions = [["lit", 42], ["compare", "GT"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "Comparison requires two values on stack, got: 1"
+    end
+
+    test "handles logical operations with insufficient stack values" do
+      # AND with only one value
+      instructions = [["lit", true], ["and"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "Logical AND requires two values on stack, got: 1"
+
+      # OR with only one value
+      instructions = [["lit", false], ["or"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "Logical OR requires two values on stack, got: 1"
+
+      # NOT with no values
+      instructions = [["not"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "Logical NOT requires one value on stack, got: 0"
+    end
+
+    test "handles membership operations with insufficient stack values" do
+      # IN with only one value
+      instructions = [["lit", 1], ["in"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "IN requires two values on stack, got: 1"
+
+      # CONTAINS with only one value
+      instructions = [["lit", [1, 2]], ["contains"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "CONTAINS requires two values on stack, got: 1"
+    end
+
+    test "handles type mismatches in logical operations" do
+      # AND with non-boolean values
+      instructions = [["lit", 1], ["lit", "hello"], ["and"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "Logical AND requires two boolean values"
+
+      # OR with non-boolean values
+      instructions = [["lit", 42], ["lit", true], ["or"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "Logical OR requires two boolean values"
+
+      # NOT with non-boolean value
+      instructions = [["lit", "not_boolean"], ["not"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "Logical NOT requires a boolean value"
+    end
+
+    test "handles invalid membership operations" do
+      # IN with non-list on right side
+      instructions = [["lit", 1], ["lit", "not_a_list"], ["in"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "IN operator requires a list on the right side"
+
+      # CONTAINS with non-list on left side
+      instructions = [["lit", "not_a_list"], ["lit", 1], ["contains"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, message} = result
+      assert message =~ "CONTAINS operator requires a list on the left side"
+    end
+
+    test "handles atom key lookup in context" do
+      # Test loading from context with atom keys
+      instructions = [["load", "score"]]
+      # atom key
+      context = %{score: 85}
+      assert Evaluator.evaluate(instructions, context) == 85
+
+      # Test when both string and atom keys exist (string takes precedence)
+      instructions = [["load", "name"]]
+      context = %{"name" => "string_key", name: "atom_key"}
+      assert Evaluator.evaluate(instructions, context) == "string_key"
+
+      # Test loading non-existent key that can't be converted to atom
+      instructions = [["load", "very_long_key_that_does_not_exist_anywhere"]]
+      context = %{}
+      assert Evaluator.evaluate(instructions, context) == :undefined
+    end
+  end
 end
