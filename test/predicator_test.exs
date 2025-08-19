@@ -248,6 +248,64 @@ defmodule PredicatorTest do
     end
   end
 
+  describe "decompile/2" do
+    test "converts AST back to string" do
+      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      result = Predicator.decompile(ast)
+
+      assert result == "score > 85"
+    end
+
+    test "converts literal AST" do
+      ast = {:literal, 42}
+      result = Predicator.decompile(ast)
+
+      assert result == "42"
+    end
+
+    test "converts identifier AST" do
+      ast = {:identifier, "name"}
+      result = Predicator.decompile(ast)
+
+      assert result == "name"
+    end
+
+    test "works with formatting options" do
+      ast = {:comparison, :eq, {:identifier, "active"}, {:literal, true}}
+
+      # Test spacing options
+      assert Predicator.decompile(ast, spacing: :normal) == "active = true"
+      assert Predicator.decompile(ast, spacing: :compact) == "active=true"
+      assert Predicator.decompile(ast, spacing: :verbose) == "active  =  true"
+
+      # Test parentheses options
+      assert Predicator.decompile(ast, parentheses: :minimal) == "active = true"
+      assert Predicator.decompile(ast, parentheses: :explicit) == "(active = true)"
+      assert Predicator.decompile(ast, parentheses: :none) == "active = true"
+    end
+
+    test "handles string literals correctly" do
+      ast = {:comparison, :ne, {:identifier, "name"}, {:literal, "test"}}
+      result = Predicator.decompile(ast)
+
+      assert result == ~s(name != "test")
+    end
+
+    test "round-trip with compile" do
+      # Test compile -> decompile round trip
+      original = "score >= 75"
+      {:ok, _instructions} = Predicator.compile(original)
+
+      # We can't directly get AST from instructions, but we can test with parser
+      alias Predicator.{Lexer, Parser}
+      {:ok, tokens} = Lexer.tokenize(original)
+      {:ok, ast} = Parser.parse(tokens)
+
+      decompiled = Predicator.decompile(ast)
+      assert decompiled == original
+    end
+  end
+
   describe "edge cases" do
     test "empty context works with literals" do
       result = Predicator.evaluate("5 > 3", %{})

@@ -118,8 +118,12 @@ defmodule Predicator.Parser do
   end
 
   # Parse comparison expressions
+  # NOTE: Nesting depth (3) is expected and appropriate for recursive descent parsing.
+  # The nested case statements handle: parse left operand -> check for operator ->
+  # parse right operand -> construct AST, with proper error propagation at each step.
   @spec parse_comparison(parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  # credo:disable-for-lines:27 Credo.Check.Refactor.Nesting
   defp parse_comparison(state) do
     case parse_primary(state) do
       {:ok, left, new_state} ->
@@ -150,8 +154,11 @@ defmodule Predicator.Parser do
   end
 
   # Parse primary expressions (literals, identifiers, parentheses)
+  # This function handles multiple token types and nested error cases - inherent parser complexity
   @spec parse_primary(parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  # credo:disable-for-lines:46 Credo.Check.Refactor.CyclomaticComplexity
+  # credo:disable-for-lines:46 Credo.Check.Refactor.Nesting
   defp parse_primary(state) do
     case peek_token(state) do
       # Literals

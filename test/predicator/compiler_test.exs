@@ -94,4 +94,122 @@ defmodule Predicator.CompilerTest do
              ]
     end
   end
+
+  describe "to_string/2" do
+    test "converts literal to string" do
+      ast = {:literal, 42}
+      result = Compiler.to_string(ast)
+
+      assert result == "42"
+    end
+
+    test "converts identifier to string" do
+      ast = {:identifier, "score"}
+      result = Compiler.to_string(ast)
+
+      assert result == "score"
+    end
+
+    test "converts comparison to string" do
+      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      result = Compiler.to_string(ast)
+
+      assert result == "score > 85"
+    end
+
+    test "works with all comparison operators" do
+      operators_map = %{
+        :gt => ">",
+        :lt => "<",
+        :gte => ">=",
+        :lte => "<=",
+        :eq => "=",
+        :ne => "!="
+      }
+
+      for {ast_op, string_op} <- operators_map do
+        ast = {:comparison, ast_op, {:identifier, "x"}, {:literal, 5}}
+        result = Compiler.to_string(ast)
+
+        assert result == "x #{string_op} 5"
+      end
+    end
+
+    test "converts with formatting options" do
+      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+
+      # Test different spacing
+      assert Compiler.to_string(ast, spacing: :normal) == "score > 85"
+      assert Compiler.to_string(ast, spacing: :compact) == "score>85"
+      assert Compiler.to_string(ast, spacing: :verbose) == "score  >  85"
+
+      # Test different parentheses
+      assert Compiler.to_string(ast, parentheses: :minimal) == "score > 85"
+      assert Compiler.to_string(ast, parentheses: :explicit) == "(score > 85)"
+      assert Compiler.to_string(ast, parentheses: :none) == "score > 85"
+    end
+
+    test "converts string literals correctly" do
+      ast = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
+      result = Compiler.to_string(ast)
+
+      assert result == ~s(name = "John")
+    end
+
+    test "converts boolean literals correctly" do
+      ast = {:comparison, :ne, {:identifier, "active"}, {:literal, true}}
+      result = Compiler.to_string(ast)
+
+      assert result == "active != true"
+    end
+
+    test "converts with opts parameter" do
+      ast = {:literal, 42}
+      result = Compiler.to_string(ast, spacing: :compact)
+
+      assert result == "42"
+    end
+  end
+
+  describe "round-trip compilation" do
+    test "string -> AST -> string produces equivalent result" do
+      alias Predicator.{Lexer, Parser}
+
+      original_expressions = [
+        "score > 85",
+        "age >= 18",
+        ~s(name = "John"),
+        "active != true",
+        "count <= 100",
+        "status = \"active\""
+      ]
+
+      for original <- original_expressions do
+        {:ok, tokens} = Lexer.tokenize(original)
+        {:ok, ast} = Parser.parse(tokens)
+
+        # Convert back to string
+        result = Compiler.to_string(ast)
+
+        # Should be equivalent (may have normalized spacing)
+        assert result == original, "Round-trip failed for: #{original}"
+      end
+    end
+
+    test "AST -> instructions -> evaluation works with string representation" do
+      alias Predicator.Evaluator
+
+      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      context = %{"score" => 90}
+
+      # Convert to instructions and evaluate
+      instructions = Compiler.to_instructions(ast)
+      result = Evaluator.evaluate!(instructions, context)
+      assert result == true
+
+      # Convert to string for debugging/display
+      string_repr = Compiler.to_string(ast)
+      assert string_repr == "score > 85"
+    end
+  end
 end

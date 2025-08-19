@@ -254,7 +254,7 @@ defmodule Predicator.ParserTest do
         {:identifier, 1, 2, 5, "score"}
         # Note: no closing paren and no EOF token to test nil case
       ]
-      
+
       result = Parser.parse(tokens)
       assert {:error, "Expected ')' but reached end of input", 1, 1} = result
     end
@@ -262,7 +262,7 @@ defmodule Predicator.ParserTest do
     test "handles nested error propagation from inner expressions" do
       # Test error propagation through parentheses
       {:ok, tokens} = Lexer.tokenize("(score > )")
-      
+
       result = Parser.parse(tokens)
       assert {:error, message, 1, 10} = result
       assert message =~ "Expected number, string, boolean, identifier, or '(' but found ')'"
@@ -274,9 +274,12 @@ defmodule Predicator.ParserTest do
         {:gt, 1, 7, 1, ">"},
         {:eof, 1, 8, 0, nil}
       ]
-      
+
       result = Parser.parse(tokens)
-      assert {:error, "Expected number, string, boolean, identifier, or '(' but found end of input", 1, 8} = result
+
+      assert {:error,
+              "Expected number, string, boolean, identifier, or '(' but found end of input", 1,
+              8} = result
     end
 
     test "handles unexpected token types in primary position" do
@@ -293,7 +296,7 @@ defmodule Predicator.ParserTest do
       for {token_types, expected_message} <- test_cases do
         [token_type] = token_types
         tokens = [{token_type, 1, 1, 1, to_string(token_type)}, {:eof, 1, 2, 0, nil}]
-        
+
         result = Parser.parse(tokens)
         assert {:error, ^expected_message, 1, 1} = result
       end
@@ -301,7 +304,7 @@ defmodule Predicator.ParserTest do
 
     test "format_token function handles all token types correctly" do
       # Test various invalid token placements to ensure format_token is exercised
-      
+
       # Test operators in primary position (should be rejected)
       operator_tokens = [
         {:gt, 1, 1, 1, ">"},
@@ -317,13 +320,13 @@ defmodule Predicator.ParserTest do
         result = Parser.parse(tokens)
         assert {:error, _message, 1, 1} = result
       end
-      
+
       # Test parentheses and other tokens in wrong positions
       other_tokens = [
         {:rparen, 1, 1, 1, ")"},
         {:eof, 1, 1, 0, nil}
       ]
-      
+
       for token <- other_tokens do
         tokens = [token, {:eof, 1, 3, 0, nil}]
         result = Parser.parse(tokens)
@@ -336,9 +339,11 @@ defmodule Predicator.ParserTest do
         {:rparen, 1, 1, 1, ")"},
         {:eof, 1, 2, 0, nil}
       ]
-      
+
       result = Parser.parse(tokens)
-      assert {:error, "Expected number, string, boolean, identifier, or '(' but found ')'", 1, 1} = result
+
+      assert {:error, "Expected number, string, boolean, identifier, or '(' but found ')'", 1, 1} =
+               result
     end
 
     test "handles empty expression inside parentheses" do
@@ -347,9 +352,11 @@ defmodule Predicator.ParserTest do
         {:rparen, 1, 2, 1, ")"},
         {:eof, 1, 3, 0, nil}
       ]
-      
+
       result = Parser.parse(tokens)
-      assert {:error, "Expected number, string, boolean, identifier, or '(' but found ')'", 1, 2} = result
+
+      assert {:error, "Expected number, string, boolean, identifier, or '(' but found ')'", 1, 2} =
+               result
     end
   end
 end

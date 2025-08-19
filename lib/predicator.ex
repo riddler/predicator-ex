@@ -167,6 +167,43 @@ defmodule Predicator do
   end
 
   @doc """
+  Converts an AST back to a string representation.
+
+  This function takes an Abstract Syntax Tree and generates a readable string
+  representation. This is useful for debugging, displaying expressions to users,
+  and documentation purposes.
+
+  ## Parameters
+
+  - `ast` - The Abstract Syntax Tree to convert
+  - `opts` - Optional formatting options:
+    - `:parentheses` - `:minimal` (default) | `:explicit` | `:none`
+    - `:spacing` - `:normal` (default) | `:compact` | `:verbose`
+
+  ## Returns
+
+  String representation of the AST
+
+  ## Examples
+
+      iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      iex> Predicator.decompile(ast)
+      "score > 85"
+
+      iex> ast = {:literal, 42}
+      iex> Predicator.decompile(ast)
+      "42"
+
+      iex> ast = {:comparison, :eq, {:identifier, "active"}, {:literal, true}}
+      iex> Predicator.decompile(ast, parentheses: :explicit, spacing: :verbose)
+      "(active  =  true)"
+  """
+  @spec decompile(Parser.ast(), keyword()) :: binary()
+  def decompile(ast, opts \\ []) do
+    Compiler.to_string(ast, opts)
+  end
+
+  @doc """
   Compiles a string expression to instruction list, raising on errors.
 
   Similar to `compile/1` but raises an exception for parse errors.

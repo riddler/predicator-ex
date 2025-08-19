@@ -19,7 +19,7 @@ defmodule Predicator.Compiler do
       # "digraph {...}"
   """
 
-  alias Predicator.{InstructionsVisitor, Parser, Visitor}
+  alias Predicator.{InstructionsVisitor, Parser, StringVisitor, Visitor}
 
   @doc """
   Converts an AST to stack machine instructions.
@@ -49,5 +49,42 @@ defmodule Predicator.Compiler do
   @spec to_instructions(Parser.ast(), keyword()) :: [[binary() | term()]]
   def to_instructions(ast, opts \\ []) do
     Visitor.accept(ast, InstructionsVisitor, opts)
+  end
+
+  @doc """
+  Converts an AST to a string representation.
+
+  Uses the StringVisitor to generate a readable string representation
+  of the Abstract Syntax Tree. This is useful for debugging, documentation,
+  and displaying expressions to users.
+
+  ## Parameters
+
+  - `ast` - The Abstract Syntax Tree to convert
+  - `opts` - Optional formatting options:
+    - `:parentheses` - `:minimal` (default) | `:explicit` | `:none`
+    - `:spacing` - `:normal` (default) | `:compact` | `:verbose`
+
+  ## Returns
+
+  String representation of the AST
+
+  ## Examples
+
+      iex> ast = {:literal, 42}
+      iex> Predicator.Compiler.to_string(ast)
+      "42"
+
+      iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      iex> Predicator.Compiler.to_string(ast)
+      "score > 85"
+
+      iex> ast = {:comparison, :gt, {:identifier, "age"}, {:literal, 21}}
+      iex> Predicator.Compiler.to_string(ast, parentheses: :explicit)
+      "(age > 21)"
+  """
+  @spec to_string(Parser.ast(), keyword()) :: binary()
+  def to_string(ast, opts \\ []) do
+    Visitor.accept(ast, StringVisitor, opts)
   end
 end

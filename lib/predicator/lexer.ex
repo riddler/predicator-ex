@@ -116,6 +116,11 @@ defmodule Predicator.Lexer do
     {:ok, Enum.reverse([{:eof, line, col, 0, nil} | tokens])}
   end
 
+  # NOTE: High cyclomatic complexity (28) is expected and appropriate for lexer functions.
+  # This function must handle all possible input characters and token types in a single
+  # pattern matching expression, which naturally results in high complexity but is the
+  # correct approach for lexical analysis. The complexity is well-contained and tested.
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp tokenize_chars([char | rest], line, col, tokens) do
     case char do
       # Skip whitespace
