@@ -1,7 +1,4 @@
 defmodule Predicator.Evaluator do
-  # Disable credo checks that are inherent to instruction execution logic
-  # credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
-
   @moduledoc """
   Stack-based evaluator for predicator instructions.
 
@@ -147,36 +144,52 @@ defmodule Predicator.Evaluator do
   end
 
   @spec execute_instruction(t(), Types.instruction()) :: {:ok, t()} | {:error, term()}
-  defp execute_instruction(%__MODULE__{} = evaluator, instruction) do
-    case instruction do
-      ["lit", value] ->
-        {:ok, push_stack(evaluator, value)}
+  # Literal value instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["lit", value]) do
+    {:ok, push_stack(evaluator, value)}
+  end
 
-      ["load", variable_name] when is_binary(variable_name) ->
-        value = load_from_context(evaluator.context, variable_name)
-        {:ok, push_stack(evaluator, value)}
+  # Load variable from context instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["load", variable_name])
+       when is_binary(variable_name) do
+    value = load_from_context(evaluator.context, variable_name)
+    {:ok, push_stack(evaluator, value)}
+  end
 
-      ["compare", operator] when operator in ["GT", "LT", "EQ", "GTE", "LTE", "NE"] ->
-        execute_compare(evaluator, operator)
+  # Comparison instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["compare", operator])
+       when operator in ["GT", "LT", "EQ", "GTE", "LTE", "NE"] do
+    execute_compare(evaluator, operator)
+  end
 
-      ["and"] ->
-        execute_logical_and(evaluator)
+  # Logical AND instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["and"]) do
+    execute_logical_and(evaluator)
+  end
 
-      ["or"] ->
-        execute_logical_or(evaluator)
+  # Logical OR instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["or"]) do
+    execute_logical_or(evaluator)
+  end
 
-      ["not"] ->
-        execute_logical_not(evaluator)
+  # Logical NOT instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["not"]) do
+    execute_logical_not(evaluator)
+  end
 
-      ["in"] ->
-        execute_membership(evaluator, :in)
+  # Membership IN instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["in"]) do
+    execute_membership(evaluator, :in)
+  end
 
-      ["contains"] ->
-        execute_membership(evaluator, :contains)
+  # Membership CONTAINS instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["contains"]) do
+    execute_membership(evaluator, :contains)
+  end
 
-      unknown ->
-        {:error, "Unknown instruction: #{inspect(unknown)}"}
-    end
+  # Unknown instruction - catch-all clause
+  defp execute_instruction(%__MODULE__{}, unknown) do
+    {:error, "Unknown instruction: #{inspect(unknown)}"}
   end
 
   @spec advance_instruction_pointer({:ok, t()} | {:error, term()}) ::
