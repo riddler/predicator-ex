@@ -132,5 +132,83 @@ defmodule Predicator.IntegrationTest do
       result = Evaluator.evaluate(instructions, context)
       assert result == :undefined
     end
+
+    test "nested context access integration" do
+      input = "user.name.first = \"John\""
+      context = %{"user" => %{"name" => %{"first" => "John", "last" => "Doe"}, "age" => 47}}
+
+      {:ok, tokens} = Lexer.tokenize(input)
+      {:ok, ast} = Parser.parse(tokens)
+      instructions = Compiler.to_instructions(ast)
+
+      assert instructions == [
+               ["load", "user.name.first"],
+               ["lit", "John"],
+               ["compare", "EQ"]
+             ]
+
+      result = Evaluator.evaluate!(instructions, context)
+      assert result == true
+    end
+
+    test "nested context access with numeric comparison" do
+      input = "user.age > 18"
+      context = %{"user" => %{"name" => "John", "age" => 47}}
+
+      {:ok, tokens} = Lexer.tokenize(input)
+      {:ok, ast} = Parser.parse(tokens)
+      instructions = Compiler.to_instructions(ast)
+
+      assert instructions == [
+               ["load", "user.age"],
+               ["lit", 18],
+               ["compare", "GT"]
+             ]
+
+      result = Evaluator.evaluate!(instructions, context)
+      assert result == true
+    end
+
+    test "nested context access with missing path" do
+      input = "user.profile.name = \"John\""
+      context = %{"user" => %{"name" => "John", "age" => 47}}
+
+      {:ok, tokens} = Lexer.tokenize(input)
+      {:ok, ast} = Parser.parse(tokens)
+      instructions = Compiler.to_instructions(ast)
+
+      assert instructions == [
+               ["load", "user.profile.name"],
+               ["lit", "John"],
+               ["compare", "EQ"]
+             ]
+
+      result = Evaluator.evaluate!(instructions, context)
+      assert result == :undefined
+    end
+
+    test "nested context access in complex expressions" do
+      input = "user.name.first = \"John\" AND user.age >= 18"
+      context = %{"user" => %{"name" => %{"first" => "John"}, "age" => 47}}
+
+      {:ok, tokens} = Lexer.tokenize(input)
+      {:ok, ast} = Parser.parse(tokens)
+      instructions = Compiler.to_instructions(ast)
+
+      result = Evaluator.evaluate!(instructions, context)
+      assert result == true
+    end
+
+    test "mixed nested and simple context access" do
+      input = "score > 85 AND user.name.first = \"John\""
+      context = %{"score" => 90, "user" => %{"name" => %{"first" => "John"}}}
+
+      {:ok, tokens} = Lexer.tokenize(input)
+      {:ok, ast} = Parser.parse(tokens)
+      instructions = Compiler.to_instructions(ast)
+
+      result = Evaluator.evaluate!(instructions, context)
+      assert result == true
+    end
   end
 end

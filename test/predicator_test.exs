@@ -1043,4 +1043,148 @@ defmodule PredicatorTest do
       assert result == {:ok, false}
     end
   end
+
+  describe "nested context access" do
+    test "simple nested access with string expressions" do
+      context = %{"user" => %{"name" => %{"first" => "John", "last" => "Doe"}, "age" => 47}}
+
+      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.name.last = \"Doe\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.age = 47", context) == {:ok, true}
+      assert Predicator.evaluate("user.name.middle = \"X\"", context) == {:ok, :undefined}
+    end
+
+    test "nested access with atom keys" do
+      context = %{user: %{name: %{first: "John"}, age: 47}}
+
+      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.age > 18", context) == {:ok, true}
+    end
+
+    test "nested access with mixed key types" do
+      context = %{"user" => %{profile: %{"name" => "John"}, age: 47}}
+
+      assert Predicator.evaluate("user.profile.name = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.age >= 47", context) == {:ok, true}
+    end
+
+    test "nested access in complex expressions" do
+      context = %{
+        "user" => %{"name" => "John", "age" => 47},
+        "config" => %{"enabled" => true, "level" => 3}
+      }
+
+      assert Predicator.evaluate("user.age > 18 AND config.enabled", context) == {:ok, true}
+
+      assert Predicator.evaluate("user.name = \"John\" OR config.level > 5", context) ==
+               {:ok, true}
+
+      assert Predicator.evaluate("user.age < 18 AND config.enabled", context) == {:ok, false}
+    end
+
+    test "nested access with missing paths returns :undefined" do
+      context = %{"user" => %{"name" => "John"}}
+
+      assert Predicator.evaluate("user.profile.settings.theme = \"dark\"", context) ==
+               {:ok, :undefined}
+
+      assert Predicator.evaluate("missing.path.here = \"value\"", context) == {:ok, :undefined}
+    end
+
+    test "nested access with non-map intermediate values" do
+      context = %{"user" => %{"name" => "John Doe"}}
+
+      # "name" is a string, not a map, so "user.name.first" should be :undefined
+      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, :undefined}
+    end
+
+    test "deeply nested structures" do
+      context = %{
+        "app" => %{
+          "database" => %{
+            "config" => %{
+              "host" => "localhost",
+              "port" => 5432,
+              "settings" => %{
+                "ssl" => true,
+                "timeout" => 30
+              }
+            }
+          }
+        }
+      }
+
+      assert Predicator.evaluate("app.database.config.host = \"localhost\"", context) ==
+               {:ok, true}
+
+      assert Predicator.evaluate("app.database.config.port = 5432", context) == {:ok, true}
+      assert Predicator.evaluate("app.database.config.settings.ssl", context) == {:ok, true}
+
+      assert Predicator.evaluate("app.database.config.settings.timeout > 25", context) ==
+               {:ok, true}
+    end
+
+    test "nested access with list values" do
+      context = %{
+        "user" => %{
+          "name" => "John",
+          "hobbies" => ["reading", "coding", "gaming"],
+          "scores" => [85, 92, 78]
+        }
+      }
+
+      # Access the list itself
+      {:ok, hobbies} = Predicator.evaluate("user.hobbies", context)
+      assert hobbies == ["reading", "coding", "gaming"]
+
+      # Use list in membership test
+      assert Predicator.evaluate("\"coding\" in user.hobbies", context) == {:ok, true}
+      assert Predicator.evaluate("\"dancing\" in user.hobbies", context) == {:ok, false}
+    end
+  end
+
+  describe "single quoted strings" do
+    test "evaluates single quoted string comparisons" do
+      context = %{"name" => "John"}
+
+      assert Predicator.evaluate("name = 'John'", context) == {:ok, true}
+      assert Predicator.evaluate("name = 'Jane'", context) == {:ok, false}
+    end
+
+    test "handles mixed single and double quotes" do
+      context = %{"quote" => "don't", "apostrophe" => "he said \"hello\""}
+
+      assert Predicator.evaluate("quote = 'don\\'t'", context) == {:ok, true}
+      assert Predicator.evaluate("apostrophe = 'he said \"hello\"'", context) == {:ok, true}
+    end
+
+    test "preserves quote type in round trip compilation" do
+      # Test that single quotes are preserved through parsing and decompilation
+      single_quoted = "name = 'John'"
+      double_quoted = "name = \"John\""
+
+      {:ok, single_ast} = Predicator.parse(single_quoted)
+      {:ok, double_ast} = Predicator.parse(double_quoted)
+
+      single_decompiled = Predicator.decompile(single_ast)
+      double_decompiled = Predicator.decompile(double_ast)
+
+      assert single_decompiled == "name = 'John'"
+      assert double_decompiled == "name = \"John\""
+    end
+
+    test "single quoted strings in complex expressions" do
+      context = %{"status" => "active", "role" => "admin"}
+
+      assert Predicator.evaluate("status = 'active' AND role = 'admin'", context) == {:ok, true}
+      assert Predicator.evaluate("status = 'inactive' OR role = 'admin'", context) == {:ok, true}
+    end
+
+    test "single quoted strings in lists and membership" do
+      context = %{"roles" => ["admin", "user"]}
+
+      assert Predicator.evaluate("'admin' in roles", context) == {:ok, true}
+      assert Predicator.evaluate("'guest' in roles", context) == {:ok, false}
+    end
+  end
 end

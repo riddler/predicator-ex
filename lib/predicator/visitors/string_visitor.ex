@@ -80,9 +80,25 @@ defmodule Predicator.Visitors.StringVisitor do
   end
 
   def visit({:literal, value}, _opts) when is_binary(value) do
-    # Escape quotes and wrap in quotes
+    # For backwards compatibility with older AST nodes that still use {:literal, string}
+    # Default to double quotes
     escaped = String.replace(value, "\"", "\\\"")
     "\"#{escaped}\""
+  end
+
+  def visit({:string_literal, value, quote_type}, _opts) when is_binary(value) do
+    # Use the original quote type to preserve round-trip accuracy
+    case quote_type do
+      :double ->
+        # Escape double quotes and wrap in double quotes
+        escaped = String.replace(value, "\"", "\\\"")
+        "\"#{escaped}\""
+
+      :single ->
+        # Escape single quotes and wrap in single quotes
+        escaped = String.replace(value, "'", "\\'")
+        "'#{escaped}'"
+    end
   end
 
   def visit({:literal, value}, opts) when is_list(value) do

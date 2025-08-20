@@ -13,7 +13,12 @@ defmodule Predicator.ParserTest do
 
     test "parses string literal" do
       {:ok, tokens} = Lexer.tokenize("\"hello\"")
-      assert Parser.parse(tokens) == {:ok, {:literal, "hello"}}
+      assert Parser.parse(tokens) == {:ok, {:string_literal, "hello", :double}}
+    end
+
+    test "parses single quoted string literal" do
+      {:ok, tokens} = Lexer.tokenize("'hello'")
+      assert Parser.parse(tokens) == {:ok, {:string_literal, "hello", :single}}
     end
 
     test "parses boolean literal true" do
@@ -74,14 +79,23 @@ defmodule Predicator.ParserTest do
     test "parses equality comparison" do
       {:ok, tokens} = Lexer.tokenize("name = \"John\"")
 
-      expected = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
+      expected = {:comparison, :eq, {:identifier, "name"}, {:string_literal, "John", :double}}
+      assert Parser.parse(tokens) == {:ok, expected}
+    end
+
+    test "parses equality comparison with single quotes" do
+      {:ok, tokens} = Lexer.tokenize("name = 'John'")
+
+      expected = {:comparison, :eq, {:identifier, "name"}, {:string_literal, "John", :single}}
       assert Parser.parse(tokens) == {:ok, expected}
     end
 
     test "parses not equal comparison" do
       {:ok, tokens} = Lexer.tokenize("status != \"inactive\"")
 
-      expected = {:comparison, :ne, {:identifier, "status"}, {:literal, "inactive"}}
+      expected =
+        {:comparison, :ne, {:identifier, "status"}, {:string_literal, "inactive", :double}}
+
       assert Parser.parse(tokens) == {:ok, expected}
     end
 
@@ -141,7 +155,10 @@ defmodule Predicator.ParserTest do
     test "handles mixed types" do
       {:ok, tokens} = Lexer.tokenize(~s("apple" > "banana"))
 
-      expected = {:comparison, :gt, {:literal, "apple"}, {:literal, "banana"}}
+      expected =
+        {:comparison, :gt, {:string_literal, "apple", :double},
+         {:string_literal, "banana", :double}}
+
       assert Parser.parse(tokens) == {:ok, expected}
     end
   end
@@ -407,19 +424,21 @@ defmodule Predicator.ParserTest do
       tokens = [
         {:identifier, 1, 1, 4, "role"},
         {:eq, 1, 6, 1, "="},
-        {:string, 1, 8, 7, "admin"},
+        {:string, 1, 8, 7, "admin", :double},
         {:or_op, 1, 16, 2, "OR"},
         {:identifier, 1, 19, 4, "role"},
         {:eq, 1, 24, 1, "="},
-        {:string, 1, 26, 9, "manager"},
+        {:string, 1, 26, 9, "manager", :double},
         {:eof, 1, 36, 0, nil}
       ]
 
       result = Parser.parse(tokens)
 
       assert {:ok,
-              {:logical_or, {:comparison, :eq, {:identifier, "role"}, {:literal, "admin"}},
-               {:comparison, :eq, {:identifier, "role"}, {:literal, "manager"}}}} = result
+              {:logical_or,
+               {:comparison, :eq, {:identifier, "role"}, {:string_literal, "admin", :double}},
+               {:comparison, :eq, {:identifier, "role"}, {:string_literal, "manager", :double}}}} =
+               result
     end
 
     test "parses simple NOT expression" do
@@ -686,7 +705,7 @@ defmodule Predicator.ParserTest do
         {:lbracket, 1, 1, 1, "["},
         {:integer, 1, 2, 2, 42},
         {:comma, 1, 4, 1, ","},
-        {:string, 1, 6, 7, "hello"},
+        {:string, 1, 6, 7, "hello", :double},
         {:comma, 1, 13, 1, ","},
         {:boolean, 1, 15, 4, true},
         {:comma, 1, 19, 1, ","},
@@ -701,7 +720,7 @@ defmodule Predicator.ParserTest do
               {:list,
                [
                  {:literal, 42},
-                 {:literal, "hello"},
+                 {:string_literal, "hello", :double},
                  {:literal, true},
                  {:literal, ^date}
                ]}} = result

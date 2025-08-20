@@ -1,7 +1,7 @@
 # Predicator
 
 [![CI](https://github.com/riddler/predicator-ex/actions/workflows/ci.yml/badge.svg)](https://github.com/riddler/predicator-ex/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/riddler/predicator-ex/branch/master/graph/badge.svg)](https://codecov.io/gh/riddler/predicator-ex)
+[![codecov](https://codecov.io/gh/riddler/predicator-ex/branch/main/graph/badge.svg)](https://codecov.io/gh/riddler/predicator-ex)
 [![Hex.pm Version](https://img.shields.io/hexpm/v/predicator.svg)](https://hex.pm/packages/predicator)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/predicator/)
 
@@ -11,7 +11,7 @@ Predicator allows you to safely evaluate user-defined expressions without the se
 ## Features
 
 - 🔒 **Secure**: No `eval()` or dynamic code execution - safe for end-user input
-- 🎯 **Simple**: Clean, intuitive expression syntax (`score > 85`, `name = "John"`)
+- 🎯 **Simple**: Clean, intuitive expression syntax (`score > 85`, `name = 'John'`)
 - 🚀 **Fast**: Compiled expressions execute efficiently with minimal overhead
 - 🛡️ **Type Safe**: Built with comprehensive specs and rigorous testing
 - 🎨 **Flexible**: Support for literals, identifiers, comparisons, and parentheses
@@ -21,7 +21,19 @@ Predicator allows you to safely evaluate user-defined expressions without the se
 - 📋 **Lists**: List literals with membership operations (`in`, `contains`)
 - 🧠 **Smart Logic**: Logical operators with proper precedence (`AND`, `OR`, `NOT`)
 - 🔧 **Functions**: Built-in functions for string, numeric, and date operations
+- 🌳 **Nested Access**: Dot notation for deep data structures (`user.profile.name`)
 
+## Installation
+
+Add `predicator` to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:predicator, "~> 1.1.0"}
+  ]
+end
+```
 ## Quick Start
 
 ```elixir
@@ -29,7 +41,10 @@ Predicator allows you to safely evaluate user-defined expressions without the se
 iex> Predicator.evaluate!("score > 85", %{"score" => 92})
 true
 
-# String comparisons  
+# String comparisons (double or single quotes)
+iex> Predicator.evaluate!("name = 'Alice'", %{"name" => "Alice"})
+true
+
 iex> Predicator.evaluate!("name = \"Alice\"", %{"name" => "Alice"})
 true
 
@@ -41,7 +56,7 @@ iex> Predicator.evaluate!("created_at < #2024-01-15T10:30:00Z#", %{"created_at" 
 true
 
 # List literals and membership
-iex> Predicator.evaluate!("role in [\"admin\", \"manager\"]", %{"role" => "admin"})
+iex> Predicator.evaluate!("role in ['admin', 'manager']", %{"role" => "admin"})
 true
 
 iex> Predicator.evaluate!("[1, 2, 3] contains 2", %{})
@@ -51,7 +66,7 @@ true
 iex> Predicator.evaluate!("score > 85 AND age >= 18", %{"score" => 92, "age" => 25})
 true
 
-iex> Predicator.evaluate!("role = \"admin\" OR role = \"manager\"", %{"role" => "admin"})  
+iex> Predicator.evaluate!("role = 'admin' OR role = 'manager'", %{"role" => "admin"})  
 true
 
 iex> Predicator.evaluate!("NOT expired AND active", %{"expired" => false, "active" => true})
@@ -65,7 +80,7 @@ true
 iex> Predicator.evaluate!("len(name) > 3", %{"name" => "Alice"})
 true
 
-iex> Predicator.evaluate!("upper(role) = \"ADMIN\"", %{"role" => "admin"})
+iex> Predicator.evaluate!("upper(role) = 'ADMIN'", %{"role" => "admin"})
 true
 
 iex> Predicator.evaluate!("year(created_at) = 2024", %{"created_at" => ~D[2024-03-15]})
@@ -90,11 +105,69 @@ iex> Predicator.evaluate("#2024-01-15# > #2024-01-10#")
 iex> Predicator.evaluate([["lit", 42]])
 {:ok, 42}
 
-# Round-trip: parse and decompile expressions
+# Round-trip: parse and decompile expressions (preserves quote style)
+iex> {:ok, ast} = Predicator.parse("name = 'John'")
+iex> Predicator.decompile(ast)
+"name = 'John'"
+
 iex> {:ok, ast} = Predicator.parse("score > 85 AND #2024-01-15# in dates")
 iex> Predicator.decompile(ast)
 "score > 85 AND #2024-01-15# IN dates"
 ```
+
+## Nested Data Access
+
+Predicator supports nested data structure access using dot notation, allowing you to reference deeply nested values in your context:
+
+```elixir
+# Context with nested data structures
+context = %{
+  "user" => %{
+    "age" => 47,
+    "name" => %{"first" => "John", "last" => "Doe"},
+    "profile" => %{"role" => "admin"},
+    "settings" => %{"theme" => "dark", "notifications" => true}
+  },
+  "config" => %{
+    "database" => %{"host" => "localhost", "port" => 5432}
+  }
+}
+
+# Access nested values with dot notation
+iex> Predicator.evaluate("user.name.first = 'John'", context)
+{:ok, true}
+
+iex> Predicator.evaluate("user.age > 18", context)
+{:ok, true}
+
+iex> Predicator.evaluate("config.database.port = 5432", context)
+{:ok, true}
+
+# Use in complex expressions
+iex> Predicator.evaluate("user.profile.role = 'admin' AND user.settings.notifications", context)
+{:ok, true}
+
+# Missing paths return :undefined
+iex> Predicator.evaluate("user.profile.email = 'test'", context)
+{:ok, :undefined}
+
+# Works with both string and atom keys
+atom_context = %{user: %{name: %{first: "Jane"}}}
+iex> Predicator.evaluate("user.name.first = 'Jane'", atom_context)
+{:ok, true}
+
+# Access nested lists
+list_context = %{"user" => %{"hobbies" => ["reading", "coding"]}}
+iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
+{:ok, true}
+```
+
+### Key Features:
+- **Unlimited nesting depth**: `app.database.config.settings.ssl`
+- **Mixed key types**: Works with string keys, atom keys, or both
+- **Graceful fallback**: Returns `:undefined` for missing paths
+- **Type preservation**: Maintains original data types (strings, numbers, booleans, lists)
+- **Backwards compatible**: Simple variable names work exactly as before
 
 ## Supported Operations
 
@@ -105,20 +178,20 @@ iex> Predicator.decompile(ast)
 | `<`      | Less than | `age < 30`, `created_at < #2024-01-15T10:00:00Z#` |
 | `>=`     | Greater than or equal | `points >= 100` |
 | `<=`     | Less than or equal | `count <= 5` |
-| `=`      | Equal | `status = "active"`, `date = #2024-01-15#` |
-| `!=`     | Not equal | `role != "guest"` |
+| `=`      | Equal | `status = 'active'`, `date = #2024-01-15#` |
+| `!=`     | Not equal | `role != 'guest'` |
 
 ### Logical Operators
 | Operator | Description | Example |
 |----------|-------------|---------|
 | `AND`    | Logical AND (case-insensitive) | `score > 85 AND age >= 18` |
-| `OR`     | Logical OR (case-insensitive) | `role = "admin" OR role = "manager"` |
+| `OR`     | Logical OR (case-insensitive) | `role = 'admin' OR role = 'manager'` |
 | `NOT`    | Logical NOT (case-insensitive) | `NOT expired` |
 
 ### Membership Operators
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `in`     | Element in collection | `role in ["admin", "manager"]` |
+| `in`     | Element in collection | `role in ['admin', 'manager']` |
 | `contains` | Collection contains element | `[1, 2, 3] contains 2` |
 
 ### Built-in Functions
@@ -127,8 +200,8 @@ iex> Predicator.decompile(ast)
 | Function | Description | Example |
 |----------|-------------|---------|
 | `len(string)` | String length | `len(name) > 3` |
-| `upper(string)` | Convert to uppercase | `upper(role) = "ADMIN"` |
-| `lower(string)` | Convert to lowercase | `lower(name) = "alice"` |
+| `upper(string)` | Convert to uppercase | `upper(role) = 'ADMIN'` |
+| `lower(string)` | Convert to lowercase | `lower(name) = 'alice'` |
 | `trim(string)` | Remove whitespace | `len(trim(input)) > 0` |
 
 #### Numeric Functions  
@@ -148,12 +221,12 @@ iex> Predicator.decompile(ast)
 ## Data Types
 
 - **Numbers**: `42`, `-17` (integers)
-- **Strings**: `"hello"`, `"world"` (double-quoted with escape sequences)
+- **Strings**: `'hello'`, `'world'` (single-quoted) or `"hello"`, `"world"` (double-quoted, with escape sequences)
 - **Booleans**: `true`, `false` (or plain identifiers like `active`, `expired`)
 - **Dates**: `#2024-01-15#` (ISO 8601 date format)
 - **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with timezone)
-- **Lists**: `[1, 2, 3]`, `["admin", "manager"]` (homogeneous collections)
-- **Identifiers**: `score`, `user_name`, `is_active` (variable references)
+- **Lists**: `[1, 2, 3]`, `['admin', 'manager']` (homogeneous collections)
+- **Identifiers**: `score`, `user_name`, `is_active`, `user.profile.name` (variable references with optional dot notation for nested data)
 
 ## Architecture
 
@@ -162,7 +235,7 @@ Predicator uses a multi-stage compilation pipeline:
 ```
 Expression String     → Lexer → Parser → Compiler → Evaluator
          ↓                 ↓      ↓         ↓           ↓
-"score > 85 OR admin" → Tokens → AST → Instructions → Result
+'score > 85 OR admin' → Tokens → AST → Instructions → Result
 ```
 
 ### Grammar
@@ -224,7 +297,7 @@ Predicator.register_function("user_role", 0, fn [], context ->
   {:ok, Map.get(context, "current_user_role", "guest")}
 end)
 
-iex> Predicator.evaluate("user_role() = \"admin\"", %{"current_user_role" => "admin"})
+iex> Predicator.evaluate("user_role() = 'admin'", %{"current_user_role" => "admin"})
 {:ok, true}
 
 # Function with error handling
@@ -275,32 +348,6 @@ mix format              # Format code
 mix credo --strict     # Linting
 mix coveralls          # Test coverage  
 mix dialyzer           # Type checking
-```
-
-### Test Coverage
-
-Current coverage: **92.6%** overall with comprehensive testing across all components:
-
-- **Lexer**: 100% (including date/datetime tokenization)
-- **Types**: 100% (including date type checking)  
-- **Evaluator**: 90.1% (all operations and error conditions)
-- **Parser**: 86.8% (complex expressions and edge cases)
-- **StringVisitor**: 94.8% (formatting and decompilation)
-
-```bash
-mix test.coverage.html  # Generate HTML coverage report
-```
-
-## Installation
-
-Add `predicator` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:predicator, "~> 1.0.0"}
-  ]
-end
 ```
 
 ## Documentation

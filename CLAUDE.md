@@ -4,7 +4,7 @@ This document provides context for Claude Code when working on the Predicator pr
 
 ## Project Overview
 
-Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT) with proper precedence, date/datetime literals, list literals, membership operators (in, contains), and function calls with built-in system functions.
+Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT) with proper precedence, date/datetime literals, list literals, membership operators (in, contains), function calls with built-in system functions, and nested data structure access using dot notation.
 
 ## Architecture
 
@@ -154,6 +154,19 @@ test/predicator/
 - **Case-insensitive**: Both `AND`/`and`, `OR`/`or`, `NOT`/`not` supported
 - **Pattern matching**: Refactored evaluator and parser to use pattern matching over case statements
 - **Plain boolean expressions**: Support for `active`, `expired` without `= true`
+
+### Nested Data Structure Access (v1.1.0)
+- **Dot Notation**: Access deeply nested data structures using `.` syntax
+- **Syntax**: `user.profile.name`, `config.database.settings.ssl`
+- **Key Types**: Supports both string keys, atom keys, and mixed key types
+- **Lexer**: Enhanced identifier tokenization to include dots as valid characters
+- **Evaluator**: Added `load_nested_value/2` function for recursive map traversal
+- **Error Handling**: Returns `:undefined` for missing paths or non-map intermediate values
+- **Examples**: 
+  - `user.name.first = "John"` 
+  - `config.database.port > 5000`
+  - `user.settings.theme = "dark" AND user.profile.active`
+- **Backwards Compatible**: Simple variable names work exactly as before
 
 ## Common Tasks
 

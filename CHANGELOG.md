@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-08-20
+
+### Added
+
+#### Nested Data Structure Access
+- **Dot Notation Support**: Access deeply nested data structures using dot notation syntax
+- **Enhanced Lexer**: Extended identifier tokenization to include dots (`.`) as valid characters
+- **Recursive Context Loading**: Added `load_nested_value/2` function for traversing nested maps
+- **Mixed Key Type Support**: Works seamlessly with string keys, atom keys, or mixed key types
+- **Graceful Error Handling**: Returns `:undefined` for missing paths or non-map intermediate values
+- **Unlimited Nesting Depth**: Support for arbitrarily deep nested structures
+
+#### Single Quote String Support
+- **Dual Quote Types**: Added support for single-quoted strings (`'hello'`) alongside double-quoted strings (`"hello"`)
+- **Quote Type Preservation**: Round-trip parsing and decompilation preserves original quote type
+- **Enhanced Lexer**: Extended string tokenization to handle both quote types with proper escaping
+- **AST Enhancement**: New `{:string_literal, value, quote_type}` AST node for quote-aware string handling
+- **Escape Sequences**: Full escape sequence support in both quote types (`\'`, `\"`, `\n`, `\t`, etc.)
+
+#### Examples
+```elixir
+# Basic nested access
+context = %{"user" => %{"name" => %{"first" => "John"}}}
+Predicator.evaluate("user.name.first = \"John\"", context)  # {:ok, true}
+
+# Complex expressions with nested access  
+Predicator.evaluate("user.profile.age > 18 AND config.enabled", context)
+
+# Mixed key types
+mixed_context = %{"user" => %{profile: %{"active" => true}}}
+Predicator.evaluate("user.profile.active", mixed_context)  # {:ok, true}
+
+# Single quoted strings with nested access
+Predicator.evaluate("user.name.first = 'John'", context)  # {:ok, true}
+
+# Quote type preservation in round-trip
+{:ok, ast} = Predicator.parse("user.role = 'admin'")
+Predicator.decompile(ast)  # "user.role = 'admin'"
+```
+
+#### Technical Implementation
+- **Lexer Enhancement**: Modified `take_identifier/3` to include dots in valid identifier characters
+- **Evaluator Enhancement**: Enhanced `load_from_context/2` with nested path detection and delegation
+- **Backwards Compatibility**: Simple variable names continue to work exactly as before
+- **Comprehensive Testing**: Added 100+ new tests covering nested access scenarios
+
+#### Breaking Changes
+- **Dotted Variable Names**: Variables containing dots (e.g., `"user.email"`) are now parsed as nested access paths rather than literal key names
+- **Flat Key Behavior**: Context keys like `"user.profile.name"` will no longer match the identifier `user.profile.name` - use proper nested structures instead
+
+### Security
+- No security implications - nested access maintains the same safe evaluation model
+- All nested paths are validated and type-checked during traversal
+
+### Performance
+- Minimal performance impact - dot notation detection adds only a string contains check
+- Recursive traversal is efficient and stops early for missing paths
+
 ## [1.0.1] - 2025-08-20
 
 ### Documentation

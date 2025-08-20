@@ -98,7 +98,7 @@ defmodule Predicator.ParserEdgeCasesTest do
     test "handles very long strings" do
       long_string = String.duplicate("a", 1000)
       {:ok, tokens} = Lexer.tokenize("\"#{long_string}\"")
-      assert {:ok, {:literal, ^long_string}} = Parser.parse(tokens)
+      assert {:ok, {:string_literal, ^long_string, :double}} = Parser.parse(tokens)
     end
 
     test "handles very long identifiers" do
