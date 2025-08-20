@@ -56,6 +56,11 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     [["lit", value]]
   end
 
+  def visit({:string_literal, value, _quote_type}, _opts) do
+    # For instruction generation, quote type doesn't matter - just treat as literal
+    [["lit", value]]
+  end
+
   def visit({:identifier, name}, _opts) do
     [["load", name]]
   end
@@ -100,7 +105,12 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     # For more complex lists, this would need more sophisticated handling
     case all_literals?(elements) do
       true ->
-        literal_values = Enum.map(elements, fn {:literal, value} -> value end)
+        literal_values =
+          Enum.map(elements, fn
+            {:literal, value} -> value
+            {:string_literal, value, _quote_type} -> value
+          end)
+
         [["lit", literal_values]]
 
       false ->
@@ -149,6 +159,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   defp all_literals?(elements) do
     Enum.all?(elements, fn
       {:literal, _value} -> true
+      {:string_literal, _value, _quote_type} -> true
       _other -> false
     end)
   end

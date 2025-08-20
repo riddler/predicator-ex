@@ -186,9 +186,9 @@ defmodule Predicator.LexerTest do
 
       assert tokens == [
                {:lbracket, 1, 1, 1, "["},
-               {:string, 1, 2, 7, "admin"},
+               {:string, 1, 2, 7, "admin", :double},
                {:comma, 1, 9, 1, ","},
-               {:string, 1, 11, 9, "manager"},
+               {:string, 1, 11, 9, "manager", :double},
                {:rbracket, 1, 20, 1, "]"},
                {:eof, 1, 21, 0, nil}
              ]
@@ -200,7 +200,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(~s("hello"))
 
       assert tokens == [
-               {:string, 1, 1, 7, "hello"},
+               {:string, 1, 1, 7, "hello", :double},
                {:eof, 1, 8, 0, nil}
              ]
     end
@@ -209,7 +209,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(~s(""))
 
       assert tokens == [
-               {:string, 1, 1, 2, ""},
+               {:string, 1, 1, 2, "", :double},
                {:eof, 1, 3, 0, nil}
              ]
     end
@@ -218,7 +218,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(~s("hello world"))
 
       assert tokens == [
-               {:string, 1, 1, 13, "hello world"},
+               {:string, 1, 1, 13, "hello world", :double},
                {:eof, 1, 14, 0, nil}
              ]
     end
@@ -229,7 +229,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(input)
 
       assert tokens == [
-               {:string, 1, 1, 14, "hello\"world"},
+               {:string, 1, 1, 14, "hello\"world", :double},
                {:eof, 1, 15, 0, nil}
              ]
     end
@@ -240,13 +240,80 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(input)
 
       assert tokens == [
-               {:string, 1, 1, 14, "line1\nline2"},
+               {:string, 1, 1, 14, "line1\nline2", :double},
                {:eof, 1, 15, 0, nil}
              ]
     end
 
     test "returns error for unterminated string" do
-      assert {:error, "Unterminated string literal", 1, 1} = Lexer.tokenize(~s("hello))
+      assert {:error, "Unterminated double-quoted string literal", 1, 1} =
+               Lexer.tokenize(~s("hello))
+    end
+  end
+
+  describe "tokenize/1 - single quoted string literals" do
+    test "tokenizes simple single quoted string" do
+      assert {:ok, tokens} = Lexer.tokenize("'hello'")
+
+      assert tokens == [
+               {:string, 1, 1, 7, "hello", :single},
+               {:eof, 1, 8, 0, nil}
+             ]
+    end
+
+    test "tokenizes empty single quoted string" do
+      assert {:ok, tokens} = Lexer.tokenize("''")
+
+      assert tokens == [
+               {:string, 1, 1, 2, "", :single},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+
+    test "tokenizes single quoted string with spaces" do
+      assert {:ok, tokens} = Lexer.tokenize("'hello world'")
+
+      assert tokens == [
+               {:string, 1, 1, 13, "hello world", :single},
+               {:eof, 1, 14, 0, nil}
+             ]
+    end
+
+    test "tokenizes single quoted string with escaped single quotes" do
+      # Input: 'hello\'world' (with escaped quote)
+      input = "'hello\\'world'"
+      assert {:ok, tokens} = Lexer.tokenize(input)
+
+      assert tokens == [
+               {:string, 1, 1, 14, "hello'world", :single},
+               {:eof, 1, 15, 0, nil}
+             ]
+    end
+
+    test "tokenizes single quoted string with double quotes (no escaping needed)" do
+      input = "'hello\"world'"
+      assert {:ok, tokens} = Lexer.tokenize(input)
+
+      assert tokens == [
+               {:string, 1, 1, 13, "hello\"world", :single},
+               {:eof, 1, 14, 0, nil}
+             ]
+    end
+
+    test "tokenizes single quoted string with escape sequences" do
+      # Input: 'line1\nline2' (with escaped newline)
+      input = "'line1\\nline2'"
+      assert {:ok, tokens} = Lexer.tokenize(input)
+
+      assert tokens == [
+               {:string, 1, 1, 14, "line1\nline2", :single},
+               {:eof, 1, 15, 0, nil}
+             ]
+    end
+
+    test "returns error for unterminated single quoted string" do
+      assert {:error, "Unterminated single-quoted string literal", 1, 1} =
+               Lexer.tokenize("'hello")
     end
   end
 
@@ -336,7 +403,7 @@ defmodule Predicator.LexerTest do
       assert tokens == [
                {:identifier, 1, 1, 4, "name"},
                {:eq, 1, 6, 1, "="},
-               {:string, 1, 8, 6, "John"},
+               {:string, 1, 8, 6, "John", :double},
                {:eof, 1, 14, 0, nil}
              ]
     end
@@ -512,7 +579,7 @@ defmodule Predicator.LexerTest do
 
       assert {:ok,
               [
-                {:string, 1, 1, 33, "Hello \"World\" with \n newline"},
+                {:string, 1, 1, 33, "Hello \"World\" with \n newline", :double},
                 {:eof, 1, 34, 0, nil}
               ]} = Lexer.tokenize(input)
     end
@@ -522,7 +589,7 @@ defmodule Predicator.LexerTest do
 
       assert {:ok,
               [
-                {:string, 1, 1, 25, "Test \t\r\n\\ sequences"},
+                {:string, 1, 1, 25, "Test \t\r\n\\ sequences", :double},
                 {:eof, 1, 26, 0, nil}
               ]} = Lexer.tokenize(input)
     end
@@ -532,7 +599,7 @@ defmodule Predicator.LexerTest do
 
       assert {:ok,
               [
-                {:string, 1, 1, 19, "Unknown x escape"},
+                {:string, 1, 1, 19, "Unknown x escape", :double},
                 {:eof, 1, 20, 0, nil}
               ]} = Lexer.tokenize(input)
     end

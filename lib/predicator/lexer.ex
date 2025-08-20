@@ -40,7 +40,7 @@ defmodule Predicator.Lexer do
   @type token ::
           {:identifier, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:integer, pos_integer(), pos_integer(), pos_integer(), integer()}
-          | {:string, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:string, pos_integer(), pos_integer(), pos_integer(), binary(), :double | :single}
           | {:boolean, pos_integer(), pos_integer(), pos_integer(), boolean()}
           | {:date, pos_integer(), pos_integer(), pos_integer(), Date.t()}
           | {:datetime, pos_integer(), pos_integer(), pos_integer(), DateTime.t()}
@@ -113,7 +113,7 @@ defmodule Predicator.Lexer do
       {:ok, [
         {:identifier, 1, 1, 4, "name"},
         {:eq, 1, 6, 1, "="},
-        {:string, 1, 8, 6, "John"},
+        {:string, 1, 8, 6, "John", :double},
         {:eof, 1, 14, 0, nil}
       ]}
 
@@ -252,12 +252,24 @@ defmodule Predicator.Lexer do
         token = {:comma, line, col, 1, ","}
         tokenize_chars(rest, line, col + 1, [token | tokens])
 
-      # String literals
+      # String literals (double quotes)
       ?" ->
-        case take_string(rest, "", 1) do
+        case take_string(rest, "", 1, :double) do
           {:ok, content, remaining, consumed} ->
             # +1 for opening quote
-            token = {:string, line, col, consumed + 1, content}
+            token = {:string, line, col, consumed + 1, content, :double}
+            tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
+
+          {:error, message} ->
+            {:error, message, line, col}
+        end
+
+      # String literals (single quotes)
+      ?' ->
+        case take_string(rest, "", 1, :single) do
+          {:ok, content, remaining, consumed} ->
+            # +1 for opening quote
+            token = {:string, line, col, consumed + 1, content, :single}
             tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
 
           {:error, message} ->
@@ -336,18 +348,26 @@ defmodule Predicator.Lexer do
   defp skip_whitespace([?\r | rest]), do: skip_whitespace(rest)
   defp skip_whitespace(chars), do: chars
 
-  @spec take_string(charlist(), binary(), pos_integer()) ::
+  @spec take_string(charlist(), binary(), pos_integer(), :double | :single) ::
           {:ok, binary(), charlist(), pos_integer()} | {:error, binary()}
-  defp take_string([], _acc, _count), do: {:error, "Unterminated string literal"}
+  defp take_string([], _acc, _count, quote_type) do
+    quote_name = if quote_type == :double, do: "double", else: "single"
+    {:error, "Unterminated #{quote_name}-quoted string literal"}
+  end
 
-  defp take_string([?" | rest], acc, count) do
+  defp take_string([?" | rest], acc, count, :double) do
     {:ok, acc, rest, count}
   end
 
-  defp take_string([?\\ | [escaped | rest]], acc, count) do
+  defp take_string([?' | rest], acc, count, :single) do
+    {:ok, acc, rest, count}
+  end
+
+  defp take_string([?\\ | [escaped | rest]], acc, count, quote_type) do
     char =
       case escaped do
         ?" -> "\""
+        ?' -> "'"
         ?\\ -> "\\"
         ?n -> "\n"
         ?t -> "\t"
@@ -355,11 +375,11 @@ defmodule Predicator.Lexer do
         c -> <<c>>
       end
 
-    take_string(rest, acc <> char, count + 2)
+    take_string(rest, acc <> char, count + 2, quote_type)
   end
 
-  defp take_string([c | rest], acc, count) do
-    take_string(rest, acc <> <<c>>, count + 1)
+  defp take_string([c | rest], acc, count, quote_type) do
+    take_string(rest, acc <> <<c>>, count + 1, quote_type)
   end
 
   @spec take_date(charlist(), binary(), pos_integer()) ::

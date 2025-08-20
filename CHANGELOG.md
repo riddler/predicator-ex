@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Graceful Error Handling**: Returns `:undefined` for missing paths or non-map intermediate values
 - **Unlimited Nesting Depth**: Support for arbitrarily deep nested structures
 
+#### Single Quote String Support
+- **Dual Quote Types**: Added support for single-quoted strings (`'hello'`) alongside double-quoted strings (`"hello"`)
+- **Quote Type Preservation**: Round-trip parsing and decompilation preserves original quote type
+- **Enhanced Lexer**: Extended string tokenization to handle both quote types with proper escaping
+- **AST Enhancement**: New `{:string_literal, value, quote_type}` AST node for quote-aware string handling
+- **Escape Sequences**: Full escape sequence support in both quote types (`\'`, `\"`, `\n`, `\t`, etc.)
+
 #### Examples
 ```elixir
 # Basic nested access
@@ -29,6 +36,13 @@ Predicator.evaluate("user.profile.age > 18 AND config.enabled", context)
 # Mixed key types
 mixed_context = %{"user" => %{profile: %{"active" => true}}}
 Predicator.evaluate("user.profile.active", mixed_context)  # {:ok, true}
+
+# Single quoted strings with nested access
+Predicator.evaluate("user.name.first = 'John'", context)  # {:ok, true}
+
+# Quote type preservation in round-trip
+{:ok, ast} = Predicator.parse("user.role = 'admin'")
+Predicator.decompile(ast)  # "user.role = 'admin'"
 ```
 
 #### Technical Implementation

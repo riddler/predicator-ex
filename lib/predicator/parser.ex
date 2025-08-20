@@ -47,7 +47,8 @@ defmodule Predicator.Parser do
   @typedoc """
   Abstract Syntax Tree node types.
 
-  - `{:literal, value}` - A literal value (number, string, boolean, list, date, datetime)
+  - `{:literal, value}` - A literal value (number, boolean, list, date, datetime)
+  - `{:string_literal, value, quote_type}` - A string literal with quote type information
   - `{:identifier, name}` - A variable reference
   - `{:comparison, operator, left, right}` - A comparison expression
   - `{:logical_and, left, right}` - A logical AND expression
@@ -59,6 +60,7 @@ defmodule Predicator.Parser do
   """
   @type ast ::
           {:literal, value()}
+          | {:string_literal, binary(), :double | :single}
           | {:identifier, binary()}
           | {:comparison, comparison_op(), ast(), ast()}
           | {:membership, membership_op(), ast(), ast()}
@@ -111,7 +113,7 @@ defmodule Predicator.Parser do
 
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("name = \\"John\\"")  
       iex> Predicator.Parser.parse(tokens)
-      {:ok, {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}}
+      {:ok, {:comparison, :eq, {:identifier, "name"}, {:string_literal, "John", :double}}}
 
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("active = true")
       iex> Predicator.Parser.parse(tokens)
@@ -317,8 +319,8 @@ defmodule Predicator.Parser do
   end
 
   # Parse string literal
-  defp parse_primary_token(state, {:string, _line, _col, _len, value}) do
-    {:ok, {:literal, value}, advance(state)}
+  defp parse_primary_token(state, {:string, _line, _col, _len, value, quote_type}) do
+    {:ok, {:string_literal, value, quote_type}, advance(state)}
   end
 
   # Parse boolean literal
