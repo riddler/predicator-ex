@@ -6,7 +6,7 @@ defmodule CustomFunctionsIntegrationTest do
   # CompanyFunctions module removed - using manual registration instead
 
   setup do
-    # Clear custom functions before each test
+    # Clear custom functions before each test but preserve system functions
     clear_custom_functions()
     :ok
   end
