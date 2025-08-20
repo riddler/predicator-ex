@@ -1,13 +1,11 @@
 defmodule Predicator.EvaluatorEdgeCasesTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Predicator.Evaluator
-  alias Predicator.Functions.{Registry, SystemFunctions}
 
   setup do
-    # Ensure built-in functions are available
-    Registry.clear_registry()
-    SystemFunctions.register_all()
+    # Clear custom functions but preserve system functions
+    Predicator.clear_custom_functions()
     :ok
   end
 
@@ -94,7 +92,7 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
 
     test "handles function call that returns error" do
       # Register a function that always returns an error
-      Registry.register_function("error_func", 1, fn [_arg], _context ->
+      Predicator.register_function("error_func", 1, fn [_arg], _context ->
         {:error, "Function intentionally failed"}
       end)
 
@@ -284,7 +282,7 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
 
     test "preserves error message in exception" do
       # Register function that returns error
-      Registry.register_function("fail_func", 0, fn [], _context ->
+      Predicator.register_function("fail_func", 0, fn [], _context ->
         {:error, "Custom failure message"}
       end)
 

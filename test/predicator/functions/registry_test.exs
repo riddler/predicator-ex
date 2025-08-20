@@ -1,5 +1,5 @@
 defmodule Predicator.Functions.RegistryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Predicator.Functions.Registry
 

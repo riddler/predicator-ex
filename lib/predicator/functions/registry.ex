@@ -53,8 +53,20 @@ defmodule Predicator.Functions.Registry do
   """
   @spec start_registry :: :ok
   def start_registry do
-    :ets.new(@registry_name, [:set, :public, :named_table])
-    :ok
+    case :ets.whereis(@registry_name) do
+      :undefined ->
+        try do
+          :ets.new(@registry_name, [:set, :public, :named_table])
+          :ok
+        rescue
+          ArgumentError ->
+            # Another process created the table between our check and creation
+            # This is fine, just return :ok
+            :ok
+        end
+      _table_exists ->
+        :ok
+    end
   end
 
   @doc """

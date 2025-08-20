@@ -1,13 +1,11 @@
 defmodule PredicatorEdgeCasesTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import Predicator
-  alias Predicator.Functions.{Registry, SystemFunctions}
 
   setup do
-    # Ensure built-in functions are available
-    Registry.clear_registry()
-    SystemFunctions.register_all()
+    # Clear custom functions but preserve system functions
+    clear_custom_functions()
     :ok
   end
 
