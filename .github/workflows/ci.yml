@@ -27,16 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        elixir: ['1.14', '1.15', '1.16', '1.17']
-        otp: ['25', '26', '27']
-        exclude:
-          # OTP 27 requires Elixir 1.17+
-          - elixir: '1.14'
-            otp: '27'
-          - elixir: '1.15'
-            otp: '27'
-          - elixir: '1.16'
-            otp: '27'
+        elixir: ['1.17', '1.18']
+        otp: ['26', '27']
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -125,13 +118,13 @@ jobs:
       - name: Run tests with coverage
         run: mix coveralls.json
 
-      - name: Upload coverage to Codecov
-        if: matrix.elixir == '1.17' && matrix.otp == '27'
-        uses: codecov/codecov-action@v3
+      - name: Upload coverage reports to Codecov
+        if: matrix.elixir == '1.18' && matrix.otp == '27'
+        uses: codecov/codecov-action@v5
         with:
-          files: ./cover/excoveralls.json
-          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+          slug: riddler/predicator-ex
+          files: ./cover/excoveralls.json
 
   credo:
     name: Static Analysis (Credo)

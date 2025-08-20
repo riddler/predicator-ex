@@ -5,7 +5,8 @@
 [![Hex.pm Version](https://img.shields.io/hexpm/v/predicator.svg)](https://hex.pm/packages/predicator)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/predicator/)
 
-A secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. Predicator allows you to safely evaluate user-defined expressions without the security risks of dynamic code execution.
+A secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir.
+Predicator allows you to safely evaluate user-defined expressions without the security risks of dynamic code execution.
 
 ## Features
 
@@ -159,9 +160,9 @@ iex> Predicator.decompile(ast)
 Predicator uses a multi-stage compilation pipeline:
 
 ```
-Expression String → Lexer → Parser → Compiler → Instructions → Evaluator
-     ↓              ↓        ↓         ↓           ↓            ↓
-"score > 85 AND #2024-01-15# in dates" → Tokens → AST → Instructions → Result
+Expression String     → Lexer → Parser → Compiler → Evaluator
+         ↓                 ↓      ↓         ↓           ↓
+"score > 85 OR admin" → Tokens → AST → Instructions → Result
 ```
 
 ### Grammar
@@ -252,21 +253,6 @@ iex> Predicator.decompile(ast, spacing: :verbose)
 # Explicit parentheses
 iex> Predicator.decompile(ast, parentheses: :explicit)
 "(score > 85)"
-```
-
-### Performance
-
-For repeated evaluations with the same expression:
-
-```elixir
-# Compile once
-{:ok, instructions} = Predicator.compile("score > threshold")
-
-# Evaluate many times
-results = 
-  data_list
-  |> Enum.map(&Predicator.evaluate(instructions, &1))
-  |> Enum.map(fn {:ok, result} -> result end)
 ```
 
 ## Development
