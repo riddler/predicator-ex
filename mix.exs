@@ -2,7 +2,15 @@ defmodule Predicator.MixProject do
   use Mix.Project
 
   @version "1.0.0"
+  @description "A secure, non-evaling condition (boolean predicate) engine for end users"
   @source_url "https://github.com/riddler/predicator-ex"
+  @deps [
+    # Development and testing
+    {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+    {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+    {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+    {:excoveralls, "~> 0.18", only: :test}
+  ]
 
   def project do
     [
@@ -10,9 +18,9 @@ defmodule Predicator.MixProject do
       version: @version,
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
-      deps: deps(),
+      deps: @deps,
       docs: docs(),
-      description: description(),
+      description: @description,
       package: package(),
       aliases: aliases(),
       test_coverage: [tool: ExCoveralls],
@@ -39,21 +47,6 @@ defmodule Predicator.MixProject do
     ]
   end
 
-  defp deps do
-    [
-      # Development and testing
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:mix_test_watch, "~> 1.2", only: [:dev, :test], runtime: false},
-      {:excoveralls, "~> 0.18", only: :test}
-    ]
-  end
-
-  defp description do
-    "A secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir"
-  end
-
   defp package do
     [
       name: :predicator,
@@ -71,18 +64,12 @@ defmodule Predicator.MixProject do
       canonical: "https://hexdocs.pm/predicator",
       source_url: @source_url,
       extras: ["README.md", "CHANGELOG.md"],
-      groups_for_modules: [
-        Core: [Predicator, Predicator.Types],
-        Evaluation: [Predicator.Evaluator],
-        Compilation: [],
-        Errors: []
-      ]
+      main: "README"
     ]
   end
 
   defp aliases do
     [
-      "test.watch": ["test.watch --stale"],
       quality: ["format", "credo --strict", "coveralls", "dialyzer"],
       "quality.check": [
         "format --check-formatted",
