@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-01-XX
+## [1.0.0] - 2025-08-XX
 
 ### Added
 
@@ -149,7 +149,7 @@ The following versions are part of the original Predicator implementation, which
 ## [0.8.0]
 
 ### Added
-- `Predicator.matches?/3` accepts evaluator options
+- **Predicator.matches?/3** accepts evaluator options
 
 ### Enhancements
 - Adds leex and parsing for `isblank` and `ispresent`
@@ -191,7 +191,7 @@ The following versions are part of the original Predicator implementation, which
 ## [0.3.0]
 
 ### Enhancements
-- Adds options to `Predicator.Evaluator.execute/3` as a keyword list to define if the context map is a string keyed list `[map_type: :string]` or atom keyed for the default `[map_type: :atom]`
+- Adds options to **Predicator.Evaluator.execute/3** as a keyword list to define if the context map is a string keyed list `[map_type: :string]` or atom keyed for the default `[map_type: :atom]`
 
 ---
 
