@@ -1,7 +1,7 @@
 defmodule Predicator.MixProject do
   use Mix.Project
 
-  @version "1.0.1"
+  @version "1.1.0"
   @description "A secure, non-evaling condition (boolean predicate) engine for end users"
   @source_url "https://github.com/riddler/predicator-ex"
   @deps [
