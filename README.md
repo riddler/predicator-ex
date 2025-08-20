@@ -21,6 +21,7 @@ Predicator allows you to safely evaluate user-defined expressions without the se
 - 📋 **Lists**: List literals with membership operations (`in`, `contains`)
 - 🧠 **Smart Logic**: Logical operators with proper precedence (`AND`, `OR`, `NOT`)
 - 🔧 **Functions**: Built-in functions for string, numeric, and date operations
+- 🌳 **Nested Access**: Dot notation for deep data structures (`user.profile.name`)
 
 ## Quick Start
 
@@ -96,6 +97,60 @@ iex> Predicator.decompile(ast)
 "score > 85 AND #2024-01-15# IN dates"
 ```
 
+## Nested Data Access
+
+Predicator supports nested data structure access using dot notation, allowing you to reference deeply nested values in your context:
+
+```elixir
+# Context with nested data structures
+context = %{
+  "user" => %{
+    "age" => 47,
+    "name" => %{"first" => "John", "last" => "Doe"},
+    "profile" => %{"role" => "admin"},
+    "settings" => %{"theme" => "dark", "notifications" => true}
+  },
+  "config" => %{
+    "database" => %{"host" => "localhost", "port" => 5432}
+  }
+}
+
+# Access nested values with dot notation
+iex> Predicator.evaluate("user.name.first = \"John\"", context)
+{:ok, true}
+
+iex> Predicator.evaluate("user.age > 18", context)
+{:ok, true}
+
+iex> Predicator.evaluate("config.database.port = 5432", context)
+{:ok, true}
+
+# Use in complex expressions
+iex> Predicator.evaluate("user.profile.role = \"admin\" AND user.settings.notifications", context)
+{:ok, true}
+
+# Missing paths return :undefined
+iex> Predicator.evaluate("user.profile.email = \"test\"", context)
+{:ok, :undefined}
+
+# Works with both string and atom keys
+atom_context = %{user: %{name: %{first: "Jane"}}}
+iex> Predicator.evaluate("user.name.first = \"Jane\"", atom_context)
+{:ok, true}
+
+# Access nested lists
+list_context = %{"user" => %{"hobbies" => ["reading", "coding"]}}
+iex> Predicator.evaluate("\"coding\" in user.hobbies", list_context)
+{:ok, true}
+```
+
+### Key Features:
+- **Unlimited nesting depth**: `app.database.config.settings.ssl`
+- **Mixed key types**: Works with string keys, atom keys, or both
+- **Graceful fallback**: Returns `:undefined` for missing paths
+- **Type preservation**: Maintains original data types (strings, numbers, booleans, lists)
+- **Backwards compatible**: Simple variable names work exactly as before
+
 ## Supported Operations
 
 ### Comparison Operators
@@ -153,7 +208,7 @@ iex> Predicator.decompile(ast)
 - **Dates**: `#2024-01-15#` (ISO 8601 date format)
 - **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with timezone)
 - **Lists**: `[1, 2, 3]`, `["admin", "manager"]` (homogeneous collections)
-- **Identifiers**: `score`, `user_name`, `is_active` (variable references)
+- **Identifiers**: `score`, `user_name`, `is_active`, `user.profile.name` (variable references with optional dot notation for nested data)
 
 ## Architecture
 
@@ -298,7 +353,7 @@ Add `predicator` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:predicator, "~> 1.0.0"}
+    {:predicator, "~> 1.1.0"}
   ]
 end
 ```

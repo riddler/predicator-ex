@@ -1043,4 +1043,103 @@ defmodule PredicatorTest do
       assert result == {:ok, false}
     end
   end
+
+  describe "nested context access" do
+    test "simple nested access with string expressions" do
+      context = %{"user" => %{"name" => %{"first" => "John", "last" => "Doe"}, "age" => 47}}
+
+      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.name.last = \"Doe\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.age = 47", context) == {:ok, true}
+      assert Predicator.evaluate("user.name.middle = \"X\"", context) == {:ok, :undefined}
+    end
+
+    test "nested access with atom keys" do
+      context = %{user: %{name: %{first: "John"}, age: 47}}
+
+      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.age > 18", context) == {:ok, true}
+    end
+
+    test "nested access with mixed key types" do
+      context = %{"user" => %{profile: %{"name" => "John"}, age: 47}}
+
+      assert Predicator.evaluate("user.profile.name = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.age >= 47", context) == {:ok, true}
+    end
+
+    test "nested access in complex expressions" do
+      context = %{
+        "user" => %{"name" => "John", "age" => 47},
+        "config" => %{"enabled" => true, "level" => 3}
+      }
+
+      assert Predicator.evaluate("user.age > 18 AND config.enabled", context) == {:ok, true}
+
+      assert Predicator.evaluate("user.name = \"John\" OR config.level > 5", context) ==
+               {:ok, true}
+
+      assert Predicator.evaluate("user.age < 18 AND config.enabled", context) == {:ok, false}
+    end
+
+    test "nested access with missing paths returns :undefined" do
+      context = %{"user" => %{"name" => "John"}}
+
+      assert Predicator.evaluate("user.profile.settings.theme = \"dark\"", context) ==
+               {:ok, :undefined}
+
+      assert Predicator.evaluate("missing.path.here = \"value\"", context) == {:ok, :undefined}
+    end
+
+    test "nested access with non-map intermediate values" do
+      context = %{"user" => %{"name" => "John Doe"}}
+
+      # "name" is a string, not a map, so "user.name.first" should be :undefined
+      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, :undefined}
+    end
+
+    test "deeply nested structures" do
+      context = %{
+        "app" => %{
+          "database" => %{
+            "config" => %{
+              "host" => "localhost",
+              "port" => 5432,
+              "settings" => %{
+                "ssl" => true,
+                "timeout" => 30
+              }
+            }
+          }
+        }
+      }
+
+      assert Predicator.evaluate("app.database.config.host = \"localhost\"", context) ==
+               {:ok, true}
+
+      assert Predicator.evaluate("app.database.config.port = 5432", context) == {:ok, true}
+      assert Predicator.evaluate("app.database.config.settings.ssl", context) == {:ok, true}
+
+      assert Predicator.evaluate("app.database.config.settings.timeout > 25", context) ==
+               {:ok, true}
+    end
+
+    test "nested access with list values" do
+      context = %{
+        "user" => %{
+          "name" => "John",
+          "hobbies" => ["reading", "coding", "gaming"],
+          "scores" => [85, 92, 78]
+        }
+      }
+
+      # Access the list itself
+      {:ok, hobbies} = Predicator.evaluate("user.hobbies", context)
+      assert hobbies == ["reading", "coding", "gaming"]
+
+      # Use list in membership test
+      assert Predicator.evaluate("\"coding\" in user.hobbies", context) == {:ok, true}
+      assert Predicator.evaluate("\"dancing\" in user.hobbies", context) == {:ok, false}
+    end
+  end
 end

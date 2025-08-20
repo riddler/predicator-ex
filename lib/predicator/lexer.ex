@@ -303,7 +303,8 @@ defmodule Predicator.Lexer do
   @spec take_identifier(charlist(), charlist(), non_neg_integer()) ::
           {binary(), charlist(), pos_integer()}
   defp take_identifier([c | rest], acc, count)
-       when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or (c >= ?0 and c <= ?9) or c == ?_ do
+       when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or (c >= ?0 and c <= ?9) or c == ?_ or
+              c == ?. do
     take_identifier(rest, [c | acc], count + 1)
   end
 

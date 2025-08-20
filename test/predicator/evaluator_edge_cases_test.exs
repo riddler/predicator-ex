@@ -211,40 +211,49 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
   end
 
   describe "context edge cases" do
-    test "handles deeply nested context access" do
+    test "handles flat keys with dots versus nested access" do
+      # With nested access support, flat keys with dots are now parsed as nested paths
+      # This test documents the behavior change
       context = %{
-        # flat key, nested access not supported
-        "user.profile.settings.theme" => "dark"
+        # flat key with dots - this will NOT be accessible via "user.profile.settings.theme"
+        "user.profile.settings.theme" => "dark",
+        # proper nested structure - this WILL be accessible
+        "user" => %{"profile" => %{"settings" => %{"theme" => "light"}}}
       }
 
       instructions = [
         ["load", "user.profile.settings.theme"]
       ]
 
-      # Should load the flat key (nested access not implemented)
+      # Should now access the nested structure, not the flat key
       result = Evaluator.evaluate(instructions, context)
-      assert "dark" = result
+      assert "light" = result
     end
 
     test "handles context with special characters in keys" do
       context = %{
         "user-name" => "test",
+        # This will now be parsed as nested access
         "user.email" => "test@example.com",
-        "user space" => "value"
+        "user space" => "value",
+        # Add nested structure to make user.email accessible
+        "user" => %{"email" => "nested@example.com"}
       }
 
       instructions = [
         ["load", "user-name"],
+        # This will now access user -> email
         ["load", "user.email"],
         ["load", "user space"]
       ]
 
-      # Should be able to load all these values
+      # Should be able to load values according to new nested behavior
       results = Enum.map(instructions, &Evaluator.evaluate([&1], context))
 
       assert [
                "test",
-               "test@example.com",
+               # This comes from the nested structure
+               "nested@example.com",
                "value"
              ] = results
     end
