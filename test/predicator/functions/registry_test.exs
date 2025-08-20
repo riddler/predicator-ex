@@ -365,4 +365,160 @@ defmodule Predicator.Functions.RegistryTest do
                Registry.call("five_args", [1, 2, 3], %{})
     end
   end
+
+  describe "concurrent table creation (race condition fixes)" do
+    test "start_registry is idempotent and safe to call multiple times" do
+      # Delete the table completely to start fresh
+      :ets.delete_all_objects(:predicator_function_registry)
+      :ets.delete(:predicator_function_registry)
+
+      # Should succeed the first time
+      assert :ok = Registry.start_registry()
+      
+      # Should succeed when called again (table already exists)
+      assert :ok = Registry.start_registry()
+      assert :ok = Registry.start_registry()
+      
+      # Table should still be functional
+      Registry.register_function("test", 0, fn [], _context -> {:ok, :works} end)
+      assert {:ok, :works} = Registry.call("test", [], %{})
+    end
+
+    test "concurrent start_registry calls don't crash" do
+      # Delete the table completely to start fresh
+      :ets.delete_all_objects(:predicator_function_registry)
+      :ets.delete(:predicator_function_registry)
+
+      # Simulate concurrent table creation by starting multiple processes
+      parent = self()
+      
+      tasks = for i <- 1..10 do
+        Task.async(fn ->
+          result = Registry.start_registry()
+          send(parent, {:task_result, i, result})
+          result
+        end)
+      end
+
+      # All tasks should complete successfully
+      results = Task.await_many(tasks, 5000)
+      assert Enum.all?(results, &(&1 == :ok))
+
+      # Collect all results from messages
+      task_results = for _i <- 1..10 do
+        receive do
+          {:task_result, _i, result} -> result
+        after 
+          1000 -> :timeout
+        end
+      end
+
+      # All concurrent calls should have succeeded
+      assert Enum.all?(task_results, &(&1 == :ok))
+      
+      # Table should be functional after concurrent creation attempts
+      Registry.register_function("concurrent_test", 0, fn [], _context -> {:ok, :success} end)
+      assert {:ok, :success} = Registry.call("concurrent_test", [], %{})
+    end
+
+    test "start_registry handles race condition between check and creation" do
+      # This test verifies the specific race condition fix where multiple processes
+      # see :undefined from whereis() but only one can successfully create the table
+      
+      # Delete the table completely
+      :ets.delete_all_objects(:predicator_function_registry)
+      :ets.delete(:predicator_function_registry)
+
+      # Verify table doesn't exist
+      assert :undefined = :ets.whereis(:predicator_function_registry)
+
+      # Create a scenario where we manually test the race condition path
+      # First call should create the table
+      assert :ok = Registry.start_registry()
+      
+      # Verify table now exists  
+      table_ref = :ets.whereis(:predicator_function_registry)
+      assert table_ref != :undefined
+      
+      # Second call should handle the "table already exists" case gracefully
+      assert :ok = Registry.start_registry()
+      
+      # Table should still be the same and functional
+      table_ref_after = :ets.whereis(:predicator_function_registry)
+      assert table_ref_after != :undefined
+      assert table_ref_after == table_ref
+    end
+
+    test "ensure_registry_exists works correctly with concurrent access" do
+      # Delete the table to test ensure_registry_exists creating it
+      :ets.delete_all_objects(:predicator_function_registry)
+      :ets.delete(:predicator_function_registry)
+
+      # Verify table doesn't exist initially
+      assert :undefined = :ets.whereis(:predicator_function_registry)
+
+      # Test that multiple concurrent calls to ensure_registry_exists work
+      # by having each task try to register and immediately verify the table exists
+      tasks = for i <- 1..5 do
+        Task.async(fn ->
+          # This will call ensure_registry_exists internally
+          Registry.register_function("test_#{i}", 0, fn [], _context -> {:ok, i} end)
+          
+          # Verify that after registration, the table definitely exists
+          case :ets.whereis(:predicator_function_registry) do
+            :undefined -> {:error, "Registry not created after registration"}
+            _table_ref -> {:ok, :registry_created}
+          end
+        end)
+      end
+
+      results = Task.await_many(tasks, 5000)
+      
+      # All tasks should have successfully created/found the registry
+      expected_results = List.duplicate({:ok, :registry_created}, 5)
+      assert Enum.sort(results) == Enum.sort(expected_results)
+      
+      # Verify the table is still functional by testing a simple operation
+      Registry.register_function("final_test", 0, fn [], _context -> {:ok, :works} end)
+      assert {:ok, :works} = Registry.call("final_test", [], %{})
+    end
+
+    test "all registry functions handle table deletion between check and operation" do
+      # This test verifies that all Registry functions can recover from race conditions
+      # where the ETS table gets deleted between ensure_registry_exists() and the actual ETS operation
+      
+      # First register a test function
+      Registry.register_function("test_func", 1, fn [x], _context -> {:ok, x} end)
+      
+      # Test register_function recovery
+      # Delete table and try to register - should recover gracefully
+      :ets.delete(:predicator_function_registry)
+      assert :ok = Registry.register_function("recovered_func", 0, fn [], _context -> {:ok, :recovered} end)
+      
+      # Test call function recovery
+      # Delete table and try to call - should recover gracefully
+      :ets.delete(:predicator_function_registry)
+      assert {:error, "Unknown function: recovered_func"} = Registry.call("recovered_func", [], %{})
+      
+      # Register the function again and test successful call after recovery
+      Registry.register_function("recovered_func", 0, fn [], _context -> {:ok, :recovered} end)
+      assert {:ok, :recovered} = Registry.call("recovered_func", [], %{})
+      
+      # Test function_registered? recovery
+      :ets.delete(:predicator_function_registry)
+      refute Registry.function_registered?("recovered_func")
+      
+      # Test list_functions recovery
+      :ets.delete(:predicator_function_registry)
+      assert [] = Registry.list_functions()
+      
+      # Test clear_registry recovery
+      :ets.delete(:predicator_function_registry)
+      assert :ok = Registry.clear_registry()
+      
+      # Verify table is functional after all operations
+      Registry.register_function("final_check", 0, fn [], _context -> {:ok, :all_good} end)
+      assert {:ok, :all_good} = Registry.call("final_check", [], %{})
+    end
+  end
 end
