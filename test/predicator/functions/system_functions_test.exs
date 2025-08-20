@@ -1,12 +1,11 @@
 defmodule Predicator.Functions.SystemFunctionsTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Predicator.Functions.{Registry, SystemFunctions}
 
   setup do
-    # Clear and re-register system functions for each test
-    Registry.clear_registry()
-    SystemFunctions.register_all()
+    # Clear custom functions but preserve system functions
+    Predicator.clear_custom_functions()
     :ok
   end
 
