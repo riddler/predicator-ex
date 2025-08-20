@@ -64,7 +64,7 @@ defmodule Predicator.MixProject do
       canonical: "https://hexdocs.pm/predicator",
       source_url: @source_url,
       extras: ["README.md", "CHANGELOG.md"],
-      main: "README"
+      main: "readme"
     ]
   end
 
