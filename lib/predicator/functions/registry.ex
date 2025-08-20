@@ -64,6 +64,7 @@ defmodule Predicator.Functions.Registry do
             # This is fine, just return :ok
             :ok
         end
+
       _table_exists ->
         :ok
     end
@@ -135,42 +136,12 @@ defmodule Predicator.Functions.Registry do
     ensure_registry_exists()
 
     try do
-      case :ets.lookup(@registry_name, name) do
-        [{_name, %{arity: arity, impl: impl}}] ->
-          if length(args) == arity do
-            try do
-              impl.(args, context)
-            rescue
-              error ->
-                {:error, "Function #{name}() failed: #{Exception.message(error)}"}
-            end
-          else
-            {:error, "Function #{name}() expects #{arity} arguments, got #{length(args)}"}
-          end
-
-        [] ->
-          {:error, "Unknown function: #{name}"}
-      end
+      do_lookup_and_call(name, args, context)
     rescue
       ArgumentError ->
         # Table was deleted between our check and lookup, recreate and retry
         ensure_registry_exists()
-        case :ets.lookup(@registry_name, name) do
-          [{_name, %{arity: arity, impl: impl}}] ->
-            if length(args) == arity do
-              try do
-                impl.(args, context)
-              rescue
-                error ->
-                  {:error, "Function #{name}() failed: #{Exception.message(error)}"}
-              end
-            else
-              {:error, "Function #{name}() expects #{arity} arguments, got #{length(args)}"}
-            end
-
-          [] ->
-            {:error, "Unknown function: #{name}"}
-        end
+        do_lookup_and_call(name, args, context)
     end
   end
 
@@ -191,6 +162,7 @@ defmodule Predicator.Functions.Registry do
       ArgumentError ->
         # Table was deleted between our check and tab2list, recreate and retry
         ensure_registry_exists()
+
         :ets.tab2list(@registry_name)
         |> Enum.map(fn {_key, function_info} -> function_info end)
         |> Enum.sort_by(& &1.name)
@@ -211,7 +183,7 @@ defmodule Predicator.Functions.Registry do
   @spec function_registered?(binary()) :: boolean()
   def function_registered?(name) when is_binary(name) do
     ensure_registry_exists()
-    
+
     try do
       :ets.member(@registry_name, name)
     rescue
@@ -230,7 +202,7 @@ defmodule Predicator.Functions.Registry do
   @spec clear_registry() :: :ok
   def clear_registry do
     ensure_registry_exists()
-    
+
     try do
       :ets.delete_all_objects(@registry_name)
       :ok
@@ -248,6 +220,26 @@ defmodule Predicator.Functions.Registry do
     case :ets.whereis(@registry_name) do
       :undefined -> start_registry()
       _table_exists -> :ok
+    end
+  end
+
+  # Helper function to lookup and call a function (extracted to eliminate duplicate code)
+  defp do_lookup_and_call(name, args, context) do
+    case :ets.lookup(@registry_name, name) do
+      [{_name, %{arity: arity, impl: impl}}] ->
+        if length(args) == arity do
+          try do
+            impl.(args, context)
+          rescue
+            error ->
+              {:error, "Function #{name}() failed: #{Exception.message(error)}"}
+          end
+        else
+          {:error, "Function #{name}() expects #{arity} arguments, got #{length(args)}"}
+        end
+
+      [] ->
+        {:error, "Unknown function: #{name}"}
     end
   end
 end
