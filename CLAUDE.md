@@ -37,8 +37,7 @@ list         → "[" ( expression ( "," expression )* )? "]"
   - **StringVisitor**: Converts AST back to strings
   - **InstructionsVisitor**: Converts AST to executable instructions
 - **Functions** (`lib/predicator/functions/`): Function system components
-  - **SystemFunctions**: Built-in system functions (len, upper, abs, max, etc.)
-  - **Registry**: Custom function registration and dispatch
+  - **SystemFunctions**: Built-in system functions (len, upper, abs, max, etc.) provided via `all_functions/0`
 - **Main API** (`lib/predicator.ex`): Public interface with convenience functions
 
 ## Development Commands
@@ -98,13 +97,12 @@ lib/predicator/
 ├── lexer.ex           # Tokenization with position tracking
 ├── parser.ex          # Recursive descent parser  
 ├── compiler.ex        # AST to instructions conversion
-├── evaluator.ex       # Instruction execution engine
+├── evaluator.ex       # Instruction execution engine with custom function support
 ├── visitor.ex         # Visitor behavior definition
 ├── types.ex           # Type specifications
-├── application.ex     # OTP application
+├── application.ex     # OTP application (simplified - no registry init)
 ├── functions/         # Function system components
-│   ├── system_functions.ex  # Built-in functions (len, upper, abs, etc.)
-│   └── registry.ex          # Function registration and dispatch
+│   └── system_functions.ex   # Built-in functions (len, upper, abs, etc.)
 └── visitors/          # AST transformation modules
     ├── string_visitor.ex      # AST to string decompilation  
     └── instructions_visitor.ex # AST to instructions conversion
@@ -115,9 +113,6 @@ test/predicator/
 ├── compiler_test.exs
 ├── evaluator_test.exs
 ├── predicator_test.exs        # Integration tests
-├── functions/                 # Function system tests
-│   ├── system_functions_test.exs
-│   └── registry_test.exs
 └── visitors/                  # Visitor tests
     ├── string_visitor_test.exs
     └── instructions_visitor_test.exs
@@ -125,18 +120,26 @@ test/predicator/
 
 ## Recent Additions (2025)
 
-### Function Call System
-- **Built-in Functions**: System functions automatically available
+### Function System (v2.0.0 - Architecture Overhaul)
+- **Built-in Functions**: System functions automatically available in all evaluations
   - **String functions**: `len(string)`, `upper(string)`, `lower(string)`, `trim(string)`
   - **Numeric functions**: `abs(number)`, `max(a, b)`, `min(a, b)`
   - **Date functions**: `year(date)`, `month(date)`, `day(date)`
-- **Custom Functions**: Register anonymous functions with `Predicator.register_function/3`
-- **Function Registry**: ETS-based registry with arity validation and error handling
+- **Custom Functions**: Provided per evaluation via `functions:` option in `evaluate/3`
+- **Function Format**: `%{name => {arity, function}}` where function takes `[args], context` and returns `{:ok, result}` or `{:error, message}`
+- **Function Merging**: Custom functions merged with system functions, allowing overrides
+- **Thread Safety**: No global state - functions scoped to individual evaluation calls
 - **Examples**: 
-  - `len(name) > 5` 
-  - `upper(status) = "ACTIVE"`
-  - `year(created_date) = 2024`
-  - `max(score1, score2) > 85`
+  ```elixir
+  custom_functions = %{
+    "double" => {1, fn [n], _context -> {:ok, n * 2} end},
+    "len" => {1, fn [_], _context -> {:ok, "custom_override"} end}  # Override built-in
+  }
+  
+  Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: custom_functions)
+  Predicator.evaluate("len('anything')", %{}, functions: custom_functions)  # Uses override
+  Predicator.evaluate("len('hello')", %{})  # Uses built-in (returns 5)
+  ```
 
 ### Date and DateTime Support
 - **Syntax**: `#2024-01-15#` (date), `#2024-01-15T10:30:00Z#` (datetime)
@@ -167,6 +170,20 @@ test/predicator/
   - `config.database.port > 5000`
   - `user.settings.theme = "dark" AND user.profile.active`
 - **Backwards Compatible**: Simple variable names work exactly as before
+
+## Breaking Changes
+
+### v2.0.0 - Custom Function Architecture Overhaul
+- **Removed**: Global function registry system (`Predicator.Functions.Registry` module)
+- **Removed**: `Predicator.register_function/3`, `Predicator.clear_custom_functions/0`, `Predicator.list_custom_functions/0`
+- **Changed**: Custom functions now passed via `functions:` option in `evaluate/3` calls instead of global registration
+- **Benefit**: Thread-safe, no global state, per-evaluation function scoping
+- **Migration**: Replace registry calls with function maps passed to `evaluate/3`
+
+### v1.1.0 - Nested Access Parsing
+- **Changed**: Variables containing dots (e.g., `"user.email"`) now parsed as nested access paths
+- **Impact**: Context keys like `"user.profile.name"` will no longer match identifier `user.profile.name`
+- **Solution**: Use proper nested data structures instead of flat keys with dots
 
 ## Common Tasks
 
@@ -200,8 +217,7 @@ test/predicator/
 - **Property Testing**: Comprehensive input validation
 - **Error Path Testing**: All error conditions covered
 - **Round-trip Testing**: AST → String → AST consistency
-- **Current Test Count**: 428 tests (64 doctests + 364 regular tests)
-- **Coverage**: 92.6% overall, 100% on critical components
+- **Current Test Count**: 569 tests (65 doctests + 504 regular tests)
 
 ## Code Standards
 

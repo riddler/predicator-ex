@@ -233,8 +233,8 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 Predicator uses a multi-stage compilation pipeline:
 
 ```
-Expression String     → Lexer → Parser → Compiler → Evaluator
-         ↓                 ↓      ↓         ↓           ↓
+  Expression String  →  Lexer → Parser → Compiler → Evaluator
+         ↓                ↓       ↓         ↓           ↓
 'score > 85 OR admin' → Tokens → AST → Instructions → Result
 ```
 
@@ -278,37 +278,59 @@ iex> Predicator.evaluate("score AND", %{})
 
 ## Advanced Usage
 
-### Custom Function Registration
+### Custom Functions
 
-You can register your own custom functions for use in expressions:
+You can provide custom functions when evaluating expressions using the `functions:` option:
 
 ```elixir
-# Register a simple function
-Predicator.register_function("double", 1, fn [n], _context ->
-  {:ok, n * 2}
-end)
+# Define custom functions in a map
+custom_functions = %{
+  "double" => {1, fn [n], _context -> {:ok, n * 2} end},
+  "user_role" => {0, fn [], context -> 
+    {:ok, Map.get(context, "current_user_role", "guest")} 
+  end},
+  "divide" => {2, fn [a, b], _context ->
+    if b == 0 do
+      {:error, "Division by zero"}
+    else
+      {:ok, a / b}
+    end
+  end}
+}
 
-# Use in expressions
-iex> Predicator.evaluate("double(score) > 100", %{"score" => 60})
+# Use custom functions in expressions
+iex> Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: custom_functions)
 {:ok, true}
 
-# Context-aware function
-Predicator.register_function("user_role", 0, fn [], context ->
-  {:ok, Map.get(context, "current_user_role", "guest")}
-end)
-
-iex> Predicator.evaluate("user_role() = 'admin'", %{"current_user_role" => "admin"})
+iex> Predicator.evaluate("user_role() = 'admin'", %{"current_user_role" => "admin"}, functions: custom_functions)
 {:ok, true}
 
-# Function with error handling
-Predicator.register_function("divide", 2, fn [a, b], _context ->
-  if b == 0 do
-    {:error, "Division by zero"}
-  else
-    {:ok, a / b}
-  end
-end)
+iex> Predicator.evaluate("divide(10, 2) = 5", %{}, functions: custom_functions)
+{:ok, true}
+
+iex> Predicator.evaluate("divide(10, 0)", %{}, functions: custom_functions)
+{:error, "Division by zero"}
+
+# Custom functions can override built-in functions
+override_functions = %{
+  "len" => {1, fn [_], _context -> {:ok, "custom_result"} end}
+}
+
+iex> Predicator.evaluate("len('anything')", %{}, functions: override_functions)
+{:ok, "custom_result"}
+
+# Without custom functions, built-ins work as expected
+iex> Predicator.evaluate("len('hello')", %{})
+{:ok, 5}
 ```
+
+#### Function Format
+
+Custom functions must follow this format:
+- **Map Key**: Function name (string)
+- **Map Value**: `{arity, function}` tuple where:
+  - `arity`: Number of arguments the function expects (integer)
+  - `function`: Anonymous function that takes `[args], context` and returns `{:ok, result}` or `{:error, message}`
 
 ### String Formatting Options
 

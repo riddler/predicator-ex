@@ -47,7 +47,6 @@ defmodule Predicator do
   """
 
   alias Predicator.{Compiler, Evaluator, Lexer, Parser, Types}
-  alias Predicator.Functions.{Registry, SystemFunctions}
 
   @doc """
   Evaluates a predicate expression or instruction list with an empty context.
@@ -91,7 +90,7 @@ defmodule Predicator do
   end
 
   @doc """
-  Evaluates a predicate expression or instruction list with an optional context.
+  Evaluates a predicate expression or instruction list with an optional context and options.
 
   This is the main entry point for Predicator evaluation. It accepts either:
   - A string expression (e.g., "score > 85") which gets compiled automatically
@@ -101,6 +100,8 @@ defmodule Predicator do
 
   - `input` - String expression or instruction list
   - `context` - Optional context map with variable bindings (default: `%{}`)
+  - `opts` - Optional keyword list of options:
+    - `:functions` - Map of custom functions to make available during evaluation
 
   ## Returns
 
@@ -113,32 +114,32 @@ defmodule Predicator do
       iex> Predicator.evaluate("score > 85", %{"score" => 90})
       {:ok, true}
 
-      iex> Predicator.evaluate("name = \\"John\\"", %{"name" => "John"})
+      iex> Predicator.evaluate("name = 'John'", %{"name" => "John"})
       {:ok, true}
 
-      iex> Predicator.evaluate("age >= 18", %{"age" => 16})
-      {:ok, false}
+      # With custom functions
+      iex> custom_functions = %{"double" => {1, fn [n], _context -> {:ok, n * 2} end}}
+      iex> Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: custom_functions)
+      {:ok, true}
 
       # Pre-compiled instruction lists (maximum performance)
       iex> Predicator.evaluate([["load", "score"], ["lit", 85], ["compare", "GT"]], %{"score" => 90})
       {:ok, true}
 
-      iex> Predicator.evaluate([["lit", 42]], %{})
-      {:ok, 42}
-
       # Parse errors are returned  
       iex> Predicator.evaluate("score >", %{})
       {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input at line 1, column 8"}
   """
-  @spec evaluate(binary() | Types.instruction_list(), Types.context()) :: Types.result()
-  def evaluate(input, context)
+  @spec evaluate(binary() | Types.instruction_list(), Types.context(), keyword()) ::
+          Types.result()
+  def evaluate(input, context, opts)
 
-  def evaluate(expression, context) when is_binary(expression) and is_map(context) do
+  def evaluate(expression, context, opts) when is_binary(expression) and is_map(context) do
     with {:ok, tokens} <- Lexer.tokenize(expression),
          {:ok, ast} <- Parser.parse(tokens) do
       instructions = Compiler.to_instructions(ast)
 
-      case Evaluator.evaluate(instructions, context) do
+      case Evaluator.evaluate(instructions, context, opts) do
         {:error, reason} -> {:error, reason}
         result -> {:ok, result}
       end
@@ -147,17 +148,23 @@ defmodule Predicator do
     end
   end
 
-  def evaluate(instructions, context) when is_list(instructions) and is_map(context) do
-    case Evaluator.evaluate(instructions, context) do
+  def evaluate(instructions, context, opts) when is_list(instructions) and is_map(context) do
+    case Evaluator.evaluate(instructions, context, opts) do
       {:error, reason} -> {:error, reason}
       result -> {:ok, result}
     end
   end
 
+  # Backward compatibility functions
+  @spec evaluate(binary() | Types.instruction_list(), Types.context()) :: Types.result()
+  def evaluate(input, context) when is_map(context) do
+    evaluate(input, context, [])
+  end
+
   @doc """
   Evaluates a predicate expression or instruction list, raising on errors.
 
-  Similar to `evaluate/2` but raises an exception for error results instead
+  Similar to `evaluate/3` but raises an exception for error results instead
   of returning error tuples. Follows the Elixir convention of bang functions.
 
   ## Examples
@@ -168,13 +175,18 @@ defmodule Predicator do
       iex> Predicator.evaluate!([["lit", 42]])
       42
 
+      # With custom functions
+      iex> custom_functions = %{"double" => {1, fn [n], _context -> {:ok, n * 2} end}}
+      iex> Predicator.evaluate!("double(21)", %{}, functions: custom_functions)
+      42
+
       # This would raise an exception:
       # Predicator.evaluate!("score >", %{})
   """
-  @spec evaluate!(binary() | Types.instruction_list(), Types.context()) ::
+  @spec evaluate!(binary() | Types.instruction_list(), Types.context(), keyword()) ::
           Types.value()
-  def evaluate!(input, context \\ %{}) do
-    case evaluate(input, context) do
+  def evaluate!(input, context \\ %{}, opts \\ []) do
+    case evaluate(input, context, opts) do
       {:ok, result} -> result
       {:error, reason} -> raise "Evaluation failed: #{reason}"
     end
@@ -344,79 +356,5 @@ defmodule Predicator do
   @spec run_evaluator(Evaluator.t()) :: {:ok, Evaluator.t()} | {:error, term()}
   def run_evaluator(%Evaluator{} = evaluator) do
     Evaluator.run(evaluator)
-  end
-
-  # Custom Function Registration API
-
-  @doc """
-  Registers a custom function with the given name, arity, and implementation.
-
-  This is a convenience wrapper around `Predicator.FunctionRegistry.register_function/3`.
-
-  ## Parameters
-
-  - `name` - Function name as it will appear in expressions
-  - `arity` - Number of arguments the function expects
-  - `impl` - Function implementation that takes `(args, context)` and returns `{:ok, result}` or `{:error, message}`
-
-  ## Examples
-
-      # Simple function without context
-      Predicator.register_function("double", 1, fn [n], _context ->
-        {:ok, n * 2}
-      end)
-
-      # Function that uses context
-      Predicator.register_function("user_role", 0, fn [], context ->
-        {:ok, Map.get(context, "user_role", "guest")}
-      end)
-
-      # Use the function in expressions
-      Predicator.evaluate("double(5)") # => {:ok, 10}
-      Predicator.evaluate("user_role() = \"admin\"", %{"user_role" => "admin"}) # => {:ok, true}
-  """
-  @spec register_function(binary(), non_neg_integer(), function()) :: :ok
-  def register_function(name, arity, impl) do
-    Registry.register_function(name, arity, impl)
-  end
-
-  @doc """
-  Lists all registered functions (both built-in and custom).
-
-  Returns information about each registered function including name and arity.
-  Built-in functions like len, max, etc. are included in the results.
-
-  ## Examples
-
-      iex> # Register system functions first to ensure they're available
-      iex> Predicator.Functions.SystemFunctions.register_all()
-      :ok
-      iex> functions = Predicator.list_custom_functions()
-      iex> Enum.any?(functions, fn f -> f.name == "len" end)
-      true
-      iex> Enum.any?(functions, fn f -> f.name == "max" end)
-      true
-  """
-  @spec list_custom_functions() :: [map()]
-  def list_custom_functions do
-    Registry.list_functions()
-    |> Enum.map(fn %{name: name, arity: arity} -> %{name: name, arity: arity} end)
-  end
-
-  @doc """
-  Clears all registered custom functions but preserves built-in functions.
-
-  This is primarily useful for testing scenarios where you want to reset 
-  custom functions without losing the built-in ones (len, max, etc.).
-
-  ## Examples
-
-      iex> Predicator.clear_custom_functions()
-      :ok
-  """
-  @spec clear_custom_functions() :: :ok
-  def clear_custom_functions do
-    Registry.clear_registry()
-    SystemFunctions.register_all()
   end
 end

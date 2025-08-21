@@ -3,12 +3,6 @@ defmodule FunctionCallsIntegrationTest do
 
   import Predicator
 
-  setup do
-    # Clear custom functions but preserve system functions
-    clear_custom_functions()
-    :ok
-  end
-
   describe "function calls end-to-end" do
     test "evaluates simple string function" do
       assert {:ok, 5} = evaluate("len(\"hello\")")

@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-08-??
+
+### Changed
+
+#### Custom Function Architecture Overhaul
+- **Breaking Change**: Removed global function registry system in favor of evaluation-time function parameters
+- **New API**: Custom functions now passed via `functions:` option in `Predicator.evaluate/3` calls
+- **Function Format**: Custom functions use `%{name => {arity, function}}` format where function takes `[args], context` and returns `{:ok, result}` or `{:error, message}`
+- **Thread Safety**: Eliminated global state for improved concurrency and thread safety
+- **Function Merging**: SystemFunctions always available with custom functions merged in, allowing overrides
+- **Simplified Startup**: No application-level function registry initialization required
+
+#### Examples
+```elixir
+# Old registry-based approach (removed)
+Predicator.register_function("double", 1, fn [n], _context -> {:ok, n * 2} end)
+Predicator.evaluate("double(21)", %{})
+
+# New evaluation-time approach
+custom_functions = %{"double" => {1, fn [n], _context -> {:ok, n * 2} end}}
+Predicator.evaluate("double(21)", %{}, functions: custom_functions)
+
+# Custom functions can override built-ins
+custom_len = %{"len" => {1, fn [_], _context -> {:ok, "custom_result"} end}}
+Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "custom_result"}
+```
+
+#### Removed APIs
+- `Predicator.register_function/3` - Use `functions:` option instead
+- `Predicator.clear_custom_functions/0` - No longer needed
+- `Predicator.list_custom_functions/0` - No longer needed
+- `Predicator.Functions.Registry` module - Entire registry system removed
+
+#### Migration Guide
+1. **Replace registry calls**: Convert `register_function` calls to function maps passed to `evaluate/3`
+2. **Update function definitions**: Ensure functions return `{:ok, result}` or `{:error, message}`
+3. **Remove initialization code**: Delete any registry setup from application startup
+4. **Update tests**: Replace registry-based setup with evaluation-time function passing
+
+#### Technical Implementation
+- **Evaluator Enhancement**: Modified to accept `:functions` option and merge with system functions
+- **SystemFunctions Refactor**: Added `all_functions/0` to provide system functions in evaluator format
+- **Clean Architecture**: Removed ETS-based global registry and associated complexity
+- **Backward Compatibility**: `evaluate/2` functions continue to work unchanged for expressions without custom functions
+
+### Security
+- **Improved Isolation**: Custom functions scoped to individual evaluation calls
+- **No Global State**: Eliminates potential race conditions and global state mutations
+
+### Performance  
+- **Reduced Overhead**: No ETS lookups or global registry management
+- **Better Concurrency**: Thread-safe by design with no shared state
+
 ## [1.1.0] - 2025-08-20
 
 ### Added
