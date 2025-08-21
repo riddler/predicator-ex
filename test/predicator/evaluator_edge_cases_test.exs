@@ -3,12 +3,6 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
 
   alias Predicator.Evaluator
 
-  setup do
-    # Clear custom functions but preserve system functions
-    Predicator.clear_custom_functions()
-    :ok
-  end
-
   describe "error handling" do
     test "handles evaluation with invalid comparison types" do
       # Create instructions that try to compare incompatible types
@@ -91,10 +85,14 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
     end
 
     test "handles function call that returns error" do
-      # Register a function that always returns an error
-      Predicator.register_function("error_func", 1, fn [_arg], _context ->
-        {:error, "Function intentionally failed"}
-      end)
+      # Custom function that always returns an error
+      custom_functions = %{
+        "error_func" =>
+          {1,
+           fn [_arg], _context ->
+             {:error, "Function intentionally failed"}
+           end}
+      }
 
       instructions = [
         ["lit", "test"],
@@ -102,7 +100,7 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
       ]
 
       assert {:error, "Function intentionally failed"} =
-               Evaluator.evaluate(instructions, %{})
+               Evaluator.evaluate(instructions, %{}, functions: custom_functions)
     end
 
     test "handles variable loading with missing context" do
@@ -290,15 +288,19 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
     end
 
     test "preserves error message in exception" do
-      # Register function that returns error
-      Predicator.register_function("fail_func", 0, fn [], _context ->
-        {:error, "Custom failure message"}
-      end)
+      # Custom function that returns error
+      custom_functions = %{
+        "fail_func" =>
+          {0,
+           fn [], _context ->
+             {:error, "Custom failure message"}
+           end}
+      }
 
       instructions = [["call", "fail_func", 0]]
 
       assert_raise RuntimeError, ~r/Custom failure message/, fn ->
-        Evaluator.evaluate!(instructions, %{})
+        Evaluator.evaluate!(instructions, %{}, functions: custom_functions)
       end
     end
   end

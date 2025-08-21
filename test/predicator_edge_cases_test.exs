@@ -3,12 +3,6 @@ defmodule PredicatorEdgeCasesTest do
 
   import Predicator
 
-  setup do
-    # Clear custom functions but preserve system functions
-    clear_custom_functions()
-    :ok
-  end
-
   describe "main API edge cases" do
     test "handles empty expressions" do
       assert {:error, _message} = evaluate("")
@@ -74,18 +68,27 @@ defmodule PredicatorEdgeCasesTest do
     end
 
     test "handles custom functions with errors" do
-      # Register a function that can return errors
-      register_function("validate_email", 1, fn [email], _context ->
-        if is_binary(email) and String.contains?(email, "@") do
-          {:ok, true}
-        else
-          {:error, "Invalid email format"}
-        end
-      end)
+      # Custom function that can return errors
+      custom_functions = %{
+        "validate_email" =>
+          {1,
+           fn [email], _context ->
+             if is_binary(email) and String.contains?(email, "@") do
+               {:ok, true}
+             else
+               {:error, "Invalid email format"}
+             end
+           end}
+      }
 
-      assert {:ok, true} = evaluate("validate_email(\"user@example.com\")")
-      assert {:error, "Invalid email format"} = evaluate("validate_email(\"invalid\")")
-      assert {:error, "Invalid email format"} = evaluate("validate_email(123)")
+      assert {:ok, true} =
+               evaluate("validate_email(\"user@example.com\")", %{}, functions: custom_functions)
+
+      assert {:error, "Invalid email format"} =
+               evaluate("validate_email(\"invalid\")", %{}, functions: custom_functions)
+
+      assert {:error, "Invalid email format"} =
+               evaluate("validate_email(123)", %{}, functions: custom_functions)
     end
 
     test "handles context with nil values" do
@@ -132,58 +135,23 @@ defmodule PredicatorEdgeCasesTest do
     end
   end
 
-  describe "function registry integration" do
-    test "handles function overrides" do
-      # Register a custom version of a built-in function name
-      register_function("len", 1, fn [_value], _context ->
-        {:ok, "custom_len_result"}
-      end)
+  describe "custom function overrides" do
+    test "custom functions can override built-in functions" do
+      # Custom function overrides built-in len function
+      custom_functions = %{
+        "len" =>
+          {1,
+           fn [_value], _context ->
+             {:ok, "custom_len_result"}
+           end}
+      }
 
-      # Should use the custom version (last registered wins)
-      assert {:ok, "custom_len_result"} = evaluate("len(\"anything\")")
+      # Should use the custom version
+      assert {:ok, "custom_len_result"} =
+               evaluate("len(\"anything\")", %{}, functions: custom_functions)
 
-      # Clear and re-register built-ins to restore normal behavior
-      clear_custom_functions()
+      # Without custom functions, uses built-in version
       assert {:ok, 8} = evaluate("len(\"restored\")")
-    end
-
-    test "handles function registry state across tests" do
-      # Register a test function
-      register_function("test_func", 0, fn [], _context -> {:ok, :test} end)
-      assert {:ok, :test} = evaluate("test_func()")
-
-      # Clear functions
-      clear_custom_functions()
-
-      # Function should be gone but built-ins should remain
-      assert {:error, _message} = evaluate("test_func()")
-      # built-in should work
-      assert {:ok, 4} = evaluate("len(\"test\")")
-    end
-
-    test "handles function listing with mixed types" do
-      register_function("custom1", 1, fn [_arg], _context -> {:ok, 1} end)
-      register_function("custom2", 2, fn [_arg1, _arg2], _context -> {:ok, 2} end)
-
-      functions = list_custom_functions()
-
-      # Should include built-ins + custom functions
-      names = Enum.map(functions, & &1.name)
-      assert "custom1" in names
-      assert "custom2" in names
-      # built-in
-      assert "len" in names
-      # built-in
-      assert "max" in names
-
-      # Should have correct arities
-      custom1 = Enum.find(functions, &(&1.name == "custom1"))
-      custom2 = Enum.find(functions, &(&1.name == "custom2"))
-      len_func = Enum.find(functions, &(&1.name == "len"))
-
-      assert custom1.arity == 1
-      assert custom2.arity == 2
-      assert len_func.arity == 1
     end
   end
 

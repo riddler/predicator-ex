@@ -17,7 +17,7 @@ defmodule Predicator.Evaluator do
   - `["call", function_name, arg_count]` - Call function with arguments from stack
   """
 
-  alias Predicator.Functions.Registry
+  alias Predicator.Functions.SystemFunctions
   alias Predicator.Types
 
   @typedoc "Internal evaluator state"
@@ -26,6 +26,7 @@ defmodule Predicator.Evaluator do
           instruction_pointer: non_neg_integer(),
           stack: [Types.value()],
           context: Types.context(),
+          functions: %{binary() => {non_neg_integer(), function()}},
           halted: boolean()
         }
 
@@ -34,14 +35,22 @@ defmodule Predicator.Evaluator do
     instruction_pointer: 0,
     stack: [],
     context: %{},
+    functions: %{},
     halted: false
   ]
 
   @doc """
-  Evaluates a list of instructions with the given context.
+  Evaluates a list of instructions with the given context and options.
 
   Returns the top value on the stack when evaluation completes,
   or an error if something goes wrong.
+
+  ## Parameters
+
+  - `instructions` - List of instructions to execute
+  - `context` - Context map with variable bindings (default: `%{}`)
+  - `opts` - Options keyword list:
+    - `:functions` - Map of custom functions `%{name => {arity, function}}`
 
   ## Examples
 
@@ -51,14 +60,24 @@ defmodule Predicator.Evaluator do
       iex> Predicator.Evaluator.evaluate([["load", "score"]], %{"score" => 85})
       85
 
-      iex> Predicator.Evaluator.evaluate([["load", "missing"]], %{})
-      :undefined
+      # With custom functions
+      iex> custom_functions = %{"double" => {1, fn [n], _context -> {:ok, n * 2} end}}
+      iex> instructions = [["lit", 21], ["call", "double", 1]]
+      iex> Predicator.Evaluator.evaluate(instructions, %{}, functions: custom_functions)
+      42
   """
-  @spec evaluate(Types.instruction_list(), Types.context()) :: Types.internal_result()
-  def evaluate(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
+  @spec evaluate(Types.instruction_list(), Types.context(), keyword()) :: Types.internal_result()
+  def evaluate(instructions, context \\ %{}, opts \\ [])
+      when is_list(instructions) and is_map(context) do
+    # Merge custom functions with system functions
+    custom_functions = Keyword.get(opts, :functions, %{})
+    system_functions = SystemFunctions.all_functions()
+    merged_functions = Map.merge(system_functions, custom_functions)
+
     evaluator = %__MODULE__{
       instructions: instructions,
-      context: context
+      context: context,
+      functions: merged_functions
     }
 
     case run(evaluator) do
@@ -74,9 +93,9 @@ defmodule Predicator.Evaluator do
   end
 
   @doc """
-  Evaluates a list of instructions with the given context, raising on errors.
+  Evaluates a list of instructions with the given context and options, raising on errors.
 
-  Similar to `evaluate/2` but raises an exception for error results instead
+  Similar to `evaluate/3` but raises an exception for error results instead
   of returning error tuples. Follows the Elixir convention of bang functions.
 
   ## Examples
@@ -87,12 +106,16 @@ defmodule Predicator.Evaluator do
       iex> Predicator.Evaluator.evaluate!([["load", "score"]], %{"score" => 85})
       85
 
-      # This would raise an exception:
-      # Predicator.Evaluator.evaluate!([["unknown_op"]], %{})
+      # With custom functions
+      iex> custom_functions = %{"double" => {1, fn [n], _context -> {:ok, n * 2} end}}
+      iex> instructions = [["lit", 21], ["call", "double", 1]]
+      iex> Predicator.Evaluator.evaluate!(instructions, %{}, functions: custom_functions)
+      42
   """
-  @spec evaluate!(Types.instruction_list(), Types.context()) :: Types.value()
-  def evaluate!(instructions, context \\ %{}) when is_list(instructions) and is_map(context) do
-    case evaluate(instructions, context) do
+  @spec evaluate!(Types.instruction_list(), Types.context(), keyword()) :: Types.value()
+  def evaluate!(instructions, context \\ %{}, opts \\ [])
+      when is_list(instructions) and is_map(context) do
+    case evaluate(instructions, context, opts) do
       {:error, reason} -> raise "Evaluation failed: #{reason}"
       result -> result
     end
@@ -355,14 +378,18 @@ defmodule Predicator.Evaluator do
   end
 
   @spec execute_function_call(t(), binary(), non_neg_integer()) :: {:ok, t()} | {:error, term()}
-  defp execute_function_call(%__MODULE__{stack: stack} = evaluator, function_name, arg_count) do
+  defp execute_function_call(
+         %__MODULE__{stack: stack, functions: functions} = evaluator,
+         function_name,
+         arg_count
+       ) do
     if length(stack) >= arg_count do
       # Extract arguments from stack (they're in reverse order)
       {args, remaining_stack} = Enum.split(stack, arg_count)
       # Reverse args to get correct order (stack is LIFO)
       function_args = Enum.reverse(args)
 
-      case Registry.call(function_name, function_args, evaluator.context) do
+      case call_function(functions, function_name, function_args, evaluator.context) do
         {:ok, result} ->
           {:ok, %__MODULE__{evaluator | stack: [result | remaining_stack]}}
 
@@ -372,6 +399,33 @@ defmodule Predicator.Evaluator do
     else
       {:error,
        "Function #{function_name}() expects #{arg_count} arguments, but only #{length(stack)} values on stack"}
+    end
+  end
+
+  # Call a function from the functions map
+  @spec call_function(
+          %{binary() => {non_neg_integer(), function()}},
+          binary(),
+          [Types.value()],
+          Types.context()
+        ) ::
+          {:ok, Types.value()} | {:error, binary()}
+  defp call_function(functions, function_name, args, context) do
+    case Map.get(functions, function_name) do
+      {arity, function} ->
+        if length(args) == arity do
+          try do
+            function.(args, context)
+          rescue
+            error ->
+              {:error, "Function #{function_name}() raised: #{inspect(error)}"}
+          end
+        else
+          {:error, "Function #{function_name}() expects #{arity} arguments, got #{length(args)}"}
+        end
+
+      nil ->
+        {:error, "Unknown function: #{function_name}"}
     end
   end
 

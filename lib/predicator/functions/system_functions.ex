@@ -39,41 +39,46 @@ defmodule Predicator.Functions.SystemFunctions do
       {:error, "Unknown function: unknown"}
   """
 
-  alias Predicator.Functions.Registry
   alias Predicator.Types
 
   @type function_result :: {:ok, Types.value()} | {:error, binary()}
 
   @doc """
-  Registers all built-in functions with the function registry.
+  Returns all system functions as a map in the format expected by the evaluator.
 
-  This should be called during application startup to make built-in functions
-  available through the unified registry interface.
+  ## Returns
+
+  A map where keys are function names and values are `{arity, function}` tuples.
 
   ## Examples
 
-      iex> Predicator.BuiltInFunctions.register_all()
-      :ok
+      iex> functions = Predicator.Functions.SystemFunctions.all_functions()
+      iex> Map.has_key?(functions, "len")
+      true
+
+      iex> {arity, _function} = functions["len"]
+      iex> arity
+      1
   """
-  @spec register_all :: :ok
-  def register_all do
-    # String functions
-    Registry.register_function("len", 1, &call_len/2)
-    Registry.register_function("upper", 1, &call_upper/2)
-    Registry.register_function("lower", 1, &call_lower/2)
-    Registry.register_function("trim", 1, &call_trim/2)
+  @spec all_functions() :: %{binary() => {non_neg_integer(), function()}}
+  def all_functions do
+    %{
+      # String functions
+      "len" => {1, &call_len/2},
+      "upper" => {1, &call_upper/2},
+      "lower" => {1, &call_lower/2},
+      "trim" => {1, &call_trim/2},
 
-    # Numeric functions
-    Registry.register_function("abs", 1, &call_abs/2)
-    Registry.register_function("max", 2, &call_max/2)
-    Registry.register_function("min", 2, &call_min/2)
+      # Numeric functions
+      "abs" => {1, &call_abs/2},
+      "max" => {2, &call_max/2},
+      "min" => {2, &call_min/2},
 
-    # Date functions
-    Registry.register_function("year", 1, &call_year/2)
-    Registry.register_function("month", 1, &call_month/2)
-    Registry.register_function("day", 1, &call_day/2)
-
-    :ok
+      # Date functions
+      "year" => {1, &call_year/2},
+      "month" => {1, &call_month/2},
+      "day" => {1, &call_day/2}
+    }
   end
 
   # String function implementations
