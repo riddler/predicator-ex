@@ -48,6 +48,13 @@ defmodule Predicator.Types do
   - `["not"]` - Logical NOT of top boolean value
   - `["in"]` - Membership test (element in collection)
   - `["contains"]` - Membership test (collection contains element)
+  - `["add"]` - Pop two values, add them, push result
+  - `["subtract"]` - Pop two values, subtract them, push result
+  - `["multiply"]` - Pop two values, multiply them, push result
+  - `["divide"]` - Pop two values, divide them, push result
+  - `["modulo"]` - Pop two values, modulo operation, push result
+  - `["unary_minus"]` - Pop one value, negate it, push result
+  - `["unary_bang"]` - Pop one value, logical NOT it, push result
   - `["call", binary(), integer()]` - Call built-in function with arguments from stack
 
   ## Examples
@@ -58,6 +65,13 @@ defmodule Predicator.Types do
       ["and"]               # Pop two boolean values, push AND result
       ["or"]                # Pop two boolean values, push OR result
       ["not"]               # Pop one boolean value, push NOT result
+      ["add"]               # Pop two values, add them, push result
+      ["subtract"]          # Pop two values, subtract them, push result
+      ["multiply"]          # Pop two values, multiply them, push result
+      ["divide"]            # Pop two values, divide them, push result
+      ["modulo"]            # Pop two values, modulo them, push result
+      ["unary_minus"]       # Pop one value, negate it, push result
+      ["unary_bang"]        # Pop one value, logical NOT it, push result
       ["call", "len", 1]    # Pop 1 argument, call len function, push result
   """
   @type instruction :: [binary() | value()]

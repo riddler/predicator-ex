@@ -120,17 +120,7 @@ defmodule Predicator.Visitors.StringVisitor do
   end
 
   def visit({:comparison, op, left, right}, opts) do
-    left_str = visit(left, opts)
-    right_str = visit(right, opts)
-    op_str = format_operator(op)
-
-    spacing = get_spacing(opts)
-
-    case get_parentheses_mode(opts) do
-      :explicit -> "(#{left_str}#{spacing}#{op_str}#{spacing}#{right_str})"
-      :none -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
-      :minimal -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
-    end
+    format_binary_operator(op, left, right, opts)
   end
 
   def visit({:logical_and, left, right}, opts) do
@@ -166,6 +156,22 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
+  def visit({:equality, op, left, right}, opts) do
+    format_binary_operator(op, left, right, opts)
+  end
+
+  def visit({:arithmetic, op, left, right}, opts) do
+    format_binary_operator(op, left, right, opts)
+  end
+
+  def visit({:unary, op, operand}, opts) do
+    operand_str = visit(operand, opts)
+    op_str = format_operator(op)
+
+    # Unary operators typically don't use spacing
+    "#{op_str}#{operand_str}"
+  end
+
   def visit({:list, elements}, opts) do
     element_strings = Enum.map(elements, fn element -> visit(element, opts) end)
     "[#{Enum.join(element_strings, ", ")}]"
@@ -191,17 +197,53 @@ defmodule Predicator.Visitors.StringVisitor do
 
   # Helper functions
 
-  @spec format_operator(Parser.comparison_op()) :: binary()
+  @spec format_operator(
+          Parser.comparison_op()
+          | Parser.equality_op()
+          | Parser.arithmetic_op()
+          | Parser.unary_op()
+        ) :: binary()
   defp format_operator(:gt), do: ">"
   defp format_operator(:lt), do: "<"
   defp format_operator(:gte), do: ">="
   defp format_operator(:lte), do: "<="
   defp format_operator(:eq), do: "="
   defp format_operator(:ne), do: "!="
+  defp format_operator(:equal_equal), do: "=="
+  defp format_operator(:add), do: "+"
+  defp format_operator(:subtract), do: "-"
+  defp format_operator(:multiply), do: "*"
+  defp format_operator(:divide), do: "/"
+  defp format_operator(:modulo), do: "%"
+  defp format_operator(:minus), do: "-"
+  defp format_operator(:bang), do: "!"
 
   @spec format_membership_operator(Parser.membership_op()) :: binary()
   defp format_membership_operator(:in), do: "IN"
   defp format_membership_operator(:contains), do: "CONTAINS"
+
+  # Helper function to format binary operators (comparison, equality, arithmetic)
+  @spec format_binary_operator(
+          Parser.comparison_op()
+          | Parser.equality_op()
+          | Parser.arithmetic_op(),
+          Parser.ast(),
+          Parser.ast(),
+          keyword()
+        ) :: binary()
+  defp format_binary_operator(op, left, right, opts) do
+    left_str = visit(left, opts)
+    right_str = visit(right, opts)
+    op_str = format_operator(op)
+
+    spacing = get_spacing(opts)
+
+    case get_parentheses_mode(opts) do
+      :explicit -> "(#{left_str}#{spacing}#{op_str}#{spacing}#{right_str})"
+      :none -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
+      :minimal -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
+    end
+  end
 
   @spec get_spacing(keyword()) :: binary()
   defp get_spacing(opts) do

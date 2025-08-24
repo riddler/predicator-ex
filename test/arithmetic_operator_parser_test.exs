@@ -3,91 +3,108 @@ defmodule ArithmeticOperatorParserTest do
 
   import Predicator
 
-  describe "arithmetic operators - parser rejection (not yet implemented)" do
-    test "addition operator produces parse error" do
+  describe "arithmetic operators - evaluator rejection (not yet implemented)" do
+    test "addition operator produces evaluation error" do
       assert {:error, message} = evaluate("2 + 3", %{})
-      assert message =~ "Unexpected token '+'"
+      assert message =~ "Unknown instruction: [\"add\"]"
     end
 
-    test "subtraction operator produces parse error" do
+    test "subtraction operator produces evaluation error" do
       assert {:error, message} = evaluate("5 - 2", %{})
-      assert message =~ "Unexpected token '-'"
+      assert message =~ "Unknown instruction: [\"subtract\"]"
     end
 
-    test "multiplication operator produces parse error" do
+    test "multiplication operator produces evaluation error" do
       assert {:error, message} = evaluate("3 * 4", %{})
-      assert message =~ "Unexpected token '*'"
+      assert message =~ "Unknown instruction: [\"multiply\"]"
     end
 
-    test "division operator produces parse error" do
+    test "division operator produces evaluation error" do
       assert {:error, message} = evaluate("8 / 2", %{})
-      assert message =~ "Unexpected token '/'"
+      assert message =~ "Unknown instruction: [\"divide\"]"
     end
 
-    test "modulo operator produces parse error" do
+    test "modulo operator produces evaluation error" do
       assert {:error, message} = evaluate("7 % 3", %{})
-      assert message =~ "Unexpected token '%'"
+      assert message =~ "Unknown instruction: [\"modulo\"]"
     end
 
-    test "double equals operator produces parse error" do
-      assert {:error, message} = evaluate("x == y", %{})
-      assert message =~ "Unexpected token '=='"
+    test "double equals operator works (equality parsing implemented)" do
+      # == now works because it's parsed as equality
+      assert {:ok, result} = evaluate("x == y", %{})
+      # Both x and y are undefined, so they're equal
+      assert result == :undefined
     end
 
-    test "logical and operator produces parse error" do
-      assert {:error, message} = evaluate("true && false", %{})
-      assert message =~ "Unexpected token '&&'"
+    test "logical and operator works (now parsed correctly)" do
+      # && now works because it's parsed as logical_and
+      assert {:ok, result} = evaluate("true && false", %{})
+      assert result == false
     end
 
-    test "logical or operator produces parse error" do
-      assert {:error, message} = evaluate("true || false", %{})
-      assert message =~ "Unexpected token '||'"
+    test "logical or operator works (now parsed correctly)" do
+      # || now works because it's parsed as logical_or
+      assert {:ok, result} = evaluate("true || false", %{})
+      assert result == true
     end
 
-    test "bang operator produces parse error" do
+    test "bang operator works as logical NOT" do
+      # ! now works as logical NOT, but since 'active' is undefined, it gives an error
       assert {:error, message} = evaluate("!active", %{})
-
-      assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '!'"
+      assert message =~ "Logical NOT requires a boolean value, got: :undefined"
     end
 
-    test "complex arithmetic expression produces parse error" do
+    test "complex arithmetic expression produces evaluation error" do
       assert {:error, message} = evaluate("(2 + 3) * 4", %{})
-      assert message =~ "Expected ')' but found '+'"
+      assert message =~ "Unknown instruction: [\"add\"]"
     end
   end
 
   describe "lexer tokenization verification" do
     test "arithmetic operators are properly tokenized" do
       # These should successfully tokenize (lexer works)
-      # but fail at parse time (parser not implemented yet)
+      # and parse successfully (parser now works)
+      # but may fail at evaluation time if instruction not implemented
 
-      expressions = [
+      arithmetic_expressions = [
         "2 + 3",
         "5 - 2",
         "3 * 4",
         "8 / 2",
-        "7 % 3",
-        "x == y",
-        "true && false",
-        "true || false",
-        "!active"
+        "7 % 3"
       ]
 
-      for expr <- expressions do
-        # Should tokenize successfully
+      working_expressions = [
+        # Equality works
+        "x == y",
+        # Logical AND works
+        "true && false",
+        # Logical OR works
+        "true || false"
+      ]
+
+      for expr <- arithmetic_expressions do
+        # Should tokenize and parse successfully
         assert {:ok, tokens} = Predicator.Lexer.tokenize(expr)
-        # at least operand + operator + operand + eof
         assert length(tokens) >= 3
 
-        # But parsing should fail with meaningful error
+        # But evaluation should fail with "Unknown instruction"
         assert {:error, message} = evaluate(expr, %{})
-        # Different operators produce different specific error messages
-        assert message =~ "Unexpected token" or
-                 message =~ "Expected ')' but found" or
-                 message =~
-                   "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found"
+        assert message =~ "Unknown instruction:"
       end
+
+      for expr <- working_expressions do
+        # Should tokenize, parse, AND evaluate successfully
+        assert {:ok, tokens} = Predicator.Lexer.tokenize(expr)
+        assert length(tokens) >= 3
+        assert {:ok, _result} = evaluate(expr, %{})
+      end
+
+      # Special case: !active fails due to type error, not unknown instruction
+      assert {:ok, tokens} = Predicator.Lexer.tokenize("!active")
+      assert length(tokens) >= 2
+      assert {:error, message} = evaluate("!active", %{})
+      assert message =~ "Logical NOT requires a boolean value"
     end
   end
 
