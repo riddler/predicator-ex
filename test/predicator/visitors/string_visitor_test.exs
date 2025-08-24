@@ -718,7 +718,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
     end
 
     test "converts unary in logical expression" do
-      # !active AND !expired  
+      # !active AND !expired
       left_unary = {:unary, :bang, {:identifier, "active"}}
       right_unary = {:unary, :bang, {:identifier, "expired"}}
       ast = {:logical_and, left_unary, right_unary}

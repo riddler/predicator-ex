@@ -564,7 +564,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for unary in logical expression" do
-      # !active AND !expired  
+      # !active AND !expired
       left_unary = {:unary, :bang, {:identifier, "active"}}
       right_unary = {:unary, :bang, {:identifier, "expired"}}
       ast = {:logical_and, left_unary, right_unary}
@@ -600,10 +600,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       # (a + b) > 5 AND (c - d) < 10
       left_arithmetic = {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}}
       left_comparison = {:comparison, :gt, left_arithmetic, {:literal, 5}}
-      
+
       right_arithmetic = {:arithmetic, :subtract, {:identifier, "c"}, {:identifier, "d"}}
       right_comparison = {:comparison, :lt, right_arithmetic, {:literal, 10}}
-      
+
       ast = {:logical_and, left_comparison, right_comparison}
       result = InstructionsVisitor.visit(ast, [])
 

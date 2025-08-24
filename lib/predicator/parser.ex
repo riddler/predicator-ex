@@ -287,7 +287,8 @@ defmodule Predicator.Parser do
   end
 
   # Parse NOT operator token (NOT or !)
-  defp parse_logical_not_token(state, {op, _line, _col, _len, _value}) when op in [:not_op, :bang] do
+  defp parse_logical_not_token(state, {op, _line, _col, _len, _value})
+       when op in [:not_op, :bang] do
     not_state = advance(state)
 
     case parse_logical_not(not_state) do
