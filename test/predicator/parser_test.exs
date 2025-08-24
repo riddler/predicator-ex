@@ -1196,5 +1196,172 @@ defmodule Predicator.ParserTest do
 
       assert {:error, "Expected ']' but found end of input", 1, 23} = result
     end
+
+    test "parses bracket access with boolean key" do
+      {:ok, tokens} = Lexer.tokenize("config[true]")
+      result = Parser.parse(tokens)
+
+      expected_ast = {:bracket_access, {:identifier, "config"}, {:literal, true}}
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with false key" do
+      {:ok, tokens} = Lexer.tokenize("settings[false]")
+      result = Parser.parse(tokens)
+
+      expected_ast = {:bracket_access, {:identifier, "settings"}, {:literal, false}}
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with function call key" do
+      {:ok, tokens} = Lexer.tokenize("data[len('key')]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "data"},
+         {:function_call, "len", [{:string_literal, "key", :single}]}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with nested brackets in key" do
+      {:ok, tokens} = Lexer.tokenize("matrix[users[0]]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "matrix"},
+         {:bracket_access, {:identifier, "users"}, {:literal, 0}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with comparison expression key" do
+      {:ok, tokens} = Lexer.tokenize("data[i > 5]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "data"},
+         {:comparison, :gt, {:identifier, "i"}, {:literal, 5}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with logical AND key" do
+      {:ok, tokens} = Lexer.tokenize("cache[active AND valid]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "cache"},
+         {:logical_and, {:identifier, "active"}, {:identifier, "valid"}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with logical OR key" do
+      {:ok, tokens} = Lexer.tokenize("flags[debug OR test]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "flags"},
+         {:logical_or, {:identifier, "debug"}, {:identifier, "test"}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with logical NOT key" do
+      {:ok, tokens} = Lexer.tokenize("options[NOT disabled]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "options"}, {:logical_not, {:identifier, "disabled"}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with list key" do
+      {:ok, tokens} = Lexer.tokenize("lookup[[1, 2, 3]]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "lookup"},
+         {:list, [{:literal, 1}, {:literal, 2}, {:literal, 3}]}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with parenthesized key" do
+      {:ok, tokens} = Lexer.tokenize("data[(index + 1)]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "data"},
+         {:arithmetic, :add, {:identifier, "index"}, {:literal, 1}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses deeply chained bracket access" do
+      {:ok, tokens} = Lexer.tokenize("a[0][1][2][3]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access,
+         {:bracket_access,
+          {:bracket_access, {:bracket_access, {:identifier, "a"}, {:literal, 0}}, {:literal, 1}},
+          {:literal, 2}}, {:literal, 3}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with mixed operators in complex expressions" do
+      {:ok, tokens} = Lexer.tokenize("data[key] + values[index * 2] > threshold['max']")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:comparison, :gt,
+         {:arithmetic, :add, {:bracket_access, {:identifier, "data"}, {:identifier, "key"}},
+          {:bracket_access, {:identifier, "values"},
+           {:arithmetic, :multiply, {:identifier, "index"}, {:literal, 2}}}},
+         {:bracket_access, {:identifier, "threshold"}, {:string_literal, "max", :single}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "returns error for bracket access with invalid token after bracket" do
+      {:ok, tokens} = Lexer.tokenize("user[>]")
+      result = Parser.parse(tokens)
+
+      assert {:error,
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'",
+              1, 6} = result
+    end
+
+    test "returns error for unmatched left bracket" do
+      {:ok, tokens} = Lexer.tokenize("user[key")
+      result = Parser.parse(tokens)
+
+      assert {:error, "Expected ']' but found end of input", 1, 9} = result
+    end
+
+    test "returns error for nested unmatched brackets" do
+      {:ok, tokens} = Lexer.tokenize("data[users[index")
+      result = Parser.parse(tokens)
+
+      assert {:error, "Expected ']' but found end of input", 1, 17} = result
+    end
+
+    test "parses bracket access with complex nested expression" do
+      {:ok, tokens} = Lexer.tokenize("cache[users[active AND valid]['name']]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "cache"},
+         {:bracket_access,
+          {:bracket_access, {:identifier, "users"},
+           {:logical_and, {:identifier, "active"}, {:identifier, "valid"}}},
+          {:string_literal, "name", :single}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
   end
 end
