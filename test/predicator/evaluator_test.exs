@@ -642,4 +642,306 @@ defmodule Predicator.EvaluatorTest do
       assert Evaluator.evaluate(instructions, context) == :undefined
     end
   end
+
+  describe "evaluate/2 with bracket_access instructions" do
+    test "accesses object property with string key" do
+      instructions = [
+        ["load", "user"],
+        ["lit", "name"],
+        ["bracket_access"]
+      ]
+
+      context = %{"user" => %{"name" => "John", "age" => 30}}
+
+      assert Evaluator.evaluate(instructions, context) == "John"
+    end
+
+    test "accesses object property with atom key" do
+      instructions = [
+        ["load", "user"],
+        ["lit", :role],
+        ["bracket_access"]
+      ]
+
+      context = %{"user" => %{:name => "Alice", role: "admin"}}
+
+      assert Evaluator.evaluate(instructions, context) == "admin"
+    end
+
+    test "accesses array element with integer index" do
+      instructions = [
+        ["load", "items"],
+        ["lit", 1],
+        ["bracket_access"]
+      ]
+
+      context = %{"items" => ["apple", "banana", "cherry"]}
+
+      assert Evaluator.evaluate(instructions, context) == "banana"
+    end
+
+    test "accesses array element with variable index" do
+      instructions = [
+        ["load", "scores"],
+        ["load", "index"],
+        ["bracket_access"]
+      ]
+
+      context = %{"scores" => [85, 92, 78], "index" => 2}
+
+      assert Evaluator.evaluate(instructions, context) == 78
+    end
+
+    test "returns :undefined for missing object key" do
+      instructions = [
+        ["load", "user"],
+        ["lit", "missing"],
+        ["bracket_access"]
+      ]
+
+      context = %{"user" => %{"name" => "John"}}
+
+      assert Evaluator.evaluate(instructions, context) == :undefined
+    end
+
+    test "returns :undefined for out of bounds array access" do
+      instructions = [
+        ["load", "items"],
+        ["lit", 10],
+        ["bracket_access"]
+      ]
+
+      context = %{"items" => ["a", "b", "c"]}
+
+      assert Evaluator.evaluate(instructions, context) == :undefined
+    end
+
+    test "returns :undefined for negative array index" do
+      instructions = [
+        ["load", "items"],
+        ["lit", -1],
+        ["bracket_access"]
+      ]
+
+      context = %{"items" => ["a", "b", "c"]}
+
+      assert Evaluator.evaluate(instructions, context) == :undefined
+    end
+
+    test "returns :undefined when accessing non-object/non-array" do
+      instructions = [
+        ["load", "name"],
+        ["lit", "length"],
+        ["bracket_access"]
+      ]
+
+      context = %{"name" => "John"}
+
+      assert Evaluator.evaluate(instructions, context) == :undefined
+    end
+
+    test "handles string key fallback to atom key" do
+      instructions = [
+        ["load", "user"],
+        ["lit", "role"],
+        ["bracket_access"]
+      ]
+
+      # atom key only
+      context = %{"user" => %{role: "admin"}}
+
+      assert Evaluator.evaluate(instructions, context) == "admin"
+    end
+
+    test "handles atom key fallback gracefully" do
+      instructions = [
+        ["load", "user"],
+        ["lit", "missing_key_that_cannot_be_atom"],
+        ["bracket_access"]
+      ]
+
+      context = %{"user" => %{"name" => "John"}}
+
+      assert Evaluator.evaluate(instructions, context) == :undefined
+    end
+
+    test "supports chained bracket access" do
+      instructions = [
+        ["load", "data"],
+        ["lit", "users"],
+        ["bracket_access"],
+        ["lit", 0],
+        ["bracket_access"],
+        ["lit", "name"],
+        ["bracket_access"]
+      ]
+
+      context = %{"data" => %{"users" => [%{"name" => "Alice"}, %{"name" => "Bob"}]}}
+
+      assert Evaluator.evaluate(instructions, context) == "Alice"
+    end
+
+    test "supports mixed map and array access" do
+      instructions = [
+        ["load", "data"],
+        ["lit", "scores"],
+        ["bracket_access"],
+        ["lit", 1],
+        ["bracket_access"]
+      ]
+
+      context = %{"data" => %{"scores" => [85, 92, 78]}}
+
+      assert Evaluator.evaluate(instructions, context) == 92
+    end
+
+    test "supports integer keys in maps" do
+      instructions = [
+        ["load", "config"],
+        ["lit", 100],
+        ["bracket_access"]
+      ]
+
+      context = %{"config" => %{100 => "port_setting", "name" => "app"}}
+
+      assert Evaluator.evaluate(instructions, context) == "port_setting"
+    end
+
+    test "returns error for invalid key type (list)" do
+      instructions = [
+        ["load", "user"],
+        ["lit", [1, 2, 3]],
+        ["bracket_access"]
+      ]
+
+      context = %{"user" => %{"name" => "John"}}
+
+      result = Evaluator.evaluate(instructions, context)
+      assert {:error, %Predicator.Errors.TypeMismatchError{operation: :bracket_access}} = result
+    end
+
+    test "returns error for invalid key type (boolean)" do
+      instructions = [
+        ["load", "user"],
+        ["lit", true],
+        ["bracket_access"]
+      ]
+
+      context = %{"user" => %{"name" => "John"}}
+
+      # Note: This should work since booleans are atoms in Elixir
+      assert Evaluator.evaluate(instructions, context) == :undefined
+    end
+
+    test "returns error for invalid key type (float)" do
+      instructions = [
+        ["load", "user"],
+        ["lit", 3.14],
+        ["bracket_access"]
+      ]
+
+      context = %{"user" => %{"name" => "John"}}
+
+      result = Evaluator.evaluate(instructions, context)
+      assert {:error, %Predicator.Errors.TypeMismatchError{operation: :bracket_access}} = result
+    end
+
+    test "returns error for insufficient operands" do
+      instructions = [
+        ["load", "user"],
+        # Missing key operand
+        ["bracket_access"]
+      ]
+
+      context = %{"user" => %{"name" => "John"}}
+
+      result = Evaluator.evaluate(instructions, context)
+      assert {:error, %Predicator.Errors.EvaluationError{}} = result
+    end
+
+    test "returns error for empty stack" do
+      instructions = [
+        # No operands at all
+        ["bracket_access"]
+      ]
+
+      result = Evaluator.evaluate(instructions, %{})
+      assert {:error, %Predicator.Errors.EvaluationError{}} = result
+    end
+
+    test "works with expression-based keys" do
+      instructions = [
+        ["load", "items"],
+        ["load", "i"],
+        ["lit", 1],
+        ["add"],
+        ["bracket_access"]
+      ]
+
+      context = %{"items" => ["a", "b", "c", "d"], "i" => 1}
+
+      assert Evaluator.evaluate(instructions, context) == "c"
+    end
+
+    test "integrates with arithmetic operations" do
+      instructions = [
+        ["load", "scores"],
+        ["lit", 0],
+        ["bracket_access"],
+        ["load", "scores"],
+        ["lit", 1],
+        ["bracket_access"],
+        ["add"]
+      ]
+
+      context = %{"scores" => [10, 20, 30]}
+
+      assert Evaluator.evaluate(instructions, context) == 30
+    end
+
+    test "integrates with comparison operations" do
+      instructions = [
+        ["load", "user"],
+        ["lit", "age"],
+        ["bracket_access"],
+        ["lit", 18],
+        ["compare", "GT"]
+      ]
+
+      context = %{"user" => %{"age" => 25}}
+
+      assert Evaluator.evaluate(instructions, context) == true
+    end
+
+    test "handles complex nested structures" do
+      instructions = [
+        ["load", "app"],
+        ["lit", "config"],
+        ["bracket_access"],
+        ["lit", "database"],
+        ["bracket_access"],
+        ["lit", "connections"],
+        ["bracket_access"],
+        ["lit", 0],
+        ["bracket_access"],
+        ["lit", "host"],
+        ["bracket_access"]
+      ]
+
+      context = %{
+        "app" => %{
+          "config" => %{
+            "database" => %{
+              "connections" => [
+                %{"host" => "localhost", "port" => 5432},
+                %{"host" => "remote", "port" => 5433}
+              ]
+            }
+          }
+        }
+      }
+
+      assert Evaluator.evaluate(instructions, context) == "localhost"
+    end
+  end
 end

@@ -21,7 +21,8 @@ defmodule Predicator.Parser do
       comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "in" | "contains" ) addition )?
       addition     → multiplication ( ( "+" | "-" ) multiplication )*
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
-      unary        → ( "-" | "!" ) unary | primary
+      unary        → ( "-" | "!" ) unary | postfix
+      postfix      → primary ( "[" expression "]" )*
       primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
       function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
       list         → "[" ( expression ( "," expression )* )? "]"
@@ -64,6 +65,7 @@ defmodule Predicator.Parser do
   - `{:list, elements}` - A list literal
   - `{:membership, operator, left, right}` - A membership operation (in/contains)
   - `{:function_call, name, arguments}` - A function call with arguments
+  - `{:bracket_access, object, key}` - A bracket access expression (obj[key])
   """
   @type ast ::
           {:literal, value()}
@@ -79,6 +81,7 @@ defmodule Predicator.Parser do
           | {:logical_not, ast()}
           | {:list, [ast()]}
           | {:function_call, binary(), [ast()]}
+          | {:bracket_access, ast(), ast()}
 
   @typedoc """
   Comparison operators in the AST.
@@ -372,12 +375,11 @@ defmodule Predicator.Parser do
           # Comparison operators
           {op_type, _line, _col, _len, _value}
           when op_type in [:gt, :lt, :gte, :lte, :eq] ->
-            operator = map_operator(op_type)
             op_state = advance(new_state)
 
             case parse_addition(op_state) do
               {:ok, right, final_state} ->
-                ast = {:comparison, operator, left, right}
+                ast = {:comparison, op_type, left, right}
                 {:ok, ast, final_state}
 
               {:error, message, line, col} ->
@@ -565,9 +567,55 @@ defmodule Predicator.Parser do
     end
   end
 
-  # No unary operator, parse primary
+  # No unary operator, parse postfix
   defp parse_unary_token(state, _token) do
-    parse_primary(state)
+    parse_postfix(state)
+  end
+
+  # Parse postfix expressions (bracket access)
+  defp parse_postfix(state) do
+    case parse_primary(state) do
+      {:ok, expr, new_state} ->
+        parse_postfix_operations(expr, new_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse zero or more postfix operations (bracket access)
+  defp parse_postfix_operations(expr, state) do
+    token = peek_token(state)
+
+    case token do
+      {:lbracket, _line, _col, _len, _value} ->
+        # Parse bracket access: expr[key]
+        bracket_state = advance(state)
+
+        case parse_expression(bracket_state) do
+          {:ok, key_expr, key_state} ->
+            case peek_token(key_state) do
+              {:rbracket, _line, _col, _len, _value} ->
+                bracket_access = {:bracket_access, expr, key_expr}
+                final_state = advance(key_state)
+                # Recursively parse more postfix operations
+                parse_postfix_operations(bracket_access, final_state)
+
+              {type, line, col, _len, value} ->
+                {:error, "Expected ']' but found #{format_token(type, value)}", line, col}
+
+              nil ->
+                {:error, "Expected ']' but found end of input", 1, 1}
+            end
+
+          {:error, message, line, col} ->
+            {:error, message, line, col}
+        end
+
+      _other ->
+        # No more postfix operations, return the expression
+        {:ok, expr, state}
+    end
   end
 
   # Parse primary expressions (literals, identifiers, parentheses)
@@ -663,13 +711,6 @@ defmodule Predicator.Parser do
   defp advance(%{position: pos} = state) do
     %{state | position: pos + 1}
   end
-
-  @spec map_operator(atom()) :: comparison_op()
-  defp map_operator(:gt), do: :gt
-  defp map_operator(:lt), do: :lt
-  defp map_operator(:gte), do: :gte
-  defp map_operator(:lte), do: :lte
-  defp map_operator(:eq), do: :eq
 
   @spec map_membership_operator(atom()) :: membership_op()
   defp map_membership_operator(:in_op), do: :in

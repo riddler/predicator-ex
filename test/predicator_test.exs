@@ -1311,4 +1311,250 @@ defmodule PredicatorTest do
                {:ok, 50}
     end
   end
+
+  describe "evaluate/2 with bracket access expressions" do
+    test "evaluates simple bracket access with string key" do
+      context = %{"user" => %{"name" => "John", "age" => 30}}
+
+      assert Predicator.evaluate("user['name']", context) == {:ok, "John"}
+      assert Predicator.evaluate("user['age']", context) == {:ok, 30}
+    end
+
+    test "evaluates bracket access with atom keys" do
+      context = %{"user" => %{:name => "John", :age => 30}}
+
+      assert Predicator.evaluate("user['name']", context) == {:ok, "John"}
+      assert Predicator.evaluate("user['age']", context) == {:ok, 30}
+    end
+
+    test "evaluates array access with numeric indices" do
+      context = %{"items" => ["apple", "banana", "cherry"], "numbers" => [10, 20, 30]}
+
+      assert Predicator.evaluate("items[0]", context) == {:ok, "apple"}
+      assert Predicator.evaluate("items[1]", context) == {:ok, "banana"}
+      assert Predicator.evaluate("numbers[2]", context) == {:ok, 30}
+    end
+
+    test "evaluates bracket access with variable key" do
+      context = %{
+        "user" => %{"name" => "John", "age" => 30},
+        "key" => "name",
+        "index" => 1,
+        "items" => ["a", "b", "c"]
+      }
+
+      assert Predicator.evaluate("user[key]", context) == {:ok, "John"}
+      assert Predicator.evaluate("items[index]", context) == {:ok, "b"}
+    end
+
+    test "evaluates chained bracket access" do
+      context = %{
+        "data" => %{
+          "users" => [
+            %{"name" => "John", "age" => 30},
+            %{"name" => "Jane", "age" => 25}
+          ]
+        }
+      }
+
+      assert Predicator.evaluate("data['users'][0]['name']", context) == {:ok, "John"}
+      assert Predicator.evaluate("data['users'][1]['age']", context) == {:ok, 25}
+    end
+
+    test "evaluates mixed dot notation and bracket access" do
+      # Note: In the current implementation, dot notation creates nested identifiers
+      # This tests that bracket access works alongside existing variable naming
+      context = %{
+        "user" => %{"name" => "John"},
+        "settings" => %{"theme" => "dark"}
+      }
+
+      # Test that bracket access works
+      assert Predicator.evaluate("user['name']", context) == {:ok, "John"}
+      assert Predicator.evaluate("settings['theme']", context) == {:ok, "dark"}
+    end
+
+    test "evaluates bracket access with arithmetic expression key" do
+      context = %{
+        "items" => ["a", "b", "c", "d"],
+        "offset" => 1,
+        "multiplier" => 2
+      }
+
+      assert Predicator.evaluate("items[offset + 1]", context) == {:ok, "c"}
+      assert Predicator.evaluate("items[offset * multiplier]", context) == {:ok, "c"}
+    end
+
+    test "evaluates bracket access in comparisons" do
+      context = %{
+        "user" => %{"age" => 30, "score" => 95},
+        "thresholds" => %{"min_age" => 18, "passing_score" => 80}
+      }
+
+      assert Predicator.evaluate("user['age'] > 18", context) == {:ok, true}
+
+      assert Predicator.evaluate("user['score'] >= thresholds['passing_score']", context) ==
+               {:ok, true}
+
+      assert Predicator.evaluate("user['age'] < thresholds['min_age']", context) == {:ok, false}
+    end
+
+    test "evaluates bracket access in arithmetic expressions" do
+      context = %{
+        "scores" => [85, 90, 78],
+        "multipliers" => [2, 3, 4],
+        "bonuses" => %{"effort" => 5, "attendance" => 3}
+      }
+
+      assert Predicator.evaluate("scores[0] + scores[1]", context) == {:ok, 175}
+      assert Predicator.evaluate("scores[0] * multipliers[0]", context) == {:ok, 170}
+      assert Predicator.evaluate("bonuses['effort'] + bonuses['attendance']", context) == {:ok, 8}
+    end
+
+    test "evaluates bracket access in logical expressions" do
+      context = %{
+        "user" => %{"active" => true, "verified" => true, "age" => 25},
+        "settings" => %{"notifications" => false, "theme" => "dark"}
+      }
+
+      assert Predicator.evaluate("user['active'] AND user['verified']", context) == {:ok, true}
+
+      assert Predicator.evaluate("user['active'] OR settings['notifications']", context) ==
+               {:ok, true}
+
+      assert Predicator.evaluate("NOT settings['notifications']", context) == {:ok, true}
+    end
+
+    test "evaluates complex nested bracket access expressions" do
+      context = %{
+        "company" => %{
+          "departments" => [
+            %{"name" => "Engineering", "employees" => [%{"name" => "John", "salary" => 80_000}]},
+            %{"name" => "Marketing", "employees" => [%{"name" => "Jane", "salary" => 65_000}]}
+          ]
+        },
+        "dept_index" => 0,
+        "emp_index" => 0
+      }
+
+      assert Predicator.evaluate(
+               "company['departments'][dept_index]['employees'][emp_index]['name']",
+               context
+             ) == {:ok, "John"}
+
+      assert Predicator.evaluate(
+               "company['departments'][0]['employees'][0]['salary'] > 75000",
+               context
+             ) == {:ok, true}
+    end
+
+    test "evaluates bracket access with function call keys" do
+      context = %{
+        "data" => %{"key_1" => "value1", "key_2" => "value2"},
+        "keys" => ["key_1", "key_2"],
+        "short" => "ab"
+      }
+
+      # Test with built-in len function (len("ab") = 2, so 2-1 = 1, keys[1] = "key_2")
+      assert Predicator.evaluate("keys[len(short) - 1]", context) == {:ok, "key_2"}
+    end
+
+    test "evaluates bracket access with boolean keys" do
+      context = %{
+        "config" => %{true => "enabled", false => "disabled"},
+        "status" => %{"active" => true, "debug" => false}
+      }
+
+      assert Predicator.evaluate("config[true]", context) == {:ok, "enabled"}
+      assert Predicator.evaluate("config[false]", context) == {:ok, "disabled"}
+      assert Predicator.evaluate("config[status['active']]", context) == {:ok, "enabled"}
+    end
+
+    test "evaluates bracket access with list membership" do
+      context = %{
+        "users" => [
+          %{"name" => "John", "roles" => ["admin", "user"]},
+          %{"name" => "Jane", "roles" => ["user"]}
+        ],
+        "admin_roles" => ["admin", "super_admin"]
+      }
+
+      assert Predicator.evaluate("'admin' in users[0]['roles']", context) == {:ok, true}
+      assert Predicator.evaluate("users[0]['roles'] contains 'admin'", context) == {:ok, true}
+      assert Predicator.evaluate("'admin' in users[1]['roles']", context) == {:ok, false}
+    end
+
+    test "returns :undefined for missing bracket access paths" do
+      context = %{"user" => %{"name" => "John"}}
+
+      assert Predicator.evaluate("user['missing_key']", context) == {:ok, :undefined}
+      assert Predicator.evaluate("missing_object['key']", context) == {:ok, :undefined}
+      assert Predicator.evaluate("user['name']['nested']", context) == {:ok, :undefined}
+    end
+
+    test "returns :undefined for out-of-bounds array access" do
+      context = %{"items" => ["a", "b", "c"]}
+
+      assert Predicator.evaluate("items[10]", context) == {:ok, :undefined}
+      assert Predicator.evaluate("items[-1]", context) == {:ok, :undefined}
+    end
+
+    test "handles bracket access errors gracefully" do
+      context = %{"data" => "not_a_map_or_list"}
+
+      # Non-indexable object with string key returns :undefined
+      assert Predicator.evaluate("data['key']", context) == {:ok, :undefined}
+
+      # Non-indexable object with numeric key also returns :undefined
+      assert Predicator.evaluate("data[0]", context) == {:ok, :undefined}
+    end
+
+    test "evaluates performance with deeply nested bracket access" do
+      # Test that deeply nested access doesn't cause performance issues
+      deeply_nested = %{
+        "level1" => %{
+          "level2" => %{
+            "level3" => %{
+              "level4" => %{
+                "level5" => %{"final_value" => "success"}
+              }
+            }
+          }
+        }
+      }
+
+      context = %{"data" => deeply_nested}
+
+      result =
+        Predicator.evaluate(
+          "data['level1']['level2']['level3']['level4']['level5']['final_value']",
+          context
+        )
+
+      assert result == {:ok, "success"}
+    end
+
+    test "round-trip conversion with bracket access" do
+      alias Predicator.{Lexer, Parser}
+      alias Predicator.Visitors.StringVisitor
+
+      expressions = [
+        "user['name']",
+        "items[0]",
+        "data['users'][index]['profile']['settings']",
+        "scores[0] + scores[1] > threshold['min']",
+        "user['active'] AND config['enabled']"
+      ]
+
+      for expr <- expressions do
+        {:ok, tokens} = Lexer.tokenize(expr)
+        {:ok, ast} = Parser.parse(tokens)
+        regenerated = StringVisitor.visit(ast)
+
+        # Parse the regenerated expression to ensure it's valid
+        {:ok, tokens2} = Lexer.tokenize(regenerated)
+        assert {:ok, _ast2} = Parser.parse(tokens2)
+      end
+    end
+  end
 end

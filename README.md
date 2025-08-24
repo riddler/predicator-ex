@@ -22,7 +22,7 @@ Predicator allows you to safely evaluate user-defined expressions without the se
 - 📋 **Lists**: List literals with membership operations (`in`, `contains`)
 - 🧠 **Smart Logic**: Logical operators with proper precedence (`AND`, `OR`, `NOT`)
 - 🔧 **Functions**: Built-in functions for string, numeric, and date operations
-- 🌳 **Nested Access**: Dot notation for deep data structures (`user.profile.name`)
+- 🌳 **Nested Access**: Dot notation and bracket access for deep data structures (`user.profile.name`, `user['profile']['name']`, `items[0]`)
 
 ## Installation
 
@@ -131,7 +131,7 @@ iex> Predicator.decompile(ast)
 
 ## Nested Data Access
 
-Predicator supports nested data structure access using dot notation, allowing you to reference deeply nested values in your context:
+Predicator supports nested data structure access using both dot notation and bracket notation, allowing you to reference deeply nested values in your context:
 
 ```elixir
 # Context with nested data structures
@@ -144,7 +144,9 @@ context = %{
   },
   "config" => %{
     "database" => %{"host" => "localhost", "port" => 5432}
-  }
+  },
+  "items" => ["apple", "banana", "cherry"],
+  "scores" => [85, 92, 78, 96]
 }
 
 # Access nested values with dot notation
@@ -156,6 +158,35 @@ iex> Predicator.evaluate("user.age > 18", context)
 
 iex> Predicator.evaluate("config.database.port = 5432", context)
 {:ok, true}
+
+# Access with bracket notation
+iex> Predicator.evaluate("user['name']['first'] = 'John'", context)
+{:ok, true}
+
+iex> Predicator.evaluate("user['settings']['theme'] = 'dark'", context)
+{:ok, true}
+
+# Array access with bracket notation
+iex> Predicator.evaluate("items[0] = 'apple'", context)
+{:ok, true}
+
+iex> Predicator.evaluate("scores[1] > 90", context)
+{:ok, true}
+
+# Mixed notation styles
+iex> Predicator.evaluate("user.settings['theme'] = 'dark'", context)
+{:ok, true}
+
+iex> Predicator.evaluate("user['profile'].role = 'admin'", context)
+{:ok, true}
+
+# Dynamic array access
+iex> Predicator.evaluate("scores[index] > 80", Map.put(context, "index", 2))
+{:ok, false}
+
+# Chained bracket access
+iex> Predicator.evaluate("user['name']['first'] + ' ' + user['name']['last']", context)
+{:ok, "John Doe"}
 
 # Use in complex expressions
 iex> Predicator.evaluate("user.profile.role = 'admin' AND user.settings.notifications", context)
@@ -177,9 +208,13 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 ```
 
 ### Key Features:
+- **Dot notation**: `user.profile.name` for nested object access
+- **Bracket notation**: `user['profile']['name']` for dynamic key access  
+- **Array indexing**: `items[0]`, `scores[index]` for list access
+- **Mixed styles**: `user.settings['theme']` combining both notations
 - **Unlimited nesting depth**: `app.database.config.settings.ssl`
 - **Mixed key types**: Works with string keys, atom keys, or both
-- **Graceful fallback**: Returns `:undefined` for missing paths
+- **Graceful fallback**: Returns `:undefined` for missing paths or out-of-bounds access
 - **Type preservation**: Maintains original data types (strings, numbers, booleans, lists)
 - **Backwards compatible**: Simple variable names work exactly as before
 
@@ -250,7 +285,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 - **Dates**: `#2024-01-15#` (ISO 8601 date format)
 - **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with timezone)
 - **Lists**: `[1, 2, 3]`, `['admin', 'manager']` (homogeneous collections)
-- **Identifiers**: `score`, `user_name`, `is_active`, `user.profile.name` (variable references with optional dot notation for nested data)
+- **Identifiers**: `score`, `user_name`, `is_active`, `user.profile.name`, `user['key']`, `items[0]` (variable references with dot notation and bracket notation for nested data)
 
 ## Architecture
 
@@ -273,7 +308,8 @@ equality     → comparison ( ("==" | "!=") comparison )*
 comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) addition )?
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
-unary        → ( "-" | "!" ) unary | primary
+unary        → ( "-" | "!" ) unary | postfix
+postfix      → primary ( "[" expression "]" )*
 primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
 function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"

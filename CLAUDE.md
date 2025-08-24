@@ -4,7 +4,7 @@ This document provides context for Claude Code when working on the Predicator pr
 
 ## Project Overview
 
-Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports arithmetic operators (+, -, *, /, %) with proper precedence, comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT), date/datetime literals, list literals, membership operators (in, contains), function calls with built-in system functions, and nested data structure access using dot notation.
+Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports arithmetic operators (+, -, *, /, %) with proper precedence, comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT), date/datetime literals, list literals, membership operators (in, contains), function calls with built-in system functions, nested data structure access using dot notation, and bracket access for dynamic property and array access.
 
 ## Architecture
 
@@ -25,7 +25,8 @@ equality     → comparison ( ("==" | "!=") comparison )*
 comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) addition )?
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
-unary        → ( "-" | "!" ) unary | primary
+unary        → ( "-" | "!" ) unary | postfix
+postfix      → primary ( "[" expression "]" )*
 primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | function_call | "(" expression ")"
 function_call → IDENTIFIER "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
@@ -188,18 +189,29 @@ test/predicator/
 - **Pattern matching**: Refactored evaluator and parser to use pattern matching over case statements
 - **Plain boolean expressions**: Support for `active`, `expired` without `= true`
 
-### Nested Data Structure Access (v1.1.0)
+### Nested Data Structure Access (v1.1.0 + Bracket Access Enhancement)
 - **Dot Notation**: Access deeply nested data structures using `.` syntax
-- **Syntax**: `user.profile.name`, `config.database.settings.ssl`
-- **Key Types**: Supports both string keys, atom keys, and mixed key types
-- **Lexer**: Enhanced identifier tokenization to include dots as valid characters
-- **Evaluator**: Added `load_nested_value/2` function for recursive map traversal
-- **Error Handling**: Returns `:undefined` for missing paths or non-map intermediate values
+- **Bracket Notation**: Dynamic property and array access using `[key]` syntax (NEW)
+- **Mixed Access**: Combine both notations like `user.settings['theme']` (NEW)
+- **Syntax**: 
+  - Dot: `user.profile.name`, `config.database.settings.ssl`
+  - Bracket: `user['profile']['name']`, `items[0]`, `scores[index]`
+  - Mixed: `user.settings['theme']`, `data['users'][0].name`
+- **Key Types**: Supports string keys, atom keys, integer keys, and mixed types
+- **Array Indexing**: Full array access with bounds checking (`items[0]`, `scores[index]`)
+- **Dynamic Keys**: Variable and expression-based keys (`obj[key]`, `items[i + 1]`)
+- **Parser**: Added postfix parsing for bracket access with recursive chaining
+- **Evaluator**: 
+  - Enhanced `load_nested_value/2` for dot notation
+  - New `access_value/2` for bracket access with comprehensive type handling
+- **Error Handling**: Returns `:undefined` for missing paths, out-of-bounds access, or non-map/non-array intermediate values
 - **Examples**: 
-  - `user.name.first = "John"` 
-  - `config.database.port > 5000`
-  - `user.settings.theme = "dark" AND user.profile.active`
-- **Backwards Compatible**: Simple variable names work exactly as before
+  - `user.name.first = "John"` (dot notation)
+  - `user['profile']['role'] = "admin"` (bracket notation)
+  - `items[0] = "apple"` (array access)
+  - `data['users'][index]['name']` (chained bracket access)
+  - `user.settings['theme'] = 'dark'` (mixed notation)
+- **Backwards Compatible**: Simple variable names and existing dot notation work exactly as before
 
 ## Breaking Changes
 

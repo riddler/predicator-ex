@@ -55,6 +55,7 @@ defmodule Predicator.Types do
   - `["modulo"]` - Pop two values, modulo operation, push result
   - `["unary_minus"]` - Pop one value, negate it, push result
   - `["unary_bang"]` - Pop one value, logical NOT it, push result
+  - `["bracket_access"]` - Pop key and object, push object[key] result
   - `["call", binary(), integer()]` - Call built-in function with arguments from stack
 
   ## Examples
@@ -72,6 +73,7 @@ defmodule Predicator.Types do
       ["modulo"]            # Pop two values, modulo them, push result
       ["unary_minus"]       # Pop one value, negate it, push result
       ["unary_bang"]        # Pop one value, logical NOT it, push result
+      ["bracket_access"]    # Pop key and object, push object[key]
       ["call", "len", 1]    # Pop 1 argument, call len function, push result
   """
   @type instruction :: [binary() | value()]
