@@ -159,7 +159,9 @@ defmodule PredicatorEdgeCasesTest do
     test "provides helpful error messages for parsing errors" do
       result = evaluate("1 +")
       assert {:error, message} = result
-      assert message =~ "Unexpected character" or message =~ "Expected"
+
+      assert message =~ "Unexpected character" or message =~ "Expected" or
+               message =~ "Unexpected token"
     end
 
     test "provides helpful error messages for function errors" do

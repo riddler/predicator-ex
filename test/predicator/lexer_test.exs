@@ -444,6 +444,123 @@ defmodule Predicator.LexerTest do
     end
   end
 
+  describe "tokenize/1 - arithmetic operators" do
+    test "tokenizes plus operator" do
+      assert {:ok, tokens} = Lexer.tokenize("2 + 3")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 2},
+               {:plus, 1, 3, 1, "+"},
+               {:integer, 1, 5, 1, 3},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes minus operator" do
+      assert {:ok, tokens} = Lexer.tokenize("5 - 2")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 5},
+               {:minus, 1, 3, 1, "-"},
+               {:integer, 1, 5, 1, 2},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes multiply operator" do
+      assert {:ok, tokens} = Lexer.tokenize("3 * 4")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 3},
+               {:multiply, 1, 3, 1, "*"},
+               {:integer, 1, 5, 1, 4},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes divide operator" do
+      assert {:ok, tokens} = Lexer.tokenize("8 / 2")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 8},
+               {:divide, 1, 3, 1, "/"},
+               {:integer, 1, 5, 1, 2},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes modulo operator" do
+      assert {:ok, tokens} = Lexer.tokenize("7 % 3")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 7},
+               {:modulo, 1, 3, 1, "%"},
+               {:integer, 1, 5, 1, 3},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes double equals operator" do
+      assert {:ok, tokens} = Lexer.tokenize("x == y")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "x"},
+               {:equal_equal, 1, 3, 2, "=="},
+               {:identifier, 1, 6, 1, "y"},
+               {:eof, 1, 7, 0, nil}
+             ]
+    end
+
+    test "tokenizes logical and operator" do
+      assert {:ok, tokens} = Lexer.tokenize("true && false")
+
+      assert tokens == [
+               {:boolean, 1, 1, 4, true},
+               {:and_and, 1, 6, 2, "&&"},
+               {:boolean, 1, 9, 5, false},
+               {:eof, 1, 14, 0, nil}
+             ]
+    end
+
+    test "tokenizes logical or operator" do
+      assert {:ok, tokens} = Lexer.tokenize("true || false")
+
+      assert tokens == [
+               {:boolean, 1, 1, 4, true},
+               {:or_or, 1, 6, 2, "||"},
+               {:boolean, 1, 9, 5, false},
+               {:eof, 1, 14, 0, nil}
+             ]
+    end
+
+    test "tokenizes bang (not) operator" do
+      assert {:ok, tokens} = Lexer.tokenize("!active")
+
+      assert tokens == [
+               {:bang, 1, 1, 1, "!"},
+               {:identifier, 1, 2, 6, "active"},
+               {:eof, 1, 8, 0, nil}
+             ]
+    end
+
+    test "tokenizes complex arithmetic expression" do
+      assert {:ok, tokens} = Lexer.tokenize("(x + y) * z / 2")
+
+      assert tokens == [
+               {:lparen, 1, 1, 1, "("},
+               {:identifier, 1, 2, 1, "x"},
+               {:plus, 1, 4, 1, "+"},
+               {:identifier, 1, 6, 1, "y"},
+               {:rparen, 1, 7, 1, ")"},
+               {:multiply, 1, 9, 1, "*"},
+               {:identifier, 1, 11, 1, "z"},
+               {:divide, 1, 13, 1, "/"},
+               {:integer, 1, 15, 1, 2},
+               {:eof, 1, 16, 0, nil}
+             ]
+    end
+  end
+
   describe "tokenize/1 - position tracking" do
     test "tracks line numbers correctly" do
       input = """
@@ -481,8 +598,8 @@ defmodule Predicator.LexerTest do
       assert {:error, "Unexpected character '@'", 1, 1} = Lexer.tokenize("@")
     end
 
-    test "returns error for standalone exclamation" do
-      assert {:error, "Unexpected character '!'", 1, 1} = Lexer.tokenize("!")
+    test "tokenizes standalone exclamation as bang" do
+      assert {:ok, [{:bang, 1, 1, 1, "!"}, {:eof, 1, 2, 0, nil}]} = Lexer.tokenize("!")
     end
 
     test "returns error with correct position" do

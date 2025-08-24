@@ -50,6 +50,15 @@ defmodule Predicator.Lexer do
           | {:lte, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:eq, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:ne, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:equal_equal, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:plus, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:minus, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:multiply, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:divide, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:modulo, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:and_and, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:or_or, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:bang, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:and_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:or_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:not_op, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -225,12 +234,60 @@ defmodule Predicator.Lexer do
             tokenize_chars(rest2, line, col + 2, [token | tokens])
 
           _rest ->
-            {:error, "Unexpected character '!'", line, col}
+            token = {:bang, line, col, 1, "!"}
+            tokenize_chars(rest, line, col + 1, [token | tokens])
         end
 
       ?= ->
-        token = {:eq, line, col, 1, "="}
+        case rest do
+          [?= | rest2] ->
+            token = {:equal_equal, line, col, 2, "=="}
+            tokenize_chars(rest2, line, col + 2, [token | tokens])
+
+          _rest ->
+            token = {:eq, line, col, 1, "="}
+            tokenize_chars(rest, line, col + 1, [token | tokens])
+        end
+
+      ?+ ->
+        token = {:plus, line, col, 1, "+"}
         tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?- ->
+        token = {:minus, line, col, 1, "-"}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?* ->
+        token = {:multiply, line, col, 1, "*"}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?/ ->
+        token = {:divide, line, col, 1, "/"}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?% ->
+        token = {:modulo, line, col, 1, "%"}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?& ->
+        case rest do
+          [?& | rest2] ->
+            token = {:and_and, line, col, 2, "&&"}
+            tokenize_chars(rest2, line, col + 2, [token | tokens])
+
+          _rest ->
+            {:error, "Unexpected character '&'", line, col}
+        end
+
+      ?| ->
+        case rest do
+          [?| | rest2] ->
+            token = {:or_or, line, col, 2, "||"}
+            tokenize_chars(rest2, line, col + 2, [token | tokens])
+
+          _rest ->
+            {:error, "Unexpected character '|'", line, col}
+        end
 
       ?( ->
         token = {:lparen, line, col, 1, "("}
