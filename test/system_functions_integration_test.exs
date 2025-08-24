@@ -2,13 +2,14 @@ defmodule SystemFunctionsIntegrationTest do
   use ExUnit.Case, async: true
 
   import Predicator
+  alias Predicator.Functions.SystemFunctions
 
   describe "string functions error cases" do
     test "len with invalid argument types" do
       assert {:error, msg} = evaluate("len(123)", %{})
       assert msg =~ "len() expects a string argument"
 
-      assert {:error, msg} = evaluate("len(true)", %{})  
+      assert {:error, msg} = evaluate("len(true)", %{})
       assert msg =~ "len() expects a string argument"
 
       assert {:error, msg} = evaluate("len(nil)", %{})
@@ -97,13 +98,20 @@ defmodule SystemFunctionsIntegrationTest do
 
   describe "all_functions/0" do
     test "returns map with expected functions" do
-      functions = Predicator.Functions.SystemFunctions.all_functions()
-      
+      functions = SystemFunctions.all_functions()
+
       # Check that all expected functions are present
       expected_functions = [
-        "len", "upper", "lower", "trim",
-        "abs", "max", "min", 
-        "year", "month", "day"
+        "len",
+        "upper",
+        "lower",
+        "trim",
+        "abs",
+        "max",
+        "min",
+        "year",
+        "month",
+        "day"
       ]
 
       for func_name <- expected_functions do
@@ -115,19 +123,19 @@ defmodule SystemFunctionsIntegrationTest do
     end
 
     test "function arities are correct" do
-      functions = Predicator.Functions.SystemFunctions.all_functions()
+      functions = SystemFunctions.all_functions()
 
       # Check specific arities
-      assert {1, _} = functions["len"]
-      assert {1, _} = functions["upper"] 
-      assert {1, _} = functions["lower"]
-      assert {1, _} = functions["trim"]
-      assert {1, _} = functions["abs"]
-      assert {2, _} = functions["max"]
-      assert {2, _} = functions["min"]
-      assert {1, _} = functions["year"]
-      assert {1, _} = functions["month"]
-      assert {1, _} = functions["day"]
+      assert {1, _len_func} = functions["len"]
+      assert {1, _upper_func} = functions["upper"]
+      assert {1, _lower_func} = functions["lower"]
+      assert {1, _trim_func} = functions["trim"]
+      assert {1, _abs_func} = functions["abs"]
+      assert {2, _max_func} = functions["max"]
+      assert {2, _min_func} = functions["min"]
+      assert {1, _year_func} = functions["year"]
+      assert {1, _month_func} = functions["month"]
+      assert {1, _day_func} = functions["day"]
     end
   end
 end

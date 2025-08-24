@@ -46,7 +46,9 @@ defmodule ArithmeticOperatorParserTest do
 
     test "bang operator produces parse error" do
       assert {:error, message} = evaluate("!active", %{})
-      assert message =~ "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '!'"
+
+      assert message =~
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '!'"
     end
 
     test "complex arithmetic expression produces parse error" do
@@ -59,10 +61,10 @@ defmodule ArithmeticOperatorParserTest do
     test "arithmetic operators are properly tokenized" do
       # These should successfully tokenize (lexer works)
       # but fail at parse time (parser not implemented yet)
-      
+
       expressions = [
         "2 + 3",
-        "5 - 2", 
+        "5 - 2",
         "3 * 4",
         "8 / 2",
         "7 % 3",
@@ -75,14 +77,16 @@ defmodule ArithmeticOperatorParserTest do
       for expr <- expressions do
         # Should tokenize successfully
         assert {:ok, tokens} = Predicator.Lexer.tokenize(expr)
-        assert length(tokens) >= 3  # at least operand + operator + operand + eof
-        
+        # at least operand + operator + operand + eof
+        assert length(tokens) >= 3
+
         # But parsing should fail with meaningful error
         assert {:error, message} = evaluate(expr, %{})
         # Different operators produce different specific error messages
-        assert message =~ "Unexpected token" or 
-               message =~ "Expected ')' but found" or
-               message =~ "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found"
+        assert message =~ "Unexpected token" or
+                 message =~ "Expected ')' but found" or
+                 message =~
+                   "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found"
       end
     end
   end
@@ -91,15 +95,22 @@ defmodule ArithmeticOperatorParserTest do
     test "documents expected operator precedence through error messages" do
       # These complex expressions should produce consistent error patterns
       # that will help verify precedence when parser is implemented
-      
+
       complex_expressions = [
-        "2 + 3 * 4",      # Should be: 2 + (3 * 4) = 14
-        "(2 + 3) * 4",    # Should be: (2 + 3) * 4 = 20
-        "5 - 2 * 3",      # Should be: 5 - (2 * 3) = -1
-        "10 / 2 + 3",     # Should be: (10 / 2) + 3 = 8
-        "x && y || z",    # Should be: (x && y) || z
-        "!x && y",        # Should be: (!x) && y
-        "a == b && c",    # Should be: (a == b) && c
+        # Should be: 2 + (3 * 4) = 14
+        "2 + 3 * 4",
+        # Should be: (2 + 3) * 4 = 20
+        "(2 + 3) * 4",
+        # Should be: 5 - (2 * 3) = -1
+        "5 - 2 * 3",
+        # Should be: (10 / 2) + 3 = 8
+        "10 / 2 + 3",
+        # Should be: (x && y) || z
+        "x && y || z",
+        # Should be: (!x) && y
+        "!x && y",
+        # Should be: (a == b) && c
+        "a == b && c"
       ]
 
       for expr <- complex_expressions do
