@@ -3,30 +3,30 @@ defmodule ArithmeticOperatorParserTest do
 
   import Predicator
 
-  describe "arithmetic operators - evaluator rejection (not yet implemented)" do
-    test "addition operator produces evaluation error" do
-      assert {:error, message} = evaluate("2 + 3", %{})
-      assert message =~ "Unknown instruction: [\"add\"]"
+  describe "arithmetic operators - fully implemented" do
+    test "addition operator works correctly" do
+      assert {:ok, result} = evaluate("2 + 3", %{})
+      assert result == 5
     end
 
-    test "subtraction operator produces evaluation error" do
-      assert {:error, message} = evaluate("5 - 2", %{})
-      assert message =~ "Unknown instruction: [\"subtract\"]"
+    test "subtraction operator works correctly" do
+      assert {:ok, result} = evaluate("5 - 2", %{})
+      assert result == 3
     end
 
-    test "multiplication operator produces evaluation error" do
-      assert {:error, message} = evaluate("3 * 4", %{})
-      assert message =~ "Unknown instruction: [\"multiply\"]"
+    test "multiplication operator works correctly" do
+      assert {:ok, result} = evaluate("3 * 4", %{})
+      assert result == 12
     end
 
-    test "division operator produces evaluation error" do
-      assert {:error, message} = evaluate("8 / 2", %{})
-      assert message =~ "Unknown instruction: [\"divide\"]"
+    test "division operator works correctly" do
+      assert {:ok, result} = evaluate("8 / 2", %{})
+      assert result == 4
     end
 
-    test "modulo operator produces evaluation error" do
-      assert {:error, message} = evaluate("7 % 3", %{})
-      assert message =~ "Unknown instruction: [\"modulo\"]"
+    test "modulo operator works correctly" do
+      assert {:ok, result} = evaluate("7 % 3", %{})
+      assert result == 1
     end
 
     test "double equals operator works (equality parsing implemented)" do
@@ -54,9 +54,9 @@ defmodule ArithmeticOperatorParserTest do
       assert message =~ "Logical NOT requires a boolean value, got: :undefined"
     end
 
-    test "complex arithmetic expression produces evaluation error" do
-      assert {:error, message} = evaluate("(2 + 3) * 4", %{})
-      assert message =~ "Unknown instruction: [\"add\"]"
+    test "complex arithmetic expression works correctly" do
+      assert {:ok, result} = evaluate("(2 + 3) * 4", %{})
+      assert result == 20
     end
   end
 
@@ -88,9 +88,9 @@ defmodule ArithmeticOperatorParserTest do
         assert {:ok, tokens} = Predicator.Lexer.tokenize(expr)
         assert length(tokens) >= 3
 
-        # But evaluation should fail with "Unknown instruction"
-        assert {:error, message} = evaluate(expr, %{})
-        assert message =~ "Unknown instruction:"
+        # Evaluation should now work correctly
+        assert {:ok, result} = evaluate(expr, %{})
+        assert is_integer(result)
       end
 
       for expr <- working_expressions do
@@ -108,33 +108,42 @@ defmodule ArithmeticOperatorParserTest do
     end
   end
 
-  describe "operator precedence expectations (for future implementation)" do
-    test "documents expected operator precedence through error messages" do
-      # These complex expressions should produce consistent error patterns
-      # that will help verify precedence when parser is implemented
+  describe "operator precedence verification (now implemented)" do
+    test "verifies correct operator precedence in arithmetic expressions" do
+      # These complex expressions should produce correct results based on precedence
 
-      complex_expressions = [
+      arithmetic_precedence_tests = [
         # Should be: 2 + (3 * 4) = 14
-        "2 + 3 * 4",
+        {"2 + 3 * 4", 14},
         # Should be: (2 + 3) * 4 = 20
-        "(2 + 3) * 4",
+        {"(2 + 3) * 4", 20},
         # Should be: 5 - (2 * 3) = -1
-        "5 - 2 * 3",
+        {"5 - 2 * 3", -1},
         # Should be: (10 / 2) + 3 = 8
-        "10 / 2 + 3",
-        # Should be: (x && y) || z
+        {"10 / 2 + 3", 8}
+      ]
+
+      for {expr, expected} <- arithmetic_precedence_tests do
+        assert {:ok, result} = evaluate(expr, %{})
+        assert result == expected, "Expression '#{expr}' should equal #{expected}, got #{result}"
+      end
+
+      # Test expressions that involve undefined variables
+      logical_with_undefined = [
+        # Should be: (x && y) || z - all undefined, result is :undefined
         "x && y || z",
-        # Should be: (!x) && y
+        # Should be: (!x) && y - x is undefined, so !x fails
         "!x && y",
-        # Should be: (a == b) && c
+        # Should be: (a == b) && c - a == b is :undefined, then :undefined && c fails
         "a == b && c"
       ]
 
-      for expr <- complex_expressions do
-        assert {:error, message} = evaluate(expr, %{})
-        # Should get a parsing error (specific message varies by context)
-        assert is_binary(message)
-        assert String.length(message) > 0
+      for expr <- logical_with_undefined do
+        # These should either return :undefined or produce type errors due to undefined variables
+        result = evaluate(expr, %{})
+
+        assert match?({:ok, :undefined}, result) or match?({:error, _}, result),
+               "Expression '#{expr}' should return :undefined or error, got #{inspect(result)}"
       end
     end
   end
