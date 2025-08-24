@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-08-24
+
+### Added
+
+#### SCXML Enhancement Phase 1.2: Arithmetic and Logical Operators
+- **New Lexer Tokens**: Added support for arithmetic operators (`+`, `-`, `*`, `/`, `%`)
+- **Enhanced Logical Operators**: Added `&&` (logical AND), `||` (logical OR), `!` (logical NOT) alongside existing word-based operators
+- **Equality Operator**: Added `==` for strict equality comparison alongside existing `=`
+- **Token Support**: All new operators properly tokenized with position tracking and error reporting
+- **Comprehensive Testing**: Added 85+ new lexer tests covering all arithmetic and logical operators
+- **Error Handling**: Enhanced parser error messages to handle new token types
+
+#### Operator Support Details
+```elixir
+# Arithmetic operators (tokens added, parsing pending)
+2 + 3    # Addition
+5 - 2    # Subtraction  
+3 * 4    # Multiplication
+8 / 2    # Division
+7 % 3    # Modulo
+
+# Logical operators (tokens added, parsing pending)
+true && false   # Logical AND
+true || false   # Logical OR
+!active         # Logical NOT
+
+# Equality operator (tokens added, parsing pending)
+x == y          # Strict equality
+```
+
+#### Foundation for SCXML Value Expressions
+- **Lexical Foundation**: Completed lexer enhancements as Phase 1.2 of SCXML datamodel support
+- **Future Support**: Enables upcoming parser and evaluator enhancements for value expressions
+- **Backward Compatibility**: All existing functionality remains unchanged
+
+### Technical Implementation
+- **Lexer Enhancement**: Extended tokenization with 9 new token types
+- **Position Tracking**: Accurate line/column tracking for all new operators
+- **Error Recovery**: Proper error messages for invalid operator usage
+- **Test Coverage**: Maintained >89% code coverage with comprehensive operator tests
+
 ## [2.0.0] - 2025-08-21
 
 ### Changed

@@ -40,9 +40,19 @@ list         → "[" ( expression ( "," expression )* )? "]"
   - **SystemFunctions**: Built-in system functions (len, upper, abs, max, etc.) provided via `all_functions/0`
 - **Main API** (`lib/predicator.ex`): Public interface with convenience functions
 
-## Development Commands
+## Development
 
-### Testing
+### Development Workflow
+
+After implementing a new set of functionality
+  - ensure the local project is not on the main branch
+  - identify all code issues by running 'mix quality'
+  - fix those issues
+  - if necessary update the CHANGELOG, README and CLAUDE documents
+  - prompt me if I would like to create a git commit
+  - if so, create a git commit with title and message
+
+### Testing Commands
 ```bash
 mix test                    # Run all tests
 mix test --watch           # Watch mode  
@@ -50,7 +60,7 @@ mix test.coverage          # Coverage report
 mix test.coverage.html     # HTML coverage report
 ```
 
-### Code Quality
+### Code Quality Commands
 ```bash
 mix quality                # Run all quality checks (format, credo, coverage, dialyzer)
 mix quality.check          # Check quality without fixing
