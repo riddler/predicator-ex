@@ -4,7 +4,7 @@ This document provides context for Claude Code when working on the Predicator pr
 
 ## Project Overview
 
-Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT) with proper precedence, date/datetime literals, list literals, membership operators (in, contains), function calls with built-in system functions, and nested data structure access using dot notation.
+Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports arithmetic operators (+, -, *, /, %) with proper precedence, comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT), date/datetime literals, list literals, membership operators (in, contains), function calls with built-in system functions, and nested data structure access using dot notation.
 
 ## Architecture
 
@@ -20,8 +20,12 @@ Expression String → Lexer → Parser → Compiler → Instructions → Evaluat
 expression   → logical_or
 logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
-logical_not  → ("NOT" | "not") logical_not | comparison
-comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
+logical_not  → ("NOT" | "not") logical_not | equality
+equality     → comparison ( ("==" | "!=") comparison )*
+comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) addition )?
+addition     → multiplication ( ( "+" | "-" ) multiplication )*
+multiplication → unary ( ( "*" | "/" | "%" ) unary )*
+unary        → ( "-" | "!" ) unary | primary
 primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | function_call | "(" expression ")"
 function_call → IDENTIFIER "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
@@ -70,12 +74,12 @@ mix dialyzer              # Type checking
 ```
 
 ### Coverage Stats
-- **Overall**: 92.6%
-- **Lexer**: 100% (date/datetime tokenization)
-- **Types**: 100% (date type checking)
-- **Evaluator**: 90.1% (all operations and errors)
-- **Parser**: 86.8% (complex expressions) 
-- **StringVisitor**: 94.8% (formatting)
+- **Overall**: 92.2%
+- **Evaluator**: 95.7% (arithmetic, unary, and all operations)
+- **StringVisitor**: 97.5% (all formatting options)
+- **InstructionsVisitor**: 95.2% (all AST node types)
+- **Lexer**: 98.4% (all token types including arithmetic)
+- **Parser**: 86.4% (complex expressions with precedence) 
 - **Target**: >90% for all components ✅
 
 ## Key Design Decisions
@@ -149,6 +153,22 @@ test/predicator/
   Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: custom_functions)
   Predicator.evaluate("len('anything')", %{}, functions: custom_functions)  # Uses override
   Predicator.evaluate("len('hello')", %{})  # Uses built-in (returns 5)
+  ```
+
+### Arithmetic and Unary Operations (v2.1.0 - Complete Implementation)
+- **Full Arithmetic Support**: Complete parsing and evaluation pipeline for arithmetic expressions
+  - **Binary operations**: `+` (addition), `-` (subtraction), `*` (multiplication), `/` (division), `%` (modulo)
+  - **Unary operations**: `-` (unary minus), `!` (unary bang/logical NOT)
+- **Proper Precedence**: Mathematical precedence handling (unary → multiplication → addition → equality → comparison)
+- **Instruction Execution**: Stack-based evaluator with 7 new instruction handlers
+- **Error Handling**: Division by zero protection, type checking, comprehensive error messages
+- **Pattern Matching**: Idiomatic Elixir implementation using pattern matching for clean code
+- **Examples**:
+  ```elixir
+  Predicator.evaluate("2 + 3 * 4", %{})        # {:ok, 14} - correct precedence
+  Predicator.evaluate("(10 - 5) / 2", %{})     # {:ok, 2} - parentheses and division
+  Predicator.evaluate("-score > -100", %{"score" => 85})  # {:ok, true} - unary minus
+  Predicator.evaluate("total % 2 = 0", %{"total" => 14})  # {:ok, true} - modulo
   ```
 
 ### Date and DateTime Support

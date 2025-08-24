@@ -17,6 +17,7 @@ Predicator allows you to safely evaluate user-defined expressions without the se
 - 🎨 **Flexible**: Support for literals, identifiers, comparisons, and parentheses
 - 📊 **Observable**: Detailed error reporting with line/column information
 - 🔄 **Reversible**: Convert AST back to string expressions with formatting options
+- 🧮 **Arithmetic**: Full arithmetic operations (`+`, `-`, `*`, `/`, `%`) with proper precedence
 - 📅 **Date Support**: Native date and datetime literals with ISO 8601 format
 - 📋 **Lists**: List literals with membership operations (`in`, `contains`)
 - 🧠 **Smart Logic**: Logical operators with proper precedence (`AND`, `OR`, `NOT`)
@@ -30,7 +31,7 @@ Add `predicator` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:predicator, "~> 2.0.0"}
+    {:predicator, "~> 2.1"}
   ]
 end
 ```
@@ -60,6 +61,19 @@ iex> Predicator.evaluate!("role in ['admin', 'manager']", %{"role" => "admin"})
 true
 
 iex> Predicator.evaluate!("[1, 2, 3] contains 2", %{})
+true
+
+# Arithmetic operations with proper precedence
+iex> Predicator.evaluate!("2 + 3 * 4", %{})
+14
+
+iex> Predicator.evaluate!("(10 - 5) * 2", %{})
+10
+
+iex> Predicator.evaluate!("score + bonus > 100", %{"score" => 85, "bonus" => 20})
+true
+
+iex> Predicator.evaluate!("-amount > -50", %{"amount" => 30})
 true
 
 # Logical operators with proper precedence
@@ -171,6 +185,16 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 
 ## Supported Operations
 
+### Arithmetic Operators
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `+`      | Addition | `score + bonus`, `2 + 3 * 4` |
+| `-`      | Subtraction | `total - discount`, `100 - 25` |
+| `*`      | Multiplication | `price * quantity`, `3 * 4` |
+| `/`      | Division (integer) | `total / count`, `10 / 3` |
+| `%`      | Modulo | `id % 2`, `17 % 5` |
+| `-`      | Unary minus | `-amount`, `-(x + y)` |
+
 ### Comparison Operators
 | Operator | Description | Example |
 |----------|-------------|---------|
@@ -244,8 +268,12 @@ Predicator uses a multi-stage compilation pipeline:
 expression   → logical_or
 logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
-logical_not  → ("NOT" | "not") logical_not | comparison
-comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
+logical_not  → ("NOT" | "not") logical_not | equality
+equality     → comparison ( ("==" | "!=") comparison )*
+comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) addition )?
+addition     → multiplication ( ( "+" | "-" ) multiplication )*
+multiplication → unary ( ( "*" | "/" | "%" ) unary )*
+unary        → ( "-" | "!" ) unary | primary
 primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
 function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
