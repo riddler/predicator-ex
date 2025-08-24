@@ -14,6 +14,13 @@ defmodule Predicator.Evaluator do
   - `["not"]` - Logical NOT of top boolean value
   - `["in"]` - Membership test (element in collection)
   - `["contains"]` - Membership test (collection contains element)
+  - `["add"]` - Add top two integer values
+  - `["subtract"]` - Subtract top two integer values
+  - `["multiply"]` - Multiply top two integer values
+  - `["divide"]` - Divide top two integer values (integer division)
+  - `["modulo"]` - Modulo operation on top two integer values
+  - `["unary_minus"]` - Negate top integer value
+  - `["unary_bang"]` - Logical NOT of top boolean value
   - `["call", function_name, arg_count]` - Call function with arguments from stack
   """
 
@@ -222,6 +229,36 @@ defmodule Predicator.Evaluator do
     execute_membership(evaluator, :contains)
   end
 
+  # Arithmetic instructions
+  defp execute_instruction(%__MODULE__{} = evaluator, ["add"]) do
+    execute_arithmetic(evaluator, :add)
+  end
+
+  defp execute_instruction(%__MODULE__{} = evaluator, ["subtract"]) do
+    execute_arithmetic(evaluator, :subtract)
+  end
+
+  defp execute_instruction(%__MODULE__{} = evaluator, ["multiply"]) do
+    execute_arithmetic(evaluator, :multiply)
+  end
+
+  defp execute_instruction(%__MODULE__{} = evaluator, ["divide"]) do
+    execute_arithmetic(evaluator, :divide)
+  end
+
+  defp execute_instruction(%__MODULE__{} = evaluator, ["modulo"]) do
+    execute_arithmetic(evaluator, :modulo)
+  end
+
+  # Unary instructions
+  defp execute_instruction(%__MODULE__{} = evaluator, ["unary_minus"]) do
+    execute_unary(evaluator, :minus)
+  end
+
+  defp execute_instruction(%__MODULE__{} = evaluator, ["unary_bang"]) do
+    execute_unary(evaluator, :bang)
+  end
+
   # Function call instruction
   defp execute_instruction(%__MODULE__{} = evaluator, ["call", function_name, arg_count])
        when is_binary(function_name) and is_integer(arg_count) and arg_count >= 0 do
@@ -375,6 +412,75 @@ defmodule Predicator.Evaluator do
   defp execute_membership(%__MODULE__{stack: stack}, operation) do
     {:error,
      "#{String.upcase(to_string(operation))} requires two values on stack, got: #{length(stack)}"}
+  end
+
+  @spec execute_arithmetic(t(), :add | :subtract | :multiply | :divide | :modulo) ::
+          {:ok, t()} | {:error, term()}
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :add)
+       when is_integer(left) and is_integer(right) do
+    {:ok, %__MODULE__{evaluator | stack: [left + right | rest]}}
+  end
+
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :subtract)
+       when is_integer(left) and is_integer(right) do
+    {:ok, %__MODULE__{evaluator | stack: [left - right | rest]}}
+  end
+
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :multiply)
+       when is_integer(left) and is_integer(right) do
+    {:ok, %__MODULE__{evaluator | stack: [left * right | rest]}}
+  end
+
+  defp execute_arithmetic(%__MODULE__{stack: [0 | [_left | _rest]]}, :divide) do
+    {:error, "Division by zero"}
+  end
+
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :divide)
+       when is_integer(left) and is_integer(right) do
+    {:ok, %__MODULE__{evaluator | stack: [div(left, right) | rest]}}
+  end
+
+  defp execute_arithmetic(%__MODULE__{stack: [0 | [_left | _rest]]}, :modulo) do
+    {:error, "Modulo by zero"}
+  end
+
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :modulo)
+       when is_integer(left) and is_integer(right) do
+    {:ok, %__MODULE__{evaluator | stack: [rem(left, right) | rest]}}
+  end
+
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | _rest]]}, operation) do
+    {:error,
+     "Arithmetic #{operation} requires two integer values, got: #{inspect(left)} and #{inspect(right)}"}
+  end
+
+  defp execute_arithmetic(%__MODULE__{stack: stack}, operation) do
+    {:error, "Arithmetic #{operation} requires two values on stack, got: #{length(stack)}"}
+  end
+
+  @spec execute_unary(t(), :minus | :bang) :: {:ok, t()} | {:error, term()}
+  defp execute_unary(%__MODULE__{stack: [value | rest]} = evaluator, :minus)
+       when is_integer(value) do
+    result = -value
+    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+  end
+
+  defp execute_unary(%__MODULE__{stack: [value | rest]} = evaluator, :bang)
+       when is_boolean(value) do
+    result = not value
+    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+  end
+
+  defp execute_unary(%__MODULE__{stack: [value | _rest]}, :minus) do
+    {:error, "Unary minus requires an integer value, got: #{inspect(value)}"}
+  end
+
+  defp execute_unary(%__MODULE__{stack: [value | _rest]}, :bang) do
+    {:error, "Unary bang (!) requires a boolean value, got: #{inspect(value)}"}
+  end
+
+  defp execute_unary(%__MODULE__{stack: []}, operation) do
+    {:error, "Unary #{operation} requires one value on stack, got: 0"}
   end
 
   @spec execute_function_call(t(), binary(), non_neg_integer()) :: {:ok, t()} | {:error, term()}

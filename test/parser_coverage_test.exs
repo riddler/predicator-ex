@@ -120,18 +120,18 @@ defmodule ParserCoverageTest do
   end
 
   describe "integration with new arithmetic operators" do
-    test "parser can handle arithmetic expressions but evaluator rejects them" do
-      # These expressions should parse successfully but fail in evaluation
-      # because arithmetic instructions aren't implemented in the evaluator
-      assert {:error, msg} = evaluate("2 + 3", %{})
-      assert msg =~ "Unknown instruction"
+    test "parser can handle arithmetic expressions and evaluator processes them correctly" do
+      # These expressions should parse successfully and now also evaluate correctly
+      # because arithmetic instructions are now implemented in the evaluator
+      assert {:ok, result} = evaluate("2 + 3", %{})
+      assert result == 5
 
-      assert {:error, msg} = evaluate("5 * 2", %{})
-      assert msg =~ "Unknown instruction"
+      assert {:ok, result} = evaluate("5 * 2", %{})
+      assert result == 10
 
-      # Unary operators also not implemented in evaluator
-      assert {:error, msg} = evaluate("-5", %{})
-      assert msg =~ "Unknown instruction"
+      # Unary operators are also implemented in evaluator
+      assert {:ok, result} = evaluate("-5", %{})
+      assert result == -5
     end
   end
 end
