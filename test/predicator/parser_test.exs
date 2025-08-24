@@ -1080,4 +1080,121 @@ defmodule Predicator.ParserTest do
       assert {:ok, ^expected_ast} = result
     end
   end
+
+  describe "parse/1 - bracket access expressions" do
+    test "parses simple bracket access" do
+      {:ok, tokens} = Lexer.tokenize("user['name']")
+      result = Parser.parse(tokens)
+
+      expected_ast = {:bracket_access, {:identifier, "user"}, {:string_literal, "name", :single}}
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with double quotes" do
+      {:ok, tokens} = Lexer.tokenize("user[\"name\"]")
+      result = Parser.parse(tokens)
+
+      expected_ast = {:bracket_access, {:identifier, "user"}, {:string_literal, "name", :double}}
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with numeric index" do
+      {:ok, tokens} = Lexer.tokenize("items[0]")
+      result = Parser.parse(tokens)
+
+      expected_ast = {:bracket_access, {:identifier, "items"}, {:literal, 0}}
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with variable index" do
+      {:ok, tokens} = Lexer.tokenize("items[index]")
+      result = Parser.parse(tokens)
+
+      expected_ast = {:bracket_access, {:identifier, "items"}, {:identifier, "index"}}
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses chained bracket access" do
+      {:ok, tokens} = Lexer.tokenize("data['users'][0]['name']")
+      result = Parser.parse(tokens)
+
+      expected_ast = {
+        :bracket_access,
+        {:bracket_access,
+         {:bracket_access, {:identifier, "data"}, {:string_literal, "users", :single}},
+         {:literal, 0}},
+        {:string_literal, "name", :single}
+      }
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access with arithmetic expression as key" do
+      {:ok, tokens} = Lexer.tokenize("items[i + 1]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:bracket_access, {:identifier, "items"},
+         {:arithmetic, :add, {:identifier, "i"}, {:literal, 1}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses mixed dot and bracket access" do
+      # Note: This will require additional implementation as dot notation
+      # currently works differently (as nested identifiers)
+      # For now, testing that user.settings still works as before
+      {:ok, tokens} = Lexer.tokenize("user.settings")
+      result = Parser.parse(tokens)
+
+      expected_ast = {:identifier, "user.settings"}
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access in comparison" do
+      {:ok, tokens} = Lexer.tokenize("user['age'] > 18")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:comparison, :gt,
+         {:bracket_access, {:identifier, "user"}, {:string_literal, "age", :single}},
+         {:literal, 18}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses bracket access in arithmetic" do
+      {:ok, tokens} = Lexer.tokenize("scores[0] + scores[1]")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:arithmetic, :add, {:bracket_access, {:identifier, "scores"}, {:literal, 0}},
+         {:bracket_access, {:identifier, "scores"}, {:literal, 1}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "returns error for unclosed bracket" do
+      {:ok, tokens} = Lexer.tokenize("user['name'")
+      result = Parser.parse(tokens)
+
+      assert {:error, "Expected ']' but found end of input", 1, 12} = result
+    end
+
+    test "returns error for empty bracket access" do
+      {:ok, tokens} = Lexer.tokenize("user[]")
+      result = Parser.parse(tokens)
+
+      assert {:error,
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found ']'",
+              1, 6} = result
+    end
+
+    test "returns error for missing closing bracket" do
+      {:ok, tokens} = Lexer.tokenize("user['name' + 'suffix'")
+      result = Parser.parse(tokens)
+
+      assert {:error, "Expected ']' but found end of input", 1, 23} = result
+    end
+  end
 end

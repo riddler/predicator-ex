@@ -172,6 +172,14 @@ defmodule Predicator.Visitors.StringVisitor do
     "#{op_str}#{operand_str}"
   end
 
+  def visit({:bracket_access, object, key}, opts) do
+    object_str = visit(object, opts)
+    key_str = visit(key, opts)
+
+    # Bracket access format: object[key]
+    "#{object_str}[#{key_str}]"
+  end
+
   def visit({:list, elements}, opts) do
     element_strings = Enum.map(elements, fn element -> visit(element, opts) end)
     "[#{Enum.join(element_strings, ", ")}]"

@@ -100,6 +100,16 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     operand_instructions ++ op_instruction
   end
 
+  def visit({:bracket_access, object, key}, opts) do
+    # Post-order traversal: object first, then key, then access operation
+    # Stack will be: [key, object] with key on top
+    object_instructions = visit(object, opts)
+    key_instructions = visit(key, opts)
+    access_instruction = [["bracket_access"]]
+
+    object_instructions ++ key_instructions ++ access_instruction
+  end
+
   def visit({:logical_and, left, right}, opts) do
     # Post-order traversal: left operand, right operand, then operator
     left_instructions = visit(left, opts)

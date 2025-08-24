@@ -76,6 +76,7 @@ defmodule Predicator.Errors do
   def operation_display_name(:logical_not), do: "Logical NOT"
   def operation_display_name(:logical_and), do: "Logical AND"
   def operation_display_name(:logical_or), do: "Logical OR"
+  def operation_display_name(:bracket_access), do: "Bracket access"
 
   def operation_display_name(op) do
     op

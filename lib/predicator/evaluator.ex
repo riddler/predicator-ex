@@ -21,6 +21,7 @@ defmodule Predicator.Evaluator do
   - `["modulo"]` - Modulo operation on top two integer values
   - `["unary_minus"]` - Negate top integer value
   - `["unary_bang"]` - Logical NOT of top boolean value
+  - `["bracket_access"]` - Pop key and object, push object[key] result
   - `["call", function_name, arg_count]` - Call function with arguments from stack
   """
 
@@ -274,6 +275,11 @@ defmodule Predicator.Evaluator do
 
   defp execute_instruction(%__MODULE__{} = evaluator, ["unary_bang"]) do
     execute_unary(evaluator, :bang)
+  end
+
+  # Bracket access instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["bracket_access"]) do
+    execute_bracket_access(evaluator)
   end
 
   # Function call instruction
@@ -546,6 +552,90 @@ defmodule Predicator.Evaluator do
 
   defp execute_unary(%__MODULE__{stack: []}, operation) do
     {:error, EvaluationError.insufficient_operands(:"unary_#{operation}", 0, 1)}
+  end
+
+  # Bracket access operations - access object[key] or array[index]
+  @spec execute_bracket_access(t()) :: {:ok, t()} | {:error, term()}
+  defp execute_bracket_access(%__MODULE__{stack: [key, object | rest]} = evaluator) do
+    case access_value(object, key) do
+      {:ok, value} ->
+        {:ok, %__MODULE__{evaluator | stack: [value | rest]}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp execute_bracket_access(%__MODULE__{stack: stack}) when length(stack) < 2 do
+    {:error, EvaluationError.insufficient_operands(:bracket_access, length(stack), 2)}
+  end
+
+  # Access a value from an object or array using a key or index
+  @spec access_value(Types.value(), Types.value()) :: {:ok, Types.value()} | {:error, term()}
+  defp access_value(object, key) when is_map(object) and is_binary(key) do
+    # Map access with string key
+    case Map.get(object, key) do
+      nil ->
+        # Try as atom key if string key doesn't exist
+        try do
+          atom_key = String.to_existing_atom(key)
+          {:ok, Map.get(object, atom_key, :undefined)}
+        rescue
+          ArgumentError ->
+            {:ok, :undefined}
+        end
+
+      value ->
+        {:ok, value}
+    end
+  end
+
+  defp access_value(object, key) when is_map(object) and is_atom(key) do
+    # Map access with atom key
+    {:ok, Map.get(object, key, :undefined)}
+  end
+
+  defp access_value(object, key) when is_map(object) and is_integer(key) do
+    # Map access with integer key (maps can have integer keys too)
+    {:ok, Map.get(object, key, :undefined)}
+  end
+
+  defp access_value(array, index) when is_list(array) and is_integer(index) and index >= 0 do
+    # Array access with integer index
+    if index < length(array) do
+      {:ok, Enum.at(array, index)}
+    else
+      {:ok, :undefined}
+    end
+  end
+
+  defp access_value(array, index) when is_list(array) and is_integer(index) and index < 0 do
+    # Negative index not supported, return undefined
+    {:ok, :undefined}
+  end
+
+  defp access_value(object, _key) when not is_map(object) and not is_list(object) do
+    # Can't access properties of non-object/non-array values
+    {:ok, :undefined}
+  end
+
+  defp access_value(_object, key)
+       when not is_binary(key) and not is_integer(key) and not is_atom(key) do
+    # Invalid key type - create a custom error message for bracket access key types
+    key_type = get_value_type(key)
+    operation_name = Predicator.Errors.operation_display_name(:bracket_access)
+    key_text = Predicator.Errors.type_name_with_value(key_type, key)
+
+    error_struct = %TypeMismatchError{
+      message: "#{operation_name} requires a string, integer, or atom key, got #{key_text}",
+      # Primary expected type
+      expected: :string,
+      got: key_type,
+      values: key,
+      operation: :bracket_access
+    }
+
+    {:error, error_struct}
   end
 
   @spec execute_function_call(t(), binary(), non_neg_integer()) :: {:ok, t()} | {:error, term()}

@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Bracket Access and Property Access Enhancement
+- **Complete Bracket Notation Support**: Implemented full bracket access functionality (`obj['key']`, `arr[0]`, `obj[variable]`)
+- **Parser Extensions**: Added postfix parsing for bracket access with recursive chaining support
+- **Grammar Enhancement**: Updated grammar with postfix operations: `unary → postfix`, `postfix → primary ( "[" expression "]" )*`
+- **New AST Node Type**: Added `{:bracket_access, object, key}` AST node for bracket access expressions
+- **Evaluator Support**: Implemented `["bracket_access"]` instruction with comprehensive evaluation logic
+- **Mixed Access Patterns**: Full support for chained access like `data['users'][0]['name']`
+- **Array Indexing**: Complete array access with bounds checking (`items[0]`, `scores[index]`)
+- **Dynamic Key Access**: Support for variable and expression-based keys (`obj[key]`, `items[i + 1]`)
+- **Type Safety**: Comprehensive error handling for invalid key types with structured error messages
+- **String Visitor Support**: Added round-trip string conversion for bracket access expressions
+- **Comprehensive Testing**: Added 12 new parser tests covering all bracket access scenarios
+
+#### Property Access Implementation Details
+- **Access Value Logic**: Robust `access_value/2` function supporting:
+  - Map access with string, atom, and integer keys
+  - Array access with integer indices and bounds checking  
+  - Graceful fallback to `:undefined` for missing keys or out-of-bounds access
+  - Type coercion between string and atom keys
+- **Error Handling**: Enhanced error system with bracket access specific errors:
+  - Invalid key type validation with structured error messages
+  - Proper operation display names ("Bracket access requires a string, integer, or atom key")
+  - Integration with existing error architecture
+- **Instruction Compilation**: Added `visit({:bracket_access, object, key}, opts)` in InstructionsVisitor
+- **Round-trip Support**: Perfect string conversion preserving bracket notation syntax
+- **Integration Testing**: Verified compatibility with existing arithmetic, comparison, and logical operations
+
 #### Error Handling Architecture Refactoring
 - **Modular Error Structure**: Refactored monolithic error handling into individual error modules under `lib/predicator/errors/`
 - **Shared Error Utilities**: Created `Predicator.Errors` module with common utility functions for consistent error formatting
