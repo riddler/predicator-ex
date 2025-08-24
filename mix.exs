@@ -6,6 +6,7 @@ defmodule Predicator.MixProject do
   @source_url "https://github.com/riddler/predicator-ex"
   @deps [
     # Development and testing
+    {:castore, "~> 1.0", only: [:dev, :test]},
     {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
     {:ex_doc, "~> 0.31", only: :dev, runtime: false},
     {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
