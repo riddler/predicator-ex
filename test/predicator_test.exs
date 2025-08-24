@@ -1537,6 +1537,7 @@ defmodule PredicatorTest do
     test "round-trip conversion with bracket access" do
       alias Predicator.{Lexer, Parser}
       alias Predicator.Visitors.StringVisitor
+
       expressions = [
         "user['name']",
         "items[0]",

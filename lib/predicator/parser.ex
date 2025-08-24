@@ -375,12 +375,11 @@ defmodule Predicator.Parser do
           # Comparison operators
           {op_type, _line, _col, _len, _value}
           when op_type in [:gt, :lt, :gte, :lte, :eq] ->
-            operator = map_operator(op_type)
             op_state = advance(new_state)
 
             case parse_addition(op_state) do
               {:ok, right, final_state} ->
-                ast = {:comparison, operator, left, right}
+                ast = {:comparison, op_type, left, right}
                 {:ok, ast, final_state}
 
               {:error, message, line, col} ->
@@ -712,13 +711,6 @@ defmodule Predicator.Parser do
   defp advance(%{position: pos} = state) do
     %{state | position: pos + 1}
   end
-
-  @spec map_operator(atom()) :: comparison_op()
-  defp map_operator(:gt), do: :gt
-  defp map_operator(:lt), do: :lt
-  defp map_operator(:gte), do: :gte
-  defp map_operator(:lte), do: :lte
-  defp map_operator(:eq), do: :eq
 
   @spec map_membership_operator(atom()) :: membership_op()
   defp map_membership_operator(:in_op), do: :in
