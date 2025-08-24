@@ -14,10 +14,14 @@ defmodule Predicator.Parser do
   The parser implements this grammar with proper operator precedence:
 
       expression   → logical_or
-      logical_or   → logical_and ( "OR" logical_and )*
-      logical_and  → logical_not ( "AND" logical_not )*
-      logical_not  → "NOT" logical_not | comparison
-      comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
+      logical_or   → logical_and ( "OR" | "||" logical_and )*
+      logical_and  → logical_not ( "AND" | "&&" logical_not )*
+      logical_not  → "NOT" | "!" logical_not | equality
+      equality     → comparison ( ( "==" | "!=" ) comparison )*
+      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "in" | "contains" ) addition )?
+      addition     → multiplication ( ( "+" | "-" ) multiplication )*
+      multiplication → unary ( ( "*" | "/" | "%" ) unary )*
+      unary        → ( "-" | "!" ) unary | primary
       primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
       function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
       list         → "[" ( expression ( "," expression )* )? "]"
@@ -51,6 +55,9 @@ defmodule Predicator.Parser do
   - `{:string_literal, value, quote_type}` - A string literal with quote type information
   - `{:identifier, name}` - A variable reference
   - `{:comparison, operator, left, right}` - A comparison expression
+  - `{:equality, operator, left, right}` - An equality expression (== !=)
+  - `{:arithmetic, operator, left, right}` - An arithmetic expression (+, -, *, /, %)
+  - `{:unary, operator, operand}` - A unary expression (-, !)
   - `{:logical_and, left, right}` - A logical AND expression
   - `{:logical_or, left, right}` - A logical OR expression
   - `{:logical_not, operand}` - A logical NOT expression
@@ -63,6 +70,9 @@ defmodule Predicator.Parser do
           | {:string_literal, binary(), :double | :single}
           | {:identifier, binary()}
           | {:comparison, comparison_op(), ast(), ast()}
+          | {:equality, equality_op(), ast(), ast()}
+          | {:arithmetic, arithmetic_op(), ast(), ast()}
+          | {:unary, unary_op(), ast()}
           | {:membership, membership_op(), ast(), ast()}
           | {:logical_and, ast(), ast()}
           | {:logical_or, ast(), ast()}
@@ -73,7 +83,22 @@ defmodule Predicator.Parser do
   @typedoc """
   Comparison operators in the AST.
   """
-  @type comparison_op :: :gt | :lt | :gte | :lte | :eq | :ne
+  @type comparison_op :: :gt | :lt | :gte | :lte | :eq
+
+  @typedoc """
+  Equality operators in the AST.
+  """
+  @type equality_op :: :equal_equal | :ne
+
+  @typedoc """
+  Arithmetic operators in the AST.
+  """
+  @type arithmetic_op :: :add | :subtract | :multiply | :divide | :modulo
+
+  @typedoc """
+  Unary operators in the AST.
+  """
+  @type unary_op :: :minus | :bang
 
   @typedoc """
   Membership operators in the AST.
@@ -169,8 +194,21 @@ defmodule Predicator.Parser do
     parse_logical_or_rest_token(left, state, token)
   end
 
-  # Parse OR operator token
+  # Parse OR operator token (OR or ||)
   defp parse_logical_or_rest_token(left, state, {:or_op, _line, _col, _len, _value}) do
+    or_state = advance(state)
+
+    case parse_logical_and(or_state) do
+      {:ok, right, final_state} ->
+        ast = {:logical_or, left, right}
+        parse_logical_or_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  defp parse_logical_or_rest_token(left, state, {:or_or, _line, _col, _len, _value}) do
     or_state = advance(state)
 
     case parse_logical_and(or_state) do
@@ -208,8 +246,21 @@ defmodule Predicator.Parser do
     parse_logical_and_rest_token(left, state, token)
   end
 
-  # Parse AND operator token
+  # Parse AND operator token (AND or &&)
   defp parse_logical_and_rest_token(left, state, {:and_op, _line, _col, _len, _value}) do
+    and_state = advance(state)
+
+    case parse_logical_not(and_state) do
+      {:ok, right, final_state} ->
+        ast = {:logical_and, left, right}
+        parse_logical_and_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  defp parse_logical_and_rest_token(left, state, {:and_and, _line, _col, _len, _value}) do
     and_state = advance(state)
 
     case parse_logical_not(and_state) do
@@ -235,7 +286,7 @@ defmodule Predicator.Parser do
     parse_logical_not_token(state, token)
   end
 
-  # Parse NOT operator token
+  # Parse NOT operator token (NOT or !)
   defp parse_logical_not_token(state, {:not_op, _line, _col, _len, _value}) do
     not_state = advance(state)
 
@@ -249,9 +300,75 @@ defmodule Predicator.Parser do
     end
   end
 
-  # No NOT operator, parse comparison
+  defp parse_logical_not_token(state, {:bang, _line, _col, _len, _value}) do
+    not_state = advance(state)
+
+    case parse_logical_not(not_state) do
+      {:ok, operand, final_state} ->
+        ast = {:logical_not, operand}
+        {:ok, ast, final_state}
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # No NOT operator, parse equality
   defp parse_logical_not_token(state, _token) do
-    parse_comparison(state)
+    parse_equality(state)
+  end
+
+  # Parse equality expressions (== !=)
+  @spec parse_equality(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_equality(state) do
+    case parse_comparison(state) do
+      {:ok, left, new_state} ->
+        parse_equality_rest(left, new_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  @spec parse_equality_rest(ast(), parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_equality_rest(left, state) do
+    token = peek_token(state)
+    parse_equality_rest_token(left, state, token)
+  end
+
+  # Parse == operator
+  defp parse_equality_rest_token(left, state, {:equal_equal, _line, _col, _len, _value}) do
+    eq_state = advance(state)
+
+    case parse_comparison(eq_state) do
+      {:ok, right, final_state} ->
+        ast = {:equality, :equal_equal, left, right}
+        parse_equality_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse != operator
+  defp parse_equality_rest_token(left, state, {:ne, _line, _col, _len, _value}) do
+    ne_state = advance(state)
+
+    case parse_comparison(ne_state) do
+      {:ok, right, final_state} ->
+        ast = {:equality, :ne, left, right}
+        parse_equality_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # No equality operator, return left operand
+  defp parse_equality_rest_token(left, state, _token) do
+    {:ok, left, state}
   end
 
   # Parse comparison expressions
@@ -261,16 +378,16 @@ defmodule Predicator.Parser do
   @spec parse_comparison(parser_state()) ::
           {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
   defp parse_comparison(state) do
-    case parse_primary(state) do
+    case parse_addition(state) do
       {:ok, left, new_state} ->
         case peek_token(new_state) do
           # Comparison operators
           {op_type, _line, _col, _len, _value}
-          when op_type in [:gt, :lt, :gte, :lte, :eq, :ne] ->
+          when op_type in [:gt, :lt, :gte, :lte, :eq] ->
             operator = map_operator(op_type)
             op_state = advance(new_state)
 
-            case parse_primary(op_state) do
+            case parse_addition(op_state) do
               {:ok, right, final_state} ->
                 ast = {:comparison, operator, left, right}
                 {:ok, ast, final_state}
@@ -285,7 +402,7 @@ defmodule Predicator.Parser do
             operator = map_membership_operator(op_type)
             op_state = advance(new_state)
 
-            case parse_primary(op_state) do
+            case parse_addition(op_state) do
               {:ok, right, final_state} ->
                 ast = {:membership, operator, left, right}
                 {:ok, ast, final_state}
@@ -294,7 +411,7 @@ defmodule Predicator.Parser do
                 {:error, message, line, col}
             end
 
-          # Not a comparison, return the primary expression
+          # Not a comparison, return the addition expression
           _token ->
             {:ok, left, new_state}
         end
@@ -302,6 +419,167 @@ defmodule Predicator.Parser do
       {:error, message, line, col} ->
         {:error, message, line, col}
     end
+  end
+
+  # Parse addition expressions (+ -)
+  @spec parse_addition(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_addition(state) do
+    case parse_multiplication(state) do
+      {:ok, left, new_state} ->
+        parse_addition_rest(left, new_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  @spec parse_addition_rest(ast(), parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_addition_rest(left, state) do
+    token = peek_token(state)
+    parse_addition_rest_token(left, state, token)
+  end
+
+  # Parse + operator
+  defp parse_addition_rest_token(left, state, {:plus, _line, _col, _len, _value}) do
+    add_state = advance(state)
+
+    case parse_multiplication(add_state) do
+      {:ok, right, final_state} ->
+        ast = {:arithmetic, :add, left, right}
+        parse_addition_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse - operator
+  defp parse_addition_rest_token(left, state, {:minus, _line, _col, _len, _value}) do
+    sub_state = advance(state)
+
+    case parse_multiplication(sub_state) do
+      {:ok, right, final_state} ->
+        ast = {:arithmetic, :subtract, left, right}
+        parse_addition_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # No addition operator, return left operand
+  defp parse_addition_rest_token(left, state, _token) do
+    {:ok, left, state}
+  end
+
+  # Parse multiplication expressions (* / %)
+  @spec parse_multiplication(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_multiplication(state) do
+    case parse_unary(state) do
+      {:ok, left, new_state} ->
+        parse_multiplication_rest(left, new_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  @spec parse_multiplication_rest(ast(), parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_multiplication_rest(left, state) do
+    token = peek_token(state)
+    parse_multiplication_rest_token(left, state, token)
+  end
+
+  # Parse * operator
+  defp parse_multiplication_rest_token(left, state, {:multiply, _line, _col, _len, _value}) do
+    mul_state = advance(state)
+
+    case parse_unary(mul_state) do
+      {:ok, right, final_state} ->
+        ast = {:arithmetic, :multiply, left, right}
+        parse_multiplication_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse / operator
+  defp parse_multiplication_rest_token(left, state, {:divide, _line, _col, _len, _value}) do
+    div_state = advance(state)
+
+    case parse_unary(div_state) do
+      {:ok, right, final_state} ->
+        ast = {:arithmetic, :divide, left, right}
+        parse_multiplication_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse % operator
+  defp parse_multiplication_rest_token(left, state, {:modulo, _line, _col, _len, _value}) do
+    mod_state = advance(state)
+
+    case parse_unary(mod_state) do
+      {:ok, right, final_state} ->
+        ast = {:arithmetic, :modulo, left, right}
+        parse_multiplication_rest(ast, final_state)
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # No multiplication operator, return left operand
+  defp parse_multiplication_rest_token(left, state, _token) do
+    {:ok, left, state}
+  end
+
+  # Parse unary expressions (- !)
+  @spec parse_unary(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_unary(state) do
+    token = peek_token(state)
+    parse_unary_token(state, token)
+  end
+
+  # Parse unary minus
+  defp parse_unary_token(state, {:minus, _line, _col, _len, _value}) do
+    minus_state = advance(state)
+
+    case parse_unary(minus_state) do
+      {:ok, operand, final_state} ->
+        ast = {:unary, :minus, operand}
+        {:ok, ast, final_state}
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse unary bang
+  defp parse_unary_token(state, {:bang, _line, _col, _len, _value}) do
+    bang_state = advance(state)
+
+    case parse_unary(bang_state) do
+      {:ok, operand, final_state} ->
+        ast = {:unary, :bang, operand}
+        {:ok, ast, final_state}
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # No unary operator, parse primary
+  defp parse_unary_token(state, _token) do
+    parse_primary(state)
   end
 
   # Parse primary expressions (literals, identifiers, parentheses)
@@ -404,7 +682,6 @@ defmodule Predicator.Parser do
   defp map_operator(:gte), do: :gte
   defp map_operator(:lte), do: :lte
   defp map_operator(:eq), do: :eq
-  defp map_operator(:ne), do: :ne
 
   @spec map_membership_operator(atom()) :: membership_op()
   defp map_membership_operator(:in_op), do: :in

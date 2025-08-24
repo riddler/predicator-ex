@@ -74,6 +74,32 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     left_instructions ++ right_instructions ++ op_instruction
   end
 
+  def visit({:equality, op, left, right}, opts) do
+    # Post-order traversal: left operand, right operand, then operator
+    left_instructions = visit(left, opts)
+    right_instructions = visit(right, opts)
+    op_instruction = [["compare", map_equality_op(op)]]
+
+    left_instructions ++ right_instructions ++ op_instruction
+  end
+
+  def visit({:arithmetic, op, left, right}, opts) do
+    # Post-order traversal: left operand, right operand, then operator
+    left_instructions = visit(left, opts)
+    right_instructions = visit(right, opts)
+    op_instruction = [[map_arithmetic_op(op)]]
+
+    left_instructions ++ right_instructions ++ op_instruction
+  end
+
+  def visit({:unary, op, operand}, opts) do
+    # Post-order traversal: operand first, then operator
+    operand_instructions = visit(operand, opts)
+    op_instruction = [[map_unary_op(op)]]
+
+    operand_instructions ++ op_instruction
+  end
+
   def visit({:logical_and, left, right}, opts) do
     # Post-order traversal: left operand, right operand, then operator
     left_instructions = visit(left, opts)
@@ -147,7 +173,24 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   defp map_comparison_op(:gte), do: "GTE"
   defp map_comparison_op(:lte), do: "LTE"
   defp map_comparison_op(:eq), do: "EQ"
-  defp map_comparison_op(:ne), do: "NE"
+
+  # Helper function to map AST equality operators to instruction format
+  @spec map_equality_op(Parser.equality_op()) :: binary()
+  defp map_equality_op(:equal_equal), do: "EQ"
+  defp map_equality_op(:ne), do: "NE"
+
+  # Helper function to map AST arithmetic operators to instruction format
+  @spec map_arithmetic_op(Parser.arithmetic_op()) :: binary()
+  defp map_arithmetic_op(:add), do: "add"
+  defp map_arithmetic_op(:subtract), do: "subtract"
+  defp map_arithmetic_op(:multiply), do: "multiply"
+  defp map_arithmetic_op(:divide), do: "divide"
+  defp map_arithmetic_op(:modulo), do: "modulo"
+
+  # Helper function to map AST unary operators to instruction format
+  @spec map_unary_op(Parser.unary_op()) :: binary()
+  defp map_unary_op(:minus), do: "unary_minus"
+  defp map_unary_op(:bang), do: "unary_bang"
 
   # Helper function to map AST membership operators to instruction format
   @spec map_membership_op(Parser.membership_op()) :: binary()

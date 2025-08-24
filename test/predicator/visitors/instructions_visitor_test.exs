@@ -101,7 +101,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for not equal comparison" do
-      ast = {:comparison, :ne, {:identifier, "status"}, {:literal, "inactive"}}
+      ast = {:equality, :ne, {:identifier, "status"}, {:literal, "inactive"}}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [

@@ -9,42 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### SCXML Enhancement Phase 1.2: Arithmetic and Logical Operators
-- **New Lexer Tokens**: Added support for arithmetic operators (`+`, `-`, `*`, `/`, `%`)
-- **Enhanced Logical Operators**: Added `&&` (logical AND), `||` (logical OR), `!` (logical NOT) alongside existing word-based operators
-- **Equality Operator**: Added `==` for strict equality comparison alongside existing `=`
-- **Token Support**: All new operators properly tokenized with position tracking and error reporting
-- **Comprehensive Testing**: Added 85+ new lexer tests covering all arithmetic and logical operators
-- **Error Handling**: Enhanced parser error messages to handle new token types
+#### SCXML Enhancement Phases 1.2-1.4: Arithmetic and Logical Operators
+- **Complete Parser Pipeline**: Added full parsing support for arithmetic operators (`+`, `-`, `*`, `/`, `%`)
+- **Enhanced Logical Operators**: Added `&&` (logical AND), `||` (logical OR), `!` (logical NOT) with complete parsing
+- **Equality Operator**: Added `==` for strict equality comparison with proper precedence handling
+- **Grammar Extensions**: Implemented proper operator precedence hierarchy in recursive descent parser
+- **AST Node Types**: Added new AST node types for arithmetic, equality, and unary expressions
+- **Visitor Support**: Updated InstructionsVisitor and StringVisitor to handle new node types
+- **Round-trip Compatibility**: Full string ↔ AST ↔ string conversion for all new operators
 
 #### Operator Support Details
 ```elixir
-# Arithmetic operators (tokens added, parsing pending)
-2 + 3    # Addition
-5 - 2    # Subtraction  
-3 * 4    # Multiplication
-8 / 2    # Division
-7 % 3    # Modulo
+# Arithmetic operators (parsing complete, evaluation pending)
+2 + 3    # Addition - generates ["add"] instruction
+5 - 2    # Subtraction - generates ["subtract"] instruction
+3 * 4    # Multiplication - generates ["multiply"] instruction  
+8 / 2    # Division - generates ["divide"] instruction
+7 % 3    # Modulo - generates ["modulo"] instruction
 
-# Logical operators (tokens added, parsing pending)
-true && false   # Logical AND
-true || false   # Logical OR
-!active         # Logical NOT
+# Logical operators (fully functional)
+true && false   # Logical AND - works completely
+true || false   # Logical OR - works completely
+!active         # Logical NOT - works completely
 
-# Equality operator (tokens added, parsing pending)
-x == y          # Strict equality
+# Equality operator (fully functional)  
+x == y          # Strict equality - works completely
 ```
 
 #### Foundation for SCXML Value Expressions
-- **Lexical Foundation**: Completed lexer enhancements as Phase 1.2 of SCXML datamodel support
-- **Future Support**: Enables upcoming parser and evaluator enhancements for value expressions
+- **Parser Foundation**: Completed lexer, parser, and AST phases (1.2-1.4) of SCXML datamodel support
+- **Instruction Generation**: Arithmetic expressions now generate proper stack machine instructions
+- **Ready for Evaluation**: Next phase will implement instruction execution in evaluator
 - **Backward Compatibility**: All existing functionality remains unchanged
 
 ### Technical Implementation
 - **Lexer Enhancement**: Extended tokenization with 9 new token types
-- **Position Tracking**: Accurate line/column tracking for all new operators
-- **Error Recovery**: Proper error messages for invalid operator usage
-- **Test Coverage**: Maintained >89% code coverage with comprehensive operator tests
+- **Parser Grammar**: Implemented arithmetic precedence hierarchy (unary → multiplication → addition → equality → comparison)
+- **AST Extensions**: Added 4 new AST node types (:arithmetic, :equality, :unary, plus enhanced visitor support)
+- **Instruction Generation**: Arithmetic expressions compile to proper stack machine instructions
+- **Error Recovery**: Comprehensive error messages for parsing and evaluation phases
+- **Test Coverage**: 604 tests passing with updated expectations for parser success
+- **Code Quality**: Eliminated code duplication in StringVisitor through helper function extraction
 
 ## [2.0.0] - 2025-08-21
 

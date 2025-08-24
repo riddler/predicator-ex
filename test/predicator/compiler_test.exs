@@ -37,12 +37,29 @@ defmodule Predicator.CompilerTest do
         :lt => "LT",
         :gte => "GTE",
         :lte => "LTE",
-        :eq => "EQ",
-        :ne => "NE"
+        :eq => "EQ"
       }
 
       for {ast_op, instruction_op} <- operators_map do
         ast = {:comparison, ast_op, {:identifier, "x"}, {:literal, 1}}
+        result = Compiler.to_instructions(ast)
+
+        assert result == [
+                 ["load", "x"],
+                 ["lit", 1],
+                 ["compare", instruction_op]
+               ]
+      end
+    end
+
+    test "works with equality operators" do
+      equality_operators = %{
+        :equal_equal => "EQ",
+        :ne => "NE"
+      }
+
+      for {ast_op, instruction_op} <- equality_operators do
+        ast = {:equality, ast_op, {:identifier, "x"}, {:literal, 1}}
         result = Compiler.to_instructions(ast)
 
         assert result == [
