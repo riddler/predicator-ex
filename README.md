@@ -31,7 +31,7 @@ Add `predicator` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:predicator, "~> 2.1"}
+    {:predicator, "~> 2.2"}
   ]
 end
 ```
