@@ -24,79 +24,107 @@ defmodule EvaluatorEdgeCasesTest do
       # Missing second value
       instructions = [["lit", 42], ["compare", "GT"]]
 
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg =~ "Comparison requires two values on stack, got: 1"
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert msg =~ "Comparison requires 2 values on stack, got: 1"
     end
 
     test "logical operators with insufficient stack values" do
       # AND with only one value
-      assert {:error, msg} = Evaluator.evaluate([["lit", true], ["and"]], %{})
-      assert msg =~ "Logical AND requires two values on stack, got: 1"
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["lit", true], ["and"]], %{})
+
+      assert msg =~ "Logical AND requires 2 values on stack, got: 1"
 
       # OR with no values
-      assert {:error, msg} = Evaluator.evaluate([["or"]], %{})
-      assert msg =~ "Logical OR requires two values on stack, got: 0"
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["or"]], %{})
+
+      assert msg =~ "Logical OR requires 2 values on stack, got: 0"
 
       # NOT with no values
-      assert {:error, msg} = Evaluator.evaluate([["not"]], %{})
-      assert msg =~ "Logical NOT requires one value on stack, got: 0"
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["not"]], %{})
+
+      assert msg =~ "Logical NOT requires 1 value on stack, got: 0"
     end
 
     test "logical operators with wrong types" do
       # AND with non-boolean values
-      assert {:error, msg} = Evaluator.evaluate([["lit", 42], ["lit", "text"], ["and"]], %{})
-      assert msg =~ "Logical AND requires two boolean values"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate([["lit", 42], ["lit", "text"], ["and"]], %{})
+
+      assert msg =~ "Logical AND requires booleans"
 
       # OR with non-boolean values
-      assert {:error, msg} = Evaluator.evaluate([["lit", [1, 2, 3]], ["lit", true], ["or"]], %{})
-      assert msg =~ "Logical OR requires two boolean values"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate([["lit", [1, 2, 3]], ["lit", true], ["or"]], %{})
+
+      assert msg =~ "Logical OR requires booleans"
 
       # NOT with non-boolean value
-      assert {:error, msg} = Evaluator.evaluate([["lit", 42], ["not"]], %{})
-      assert msg =~ "Logical NOT requires a boolean value, got: 42"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate([["lit", 42], ["not"]], %{})
+
+      assert msg =~ "Logical NOT requires a boolean, got 42"
     end
 
     test "membership with insufficient stack values" do
       # IN with only one value
-      assert {:error, msg} = Evaluator.evaluate([["lit", 1], ["in"]], %{})
-      assert msg =~ "IN requires two values on stack, got: 1"
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["lit", 1], ["in"]], %{})
+
+      assert msg =~ "In requires 2 values on stack, got: 1"
 
       # CONTAINS with no values
-      assert {:error, msg} = Evaluator.evaluate([["contains"]], %{})
-      assert msg =~ "CONTAINS requires two values on stack, got: 0"
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["contains"]], %{})
+
+      assert msg =~ "Contains requires 2 values on stack, got: 0"
     end
 
     test "membership with non-list values" do
       # IN with right operand not being a list
-      assert {:error, msg} = Evaluator.evaluate([["lit", 1], ["lit", "not_a_list"], ["in"]], %{})
-      assert msg =~ "IN operator requires a list on the right side"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate([["lit", 1], ["lit", "not_a_list"], ["in"]], %{})
+
+      assert msg =~ "requires a list"
 
       # CONTAINS with left operand not being a list
-      assert {:error, msg} =
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                Evaluator.evaluate([["lit", "not_a_list"], ["lit", 1], ["contains"]], %{})
 
-      assert msg =~ "CONTAINS operator requires a list on the left side"
+      assert msg =~ "requires a list"
     end
 
     test "function call with insufficient stack values" do
-      assert {:error, msg} = Evaluator.evaluate([["call", "len", 1]], %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["call", "len", 1]], %{})
+
       assert msg =~ "Function len() expects 1 arguments, but only 0 values on stack"
 
-      assert {:error, msg} = Evaluator.evaluate([["lit", "hello"], ["call", "max", 2]], %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["lit", "hello"], ["call", "max", 2]], %{})
+
       assert msg =~ "Function max() expects 2 arguments, but only 1 values on stack"
     end
 
     test "function call with unknown function" do
       instructions = [["lit", 42], ["call", "unknown_function", 1]]
 
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
       assert msg =~ "Unknown function: unknown_function"
     end
 
     test "function call with negative arg count" do
       instructions = [["call", "len", -1]]
 
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
       assert msg =~ "Unknown instruction:"
     end
 
@@ -133,17 +161,23 @@ defmodule EvaluatorEdgeCasesTest do
 
     test "unknown instruction type" do
       # Instructions with invalid format
-      assert {:error, msg} = Evaluator.evaluate([["invalid_instruction", "param"]], %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["invalid_instruction", "param"]], %{})
+
       assert msg =~ "Unknown instruction:"
 
       # Malformed instruction
       # Missing operator
-      assert {:error, msg} = Evaluator.evaluate([["compare"]], %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["compare"]], %{})
+
       assert msg =~ "Unknown instruction:"
 
       # Instructions with wrong number of params
       # Missing value
-      assert {:error, msg} = Evaluator.evaluate([["lit"]], %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate([["lit"]], %{})
+
       assert msg =~ "Unknown instruction:"
     end
   end

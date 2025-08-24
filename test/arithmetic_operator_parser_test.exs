@@ -50,8 +50,10 @@ defmodule ArithmeticOperatorParserTest do
 
     test "bang operator works as logical NOT" do
       # ! now works as logical NOT, but since 'active' is undefined, it gives an error
-      assert {:error, message} = evaluate("!active", %{})
-      assert message =~ "Logical NOT requires a boolean value, got: :undefined"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} =
+               evaluate("!active", %{})
+
+      assert message =~ "Logical NOT requires a boolean, got :undefined (undefined)"
     end
 
     test "complex arithmetic expression works correctly" do
@@ -103,8 +105,11 @@ defmodule ArithmeticOperatorParserTest do
       # Special case: !active fails due to type error, not unknown instruction
       assert {:ok, tokens} = Predicator.Lexer.tokenize("!active")
       assert length(tokens) >= 2
-      assert {:error, message} = evaluate("!active", %{})
-      assert message =~ "Logical NOT requires a boolean value"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} =
+               evaluate("!active", %{})
+
+      assert message =~ "Logical NOT requires a boolean"
     end
   end
 

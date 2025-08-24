@@ -300,7 +300,8 @@ defmodule Predicator.EvaluatorComparisonTest do
       ]
 
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Comparison requires two values on stack, got: 1"} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Comparison requires 2 values on stack, got: 1"
     end
 
     test "returns error with empty stack" do
@@ -309,7 +310,8 @@ defmodule Predicator.EvaluatorComparisonTest do
       ]
 
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Comparison requires two values on stack, got: 0"} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Comparison requires 2 values on stack, got: 0"
     end
 
     test "returns error for invalid operator" do
@@ -320,7 +322,8 @@ defmodule Predicator.EvaluatorComparisonTest do
       ]
 
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Unknown instruction: " <> _error_msg} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Unknown instruction:"
     end
   end
 end

@@ -6,92 +6,136 @@ defmodule SystemFunctionsIntegrationTest do
 
   describe "string functions error cases" do
     test "len with invalid argument types" do
-      assert {:error, msg} = evaluate("len(123)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("len(123)", %{})
+
       assert msg =~ "len() expects a string argument"
 
-      assert {:error, msg} = evaluate("len(true)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("len(true)", %{})
+
       assert msg =~ "len() expects a string argument"
 
-      assert {:error, msg} = evaluate("len(nil)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("len(nil)", %{})
+
       assert msg =~ "len() expects a string argument"
     end
 
     test "upper with invalid argument types" do
-      assert {:error, msg} = evaluate("upper(123)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("upper(123)", %{})
+
       assert msg =~ "upper() expects a string argument"
 
-      assert {:error, msg} = evaluate("upper(true)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("upper(true)", %{})
+
       assert msg =~ "upper() expects a string argument"
     end
 
     test "lower with invalid argument types" do
-      assert {:error, msg} = evaluate("lower(123)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("lower(123)", %{})
+
       assert msg =~ "lower() expects a string argument"
 
-      assert {:error, msg} = evaluate("lower(false)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("lower(false)", %{})
+
       assert msg =~ "lower() expects a string argument"
     end
 
     test "trim with invalid argument types" do
-      assert {:error, msg} = evaluate("trim(123)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("trim(123)", %{})
+
       assert msg =~ "trim() expects a string argument"
 
-      assert {:error, msg} = evaluate("trim([1,2,3])", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("trim([1,2,3])", %{})
+
       assert msg =~ "trim() expects a string argument"
     end
   end
 
   describe "numeric functions error cases" do
     test "abs with invalid argument types" do
-      assert {:error, msg} = evaluate("abs('not_a_number')", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("abs('not_a_number')", %{})
+
       assert msg =~ "abs() expects a numeric argument"
 
-      assert {:error, msg} = evaluate("abs(true)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("abs(true)", %{})
+
       assert msg =~ "abs() expects a numeric argument"
     end
 
     test "max with invalid argument types" do
-      assert {:error, msg} = evaluate("max('a', 5)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("max('a', 5)", %{})
+
       assert msg =~ "max() expects two numeric arguments"
 
-      assert {:error, msg} = evaluate("max(5, 'b')", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("max(5, 'b')", %{})
+
       assert msg =~ "max() expects two numeric arguments"
 
-      assert {:error, msg} = evaluate("max(true, false)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("max(true, false)", %{})
+
       assert msg =~ "max() expects two numeric arguments"
     end
 
     test "min with invalid argument types" do
-      assert {:error, msg} = evaluate("min('a', 5)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("min('a', 5)", %{})
+
       assert msg =~ "min() expects two numeric arguments"
 
-      assert {:error, msg} = evaluate("min(5, 'b')", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("min(5, 'b')", %{})
+
       assert msg =~ "min() expects two numeric arguments"
     end
   end
 
   describe "date functions error cases" do
     test "year with invalid argument types" do
-      assert {:error, msg} = evaluate("year('not_a_date')", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("year('not_a_date')", %{})
+
       assert msg =~ "year() expects a date or datetime argument"
 
-      assert {:error, msg} = evaluate("year(123)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("year(123)", %{})
+
       assert msg =~ "year() expects a date or datetime argument"
     end
 
     test "month with invalid argument types" do
-      assert {:error, msg} = evaluate("month('not_a_date')", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("month('not_a_date')", %{})
+
       assert msg =~ "month() expects a date or datetime argument"
 
-      assert {:error, msg} = evaluate("month(true)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("month(true)", %{})
+
       assert msg =~ "month() expects a date or datetime argument"
     end
 
     test "day with invalid argument types" do
-      assert {:error, msg} = evaluate("day('not_a_date')", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("day('not_a_date')", %{})
+
       assert msg =~ "day() expects a date or datetime argument"
 
-      assert {:error, msg} = evaluate("day(false)", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("day(false)", %{})
+
       assert msg =~ "day() expects a date or datetime argument"
     end
   end

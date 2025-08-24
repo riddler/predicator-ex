@@ -84,10 +84,10 @@ defmodule PredicatorEdgeCasesTest do
       assert {:ok, true} =
                evaluate("validate_email(\"user@example.com\")", %{}, functions: custom_functions)
 
-      assert {:error, "Invalid email format"} =
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "Invalid email format"}} =
                evaluate("validate_email(\"invalid\")", %{}, functions: custom_functions)
 
-      assert {:error, "Invalid email format"} =
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "Invalid email format"}} =
                evaluate("validate_email(123)", %{}, functions: custom_functions)
     end
 
@@ -158,7 +158,7 @@ defmodule PredicatorEdgeCasesTest do
   describe "error message quality" do
     test "provides helpful error messages for parsing errors" do
       result = evaluate("1 +")
-      assert {:error, message} = result
+      assert {:error, %Predicator.Errors.ParseError{message: message}} = result
 
       assert message =~ "Unexpected character" or message =~ "Expected" or
                message =~ "Unexpected token"
@@ -166,20 +166,20 @@ defmodule PredicatorEdgeCasesTest do
 
     test "provides helpful error messages for function errors" do
       result = evaluate("unknown_function()")
-      assert {:error, message} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
       assert message =~ "Unknown function"
       assert message =~ "unknown_function"
     end
 
     test "provides helpful error messages for type errors" do
       result = evaluate("len(123)")
-      assert {:error, message} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
       assert message =~ "expects a string"
     end
 
     test "provides helpful error messages for arity errors" do
       result = evaluate("len()")
-      assert {:error, message} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
       assert message =~ "expects 1 arguments, got 0"
     end
 

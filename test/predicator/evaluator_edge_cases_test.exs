@@ -69,7 +69,7 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
       ]
 
       result = Evaluator.evaluate(instructions, %{})
-      assert {:error, message} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
       assert message =~ "expects 2 arguments"
       assert message =~ "stack"
     end
@@ -80,7 +80,8 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
         ["call", "unknown_function", 1]
       ]
 
-      assert {:error, "Unknown function: unknown_function"} =
+      assert {:error,
+              %Predicator.Errors.EvaluationError{message: "Unknown function: unknown_function"}} =
                Evaluator.evaluate(instructions, %{})
     end
 
@@ -99,7 +100,8 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
         ["call", "error_func", 1]
       ]
 
-      assert {:error, "Function intentionally failed"} =
+      assert {:error,
+              %Predicator.Errors.EvaluationError{message: "Function intentionally failed"}} =
                Evaluator.evaluate(instructions, %{}, functions: custom_functions)
     end
 

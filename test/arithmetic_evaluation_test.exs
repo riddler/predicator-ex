@@ -38,13 +38,19 @@ defmodule ArithmeticEvaluationTest do
 
     test "handles division by zero" do
       instructions = [["lit", 10], ["lit", 0], ["divide"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
       assert msg == "Division by zero"
     end
 
     test "handles modulo by zero" do
       instructions = [["lit", 10], ["lit", 0], ["modulo"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
       assert msg == "Modulo by zero"
     end
 
@@ -111,62 +117,102 @@ defmodule ArithmeticEvaluationTest do
   describe "arithmetic error conditions" do
     test "addition with non-integer left operand" do
       instructions = [["lit", "hello"], ["lit", 5], ["add"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic add requires two integer values, got: \"hello\" and 5"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic add requires integers, got") and
+               String.contains?(msg, "hello") and String.contains?(msg, "string")
     end
 
     test "addition with non-integer right operand" do
       instructions = [["lit", 5], ["lit", true], ["add"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic add requires two integer values, got: 5 and true"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic add requires integers, got") and
+               String.contains?(msg, "integer") and String.contains?(msg, "boolean")
     end
 
     test "subtraction with boolean operands" do
       instructions = [["lit", true], ["lit", false], ["subtract"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic subtract requires two integer values, got: true and false"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic subtract requires integers, got") and
+               String.contains?(msg, "boolean")
     end
 
     test "multiplication with mixed types" do
       instructions = [["lit", 5], ["lit", "text"], ["multiply"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic multiply requires two integer values, got: 5 and \"text\""
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic multiply requires integers, got") and
+               String.contains?(msg, "integer") and String.contains?(msg, "string")
     end
 
     test "division with string operands" do
       instructions = [["lit", "ten"], ["lit", "two"], ["divide"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic divide requires two integer values, got: \"ten\" and \"two\""
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic divide requires integers, got") and
+               String.contains?(msg, "string")
     end
 
     test "modulo with list operands" do
       instructions = [["lit", [1, 2]], ["lit", [3, 4]], ["modulo"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic modulo requires two integer values, got: [1, 2] and [3, 4]"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic modulo requires integers, got") and
+               String.contains?(msg, "list")
     end
 
     test "addition with insufficient stack values" do
       instructions = [["lit", 5], ["add"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic add requires two values on stack, got: 1"
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic add requires") and
+               String.contains?(msg, "values on stack")
     end
 
     test "subtraction with empty stack" do
       instructions = [["subtract"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic subtract requires two values on stack, got: 0"
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic subtract requires") and
+               String.contains?(msg, "values on stack")
     end
 
     test "multiplication with one value on stack" do
       instructions = [["lit", 42], ["multiply"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic multiply requires two values on stack, got: 1"
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Arithmetic multiply requires") and
+               String.contains?(msg, "values on stack")
     end
 
     test "arithmetic with undefined variables" do
       instructions = [["load", "undefined_var"], ["lit", 5], ["add"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Arithmetic add requires two integer values, got: :undefined and 5"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "add requires integers, got") and
+               String.contains?(msg, "undefined")
     end
   end
 
@@ -217,13 +263,17 @@ defmodule ArithmeticEvaluationTest do
     end
 
     test "division by zero error in full pipeline" do
-      assert {:error, msg} = evaluate("10 / 0", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("10 / 0", %{})
       assert msg == "Division by zero"
     end
 
     test "arithmetic type error in full pipeline" do
-      assert {:error, msg} = evaluate("name + 5", %{"name" => "Alice"})
-      assert msg == "Arithmetic add requires two integer values, got: \"Alice\" and 5"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               evaluate("name + 5", %{"name" => "Alice"})
+
+      assert String.contains?(msg, "Arithmetic add requires integers, got") and
+               String.contains?(msg, "Alice") and String.contains?(msg, "string") and
+               String.contains?(msg, "integer")
     end
   end
 end

@@ -102,6 +102,51 @@ defmodule Predicator.Types do
   @type internal_result :: value() | {:error, term()}
 
   @typedoc """
+  SCXML-compatible error result for enhanced error handling.
+
+  Returns structured error information for SCXML datamodel compatibility:
+  - `{:error, :undefined_variable, %{variable: binary()}}` - Variable not found in context
+  - `{:error, :type_mismatch, %{expected: atom(), got: atom()}}` - Type mismatch in operation
+  - `{:error, :invalid_location, %{expression: binary()}}` - Invalid assignment target
+  - `{:error, :evaluation_error, %{reason: binary()}}` - General evaluation error
+  - `{:error, :parse_error, %{message: binary(), line: integer(), column: integer()}}` - Parse error
+  """
+  @type scxml_error ::
+          {:error, :undefined_variable, %{variable: binary()}}
+          | {:error, :type_mismatch, %{expected: atom(), got: atom()}}
+          | {:error, :invalid_location, %{expression: binary()}}
+          | {:error, :evaluation_error, %{reason: binary()}}
+          | {:error, :parse_error, %{message: binary(), line: integer(), column: integer()}}
+
+  @typedoc """
+  SCXML-compatible result type for value expressions.
+
+  Returns:
+  - `{:ok, value()}` - successful evaluation with result value
+  - `scxml_error()` - structured error with SCXML-compatible details
+  """
+  @type scxml_result :: {:ok, value()} | scxml_error()
+
+  @typedoc """
+  Location path for assignment expressions.
+
+  Represents the path to an assignable location in nested data structures:
+  - Simple property: `["user", "name"]`
+  - Array index: `["items", 0, "price"]` 
+  - Dynamic property: `["user", "settings", "theme"]` (for `user.settings["theme"]`)
+  """
+  @type location_path :: [binary() | non_neg_integer()]
+
+  @typedoc """
+  Result type for location expression evaluation.
+
+  Returns:
+  - `{:ok, location_path()}` - valid assignment path
+  - `scxml_error()` - error if location is not assignable
+  """
+  @type location_result :: {:ok, location_path()} | scxml_error()
+
+  @typedoc """
   The internal state of the stack machine evaluator.
 
   Contains:

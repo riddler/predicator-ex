@@ -13,15 +13,15 @@ defmodule ParserCoverageTest do
 
     test "unexpected end of input in various contexts" do
       # Missing closing parenthesis
-      assert {:error, msg} = evaluate("(true", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("(true", %{})
       assert msg =~ "Expected ')' but found end of input"
 
       # Missing closing bracket
-      assert {:error, msg} = evaluate("[1, 2", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("[1, 2", %{})
       assert msg =~ "Expected ']' but found end of input"
 
       # Missing function closing parenthesis
-      assert {:error, msg} = evaluate("len('hello'", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("len('hello'", %{})
       assert msg =~ "Expected ')' but found end of input"
     end
 
@@ -36,17 +36,17 @@ defmodule ParserCoverageTest do
 
     test "unexpected tokens in primary expressions" do
       # Test various invalid token positions
-      assert {:error, msg} = evaluate("AND true", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("AND true", %{})
 
       assert msg =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found 'AND'"
 
-      assert {:error, msg} = evaluate("OR false", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("OR false", %{})
 
       assert msg =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found 'OR'"
 
-      assert {:error, msg} = evaluate("NOT", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("NOT", %{})
 
       assert msg =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
@@ -66,18 +66,19 @@ defmodule ParserCoverageTest do
 
     test "invalid tokens in various contexts" do
       # Invalid token after parenthesized expression
-      assert {:error, msg} = evaluate("(true) AND", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("(true) AND", %{})
 
       assert msg =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
 
       # Invalid token in list
       # Missing comma
-      assert {:error, msg} = evaluate("[1 2]", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("[1 2]", %{})
       assert msg =~ "Expected ']' but found number"
 
       # Multiple operators
-      assert {:error, msg} = evaluate("true AND AND false", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} =
+               evaluate("true AND AND false", %{})
 
       assert msg =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found 'AND'"
@@ -85,7 +86,7 @@ defmodule ParserCoverageTest do
 
     test "token after complete expression" do
       # Extra tokens after valid expression - test simpler case
-      assert {:error, msg} = evaluate("true false", %{})
+      assert {:error, %Predicator.Errors.ParseError{message: msg}} = evaluate("true false", %{})
       assert msg =~ "Unexpected token"
     end
   end

@@ -208,20 +208,23 @@ defmodule Predicator.EvaluatorTest do
   describe "evaluate/2 error cases" do
     test "returns error for empty instruction list" do
       result = Evaluator.evaluate([])
-      assert {:error, "Evaluation completed with empty stack"} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Evaluation completed with empty stack"
     end
 
     test "returns error for invalid instruction" do
       instructions = [["invalid_op"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Unknown instruction: " <> _error_msg} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Unknown instruction:"
     end
 
     test "returns error for malformed instruction" do
       # missing argument
       instructions = [["lit"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Unknown instruction: " <> _error_msg} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Unknown instruction:"
     end
   end
 
@@ -362,51 +365,57 @@ defmodule Predicator.EvaluatorTest do
     test "returns error for logical AND with non-boolean values" do
       instructions = [["lit", 42], ["lit", true], ["and"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, _message} = result
-      assert match?({:error, "Logical AND requires two boolean values" <> _}, result)
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
+      assert message =~ "Logical AND requires booleans"
     end
 
     test "returns error for logical AND with insufficient stack" do
       instructions = [["lit", true], ["and"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Logical AND requires two values on stack, got: 1"} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Logical AND requires 2 values on stack, got: 1"
     end
 
     test "returns error for logical AND with empty stack" do
       instructions = [["and"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Logical AND requires two values on stack, got: 0"} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Logical AND requires 2 values on stack, got: 0"
     end
 
     test "returns error for logical OR with non-boolean values" do
       instructions = [["lit", "hello"], ["lit", false], ["or"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, _message} = result
-      assert match?({:error, "Logical OR requires two boolean values" <> _}, result)
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
+      assert message =~ "Logical OR requires booleans"
     end
 
     test "returns error for logical OR with insufficient stack" do
       instructions = [["lit", false], ["or"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Logical OR requires two values on stack, got: 1"} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Logical OR requires 2 values on stack, got: 1"
     end
 
     test "returns error for logical OR with empty stack" do
       instructions = [["or"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Logical OR requires two values on stack, got: 0"} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Logical OR requires 2 values on stack, got: 0"
     end
 
     test "returns error for logical NOT with non-boolean value" do
       instructions = [["lit", 123], ["not"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Logical NOT requires a boolean value, got: 123"} = result
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
+      assert msg =~ "Logical NOT requires a boolean, got 123"
     end
 
     test "returns error for logical NOT with empty stack" do
       instructions = [["not"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, "Logical NOT requires one value on stack, got: 0"} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Logical NOT requires 1 value on stack, got: 0"
     end
 
     test "complex logical expression with variables" do
@@ -535,7 +544,7 @@ defmodule Predicator.EvaluatorTest do
     test "handles unknown instruction gracefully" do
       instructions = [["unknown_instruction", "arg"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
       assert message =~ "Unknown instruction"
     end
 
@@ -543,76 +552,76 @@ defmodule Predicator.EvaluatorTest do
       # Only one value on stack
       instructions = [["lit", 42], ["compare", "GT"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "Comparison requires two values on stack, got: 1"
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
+      assert message =~ "Comparison requires 2 values on stack, got: 1"
     end
 
     test "handles logical operations with insufficient stack values" do
       # AND with only one value
       instructions = [["lit", true], ["and"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "Logical AND requires two values on stack, got: 1"
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
+      assert message =~ "Logical AND requires 2 values on stack, got: 1"
 
       # OR with only one value
       instructions = [["lit", false], ["or"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "Logical OR requires two values on stack, got: 1"
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
+      assert message =~ "Logical OR requires 2 values on stack, got: 1"
 
       # NOT with no values
       instructions = [["not"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "Logical NOT requires one value on stack, got: 0"
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
+      assert message =~ "Logical NOT requires 1 value on stack, got: 0"
     end
 
     test "handles membership operations with insufficient stack values" do
       # IN with only one value
       instructions = [["lit", 1], ["in"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "IN requires two values on stack, got: 1"
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
+      assert message =~ "In requires 2 values on stack, got: 1"
 
       # CONTAINS with only one value
       instructions = [["lit", [1, 2]], ["contains"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "CONTAINS requires two values on stack, got: 1"
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
+      assert message =~ "Contains requires 2 values on stack, got: 1"
     end
 
     test "handles type mismatches in logical operations" do
       # AND with non-boolean values
       instructions = [["lit", 1], ["lit", "hello"], ["and"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "Logical AND requires two boolean values"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
+      assert message =~ "Logical AND requires booleans"
 
       # OR with non-boolean values
       instructions = [["lit", 42], ["lit", true], ["or"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "Logical OR requires two boolean values"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
+      assert message =~ "Logical OR requires booleans"
 
       # NOT with non-boolean value
       instructions = [["lit", "not_boolean"], ["not"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "Logical NOT requires a boolean value"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
+      assert message =~ "Logical NOT requires a boolean"
     end
 
     test "handles invalid membership operations" do
       # IN with non-list on right side
       instructions = [["lit", 1], ["lit", "not_a_list"], ["in"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "IN operator requires a list on the right side"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
+      assert message =~ "requires a list"
 
       # CONTAINS with non-list on left side
       instructions = [["lit", "not_a_list"], ["lit", 1], ["contains"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, message} = result
-      assert message =~ "CONTAINS operator requires a list on the left side"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
+      assert message =~ "requires a list"
     end
 
     test "handles atom key lookup in context" do
