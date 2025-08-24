@@ -1,8 +1,85 @@
-defmodule SystemFunctionsIntegrationTest do
+defmodule Predicator.Functions.SystemFunctionsTest do
   use ExUnit.Case, async: true
 
   import Predicator
   alias Predicator.Functions.SystemFunctions
+
+  describe "function arity validation" do
+    test "string functions with wrong arity" do
+      # len() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("len()", %{})
+      assert msg =~ "len() expects 1 arguments, got 0"
+
+      # len() with multiple arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("len('a', 'b')", %{})
+
+      assert msg =~ "len() expects 1 arguments, got 2"
+
+      # upper() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("upper()", %{})
+      assert msg =~ "upper() expects 1 arguments, got 0"
+
+      # upper() with multiple arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("upper('a', 'b')", %{})
+
+      assert msg =~ "upper() expects 1 arguments, got 2"
+
+      # lower() with wrong arity
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("lower()", %{})
+      assert msg =~ "lower() expects 1 arguments, got 0"
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("lower('a', 'b')", %{})
+
+      assert msg =~ "lower() expects 1 arguments, got 2"
+
+      # trim() with wrong arity
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("trim()", %{})
+      assert msg =~ "trim() expects 1 arguments, got 0"
+    end
+
+    test "numeric functions with wrong arity" do
+      # abs() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("abs()", %{})
+      assert msg =~ "abs() expects 1 arguments, got 0"
+
+      # abs() with multiple arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("abs(5, 10)", %{})
+
+      assert msg =~ "abs() expects 1 arguments, got 2"
+
+      # max() with wrong arity
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("max()", %{})
+      assert msg =~ "max() expects 2 arguments, got 0"
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("max(5)", %{})
+      assert msg =~ "max() expects 2 arguments, got 1"
+
+      # min() with wrong arity
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("min()", %{})
+      assert msg =~ "min() expects 2 arguments, got 0"
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("min(10)", %{})
+      assert msg =~ "min() expects 2 arguments, got 1"
+    end
+
+    test "date functions with wrong arity" do
+      # year() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("year()", %{})
+      assert msg =~ "year() expects 1 arguments, got 0"
+
+      # month() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("month()", %{})
+      assert msg =~ "month() expects 1 arguments, got 0"
+
+      # day() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("day()", %{})
+      assert msg =~ "day() expects 1 arguments, got 0"
+    end
+  end
 
   describe "string functions error cases" do
     test "len with invalid argument types" do

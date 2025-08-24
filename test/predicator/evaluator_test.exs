@@ -209,7 +209,7 @@ defmodule Predicator.EvaluatorTest do
     test "returns error for empty instruction list" do
       result = Evaluator.evaluate([])
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
-      assert msg =~ "Evaluation completed with empty stack"
+      assert msg == "Evaluation completed with empty stack"
     end
 
     test "returns error for invalid instruction" do
@@ -365,8 +365,8 @@ defmodule Predicator.EvaluatorTest do
     test "returns error for logical AND with non-boolean values" do
       instructions = [["lit", 42], ["lit", true], ["and"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
-      assert message =~ "Logical AND requires booleans"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
+      assert msg =~ "Logical AND requires booleans"
     end
 
     test "returns error for logical AND with insufficient stack" do
@@ -386,8 +386,8 @@ defmodule Predicator.EvaluatorTest do
     test "returns error for logical OR with non-boolean values" do
       instructions = [["lit", "hello"], ["lit", false], ["or"]]
       result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
-      assert message =~ "Logical OR requires booleans"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
+      assert msg =~ "Logical OR requires booleans"
     end
 
     test "returns error for logical OR with insufficient stack" do

@@ -765,4 +765,297 @@ defmodule Predicator.ParserTest do
       assert {:ok, {:membership, :in, {:literal, 1}, {:list, []}}} = result
     end
   end
+
+  describe "parse/1 - function call expressions" do
+    test "parses function call with no arguments" do
+      {:ok, tokens} = Lexer.tokenize("len()")
+      assert Parser.parse(tokens) == {:ok, {:function_call, "len", []}}
+    end
+
+    test "parses function call with one argument" do
+      {:ok, tokens} = Lexer.tokenize("len(name)")
+      assert Parser.parse(tokens) == {:ok, {:function_call, "len", [{:identifier, "name"}]}}
+    end
+
+    test "parses function call with multiple arguments" do
+      {:ok, tokens} = Lexer.tokenize("max(score1, score2)")
+      assert Parser.parse(tokens) == {:ok, {:function_call, "max", [{:identifier, "score1"}, {:identifier, "score2"}]}}
+    end
+
+    test "parses function call with complex arguments" do
+      {:ok, tokens} = Lexer.tokenize("max(score + bonus, 100)")
+      assert Parser.parse(tokens) == {:ok, {:function_call, "max", [
+        {:arithmetic, :add, {:identifier, "score"}, {:identifier, "bonus"}},
+        {:literal, 100}
+      ]}}
+    end
+
+    test "parses nested function calls" do
+      {:ok, tokens} = Lexer.tokenize("upper(trim(name))")
+      assert Parser.parse(tokens) == {:ok, {:function_call, "upper", [
+        {:function_call, "trim", [{:identifier, "name"}]}
+      ]}}
+    end
+
+    test "returns error when function name followed by non-parenthesis" do
+      tokens = [
+        {:function_name, 1, 1, 3, "len"},
+        {:integer, 1, 4, 1, 42},
+        {:eof, 1, 5, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, "Expected '(' after function name but found number '42'", 1, 4} = result
+    end
+
+    test "returns error when function name at end of input" do
+      tokens = [
+        {:function_name, 1, 1, 3, "len"},
+        {:eof, 1, 4, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, "Expected '(' after function name but found end of input", 1, 4} = result
+    end
+
+    test "returns error for unterminated function call" do
+      tokens = [
+        {:function_name, 1, 1, 3, "len"},
+        {:lparen, 1, 4, 1, "("},
+        {:identifier, 1, 5, 4, "name"},
+        {:eof, 1, 9, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, "Expected ')' but found end of input", 1, 9} = result
+    end
+
+    test "returns error for function call with invalid closing token" do
+      tokens = [
+        {:function_name, 1, 1, 3, "len"},
+        {:lparen, 1, 4, 1, "("},
+        {:identifier, 1, 5, 4, "name"},
+        {:rbracket, 1, 9, 1, "]"},
+        {:eof, 1, 10, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, "Expected ')' but found ']'", 1, 9} = result
+    end
+  end
+
+  describe "parse/1 - complex nested expressions" do
+    test "parses deeply nested arithmetic expressions" do
+      {:ok, tokens} = Lexer.tokenize("((((a + b) * c) - d) / e)")
+      result = Parser.parse(tokens)
+      
+      expected_ast = {:arithmetic, :divide,
+        {:arithmetic, :subtract,
+          {:arithmetic, :multiply,
+            {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
+            {:identifier, "c"}},
+          {:identifier, "d"}},
+        {:identifier, "e"}}
+      
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses complex logical expressions with mixed operators" do
+      {:ok, tokens} = Lexer.tokenize("a && b || c && d")
+      result = Parser.parse(tokens)
+      
+      expected_ast = {:logical_or,
+        {:logical_and, {:identifier, "a"}, {:identifier, "b"}},
+        {:logical_and, {:identifier, "c"}, {:identifier, "d"}}}
+      
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses mixed arithmetic and logical with proper precedence" do
+      {:ok, tokens} = Lexer.tokenize("a + b > c && d - e < f")
+      result = Parser.parse(tokens)
+      
+      expected_ast = {:logical_and,
+        {:comparison, :gt,
+          {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
+          {:identifier, "c"}},
+        {:comparison, :lt,
+          {:arithmetic, :subtract, {:identifier, "d"}, {:identifier, "e"}},
+          {:identifier, "f"}}}
+      
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses expressions with multiple unary operators" do
+      {:ok, tokens} = Lexer.tokenize("!!active")
+      result = Parser.parse(tokens)
+      
+      expected_ast = {:logical_not,
+        {:logical_not, {:identifier, "active"}}}
+      
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses multiple nested unary minus operators" do
+      {:ok, tokens} = Lexer.tokenize("---value")
+      result = Parser.parse(tokens)
+      
+      expected_ast = {:unary, :minus,
+        {:unary, :minus,
+          {:unary, :minus, {:identifier, "value"}}}}
+      
+      assert {:ok, ^expected_ast} = result
+    end
+  end
+
+  describe "parse/1 - advanced error cases" do
+    test "returns error for malformed equality expression" do
+      tokens = [
+        {:identifier, 1, 1, 1, "a"},
+        {:equal_equal, 1, 2, 2, "=="},
+        {:eof, 1, 4, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, 
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input", 
+              1, 4} = result
+    end
+
+    test "returns error for malformed unary expression" do
+      tokens = [
+        {:minus, 1, 1, 1, "-"},
+        {:eof, 1, 2, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, 
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input", 
+              1, 2} = result
+    end
+
+    test "returns error for malformed list expression" do
+      tokens = [
+        {:lbracket, 1, 1, 1, "["},
+        {:integer, 1, 2, 1, 1},
+        {:comma, 1, 3, 1, ","},
+        {:eof, 1, 4, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, 
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input", 
+              1, 4} = result
+    end
+
+    test "returns error for list with invalid separator" do
+      # This actually parses successfully as [1 + 2] which is a valid list with one arithmetic expression
+      # So let's test a different case that will actually fail
+      tokens = [
+        {:lbracket, 1, 1, 1, "["},
+        {:integer, 1, 2, 1, 1},
+        {:integer, 1, 3, 1, 2},  # Missing comma between elements
+        {:rbracket, 1, 4, 1, "]"},
+        {:eof, 1, 5, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, "Expected ']' but found number '2'", 1, 3} = result
+    end
+
+    test "returns error for arithmetic expression with missing operand" do
+      tokens = [
+        {:integer, 1, 1, 1, 5},
+        {:plus, 1, 2, 1, "+"},
+        {:multiply, 1, 3, 1, "*"},
+        {:integer, 1, 4, 1, 3},
+        {:eof, 1, 5, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, 
+              "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '*'", 
+              1, 3} = result
+    end
+  end
+
+  describe "parse/1 - edge cases for format_token" do
+    test "format_token handles all date/datetime formats" do
+      date = ~D[2024-01-15]
+      {:ok, dt, _} = DateTime.from_iso8601("2024-01-15T10:30:00Z")
+      
+      # Test direct calls to private function via token parsing errors
+      tokens = [
+        {:date, 1, 1, 11, date},
+        {:plus, 1, 12, 1, "+"},
+        {:eof, 1, 13, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, message, 1, 13} = result
+      assert message =~ "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
+      
+      tokens = [
+        {:datetime, 1, 1, 20, dt},
+        {:plus, 1, 21, 1, "+"},
+        {:eof, 1, 22, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, message, 1, 22} = result
+      assert message =~ "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
+    end
+
+    test "format_token handles function names in error messages" do
+      tokens = [
+        {:function_name, 1, 1, 3, "len"},
+        {:plus, 1, 4, 1, "+"},
+        {:eof, 1, 5, 0, nil}
+      ]
+      result = Parser.parse(tokens)
+      assert {:error, "Expected '(' after function name but found '+'", 1, 4} = result
+    end
+  end
+
+  describe "parse/1 - operator precedence edge cases" do
+    test "verifies complex precedence with all operators" do
+      # Test expression: a + b * c / d - e % f > g && h || i
+      {:ok, tokens} = Lexer.tokenize("a + b * c / d - e % f > g && h || i")
+      result = Parser.parse(tokens)
+      
+      # Expected precedence: 
+      # 1. *, /, % (left-to-right)
+      # 2. +, - (left-to-right) 
+      # 3. > (comparison)
+      # 4. && (logical and)
+      # 5. || (logical or)
+      
+      # ((a + ((b * c) / d)) - (e % f)) > g && h || i
+      expected_ast = {:logical_or,
+        {:logical_and,
+          {:comparison, :gt,
+            {:arithmetic, :subtract,
+              {:arithmetic, :add, {:identifier, "a"},
+                {:arithmetic, :divide,
+                  {:arithmetic, :multiply, {:identifier, "b"}, {:identifier, "c"}},
+                  {:identifier, "d"}}},
+              {:arithmetic, :modulo, {:identifier, "e"}, {:identifier, "f"}}},
+            {:identifier, "g"}},
+          {:identifier, "h"}},
+        {:identifier, "i"}}
+      
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "verifies equality operator precedence" do
+      {:ok, tokens} = Lexer.tokenize("a + b == c * d")
+      result = Parser.parse(tokens)
+      
+      expected_ast = {:equality, :equal_equal,
+        {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
+        {:arithmetic, :multiply, {:identifier, "c"}, {:identifier, "d"}}}
+      
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "verifies unary operator precedence with arithmetic" do
+      {:ok, tokens} = Lexer.tokenize("-a + b")
+      result = Parser.parse(tokens)
+      
+      expected_ast = {:arithmetic, :add,
+        {:unary, :minus, {:identifier, "a"}},
+        {:identifier, "b"}}
+      
+      assert {:ok, ^expected_ast} = result
+    end
+  end
 end
