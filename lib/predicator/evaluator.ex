@@ -26,6 +26,7 @@ defmodule Predicator.Evaluator do
 
   alias Predicator.Functions.SystemFunctions
   alias Predicator.Types
+  alias Predicator.Errors.{EvaluationError, TypeMismatchError}
 
   @typedoc "Internal evaluator state"
   @type t :: %__MODULE__{
@@ -92,10 +93,15 @@ defmodule Predicator.Evaluator do
         result
 
       {:ok, %__MODULE__{stack: []}} ->
-        {:error, "Evaluation completed with empty stack"}
+        {:error,
+         EvaluationError.new(
+           "Evaluation completed with empty stack",
+           "empty_stack",
+           :evaluate
+         )}
 
-      {:error, reason} ->
-        {:error, reason}
+      {:error, error_struct} when is_struct(error_struct) ->
+        {:error, error_struct}
     end
   end
 
@@ -123,8 +129,11 @@ defmodule Predicator.Evaluator do
   def evaluate!(instructions, context \\ %{}, opts \\ [])
       when is_list(instructions) and is_map(context) do
     case evaluate(instructions, context, opts) do
-      {:error, reason} -> raise "Evaluation failed: #{reason}"
-      result -> result
+      {:error, %{message: message}} ->
+        raise "Evaluation failed: #{message}"
+
+      result ->
+        result
     end
   end
 
@@ -133,13 +142,13 @@ defmodule Predicator.Evaluator do
 
   Returns `{:ok, final_state}` on success or `{:error, reason}` on failure.
   """
-  @spec run(t()) :: {:ok, t()} | {:error, term()}
+  @spec run(t()) :: {:ok, t()} | {:error, struct()}
   def run(%__MODULE__{halted: true} = evaluator), do: {:ok, evaluator}
 
   def run(%__MODULE__{} = evaluator) do
     case step(evaluator) do
       {:ok, new_evaluator} -> run(new_evaluator)
-      {:error, reason} -> {:error, reason}
+      {:error, error_struct} when is_struct(error_struct) -> {:error, error_struct}
     end
   end
 
@@ -180,8 +189,16 @@ defmodule Predicator.Evaluator do
   @spec fetch_current_instruction(t()) :: {:ok, Types.instruction()} | {:error, term()}
   defp fetch_current_instruction(%__MODULE__{instruction_pointer: ip, instructions: instructions}) do
     case Enum.at(instructions, ip) do
-      nil -> {:error, "Invalid instruction pointer: #{ip}"}
-      instruction -> {:ok, instruction}
+      nil ->
+        {:error,
+         EvaluationError.new(
+           "Invalid instruction pointer: #{ip}",
+           "invalid_instruction_pointer",
+           :evaluate
+         )}
+
+      instruction ->
+        {:ok, instruction}
     end
   end
 
@@ -267,16 +284,22 @@ defmodule Predicator.Evaluator do
 
   # Unknown instruction - catch-all clause
   defp execute_instruction(%__MODULE__{}, unknown) do
-    {:error, "Unknown instruction: #{inspect(unknown)}"}
+    {:error,
+     EvaluationError.new(
+       "Unknown instruction: #{inspect(unknown)}",
+       "unknown_instruction",
+       :evaluate
+     )}
   end
 
-  @spec advance_instruction_pointer({:ok, t()} | {:error, term()}) ::
-          {:ok, t()} | {:error, term()}
+  @spec advance_instruction_pointer({:ok, t()} | {:error, struct()}) ::
+          {:ok, t()} | {:error, struct()}
   defp advance_instruction_pointer({:ok, %__MODULE__{} = evaluator}) do
     {:ok, %__MODULE__{evaluator | instruction_pointer: evaluator.instruction_pointer + 1}}
   end
 
-  defp advance_instruction_pointer({:error, reason}), do: {:error, reason}
+  defp advance_instruction_pointer({:error, error_struct}) when is_struct(error_struct),
+    do: {:error, error_struct}
 
   @spec execute_compare(t(), binary()) :: {:ok, t()} | {:error, term()}
   defp execute_compare(%__MODULE__{stack: [right | [left | rest]]} = evaluator, operator) do
@@ -285,7 +308,7 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_compare(%__MODULE__{stack: stack}, _operator) do
-    {:error, "Comparison requires two values on stack, got: #{length(stack)}"}
+    {:error, EvaluationError.insufficient_operands(:comparison, length(stack), 2)}
   end
 
   # Custom guard for type matching
@@ -333,12 +356,20 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_logical_and(%__MODULE__{stack: [right | [left | _rest]]}) do
+    left_type = get_value_type(left)
+    right_type = get_value_type(right)
+
     {:error,
-     "Logical AND requires two boolean values, got: #{inspect(left)} and #{inspect(right)}"}
+     TypeMismatchError.binary(
+       :logical_and,
+       :boolean,
+       {left_type, right_type},
+       {left, right}
+     )}
   end
 
   defp execute_logical_and(%__MODULE__{stack: stack}) do
-    {:error, "Logical AND requires two values on stack, got: #{length(stack)}"}
+    {:error, EvaluationError.insufficient_operands(:logical_and, length(stack), 2)}
   end
 
   @spec execute_logical_or(t()) :: {:ok, t()} | {:error, term()}
@@ -349,12 +380,20 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_logical_or(%__MODULE__{stack: [right | [left | _rest]]}) do
+    left_type = get_value_type(left)
+    right_type = get_value_type(right)
+
     {:error,
-     "Logical OR requires two boolean values, got: #{inspect(left)} and #{inspect(right)}"}
+     TypeMismatchError.binary(
+       :logical_or,
+       :boolean,
+       {left_type, right_type},
+       {left, right}
+     )}
   end
 
   defp execute_logical_or(%__MODULE__{stack: stack}) do
-    {:error, "Logical OR requires two values on stack, got: #{length(stack)}"}
+    {:error, EvaluationError.insufficient_operands(:logical_or, length(stack), 2)}
   end
 
   @spec execute_logical_not(t()) :: {:ok, t()} | {:error, term()}
@@ -365,11 +404,12 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_logical_not(%__MODULE__{stack: [value | _rest]}) do
-    {:error, "Logical NOT requires a boolean value, got: #{inspect(value)}"}
+    got_type = get_value_type(value)
+    {:error, TypeMismatchError.unary(:logical_not, :boolean, got_type, value)}
   end
 
   defp execute_logical_not(%__MODULE__{stack: []}) do
-    {:error, "Logical NOT requires one value on stack, got: 0"}
+    {:error, EvaluationError.insufficient_operands(:logical_not, 0, 1)}
   end
 
   @spec execute_membership(t(), :in | :contains) :: {:ok, t()} | {:error, term()}
@@ -387,7 +427,7 @@ defmodule Predicator.Evaluator do
         {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
 
       {_value, non_list} ->
-        {:error, "IN operator requires a list on the right side, got: #{inspect(non_list)}"}
+        {:error, TypeMismatchError.unary(:in, :list, get_value_type(non_list), non_list)}
     end
   end
 
@@ -405,13 +445,18 @@ defmodule Predicator.Evaluator do
         {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
 
       {non_list, _value} ->
-        {:error, "CONTAINS operator requires a list on the left side, got: #{inspect(non_list)}"}
+        {:error,
+         TypeMismatchError.unary(
+           :contains,
+           :list,
+           get_value_type(non_list),
+           non_list
+         )}
     end
   end
 
   defp execute_membership(%__MODULE__{stack: stack}, operation) do
-    {:error,
-     "#{String.upcase(to_string(operation))} requires two values on stack, got: #{length(stack)}"}
+    {:error, EvaluationError.insufficient_operands(operation, length(stack), 2)}
   end
 
   @spec execute_arithmetic(t(), :add | :subtract | :multiply | :divide | :modulo) ::
@@ -432,7 +477,7 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_arithmetic(%__MODULE__{stack: [0 | [_left | _rest]]}, :divide) do
-    {:error, "Division by zero"}
+    {:error, EvaluationError.new("Division by zero", "division_by_zero", :divide)}
   end
 
   defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :divide)
@@ -441,7 +486,7 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_arithmetic(%__MODULE__{stack: [0 | [_left | _rest]]}, :modulo) do
-    {:error, "Modulo by zero"}
+    {:error, EvaluationError.new("Modulo by zero", "modulo_by_zero", :modulo)}
   end
 
   defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :modulo)
@@ -450,13 +495,31 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_arithmetic(%__MODULE__{stack: [right | [left | _rest]]}, operation) do
+    left_type = get_value_type(left)
+    right_type = get_value_type(right)
+
     {:error,
-     "Arithmetic #{operation} requires two integer values, got: #{inspect(left)} and #{inspect(right)}"}
+     TypeMismatchError.binary(
+       operation,
+       :integer,
+       {left_type, right_type},
+       {left, right}
+     )}
   end
 
   defp execute_arithmetic(%__MODULE__{stack: stack}, operation) do
-    {:error, "Arithmetic #{operation} requires two values on stack, got: #{length(stack)}"}
+    {:error, EvaluationError.insufficient_operands(operation, length(stack), 2)}
   end
+
+  # Helper function to get the type of a value for error reporting
+  defp get_value_type(value) when is_integer(value), do: :integer
+  defp get_value_type(value) when is_boolean(value), do: :boolean
+  defp get_value_type(value) when is_binary(value), do: :string
+  defp get_value_type(value) when is_list(value), do: :list
+  defp get_value_type(%Date{}), do: :date
+  defp get_value_type(%DateTime{}), do: :datetime
+  defp get_value_type(:undefined), do: :undefined
+  defp get_value_type(_other), do: :unknown
 
   @spec execute_unary(t(), :minus | :bang) :: {:ok, t()} | {:error, term()}
   defp execute_unary(%__MODULE__{stack: [value | rest]} = evaluator, :minus)
@@ -472,15 +535,17 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_unary(%__MODULE__{stack: [value | _rest]}, :minus) do
-    {:error, "Unary minus requires an integer value, got: #{inspect(value)}"}
+    got_type = get_value_type(value)
+    {:error, TypeMismatchError.unary(:unary_minus, :integer, got_type, value)}
   end
 
   defp execute_unary(%__MODULE__{stack: [value | _rest]}, :bang) do
-    {:error, "Unary bang (!) requires a boolean value, got: #{inspect(value)}"}
+    got_type = get_value_type(value)
+    {:error, TypeMismatchError.unary(:unary_bang, :boolean, got_type, value)}
   end
 
   defp execute_unary(%__MODULE__{stack: []}, operation) do
-    {:error, "Unary #{operation} requires one value on stack, got: 0"}
+    {:error, EvaluationError.insufficient_operands(:"unary_#{operation}", 0, 1)}
   end
 
   @spec execute_function_call(t(), binary(), non_neg_integer()) :: {:ok, t()} | {:error, term()}
@@ -500,11 +565,15 @@ defmodule Predicator.Evaluator do
           {:ok, %__MODULE__{evaluator | stack: [result | remaining_stack]}}
 
         {:error, message} ->
-          {:error, message}
+          {:error, EvaluationError.new(message, message, :function_call)}
       end
     else
       {:error,
-       "Function #{function_name}() expects #{arg_count} arguments, but only #{length(stack)} values on stack"}
+       EvaluationError.new(
+         "Function #{function_name}() expects #{arg_count} arguments, but only #{length(stack)} values on stack",
+         "insufficient_arguments",
+         :function_call
+       )}
     end
   end
 

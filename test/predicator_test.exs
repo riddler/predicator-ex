@@ -47,17 +47,17 @@ defmodule PredicatorTest do
 
     test "returns error for parse failures" do
       result = Predicator.evaluate("score >", %{})
-      assert {:error, message} = result
+
+      assert {:error, %Predicator.Errors.ParseError{message: message, line: 1, column: 8}} =
+               result
 
       assert message =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
-
-      assert message =~ "line 1, column 8"
     end
 
     test "returns error for invalid syntax" do
       result = Predicator.evaluate("score > >", %{})
-      assert {:error, message} = result
+      assert {:error, %Predicator.Errors.ParseError{message: message}} = result
 
       assert message =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'"
@@ -80,7 +80,7 @@ defmodule PredicatorTest do
 
     test "returns error for invalid instructions" do
       result = Predicator.evaluate([["unknown_op"]], %{})
-      assert {:error, message} = result
+      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
       assert message =~ "Unknown instruction"
     end
   end
@@ -554,8 +554,9 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("expired", %{expired: false}) == {:ok, false}
     end
 
-    test "returns :undefined for missing boolean variables" do
-      assert Predicator.evaluate("missing", %{}) == {:ok, :undefined}
+    test "returns error for missing boolean variables" do
+      assert {:error, %Predicator.Errors.UndefinedVariableError{variable: "missing"}} =
+               Predicator.evaluate("missing", %{})
     end
 
     test "works with logical operators on plain boolean expressions" do
@@ -1250,10 +1251,15 @@ defmodule PredicatorTest do
 
       # Function returns error
       assert Predicator.evaluate("error_func(1)", %{}, functions: custom_functions) ==
-               {:error, "custom error"}
+               {:error,
+                %Predicator.Errors.EvaluationError{
+                  reason: "custom error",
+                  message: "custom error",
+                  operation: :function_call
+                }}
 
       # Function raises exception
-      assert {:error, error_msg} =
+      assert {:error, %Predicator.Errors.EvaluationError{message: error_msg}} =
                Predicator.evaluate("exception_func(1)", %{}, functions: custom_functions)
 
       assert error_msg =~ "Function exception_func() raised:"
@@ -1261,7 +1267,9 @@ defmodule PredicatorTest do
     end
 
     test "unknown custom function returns error" do
-      assert {:error, error_msg} = Predicator.evaluate("unknown_func()", %{})
+      assert {:error, %Predicator.Errors.EvaluationError{message: error_msg}} =
+               Predicator.evaluate("unknown_func()", %{})
+
       assert error_msg == "Unknown function: unknown_func"
     end
 
@@ -1271,11 +1279,13 @@ defmodule PredicatorTest do
       }
 
       # Too few arguments
-      assert {:error, error_msg} = Predicator.evaluate("add(5)", %{}, functions: custom_functions)
+      assert {:error, %Predicator.Errors.EvaluationError{message: error_msg}} =
+               Predicator.evaluate("add(5)", %{}, functions: custom_functions)
+
       assert error_msg == "Function add() expects 2 arguments, got 1"
 
       # Too many arguments
-      assert {:error, error_msg} =
+      assert {:error, %Predicator.Errors.EvaluationError{message: error_msg}} =
                Predicator.evaluate("add(5, 10, 15)", %{}, functions: custom_functions)
 
       assert error_msg == "Function add() expects 2 arguments, got 3"

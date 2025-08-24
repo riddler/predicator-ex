@@ -47,50 +47,10 @@ defmodule Predicator do
   """
 
   alias Predicator.{Compiler, Evaluator, Lexer, Parser, Types}
+  alias Predicator.Errors.{ParseError, UndefinedVariableError}
 
   @doc """
-  Evaluates a predicate expression or instruction list with an empty context.
-
-  This is a convenience function for evaluating expressions that don't require
-  any context variables, such as literal comparisons or expressions with only
-  constants.
-
-  ## Parameters
-
-  - `input` - String expression or instruction list to evaluate
-
-  ## Returns
-
-  - `{:ok, result}` on successful evaluation
-  - `{:error, reason}` if parsing or execution fails
-
-  ## Examples
-
-      # Simple literal expressions
-      iex> Predicator.evaluate("true")
-      {:ok, true}
-
-      iex> Predicator.evaluate("#2024-01-15# > #2024-01-10#")
-      {:ok, true}
-
-      iex> Predicator.evaluate("2 in [1, 2, 3]")
-      {:ok, true}
-
-      # Instruction lists without context
-      iex> Predicator.evaluate([["lit", 42]])
-      {:ok, 42}
-
-      # Parse errors are returned
-      iex> Predicator.evaluate("invalid >> syntax")
-      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>' at line 1, column 10"}
-  """
-  @spec evaluate(binary() | Types.instruction_list()) :: Types.result()
-  def evaluate(input) do
-    evaluate(input, %{})
-  end
-
-  @doc """
-  Evaluates a predicate expression or instruction list with an optional context and options.
+  Evaluates a predicate expression or instruction list.
 
   This is the main entry point for Predicator evaluation. It accepts either:
   - A string expression (e.g., "score > 85") which gets compiled automatically
@@ -98,7 +58,7 @@ defmodule Predicator do
 
   ## Parameters
 
-  - `input` - String expression or instruction list
+  - `input` - String expression or instruction list to evaluate
   - `context` - Optional context map with variable bindings (default: `%{}`)
   - `opts` - Optional keyword list of options:
     - `:functions` - Map of custom functions to make available during evaluation
@@ -106,59 +66,88 @@ defmodule Predicator do
   ## Returns
 
   - `{:ok, result}` on successful evaluation
-  - `{:error, reason}` if parsing or execution fails
+  - `{:error, error_struct}` if parsing or execution fails
+
+  ## Error Types
+
+  - `Predicator.Errors.TypeMismatchError` - Type mismatch in operation
+  - `Predicator.Errors.UndefinedVariableError` - Variable not found in context
+  - `Predicator.Errors.EvaluationError` - General evaluation error (division by zero, etc.)
+  - `Predicator.Errors.ParseError` - Expression parsing error
 
   ## Examples
 
-      # String expressions (compiled automatically)
-      iex> Predicator.evaluate("score > 85", %{"score" => 90})
+      # Simple expressions
+      iex> Predicator.evaluate("true")
       {:ok, true}
 
-      iex> Predicator.evaluate("name = 'John'", %{"name" => "John"})
+      iex> Predicator.evaluate("2 + 3")
+      {:ok, 5}
+
+      # With context
+      iex> Predicator.evaluate("score > 85", %{"score" => 90})
       {:ok, true}
 
       # With custom functions
       iex> custom_functions = %{"double" => {1, fn [n], _context -> {:ok, n * 2} end}}
-      iex> Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: custom_functions)
-      {:ok, true}
+      iex> Predicator.evaluate("double(21)", %{}, functions: custom_functions)
+      {:ok, 42}
 
-      # Pre-compiled instruction lists (maximum performance)
-      iex> Predicator.evaluate([["load", "score"], ["lit", 85], ["compare", "GT"]], %{"score" => 90})
-      {:ok, true}
+      # Pre-compiled instruction lists
+      iex> Predicator.evaluate([["lit", 42]])
+      {:ok, 42}
 
-      # Parse errors are returned  
-      iex> Predicator.evaluate("score >", %{})
-      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input at line 1, column 8"}
+      # Error handling
+      iex> {:error, error} = Predicator.evaluate("score + 'hello'", %{"score" => 5})
+      iex> error.message
+      "Arithmetic add requires integers, got 5 (integer) and \\\"hello\\\" (string)"
+      iex> error.expected
+      :integer
   """
-  @spec evaluate(binary() | Types.instruction_list(), Types.context(), keyword()) ::
-          Types.result()
-  def evaluate(input, context, opts)
+  @spec evaluate(
+          binary() | Types.instruction_list(),
+          Types.context(),
+          keyword()
+        ) :: {:ok, Types.value()} | {:error, struct()}
+  def evaluate(input, context \\ %{}, opts \\ [])
 
   def evaluate(expression, context, opts) when is_binary(expression) and is_map(context) do
-    with {:ok, tokens} <- Lexer.tokenize(expression),
-         {:ok, ast} <- Parser.parse(tokens) do
-      instructions = Compiler.to_instructions(ast)
+    case Lexer.tokenize(expression) do
+      {:ok, tokens} ->
+        case Parser.parse(tokens) do
+          {:ok, ast} ->
+            instructions = Compiler.to_instructions(ast)
+            evaluate_instructions(instructions, context, opts)
 
-      case Evaluator.evaluate(instructions, context, opts) do
-        {:error, reason} -> {:error, reason}
-        result -> {:ok, result}
-      end
-    else
-      {:error, message, line, column} -> {:error, "#{message} at line #{line}, column #{column}"}
+          {:error, message, line, column} ->
+            {:error, ParseError.new(message, line, column)}
+        end
+
+      {:error, message, line, column} ->
+        {:error, ParseError.new(message, line, column)}
     end
   end
 
   def evaluate(instructions, context, opts) when is_list(instructions) and is_map(context) do
-    case Evaluator.evaluate(instructions, context, opts) do
-      {:error, reason} -> {:error, reason}
-      result -> {:ok, result}
-    end
+    evaluate_instructions(instructions, context, opts)
   end
 
-  # Backward compatibility functions
-  @spec evaluate(binary() | Types.instruction_list(), Types.context()) :: Types.result()
-  def evaluate(input, context) when is_map(context) do
-    evaluate(input, context, [])
+  # Helper function to evaluate instructions and convert errors to new format
+  defp evaluate_instructions(instructions, context, opts) do
+    case Evaluator.evaluate(instructions, context, opts) do
+      {:error, error_struct} when is_struct(error_struct) ->
+        {:error, error_struct}
+
+      :undefined ->
+        # Check if this was an undefined variable access
+        case check_for_undefined_variables(instructions, context) do
+          {:error, error_struct} -> {:error, error_struct}
+          {:ok, :undefined} -> {:ok, :undefined}
+        end
+
+      result ->
+        {:ok, result}
+    end
   end
 
   @doc """
@@ -183,13 +172,42 @@ defmodule Predicator do
       # This would raise an exception:
       # Predicator.evaluate!("score >", %{})
   """
-  @spec evaluate!(binary() | Types.instruction_list(), Types.context(), keyword()) ::
-          Types.value()
+  @spec evaluate!(
+          binary() | Types.instruction_list(),
+          Types.context(),
+          keyword()
+        ) :: Types.value()
   def evaluate!(input, context \\ %{}, opts \\ []) do
     case evaluate(input, context, opts) do
       {:ok, result} -> result
-      {:error, reason} -> raise "Evaluation failed: #{reason}"
+      {:error, error_struct} -> raise "Evaluation failed: #{error_struct.message}"
     end
+  end
+
+  # Helper to detect undefined variable access
+  defp check_for_undefined_variables([["load", variable_name]], context)
+       when is_binary(variable_name) do
+    if Map.has_key?(context, variable_name) or
+         variable_has_atom_key?(context, variable_name) do
+      # Variable exists but has :undefined value
+      {:ok, :undefined}
+    else
+      {:error, UndefinedVariableError.new(variable_name)}
+    end
+  end
+
+  defp check_for_undefined_variables(_instructions, _context) do
+    # Complex expression resulted in :undefined
+    {:ok, :undefined}
+  end
+
+  # Helper to safely check for atom key without raising exceptions
+  defp variable_has_atom_key?(context, variable_name) do
+    atom_key = String.to_atom(variable_name)
+    Map.has_key?(context, atom_key)
+  rescue
+    ArgumentError -> false
+    SystemLimitError -> false
   end
 
   @doc """
@@ -218,12 +236,13 @@ defmodule Predicator do
   """
   @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile(expression) when is_binary(expression) do
-    with {:ok, tokens} <- Lexer.tokenize(expression),
-         {:ok, ast} <- Parser.parse(tokens) do
-      instructions = Compiler.to_instructions(ast)
-      {:ok, instructions}
-    else
-      {:error, message, line, column} -> {:error, "#{message} at line #{line}, column #{column}"}
+    case parse(expression) do
+      {:ok, ast} ->
+        instructions = Compiler.to_instructions(ast)
+        {:ok, instructions}
+
+      {:error, message, line, column} ->
+        {:error, "#{message} at line #{line}, column #{column}"}
     end
   end
 

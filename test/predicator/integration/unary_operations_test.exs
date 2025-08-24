@@ -82,62 +82,95 @@ defmodule UnaryEvaluationTest do
   describe "unary error conditions" do
     test "unary minus with non-integer value" do
       instructions = [["lit", "hello"], ["unary_minus"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary minus requires an integer value, got: \"hello\""
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Unary minus requires") and String.contains?(msg, "hello")
     end
 
     test "unary minus with boolean value" do
       instructions = [["lit", true], ["unary_minus"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary minus requires an integer value, got: true"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Unary minus requires") and String.contains?(msg, "true")
     end
 
     test "unary minus with list value" do
       instructions = [["lit", [1, 2, 3]], ["unary_minus"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary minus requires an integer value, got: [1, 2, 3]"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Unary minus requires an integer, got [1, 2, 3] (list)")
     end
 
     test "unary minus with empty stack" do
       instructions = [["unary_minus"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary minus requires one value on stack, got: 0"
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Unary minus requires") and String.contains?(msg, "value") and
+               String.contains?(msg, "stack")
     end
 
     test "unary bang with non-boolean value" do
       instructions = [["lit", 42], ["unary_bang"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary bang (!) requires a boolean value, got: 42"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Logical NOT requires a boolean, got 42 (integer)")
     end
 
     test "unary bang with string value" do
       instructions = [["lit", "text"], ["unary_bang"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary bang (!) requires a boolean value, got: \"text\""
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Logical NOT requires") and String.contains?(msg, "text")
     end
 
     test "unary bang with integer value" do
       instructions = [["lit", 0], ["unary_bang"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary bang (!) requires a boolean value, got: 0"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Logical NOT requires") and String.contains?(msg, "boolean") and
+               String.contains?(msg, "0")
     end
 
     test "unary bang with empty stack" do
       instructions = [["unary_bang"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary bang requires one value on stack, got: 0"
+
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Logical NOT requires") and
+               String.contains?(msg, "value on stack")
     end
 
     test "unary minus with undefined variable" do
       instructions = [["load", "undefined_var"], ["unary_minus"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary minus requires an integer value, got: :undefined"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Unary minus requires") and String.contains?(msg, "undefined")
     end
 
     test "unary bang with undefined variable" do
       instructions = [["load", "undefined_var"], ["unary_bang"]]
-      assert {:error, msg} = Evaluator.evaluate(instructions, %{})
-      assert msg == "Unary bang (!) requires a boolean value, got: :undefined"
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               Evaluator.evaluate(instructions, %{})
+
+      assert String.contains?(msg, "Logical NOT requires a boolean, got :undefined (undefined)")
     end
   end
 
@@ -201,18 +234,27 @@ defmodule UnaryEvaluationTest do
 
     test "mixed unary and binary operations" do
       # This should fail because we can't add integer and boolean
-      assert {:error, msg} = evaluate("-a * b + !flag", %{"a" => 4, "b" => 5, "flag" => false})
-      assert msg == "Arithmetic add requires two integer values, got: -20 and true"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               evaluate("-a * b + !flag", %{"a" => 4, "b" => 5, "flag" => false})
+
+      assert String.contains?(msg, "Arithmetic add requires integers, got") and
+               String.contains?(msg, "integer") and String.contains?(msg, "boolean")
     end
 
     test "unary minus type error in pipeline" do
-      assert {:error, msg} = evaluate("-name", %{"name" => "Alice"})
-      assert msg == "Unary minus requires an integer value, got: \"Alice\""
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               evaluate("-name", %{"name" => "Alice"})
+
+      assert String.contains?(msg, "Unary minus requires an integer, got") and
+               String.contains?(msg, "Alice") and String.contains?(msg, "string")
     end
 
     test "unary bang type error in pipeline" do
-      assert {:error, msg} = evaluate("!count", %{"count" => 42})
-      assert msg == "Logical NOT requires a boolean value, got: 42"
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               evaluate("!count", %{"count" => 42})
+
+      assert String.contains?(msg, "Logical NOT requires") and String.contains?(msg, "boolean") and
+               String.contains?(msg, "42")
     end
   end
 
