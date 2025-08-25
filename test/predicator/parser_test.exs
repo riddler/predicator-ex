@@ -1141,13 +1141,11 @@ defmodule Predicator.ParserTest do
     end
 
     test "parses mixed dot and bracket access" do
-      # Note: This will require additional implementation as dot notation
-      # currently works differently (as nested identifiers)
-      # For now, testing that user.settings still works as before
+      # Test the new property access parsing
       {:ok, tokens} = Lexer.tokenize("user.settings")
       result = Parser.parse(tokens)
 
-      expected_ast = {:identifier, "user.settings"}
+      expected_ast = {:property_access, {:identifier, "user"}, "settings"}
       assert {:ok, ^expected_ast} = result
     end
 

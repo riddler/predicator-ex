@@ -67,6 +67,7 @@ defmodule Predicator.Lexer do
           | {:lbracket, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:rbracket, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:comma, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:dot, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:in_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:contains_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -316,6 +317,10 @@ defmodule Predicator.Lexer do
         token = {:comma, line, col, 1, ","}
         tokenize_chars(rest, line, col + 1, [token | tokens])
 
+      ?. ->
+        token = {:dot, line, col, 1, "."}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
       # String literals (double quotes)
       ?" ->
         case take_string(rest, "", 1, :double) do
@@ -404,8 +409,7 @@ defmodule Predicator.Lexer do
   @spec take_identifier(charlist(), charlist(), non_neg_integer()) ::
           {binary(), charlist(), pos_integer()}
   defp take_identifier([c | rest], acc, count)
-       when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or (c >= ?0 and c <= ?9) or c == ?_ or
-              c == ?. do
+       when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or (c >= ?0 and c <= ?9) or c == ?_ do
     take_identifier(rest, [c | acc], count + 1)
   end
 

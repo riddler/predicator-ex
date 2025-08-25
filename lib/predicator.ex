@@ -46,7 +46,7 @@ defmodule Predicator do
   3. The final result is the top value on the stack when execution completes
   """
 
-  alias Predicator.{Compiler, Evaluator, Lexer, Parser, Types}
+  alias Predicator.{Compiler, ContextLocation, Evaluator, Lexer, Parser, Types}
   alias Predicator.Errors.{ParseError, UndefinedVariableError}
 
   @doc """
@@ -377,5 +377,118 @@ defmodule Predicator do
   @spec run_evaluator(Evaluator.t()) :: {:ok, Evaluator.t()} | {:error, term()}
   def run_evaluator(%Evaluator{} = evaluator) do
     Evaluator.run(evaluator)
+  end
+
+  @doc """
+  Resolves a location path for assignment operations in SCXML datamodel expressions.
+
+  Takes an expression string and returns a location path that can be used for
+  assignment operations. Validates that the expression represents an assignable
+  location (l-value) rather than a computed value.
+
+  This function is specifically designed for SCXML `<assign location="...">` operations
+  where the location attribute must specify where to assign a value in the datamodel.
+
+  ## Location Path Format
+
+  Location paths are returned as lists of keys/indices that represent the path
+  to a specific location in the context data structure:
+
+  - `["user"]` - top-level variable `user`
+  - `["user", "name"]` - property access `user.name`  
+  - `["items", 0]` - array access `items[0]`
+  - `["user", "profile", "settings", "theme"]` - nested `user.profile.settings.theme`
+
+  ## Assignable vs Non-Assignable
+
+  **Assignable (valid locations):**
+  - Simple identifiers: `user`
+  - Property access: `user.name`, `obj.prop`  
+  - Bracket access: `items[0]`, `obj["key"]`
+  - Mixed notation: `user.items[0].name`
+
+  **Non-Assignable (invalid locations):**
+  - Literals: `42`, `"string"`, `true`
+  - Function calls: `len(items)`, `upper(name)`
+  - Arithmetic expressions: `user.age + 1`
+  - Any computed values
+
+  ## Parameters
+
+  - `expression` - The location expression string to resolve
+  - `context` - The evaluation context (used for resolving variable keys)
+  - `opts` - Options (currently unused, reserved for future extensions)
+
+  ## Examples
+
+      # Simple identifier
+      iex> Predicator.context_location("user", %{"user" => %{"name" => "John"}})
+      {:ok, ["user"]}
+
+      # Property access
+      iex> Predicator.context_location("user.name", %{"user" => %{"name" => "John"}})
+      {:ok, ["user", "name"]}
+
+      # Bracket access with literal key
+      iex> Predicator.context_location("items[0]", %{"items" => [1, 2, 3]})
+      {:ok, ["items", 0]}
+
+      # Bracket access with string key
+      iex> Predicator.context_location("user['profile']", %{"user" => %{"profile" => %{}}})
+      {:ok, ["user", "profile"]}
+
+      # Mixed notation
+      iex> Predicator.context_location("data.users[0]['name']", %{"data" => %{"users" => [%{"name" => "Alice"}]}})
+      {:ok, ["data", "users", 0, "name"]}
+
+      # Variable as bracket key
+      iex> Predicator.context_location("items[index]", %{"items" => [1, 2, 3], "index" => 1})
+      {:ok, ["items", 1]}
+
+      # Error: cannot assign to literal
+      iex> {:error, %Predicator.Errors.LocationError{type: :not_assignable}} = 
+      ...>   Predicator.context_location("42", %{})
+
+      # Error: cannot assign to function call  
+      iex> {:error, %Predicator.Errors.LocationError{type: :not_assignable}} =
+      ...>   Predicator.context_location("len(items)", %{"items" => [1, 2, 3]})
+
+      # Error: cannot assign to computed expression
+      iex> {:error, %Predicator.Errors.LocationError{type: :not_assignable}} =
+      ...>   Predicator.context_location("user.age + 1", %{"user" => %{"age" => 30}})
+
+  ## SCXML Usage Example
+
+      # In an SCXML state machine
+      location_expr = "user.profile.settings['theme']"
+      
+      case Predicator.context_location(location_expr, datamodel_context) do
+        {:ok, path} ->
+          # Use path for assignment: ["user", "profile", "settings", "theme"]
+          update_datamodel_at_path(datamodel, path, new_value)
+          
+        {:error, %Predicator.Errors.LocationError{} = error} ->
+          # Handle invalid assignment target
+          {:error, "Invalid assignment location: \#{error.message}"}
+      end
+
+  """
+  @spec context_location(binary(), Types.context(), keyword()) ::
+          {:ok, ContextLocation.location_path()} | {:error, struct()}
+  def context_location(expression, context \\ %{}, _opts \\ [])
+      when is_binary(expression) and is_map(context) do
+    case Lexer.tokenize(expression) do
+      {:ok, tokens} ->
+        case Parser.parse(tokens) do
+          {:ok, ast} ->
+            ContextLocation.resolve(ast, context)
+
+          {:error, message, line, col} ->
+            {:error, ParseError.new(message, line, col)}
+        end
+
+      {:error, message, line, col} ->
+        {:error, ParseError.new(message, line, col)}
+    end
   end
 end

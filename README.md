@@ -322,7 +322,7 @@ comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "con
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
-postfix      → primary ( "[" expression "]" )*
+postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
 primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
 function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
@@ -426,6 +426,63 @@ iex> Predicator.decompile(ast, spacing: :verbose)
 iex> Predicator.decompile(ast, parentheses: :explicit)
 "(score > 85)"
 ```
+
+## SCXML Location Expressions
+
+Predicator provides specialized support for SCXML datamodel location expressions, which determine valid assignment targets (l-values) for `<assign>` operations:
+
+```elixir
+# Resolve location paths for assignment operations
+iex> Predicator.context_location("user.profile.name", %{})
+{:ok, ["user", "profile", "name"]}
+
+iex> Predicator.context_location("items[0]", %{})
+{:ok, ["items", 0]}
+
+iex> Predicator.context_location("data['users'][index]['profile']", %{"index" => 2})
+{:ok, ["data", "users", 2, "profile"]}
+
+# Detect invalid assignment targets
+iex> Predicator.context_location("len(name)", %{})
+{:error, %Predicator.Errors.LocationError{type: :not_assignable, message: "Cannot assign to function call"}}
+
+iex> Predicator.context_location("42", %{})
+{:error, %Predicator.Errors.LocationError{type: :not_assignable, message: "Cannot assign to literal value"}}
+
+# Variable keys must exist in context
+iex> Predicator.context_location("items[missing_var]", %{})
+{:error, %Predicator.Errors.LocationError{type: :undefined_variable, message: "Bracket key variable not found"}}
+```
+
+### Assignable vs Non-Assignable Expressions
+
+**✅ Valid Assignment Targets:**
+- Simple identifiers: `user`, `score`, `config`
+- Property access: `user.name`, `config.database.host`
+- Bracket access: `items[0]`, `user['profile']`, `data["key"]`
+- Mixed notation: `user.settings['theme']`, `data['users'][0].profile`
+
+**❌ Invalid Assignment Targets:**
+- Literals: `42`, `"hello"`, `true`, `#2024-01-15#`
+- Function calls: `len(name)`, `upper(role)`, `max(a, b)`
+- Arithmetic expressions: `score + 1`, `items[i + 1]`
+- Comparison results: `score > 85`, `name = "John"`
+- Any computed expressions that cannot serve as memory locations
+
+### Location Path Format
+
+Location paths are returned as lists representing the navigation path to a specific location:
+
+```elixir
+# Examples of location paths
+["user"]                           # user
+["user", "name"]                   # user.name
+["items", 0]                       # items[0]
+["user", "profile", "settings", "theme"]  # user.profile.settings['theme']
+["data", "users", 2, "name"]       # data['users'][2]['name']
+```
+
+This feature enables safe assignment operations in SCXML processors while preventing assignment to computed values or literals.
 
 ## Development
 

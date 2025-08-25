@@ -26,7 +26,7 @@ comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "con
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
-postfix      → primary ( "[" expression "]" )*
+postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
 primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | function_call | "(" expression ")"
 function_call → IDENTIFIER "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
@@ -230,7 +230,46 @@ test/predicator/
   - `user.settings['theme'] = 'dark'` (mixed notation)
 - **Backwards Compatible**: Simple variable names and existing dot notation work exactly as before
 
+### Location Expressions for SCXML (v2.2.0 - Phase 2 Complete)
+- **Purpose**: SCXML datamodel location expressions for assignment operations (`<assign>` elements)
+- **API Function**: `Predicator.context_location/3` - resolves location paths for assignment targets
+- **Location Paths**: Returns lists like `["user", "name"]`, `["items", 0, "property"]` for navigation
+- **Validation**: Distinguishes assignable locations (l-values) from computed expressions (r-values)
+- **Error Handling**: Structured `LocationError` with detailed error types and context
+- **Core Module**: `Predicator.ContextLocation` with comprehensive location resolution logic
+- **Error Types**: 
+  - `:not_assignable` - Expression cannot be used as assignment target (literals, functions, etc.)
+  - `:invalid_node` - Unknown or unsupported AST node type
+  - `:undefined_variable` - Variable referenced in bracket key is not defined
+  - `:invalid_key` - Bracket key is not a valid string or integer
+  - `:computed_key` - Computed expressions cannot be used as assignment keys
+- **Examples**:
+  ```elixir
+  Predicator.context_location("user.profile.name", %{})          # {:ok, ["user", "profile", "name"]}
+  Predicator.context_location("items[0]", %{})                   # {:ok, ["items", 0]}
+  Predicator.context_location("data['users'][i]['name']", %{"i" => 2})  # {:ok, ["data", "users", 2, "name"]}
+  Predicator.context_location("len(name)", %{})                  # {:error, %LocationError{type: :not_assignable}}
+  Predicator.context_location("42", %{})                         # {:error, %LocationError{type: :not_assignable}}
+  ```
+- **Assignable Locations**: Simple identifiers, property access, bracket access, mixed notation
+- **Non-Assignable**: Literals, function calls, arithmetic expressions, comparisons, any computed values
+- **Mixed Notation Support**: `user.settings['theme']`, `data['users'][0].profile` fully supported
+- **SCXML Integration**: Enables safe assignment operations while preventing assignment to computed expressions
+
 ## Breaking Changes
+
+### v2.2.0 - Property Access Parsing Overhaul
+- **Changed**: Complete reimplementation of dot notation parsing from dotted identifiers to proper property access AST
+- **Breaking**: Expressions like `user.email` now parsed as `{:property_access, {:identifier, "user"}, "email"}` instead of `{:identifier, "user.email"}`
+- **Impact**: Context keys with dots like `"user.email"` will no longer match the identifier `user.email` - they are now parsed as property access
+- **Instructions**: Evaluation now generates separate `load` and `access` instructions instead of single `load` with dotted name
+- **Benefit**: Enables proper mixed notation like `user.settings['theme']` and SCXML location expressions
+- **Migration**: Use proper nested data structures `%{"user" => %{"email" => "..."}}` instead of flat keys `%{"user.email" => "..."}`
+- **Lexer Change**: Dots removed from valid identifier characters, now parsed as separate tokens
+- **Parser Enhancement**: Added property access grammar `postfix → primary ( "[" expression "]" | "." IDENTIFIER )*`
+- **New AST Nodes**: `{:property_access, left_node, property}` for dot notation parsing
+- **Evaluator Update**: New `access` instruction handler, removed old dotted identifier support from `load_from_context`
+- **Full Compatibility**: All existing expressions without dots work exactly as before
 
 ### v2.0.0 - Custom Function Architecture Overhaul
 - **Removed**: Global function registry system (`Predicator.Functions.Registry` module)
