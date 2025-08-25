@@ -142,7 +142,9 @@ defmodule Predicator.IntegrationTest do
       instructions = Compiler.to_instructions(ast)
 
       assert instructions == [
-               ["load", "user.name.first"],
+               ["load", "user"],
+               ["access", "name"],
+               ["access", "first"],
                ["lit", "John"],
                ["compare", "EQ"]
              ]
@@ -160,7 +162,8 @@ defmodule Predicator.IntegrationTest do
       instructions = Compiler.to_instructions(ast)
 
       assert instructions == [
-               ["load", "user.age"],
+               ["load", "user"],
+               ["access", "age"],
                ["lit", 18],
                ["compare", "GT"]
              ]
@@ -178,7 +181,9 @@ defmodule Predicator.IntegrationTest do
       instructions = Compiler.to_instructions(ast)
 
       assert instructions == [
-               ["load", "user.profile.name"],
+               ["load", "user"],
+               ["access", "profile"],
+               ["access", "name"],
                ["lit", "John"],
                ["compare", "EQ"]
              ]

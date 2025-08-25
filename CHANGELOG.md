@@ -7,7 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - TBD
+
 ### Added
+
+#### Location Expressions for SCXML Assignment Operations (Phase 2 Complete)
+- **SCXML Location Expressions**: Complete implementation of location path resolution for SCXML `<assign>` operations
+- **New API Function**: `Predicator.context_location/3` - resolves assignable location paths from expressions
+- **Location Path Resolution**: Returns navigation paths like `["user", "name"]`, `["items", 0, "property"]` for SCXML assignment targets
+- **Assignment Validation**: Distinguishes valid assignment targets (l-values) from computed expressions (r-values)
+- **Core Module**: `Predicator.ContextLocation` with comprehensive location resolution logic and error handling
+- **Structured Error Handling**: `Predicator.Errors.LocationError` with detailed error types and context information
+
+#### Location Expression Examples
+```elixir
+# Valid assignment targets resolve to location paths
+Predicator.context_location("user.profile.name", %{})                    # {:ok, ["user", "profile", "name"]}
+Predicator.context_location("items[0]", %{})                             # {:ok, ["items", 0]}  
+Predicator.context_location("data['users'][index]['profile']", %{"index" => 2})  # {:ok, ["data", "users", 2, "profile"]}
+
+# Invalid assignment targets return structured errors
+Predicator.context_location("len(name)", %{})                            # {:error, %LocationError{type: :not_assignable}}
+Predicator.context_location("42", %{})                                   # {:error, %LocationError{type: :not_assignable}}
+Predicator.context_location("score + 1", %{})                            # {:error, %LocationError{type: :not_assignable}}
+```
+
+#### Error Types and Validation
+- **`:not_assignable`**: Expression cannot be used as assignment target (literals, functions, computed expressions)
+- **`:invalid_node`**: Unknown or unsupported AST node type encountered during resolution
+- **`:undefined_variable`**: Variable referenced in bracket key is not defined in evaluation context
+- **`:invalid_key`**: Bracket key is not a valid string or integer type
+- **`:computed_key`**: Computed expressions cannot be used as assignment target keys
+
+#### Assignable vs Non-Assignable Classifications
+- **✅ Valid Assignment Targets**: Simple identifiers, property access, bracket access, mixed notation
+  - `user`, `score`, `config.database.host`
+  - `items[0]`, `user['profile']`, `data["settings"]`
+  - `user.settings['theme']`, `data['users'][0].profile`
+- **❌ Invalid Assignment Targets**: Literals, function calls, computed expressions
+  - `42`, `"hello"`, `true`, `#2024-01-15#`
+  - `len(name)`, `upper(role)`, `max(a, b)`
+  - `score + 1`, `items[i + 1]`, `score > 85`
+
+#### Technical Implementation
+- **Full Location Resolution**: Recursive resolution of nested property access and bracket access
+- **Mixed Notation Support**: Complete support for expressions like `user.settings['theme']` and `data['users'][0].name`
+- **Variable Key Resolution**: Bracket keys can reference context variables for dynamic access patterns
+- **Context Integration**: Uses existing evaluation context for variable key resolution
+- **Comprehensive Testing**: 49 comprehensive tests covering all location resolution scenarios and error cases
 
 #### Type Coercion and Float Support
 - **Float Literal Support**: Extended lexer to parse floating-point numbers (e.g., `3.14`, `0.5`)
@@ -31,11 +78,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error Message Updates**: Updated error messages from "integer" to "number" where appropriate
 - **Comprehensive Testing**: Added 28 new tests covering all type coercion scenarios
 
+### Changed
+
+#### Property Access Parsing Architecture Overhaul (Breaking Changes)
+- **Complete Dot Notation Reimplementation**: Transformed from dotted identifiers to proper property access AST nodes
+- **Lexer Breaking Change**: Dots removed from valid identifier characters, now parsed as separate tokens
+- **Parser Grammar Enhancement**: Added property access grammar `postfix → primary ( "[" expression "]" | "." IDENTIFIER )*`
+- **New AST Structure**: Expressions like `user.email` now parsed as `{:property_access, {:identifier, "user"}, "email"}`
+- **Instruction Pipeline**: Evaluation generates separate `load` and `access` instructions instead of single `load` with dotted name
+- **Mixed Notation Support**: Enables complex expressions like `user.settings['theme']` and `data['users'][0].profile`
+
+### Breaking Changes
+
+#### v3.0.0 - Property Access Parsing Overhaul
+This is a **major breaking change** affecting how dot notation is parsed and evaluated:
+
+**⚠️ Context Key Impact**: Context keys containing dots (e.g., `"user.email"`) will no longer match dot notation expressions (`user.email`). The expression `user.email` is now parsed as property access requiring nested structure `%{"user" => %{"email" => "..."}}`
+
+**Migration Required**:
+```elixir
+# BEFORE (v2.2.0 and earlier) - WILL NO LONGER WORK
+context = %{"user.email" => "john@example.com"}
+Predicator.evaluate("user.email = 'john@example.com'", context)  # No longer matches
+
+# AFTER (v3.0.0+) - Use proper nested structures  
+context = %{"user" => %{"email" => "john@example.com"}}
+Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correctly
+```
+
+**Technical Changes**:
+- **Lexer**: Dots no longer valid in identifier characters, parsed as separate `:dot` tokens
+- **Parser**: New property access AST nodes `{:property_access, left_node, property}`
+- **Evaluator**: New `access` instruction handler, removed dotted identifier support from `load_from_context`
+- **Instructions**: `user.email` generates `[["load", "user"], ["access", "email"]]` instead of `[["load", "user.email"]]`
+
+**Benefits**:
+- Enables mixed notation: `user.settings['theme']`, `data['users'][0].name`
+- Supports SCXML location expressions for assignment operations
+- Proper property access semantics for complex data structures
+- Foundation for advanced SCXML datamodel integration
+
 ## [2.2.0] - 2025-08-24
 
 ### Added
 
-#### Bracket Access and Property Access Enhancement
+#### Bracket Access and Property Access Enhancement  
 - **Complete Bracket Notation Support**: Implemented full bracket access functionality (`obj['key']`, `arr[0]`, `obj[variable]`)
 - **Parser Extensions**: Added postfix parsing for bracket access with recursive chaining support
 - **Grammar Enhancement**: Updated grammar with postfix operations: `unary → postfix`, `postfix → primary ( "[" expression "]" )*`
@@ -48,20 +135,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **String Visitor Support**: Added round-trip string conversion for bracket access expressions
 - **Comprehensive Testing**: Added 12 new parser tests covering all bracket access scenarios
 
-#### Property Access Implementation Details
-- **Access Value Logic**: Robust `access_value/2` function supporting:
-  - Map access with string, atom, and integer keys
-  - Array access with integer indices and bounds checking  
-  - Graceful fallback to `:undefined` for missing keys or out-of-bounds access
-  - Type coercion between string and atom keys
-- **Error Handling**: Enhanced error system with bracket access specific errors:
-  - Invalid key type validation with structured error messages
-  - Proper operation display names ("Bracket access requires a string, integer, or atom key")
-  - Integration with existing error architecture
-- **Instruction Compilation**: Added `visit({:bracket_access, object, key}, opts)` in InstructionsVisitor
-- **Round-trip Support**: Perfect string conversion preserving bracket notation syntax
-- **Integration Testing**: Verified compatibility with existing arithmetic, comparison, and logical operations
-
 #### Error Handling Architecture Refactoring
 - **Modular Error Structure**: Refactored monolithic error handling into individual error modules under `lib/predicator/errors/`
 - **Shared Error Utilities**: Created `Predicator.Errors` module with common utility functions for consistent error formatting
@@ -73,134 +146,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Consistent Error Messages**: Unified error message formatting across all error types
 - **Code Quality Improvements**: Resolved all credo issues with proper module aliasing and organization
 
-#### Error System Enhancements
-- **Shared Utility Functions**: Common functions in `Predicator.Errors` module:
-  - `expected_type_name/1` - Formats type names with proper articles ("an integer", "a boolean")
-  - `type_name_with_value/2` - Formats values with type information for error messages
-  - `operation_display_name/1` - User-friendly operation names ("Arithmetic add", "Logical AND")
-- **Factory Functions**: Each error module provides convenient factory functions for creating structured errors
-- **Direct Error Returns**: Eliminated intermediate `RuntimeError` module for better performance and cleaner architecture
-- **Enhanced Type Safety**: Comprehensive `@type` specifications and `@spec` annotations for all error functions
-
-#### Technical Implementation Details
-- **File Organization**: Organized error modules under `lib/predicator/errors/` directory structure
-- **Module Aliasing**: Added proper module aliases in evaluator for cleaner code (`alias Predicator.Errors.{EvaluationError, TypeMismatchError}`)
-- **Error Message Consistency**: Standardized operation display names across all error types
-- **Runtime Performance**: Direct error struct returns eliminate conversion overhead
-- **Maintainability**: Focused error modules with single responsibilities and clear interfaces
-- **Test Coverage**: Maintained 100% test coverage (847 tests passing) throughout refactoring
-- **Documentation**: Comprehensive `@moduledoc` and examples for all error modules
-
 ## [2.1.0] - 2025-08-24
 
 ### Added
 
-#### SCXML Enhancement Phases 1.2-1.4: Arithmetic and Logical Operators
-- **Complete Parser Pipeline**: Added full parsing support for arithmetic operators (`+`, `-`, `*`, `/`, `%`)
-- **Enhanced Logical Operators**: Added `&&` (logical AND), `||` (logical OR), `!` (logical NOT) with complete parsing
-- **Equality Operator**: Added `==` for strict equality comparison with proper precedence handling
-- **Grammar Extensions**: Implemented proper operator precedence hierarchy in recursive descent parser
-- **AST Node Types**: Added new AST node types for arithmetic, equality, and unary expressions
-- **Visitor Support**: Updated InstructionsVisitor and StringVisitor to handle new node types
-- **Round-trip Compatibility**: Full string ↔ AST ↔ string conversion for all new operators
-
-#### Operator Support Details
-```elixir
-# Arithmetic operators (FULLY IMPLEMENTED - parsing and evaluation complete)
-2 + 3       # Addition - evaluates to 5
-5 - 2       # Subtraction - evaluates to 3  
-3 * 4       # Multiplication - evaluates to 12
-8 / 2       # Division - evaluates to 4 (integer division)
-7 % 3       # Modulo - evaluates to 1
--5          # Unary minus - evaluates to -5
-
-# Logical operators (fully functional)
-true && false   # Logical AND - works completely
-true || false   # Logical OR - works completely
-!active         # Logical NOT - works completely
-
-# Equality operator (fully functional)  
-x == y          # Strict equality - works completely
-```
-
-#### Arithmetic Evaluation Implementation 
-- **Complete Pipeline**: Full arithmetic evaluation now implemented in stack machine evaluator
-- **Instruction Handlers**: Added execution support for `["add"]`, `["subtract"]`, `["multiply"]`, `["divide"]`, `["modulo"]` instructions
-- **Unary Operations**: Implemented `["unary_minus"]` and `["unary_bang"]` instruction evaluation
-- **Error Handling**: Comprehensive type checking and division-by-zero protection
-- **Pattern Matching**: Idiomatic Elixir implementation using pattern matching for each operation
-- **Integration Testing**: Full pipeline testing from expression strings to computed results
-
-#### Foundation for SCXML Value Expressions
-- **Complete Implementation**: Finished lexer, parser, AST, and evaluation phases (1.2-1.4) of SCXML datamodel support
-- **Full Expression Support**: Arithmetic expressions now work end-to-end from parsing to evaluation
-- **Production Ready**: Complete arithmetic expression evaluation ready for SCXML integration
-- **Backward Compatibility**: All existing functionality remains unchanged
-
-#### Technical Implementation Details
-- **File Organization**: Organized error modules under `lib/predicator/errors/` directory structure
-- **Module Aliasing**: Added proper module aliases in evaluator for cleaner code (`alias Predicator.Errors.{EvaluationError, TypeMismatchError}`)
-- **Error Message Consistency**: Standardized operation display names across all error types
-- **Runtime Performance**: Direct error struct returns eliminate conversion overhead
-- **Maintainability**: Focused error modules with single responsibilities and clear interfaces
-- **Test Coverage**: Maintained 100% test coverage (847 tests passing) throughout refactoring
-- **Documentation**: Comprehensive `@moduledoc` and examples for all error modules
-
-## [2.1.0] - 2025-08-24
-
-### Added
-
-#### SCXML Enhancement Phases 1.2-1.4: Arithmetic and Logical Operators
-- **Complete Parser Pipeline**: Added full parsing support for arithmetic operators (`+`, `-`, `*`, `/`, `%`)
-- **Enhanced Logical Operators**: Added `&&` (logical AND), `||` (logical OR), `!` (logical NOT) with complete parsing
-- **Equality Operator**: Added `==` for strict equality comparison with proper precedence handling
-- **Grammar Extensions**: Implemented proper operator precedence hierarchy in recursive descent parser
-- **AST Node Types**: Added new AST node types for arithmetic, equality, and unary expressions
-- **Visitor Support**: Updated InstructionsVisitor and StringVisitor to handle new node types
-- **Round-trip Compatibility**: Full string ↔ AST ↔ string conversion for all new operators
-
-#### Operator Support Details
-```elixir
-# Arithmetic operators (FULLY IMPLEMENTED - parsing and evaluation complete)
-2 + 3       # Addition - evaluates to 5
-5 - 2       # Subtraction - evaluates to 3  
-3 * 4       # Multiplication - evaluates to 12
-8 / 2       # Division - evaluates to 4 (integer division)
-7 % 3       # Modulo - evaluates to 1
--5          # Unary minus - evaluates to -5
-
-# Logical operators (fully functional)
-true && false   # Logical AND - works completely
-true || false   # Logical OR - works completely
-!active         # Logical NOT - works completely
-
-# Equality operator (fully functional)  
-x == y          # Strict equality - works completely
-```
-
-#### Arithmetic Evaluation Implementation 
-- **Complete Pipeline**: Full arithmetic evaluation now implemented in stack machine evaluator
-- **Instruction Handlers**: Added execution support for `["add"]`, `["subtract"]`, `["multiply"]`, `["divide"]`, `["modulo"]` instructions
-- **Unary Operations**: Implemented `["unary_minus"]` and `["unary_bang"]` instruction evaluation
-- **Error Handling**: Comprehensive type checking and division-by-zero protection
-- **Pattern Matching**: Idiomatic Elixir implementation using pattern matching for each operation
-- **Integration Testing**: Full pipeline testing from expression strings to computed results
-
-#### Foundation for SCXML Value Expressions
-- **Complete Implementation**: Finished lexer, parser, AST, and evaluation phases (1.2-1.4) of SCXML datamodel support
-- **Full Expression Support**: Arithmetic expressions now work end-to-end from parsing to evaluation
-- **Production Ready**: Complete arithmetic expression evaluation ready for SCXML integration
-- **Backward Compatibility**: All existing functionality remains unchanged
-
-### Technical Implementation
-- **Lexer Enhancement**: Extended tokenization with 9 new token types
-- **Parser Grammar**: Implemented arithmetic precedence hierarchy (unary → multiplication → addition → equality → comparison)
-- **AST Extensions**: Added 4 new AST node types (:arithmetic, :equality, :unary, plus enhanced visitor support)
-- **Instruction Generation**: Arithmetic expressions compile to proper stack machine instructions
-- **Evaluator Enhancement**: Added 7 new instruction handlers with pattern matching for type safety
-- **Error Recovery**: Comprehensive error messages for parsing and evaluation phases
-- **Test Coverage**: 847 tests passing (92.6% coverage) with comprehensive arithmetic evaluation testing
-- **Code Quality**: Idiomatic Elixir pattern matching implementation, all quality checks passing
+#### Arithmetic and Unary Operations (Complete Implementation)
+- **Full Arithmetic Support**: Complete parsing and evaluation pipeline for arithmetic expressions
+  - **Binary operations**: `+` (addition), `-` (subtraction), `*` (multiplication), `/` (division), `%` (modulo)
+  - **Unary operations**: `-` (unary minus), `!` (unary bang/logical NOT)
+- **Proper Precedence**: Mathematical precedence handling (unary → multiplication → addition → equality → comparison)
+- **Instruction Execution**: Stack-based evaluator with 7 new instruction handlers
+- **Error Handling**: Division by zero protection, type checking, comprehensive error messages
+- **Pattern Matching**: Idiomatic Elixir implementation using pattern matching for clean code
 
 ## [2.0.0] - 2025-08-21
 
@@ -235,25 +192,14 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 - `Predicator.list_custom_functions/0` - No longer needed
 - `Predicator.Functions.Registry` module - Entire registry system removed
 
-#### Migration Guide
-1. **Replace registry calls**: Convert `register_function` calls to function maps passed to `evaluate/3`
-2. **Update function definitions**: Ensure functions return `{:ok, result}` or `{:error, message}`
-3. **Remove initialization code**: Delete any registry setup from application startup
-4. **Update tests**: Replace registry-based setup with evaluation-time function passing
+### Breaking Changes
 
-#### Technical Implementation
-- **Evaluator Enhancement**: Modified to accept `:functions` option and merge with system functions
-- **SystemFunctions Refactor**: Added `all_functions/0` to provide system functions in evaluator format
-- **Clean Architecture**: Removed ETS-based global registry and associated complexity
-- **Backward Compatibility**: `evaluate/2` functions continue to work unchanged for expressions without custom functions
-
-### Security
-- **Improved Isolation**: Custom functions scoped to individual evaluation calls
-- **No Global State**: Eliminates potential race conditions and global state mutations
-
-### Performance  
-- **Reduced Overhead**: No ETS lookups or global registry management
-- **Better Concurrency**: Thread-safe by design with no shared state
+#### v2.0.0 - Custom Function Architecture Overhaul
+- **Removed**: Global function registry system (`Predicator.Functions.Registry` module)
+- **Removed**: `Predicator.register_function/3`, `Predicator.clear_custom_functions/0`, `Predicator.list_custom_functions/0`
+- **Changed**: Custom functions now passed via `functions:` option in `evaluate/3` calls instead of global registration
+- **Benefit**: Thread-safe, no global state, per-evaluation function scoping
+- **Migration**: Replace registry calls with function maps passed to `evaluate/3`
 
 ## [1.1.0] - 2025-08-20
 
@@ -274,44 +220,12 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 - **AST Enhancement**: New `{:string_literal, value, quote_type}` AST node for quote-aware string handling
 - **Escape Sequences**: Full escape sequence support in both quote types (`\'`, `\"`, `\n`, `\t`, etc.)
 
-#### Examples
-```elixir
-# Basic nested access
-context = %{"user" => %{"name" => %{"first" => "John"}}}
-Predicator.evaluate("user.name.first = \"John\"", context)  # {:ok, true}
+### Breaking Changes
 
-# Complex expressions with nested access  
-Predicator.evaluate("user.profile.age > 18 AND config.enabled", context)
-
-# Mixed key types
-mixed_context = %{"user" => %{profile: %{"active" => true}}}
-Predicator.evaluate("user.profile.active", mixed_context)  # {:ok, true}
-
-# Single quoted strings with nested access
-Predicator.evaluate("user.name.first = 'John'", context)  # {:ok, true}
-
-# Quote type preservation in round-trip
-{:ok, ast} = Predicator.parse("user.role = 'admin'")
-Predicator.decompile(ast)  # "user.role = 'admin'"
-```
-
-#### Technical Implementation
-- **Lexer Enhancement**: Modified `take_identifier/3` to include dots in valid identifier characters
-- **Evaluator Enhancement**: Enhanced `load_from_context/2` with nested path detection and delegation
-- **Backwards Compatibility**: Simple variable names continue to work exactly as before
-- **Comprehensive Testing**: Added 100+ new tests covering nested access scenarios
-
-#### Breaking Changes
-- **Dotted Variable Names**: Variables containing dots (e.g., `"user.email"`) are now parsed as nested access paths rather than literal key names
-- **Flat Key Behavior**: Context keys like `"user.profile.name"` will no longer match the identifier `user.profile.name` - use proper nested structures instead
-
-### Security
-- No security implications - nested access maintains the same safe evaluation model
-- All nested paths are validated and type-checked during traversal
-
-### Performance
-- Minimal performance impact - dot notation detection adds only a string contains check
-- Recursive traversal is efficient and stops early for missing paths
+#### v1.1.0 - Nested Access Parsing
+- **Changed**: Variables containing dots (e.g., `"user.email"`) now parsed as nested access paths
+- **Impact**: Context keys like `"user.profile.name"` will no longer match identifier `user.profile.name`
+- **Solution**: Use proper nested data structures instead of flat keys with dots
 
 ## [1.0.1] - 2025-08-20
 
@@ -365,45 +279,6 @@ Predicator.decompile(ast)  # "user.role = 'admin'"
   - `parse/1` - Parse expressions to AST for inspection
 - **Formatting Options**: Configurable spacing (`:normal`, `:compact`, `:verbose`) and parentheses (`:minimal`, `:explicit`, `:none`)
 
-#### Code Organization
-- **Modular Architecture**: Clean separation of concerns across lexer, parser, compiler, evaluator
-- **Organized File Structure**:
-  - `lib/predicator/functions/` - Function system components
-  - `lib/predicator/visitors/` - AST transformation modules
-- **Comprehensive Testing**: 616 tests with 66 doctests, achieving >90% code coverage
-
-### Technical Details
-
-#### Grammar
-The language supports a complete expression grammar with proper operator precedence:
-```ebnf
-expression   → logical_or
-logical_or   → logical_and ( ("OR" | "or") logical_and )*
-logical_and  → logical_not ( ("AND" | "and") logical_not )*
-logical_not  → ("NOT" | "not") logical_not | comparison
-comparison   → primary ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) primary )?
-primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | function_call | "(" expression ")"
-function_call → IDENTIFIER "(" ( expression ( "," expression )* )? ")"
-list         → "[" ( expression ( "," expression )* )? "]"
-```
-
-#### Security
-- **No Dynamic Code Execution**: All expressions compiled to safe instruction sequences
-- **Input Validation**: Comprehensive validation at lexer and parser levels
-- **Type Safety**: Strong typing throughout compilation and evaluation pipeline
-- **Sandboxed Evaluation**: No access to system functions or arbitrary code execution
-
-#### Performance
-- **Efficient Tokenization**: Single-pass lexer with position tracking
-- **Recursive Descent Parser**: Clean, maintainable parsing with excellent error recovery
-- **Optimized Instruction Set**: Minimal instruction overhead for fast evaluation
-- **Memory Efficient**: Low allocation during expression evaluation
-
-### Dependencies
-- **Runtime**: Zero external dependencies for core functionality
-- **Development**: Credo, Dialyzer, ExCoveralls for code quality and testing
-- **Minimum Elixir**: ~> 1.11
-
 ### Breaking Changes
 
 **⚠️ COMPLETE LIBRARY REWRITE ⚠️**
@@ -414,7 +289,7 @@ Version 1.0.0 is a **complete rewrite** of the Predicator library with entirely 
 - Internal architecture and data structures
 - Feature set and capabilities
 
-### Migration Guide
+#### Migration Guide
 
 **Migration from versions < 1.0.0 has NOT been tested and is NOT guaranteed to work.**
 
@@ -426,85 +301,6 @@ If you are upgrading from a pre-1.0.0 version:
 5. **Plan for significant refactoring** of existing expressions
 
 Future 1.x.x versions will maintain backwards compatibility and include proper migration guides.
-
----
-
-## Legacy Versions (Pre-1.0.0)
-
-The following versions are part of the original Predicator implementation, which has been completely rewritten for 1.0.0:
-
-## [0.9.2]
-
-### Documentation
-- Adds additional information to README
-- Adds documentation to functions in Predicator
-
-### Enhancements
-- Adds `compile!`, `evaluate`, `evaluate!`, `evaluate_instructions`, `evaluate_instructions!` functions to Predicator
-- Adds `Ecto.PredicatorInstructions` Ecto type
-
-## [0.9.1]
-
-### Documentation
-- Moves project from [predicator/predicator_elixir](https://github.com/predicator/predicator_elixir) to [riddler/predicator](https://github.com/riddler/predicator/tree/master/impl/ex)
-
-## [0.9.0]
-
-### Breaking Changes
-- Evaluates `compare` instead of `comparator` to be compatible with ruby predicator lib
-
-## [0.8.1]
-
-### Enhancements
-- Adds leex and parsing for `and` and `or`
-- Adds leex and parsing for `!` and boolean
-
-## [0.8.0]
-
-### Added
-- **Predicator.matches?/3** accepts evaluator options
-
-### Enhancements
-- Adds leex and parsing for `isblank` and `ispresent`
-- Supports escaped double quote strings
-
-### Fixed
-- `in` and `notin` accept list of strings
-
-## [0.7.3]
-
-### Enhancements
-- Adds leex and parsing for `in`, `notin`, `between`, `startswith`, `endswith` instructions
-
-## [0.7.1]
-
-### Added
-- Adds `between` instruction for eval on dates
-
-## [0.7.0]
-
-### Added
-- Adds 2 new comparison predicates for `starts_with` & `ends_with`
-
-## [0.6.0]
-
-### Added
-- Adds 3 new evaluatable predicates for `to_date`, `date_ago`, and `date_from_now`
-
-## [0.5.0]
-
-### Changed
-- Evaluator now reads new coercion instructions `to_int`, `to_str`, & `to_bool`
-
-## [0.4.0]
-
-### Added
-- Adds 4 new functions to the `Predicator` module: `eval/3`, `leex_string/1`, `parsed_lexed/1`, & `leex_and_parse/1`
-
-## [0.3.0]
-
-### Enhancements
-- Adds options to **Predicator.Evaluator.execute/3** as a keyword list to define if the context map is a string keyed list `[map_type: :string]` or atom keyed for the default `[map_type: :atom]`
 
 ---
 

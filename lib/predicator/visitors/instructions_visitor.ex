@@ -65,6 +65,12 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     [["load", name]]
   end
 
+  def visit({:property_access, left, property}, opts) do
+    # Generate instructions for property access: left_object, property_name, access
+    left_instructions = visit(left, opts)
+    left_instructions ++ [["access", property]]
+  end
+
   def visit({:comparison, op, left, right}, opts) do
     # Post-order traversal: left operand, right operand, then operator
     left_instructions = visit(left, opts)

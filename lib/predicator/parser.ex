@@ -22,7 +22,7 @@ defmodule Predicator.Parser do
       addition     → multiplication ( ( "+" | "-" ) multiplication )*
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
       unary        → ( "-" | "!" ) unary | postfix
-      postfix      → primary ( "[" expression "]" )*
+      postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
       primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
       function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
       list         → "[" ( expression ( "," expression )* )? "]"
@@ -610,6 +610,25 @@ defmodule Predicator.Parser do
 
           {:error, message, line, col} ->
             {:error, message, line, col}
+        end
+
+      {:dot, _line, _col, _len, _value} ->
+        # Parse property access: expr.property
+        dot_state = advance(state)
+
+        case peek_token(dot_state) do
+          {:identifier, _line, _col, _len, property_name} ->
+            property_access = {:property_access, expr, property_name}
+            final_state = advance(dot_state)
+            # Recursively parse more postfix operations
+            parse_postfix_operations(property_access, final_state)
+
+          {type, line, col, _len, value} ->
+            {:error, "Expected property name after '.' but found #{format_token(type, value)}",
+             line, col}
+
+          nil ->
+            {:error, "Expected property name after '.' but found end of input", 1, 1}
         end
 
       _other ->

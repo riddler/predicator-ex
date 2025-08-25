@@ -216,6 +216,12 @@ defmodule Predicator.Evaluator do
     {:ok, push_stack(evaluator, value)}
   end
 
+  # Property access instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["access", property])
+       when is_binary(property) do
+    execute_access(evaluator, property)
+  end
+
   # Comparison instruction
   defp execute_instruction(%__MODULE__{} = evaluator, ["compare", operator])
        when operator in ["GT", "LT", "EQ", "GTE", "LTE", "NE"] do
@@ -315,6 +321,21 @@ defmodule Predicator.Evaluator do
 
   defp execute_compare(%__MODULE__{stack: stack}, _operator) do
     {:error, EvaluationError.insufficient_operands(:comparison, length(stack), 2)}
+  end
+
+  # Execute property access: pop object from stack, access property, push result
+  defp execute_access(%__MODULE__{stack: [object | rest]} = evaluator, property) do
+    case access_value(object, property) do
+      {:ok, value} ->
+        {:ok, %__MODULE__{evaluator | stack: [value | rest]}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp execute_access(%__MODULE__{stack: stack}, _property) do
+    {:error, EvaluationError.insufficient_operands(:access, length(stack), 1)}
   end
 
   # Custom guard for type matching
@@ -757,71 +778,21 @@ defmodule Predicator.Evaluator do
   @spec load_from_context(Types.context(), binary()) :: Types.value()
   defp load_from_context(context, variable_name)
        when is_map(context) and is_binary(variable_name) do
-    # Check if this is a dotted path (nested access)
-    if String.contains?(variable_name, ".") do
-      load_nested_value(context, String.split(variable_name, "."))
-    else
-      # Try string key first, then atom key
-      case Map.get(context, variable_name) do
-        nil ->
-          # Try as atom key if string key doesn't exist
-          atom_key = String.to_existing_atom(variable_name)
-          Map.get(context, atom_key, :undefined)
-
-        value ->
-          value
-      end
-    end
-  rescue
-    ArgumentError ->
-      # String.to_existing_atom failed, variable doesn't exist
-      :undefined
-  end
-
-  # Helper function to traverse nested data structures using dot notation
-  @spec load_nested_value(map() | Types.value(), [binary()]) :: Types.value()
-  defp load_nested_value(_value, []), do: :undefined
-  defp load_nested_value(value, [_key | _rest]) when not is_map(value), do: :undefined
-
-  defp load_nested_value(value, [key]) when is_map(value) do
-    # Final key, return the value
-    case Map.get(value, key) do
+    # Try string key first, then atom key
+    case Map.get(context, variable_name) do
       nil ->
         # Try as atom key if string key doesn't exist
         try do
-          atom_key = String.to_existing_atom(key)
-          Map.get(value, atom_key, :undefined)
+          atom_key = String.to_existing_atom(variable_name)
+          Map.get(context, atom_key, :undefined)
         rescue
           ArgumentError ->
+            # String.to_existing_atom failed, variable doesn't exist
             :undefined
         end
 
-      result ->
-        result
-    end
-  end
-
-  defp load_nested_value(value, [key | rest_keys]) when is_map(value) do
-    # Get the next nested value and continue traversing
-    next_value =
-      case Map.get(value, key) do
-        nil ->
-          # Try as atom key if string key doesn't exist
-          try do
-            atom_key = String.to_existing_atom(key)
-            Map.get(value, atom_key)
-          rescue
-            ArgumentError ->
-              nil
-          end
-
-        result ->
-          result
-      end
-
-    case next_value do
-      nil -> :undefined
-      nested_value -> load_nested_value(nested_value, rest_keys)
+      value ->
+        value
     end
   end
 end
