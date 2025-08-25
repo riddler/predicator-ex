@@ -11,14 +11,23 @@ defmodule Predicator.Types do
 
   Values can be:
   - `boolean()` - true/false values
-  - `integer()` - numeric values  
+  - `integer()` - integer numeric values  
+  - `float()` - floating-point numeric values
   - `binary()` - string values
   - `list()` - lists of values
   - `Date.t()` - date values
   - `DateTime.t()` - datetime values
   - `:undefined` - represents undefined/null values
   """
-  @type value :: boolean() | integer() | binary() | list() | Date.t() | DateTime.t() | :undefined
+  @type value ::
+          boolean()
+          | integer()
+          | float()
+          | binary()
+          | list()
+          | Date.t()
+          | DateTime.t()
+          | :undefined
 
   @typedoc """
   The evaluation context containing variable bindings.

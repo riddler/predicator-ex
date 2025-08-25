@@ -319,7 +319,7 @@ defmodule Predicator.Evaluator do
 
   # Custom guard for type matching
   defguard types_match(a, b)
-           when (is_integer(a) and is_integer(b)) or
+           when (is_number(a) and is_number(b)) or
                   (is_boolean(a) and is_boolean(b)) or
                   (is_binary(a) and is_binary(b)) or
                   (is_list(a) and is_list(b)) or
@@ -467,47 +467,76 @@ defmodule Predicator.Evaluator do
 
   @spec execute_arithmetic(t(), :add | :subtract | :multiply | :divide | :modulo) ::
           {:ok, t()} | {:error, term()}
-  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :add)
-       when is_integer(left) and is_integer(right) do
-    {:ok, %__MODULE__{evaluator | stack: [left + right | rest]}}
+  # Addition with type coercion
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :add) do
+    result = apply_addition(left, right)
+
+    case result do
+      {:ok, value} ->
+        {:ok, %__MODULE__{evaluator | stack: [value | rest]}}
+
+      {:error, _error} = error_result ->
+        error_result
+    end
   end
 
+  # Subtraction - numeric only
   defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :subtract)
-       when is_integer(left) and is_integer(right) do
+       when is_number(left) and is_number(right) do
     {:ok, %__MODULE__{evaluator | stack: [left - right | rest]}}
   end
 
+  # Multiplication - numeric only
   defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :multiply)
-       when is_integer(left) and is_integer(right) do
+       when is_number(left) and is_number(right) do
     {:ok, %__MODULE__{evaluator | stack: [left * right | rest]}}
   end
 
+  # Division by zero check for integers
   defp execute_arithmetic(%__MODULE__{stack: [0 | [_left | _rest]]}, :divide) do
     {:error, EvaluationError.new("Division by zero", "division_by_zero", :divide)}
   end
 
-  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :divide)
-       when is_integer(left) and is_integer(right) do
-    {:ok, %__MODULE__{evaluator | stack: [div(left, right) | rest]}}
+  # Division by zero check for floats
+  defp execute_arithmetic(%__MODULE__{stack: [right | [_left | _rest]]}, :divide)
+       when is_float(right) and right == 0.0 do
+    {:error, EvaluationError.new("Division by zero", "division_by_zero", :divide)}
   end
 
+  # Division - numeric only
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :divide)
+       when is_number(left) and is_number(right) do
+    result =
+      if is_integer(left) and is_integer(right) do
+        div(left, right)
+      else
+        left / right
+      end
+
+    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
+  end
+
+  # Modulo by zero check
   defp execute_arithmetic(%__MODULE__{stack: [0 | [_left | _rest]]}, :modulo) do
     {:error, EvaluationError.new("Modulo by zero", "modulo_by_zero", :modulo)}
   end
 
+  # Modulo - integers only (rem doesn't work well with floats)
   defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :modulo)
        when is_integer(left) and is_integer(right) do
     {:ok, %__MODULE__{evaluator | stack: [rem(left, right) | rest]}}
   end
 
-  defp execute_arithmetic(%__MODULE__{stack: [right | [left | _rest]]}, operation) do
+  # Type mismatch for non-addition operations
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | _rest]]}, operation)
+       when operation != :add do
     left_type = get_value_type(left)
     right_type = get_value_type(right)
 
     {:error,
      TypeMismatchError.binary(
        operation,
-       :integer,
+       :number,
        {left_type, right_type},
        {left, right}
      )}
@@ -517,8 +546,39 @@ defmodule Predicator.Evaluator do
     {:error, EvaluationError.insufficient_operands(operation, length(stack), 2)}
   end
 
+  # Helper function for addition with type coercion
+  defp apply_addition(left, right) when is_number(left) and is_number(right) do
+    {:ok, left + right}
+  end
+
+  defp apply_addition(left, right) when is_binary(left) and is_binary(right) do
+    {:ok, left <> right}
+  end
+
+  defp apply_addition(left, right) when is_binary(left) and is_number(right) do
+    {:ok, left <> to_string(right)}
+  end
+
+  defp apply_addition(left, right) when is_number(left) and is_binary(right) do
+    {:ok, to_string(left) <> right}
+  end
+
+  defp apply_addition(left, right) do
+    left_type = get_value_type(left)
+    right_type = get_value_type(right)
+
+    {:error,
+     TypeMismatchError.binary(
+       :add,
+       :number_or_string,
+       {left_type, right_type},
+       {left, right}
+     )}
+  end
+
   # Helper function to get the type of a value for error reporting
   defp get_value_type(value) when is_integer(value), do: :integer
+  defp get_value_type(value) when is_float(value), do: :float
   defp get_value_type(value) when is_boolean(value), do: :boolean
   defp get_value_type(value) when is_binary(value), do: :string
   defp get_value_type(value) when is_list(value), do: :list
@@ -529,7 +589,7 @@ defmodule Predicator.Evaluator do
 
   @spec execute_unary(t(), :minus | :bang) :: {:ok, t()} | {:error, term()}
   defp execute_unary(%__MODULE__{stack: [value | rest]} = evaluator, :minus)
-       when is_integer(value) do
+       when is_number(value) do
     result = -value
     {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
   end
@@ -542,7 +602,7 @@ defmodule Predicator.Evaluator do
 
   defp execute_unary(%__MODULE__{stack: [value | _rest]}, :minus) do
     got_type = get_value_type(value)
-    {:error, TypeMismatchError.unary(:unary_minus, :integer, got_type, value)}
+    {:error, TypeMismatchError.unary(:unary_minus, :number, got_type, value)}
   end
 
   defp execute_unary(%__MODULE__{stack: [value | _rest]}, :bang) do

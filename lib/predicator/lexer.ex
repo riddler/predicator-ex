@@ -174,7 +174,14 @@ defmodule Predicator.Lexer do
       # Numbers
       c when c >= ?0 and c <= ?9 ->
         {number, remaining, consumed} = take_number([char | rest])
-        token = {:integer, line, col, consumed, number}
+
+        token =
+          if is_integer(number) do
+            {:integer, line, col, consumed, number}
+          else
+            {:float, line, col, consumed, number}
+          end
+
         tokenize_chars(remaining, line, col + consumed, [token | tokens])
 
       # Identifiers (including potential function calls)
@@ -352,18 +359,43 @@ defmodule Predicator.Lexer do
   end
 
   # Helper functions
-  @spec take_number(charlist()) :: {integer(), charlist(), pos_integer()}
-  defp take_number(chars), do: take_number(chars, [], 0)
+  @spec take_number(charlist()) :: {number(), charlist(), pos_integer()}
+  defp take_number(chars), do: take_number(chars, [], 0, false)
 
-  @spec take_number(charlist(), charlist(), non_neg_integer()) ::
-          {integer(), charlist(), pos_integer()}
-  defp take_number([c | rest], acc, count) when c >= ?0 and c <= ?9 do
-    take_number(rest, [c | acc], count + 1)
+  @spec take_number(charlist(), charlist(), non_neg_integer(), boolean()) ::
+          {number(), charlist(), pos_integer()}
+  defp take_number([c | rest], acc, count, has_decimal) when c >= ?0 and c <= ?9 do
+    take_number(rest, [c | acc], count + 1, has_decimal)
   end
 
-  defp take_number(remaining, acc, count) do
+  # Handle decimal point - only one allowed
+  defp take_number([?. | rest] = chars, acc, count, false) do
+    # Check if there's at least one digit after the decimal
+    case rest do
+      [next | _remaining] when next >= ?0 and next <= ?9 ->
+        take_number(rest, [?. | acc], count + 1, true)
+
+      _no_digits_after_decimal ->
+        # No digit after decimal, treat as end of number
+        finalize_number(chars, acc, count, false)
+    end
+  end
+
+  defp take_number(remaining, acc, count, has_decimal) do
+    finalize_number(remaining, acc, count, has_decimal)
+  end
+
+  defp finalize_number(remaining, acc, count, has_decimal) do
     number_string = acc |> Enum.reverse() |> List.to_string()
-    {String.to_integer(number_string), remaining, count}
+
+    number =
+      if has_decimal do
+        String.to_float(number_string)
+      else
+        String.to_integer(number_string)
+      end
+
+    {number, remaining, count}
   end
 
   @spec take_identifier(charlist()) :: {binary(), charlist(), pos_integer()}

@@ -104,7 +104,7 @@ defmodule UnaryEvaluationTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                Evaluator.evaluate(instructions, %{})
 
-      assert String.contains?(msg, "Unary minus requires an integer, got [1, 2, 3] (list)")
+      assert String.contains?(msg, "Unary minus requires a number, got [1, 2, 3] (list)")
     end
 
     test "unary minus with empty stack" do
@@ -237,15 +237,15 @@ defmodule UnaryEvaluationTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                evaluate("-a * b + !flag", %{"a" => 4, "b" => 5, "flag" => false})
 
-      assert String.contains?(msg, "Arithmetic add requires integers, got") and
-               String.contains?(msg, "integer") and String.contains?(msg, "boolean")
+      assert String.contains?(msg, "Arithmetic add requires") and
+               String.contains?(msg, "number_or_string") and String.contains?(msg, "boolean")
     end
 
     test "unary minus type error in pipeline" do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                evaluate("-name", %{"name" => "Alice"})
 
-      assert String.contains?(msg, "Unary minus requires an integer, got") and
+      assert String.contains?(msg, "Unary minus requires a number, got") and
                String.contains?(msg, "Alice") and String.contains?(msg, "string")
     end
 

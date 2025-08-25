@@ -27,7 +27,7 @@ addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
 postfix      → primary ( "[" expression "]" )*
-primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | function_call | "(" expression ")"
+primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | function_call | "(" expression ")"
 function_call → IDENTIFIER "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
 ```
@@ -76,11 +76,11 @@ mix dialyzer              # Type checking
 
 ### Coverage Stats
 - **Overall**: 92.2%
-- **Evaluator**: 95.7% (arithmetic, unary, and all operations)
+- **Evaluator**: 95.7% (arithmetic with type coercion, unary, and all operations)
 - **StringVisitor**: 97.5% (all formatting options)
 - **InstructionsVisitor**: 95.2% (all AST node types)
-- **Lexer**: 98.4% (all token types including arithmetic)
-- **Parser**: 86.4% (complex expressions with precedence) 
+- **Lexer**: 98.4% (all token types including floats and arithmetic)
+- **Parser**: 86.4% (complex expressions with precedence and float support) 
 - **Target**: >90% for all components ✅
 
 ## Key Design Decisions
@@ -134,6 +134,23 @@ test/predicator/
 ```
 
 ## Recent Additions (2025)
+
+### Type Coercion and Float Support (v2.3.0)
+- **Float Literals**: Lexer supports floating-point numbers (e.g., `3.14`, `0.5`)
+- **Numeric Types**: Both integers and floats supported in arithmetic operations
+- **String Concatenation**: `+` operator performs string concatenation when at least one operand is a string
+- **Type Coercion Rules**:
+  - Number + Number → Numeric addition
+  - String + String → String concatenation  
+  - String + Number → String concatenation (number converted to string)
+  - Number + String → String concatenation (number converted to string)
+- **Examples**:
+  ```elixir
+  Predicator.evaluate("3.14 * 2", %{})           # {:ok, 6.28}
+  Predicator.evaluate("'Hello' + ' World'", %{}) # {:ok, "Hello World"}
+  Predicator.evaluate("'Count: ' + 42", %{})     # {:ok, "Count: 42"}
+  Predicator.evaluate("100 + ' items'", %{})     # {:ok, "100 items"}
+  ```
 
 ### Function System (v2.0.0 - Architecture Overhaul)
 - **Built-in Functions**: System functions automatically available in all evaluations

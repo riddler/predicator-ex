@@ -97,12 +97,14 @@ defmodule Predicator do
       iex> Predicator.evaluate([["lit", 42]])
       {:ok, 42}
 
-      # Error handling
-      iex> {:error, error} = Predicator.evaluate("score + 'hello'", %{"score" => 5})
-      iex> error.message
-      "Arithmetic add requires integers, got 5 (integer) and \\\"hello\\\" (string)"
-      iex> error.expected
-      :integer
+      # Type coercion with + operator (string concatenation)
+      iex> Predicator.evaluate("score + 'hello'", %{"score" => 5})
+      {:ok, "5hello"}
+      
+      # Error handling for incompatible types  
+      iex> {:error, error} = Predicator.evaluate("score * true", %{"score" => 5})
+      iex> String.contains?(error.message, "multiply requires")
+      true
   """
   @spec evaluate(
           binary() | Types.instruction_list(),
