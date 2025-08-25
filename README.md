@@ -76,6 +76,19 @@ true
 iex> Predicator.evaluate!("-amount > -50", %{"amount" => 30})
 true
 
+# Float support and type coercion
+iex> Predicator.evaluate!("3.14 * 2", %{})
+6.28
+
+iex> Predicator.evaluate!("'Hello' + ' World'", %{})
+"Hello World"
+
+iex> Predicator.evaluate!("'Count: ' + 42", %{})
+"Count: 42"
+
+iex> Predicator.evaluate!("score + ' points'", %{"score" => 100})
+"100 points"
+
 # Logical operators with proper precedence
 iex> Predicator.evaluate!("score > 85 AND age >= 18", %{"score" => 92, "age" => 25})
 true
@@ -310,7 +323,7 @@ addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
 postfix      → primary ( "[" expression "]" )*
-primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
+primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
 function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
 ```

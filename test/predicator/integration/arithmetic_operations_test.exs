@@ -115,24 +115,24 @@ defmodule ArithmeticEvaluationTest do
   end
 
   describe "arithmetic error conditions" do
-    test "addition with non-integer left operand" do
+    test "addition with string concatenation (type coercion)" do
+      # String + number now performs concatenation
       instructions = [["lit", "hello"], ["lit", 5], ["add"]]
+      assert "hello5" = Evaluator.evaluate(instructions, %{})
 
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
-               Evaluator.evaluate(instructions, %{})
-
-      assert String.contains?(msg, "Arithmetic add requires integers, got") and
-               String.contains?(msg, "hello") and String.contains?(msg, "string")
+      # Number + string also performs concatenation
+      instructions2 = [["lit", 5], ["lit", " items"], ["add"]]
+      assert "5 items" = Evaluator.evaluate(instructions2, %{})
     end
 
-    test "addition with non-integer right operand" do
+    test "addition with incompatible types (boolean)" do
       instructions = [["lit", 5], ["lit", true], ["add"]]
 
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                Evaluator.evaluate(instructions, %{})
 
-      assert String.contains?(msg, "Arithmetic add requires integers, got") and
-               String.contains?(msg, "integer") and String.contains?(msg, "boolean")
+      assert String.contains?(msg, "Arithmetic add requires") and
+               String.contains?(msg, "number_or_string") and String.contains?(msg, "boolean")
     end
 
     test "subtraction with boolean operands" do
@@ -141,8 +141,8 @@ defmodule ArithmeticEvaluationTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                Evaluator.evaluate(instructions, %{})
 
-      assert String.contains?(msg, "Arithmetic subtract requires integers, got") and
-               String.contains?(msg, "boolean")
+      assert String.contains?(msg, "Arithmetic subtract requires") and
+               String.contains?(msg, "number") and String.contains?(msg, "boolean")
     end
 
     test "multiplication with mixed types" do
@@ -151,8 +151,8 @@ defmodule ArithmeticEvaluationTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                Evaluator.evaluate(instructions, %{})
 
-      assert String.contains?(msg, "Arithmetic multiply requires integers, got") and
-               String.contains?(msg, "integer") and String.contains?(msg, "string")
+      assert String.contains?(msg, "Arithmetic multiply requires") and
+               String.contains?(msg, "number") and String.contains?(msg, "string")
     end
 
     test "division with string operands" do
@@ -161,8 +161,8 @@ defmodule ArithmeticEvaluationTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                Evaluator.evaluate(instructions, %{})
 
-      assert String.contains?(msg, "Arithmetic divide requires integers, got") and
-               String.contains?(msg, "string")
+      assert String.contains?(msg, "Arithmetic divide requires") and
+               String.contains?(msg, "number") and String.contains?(msg, "string")
     end
 
     test "modulo with list operands" do
@@ -171,8 +171,8 @@ defmodule ArithmeticEvaluationTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                Evaluator.evaluate(instructions, %{})
 
-      assert String.contains?(msg, "Arithmetic modulo requires integers, got") and
-               String.contains?(msg, "list")
+      assert String.contains?(msg, "Arithmetic modulo requires") and
+               String.contains?(msg, "number") and String.contains?(msg, "list")
     end
 
     test "addition with insufficient stack values" do
@@ -211,8 +211,8 @@ defmodule ArithmeticEvaluationTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
                Evaluator.evaluate(instructions, %{})
 
-      assert String.contains?(msg, "add requires integers, got") and
-               String.contains?(msg, "undefined")
+      assert String.contains?(msg, "add requires") and
+               String.contains?(msg, "number_or_string") and String.contains?(msg, "undefined")
     end
   end
 
@@ -267,13 +267,16 @@ defmodule ArithmeticEvaluationTest do
       assert msg == "Division by zero"
     end
 
-    test "arithmetic type error in full pipeline" do
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
-               evaluate("name + 5", %{"name" => "Alice"})
+    test "arithmetic with type coercion in full pipeline" do
+      # String + number now performs concatenation
+      assert {:ok, "Alice5"} = evaluate("name + 5", %{"name" => "Alice"})
+      assert {:ok, "5 items"} = evaluate("5 + ' items'", %{})
 
-      assert String.contains?(msg, "Arithmetic add requires integers, got") and
-               String.contains?(msg, "Alice") and String.contains?(msg, "string") and
-               String.contains?(msg, "integer")
+      # But other arithmetic operations still require numbers
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} =
+               evaluate("name * 5", %{"name" => "Alice"})
+
+      assert String.contains?(msg, "multiply requires") and String.contains?(msg, "number")
     end
   end
 end

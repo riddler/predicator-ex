@@ -23,7 +23,7 @@ defmodule Predicator.Parser do
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
       unary        → ( "-" | "!" ) unary | postfix
       postfix      → primary ( "[" expression "]" )*
-      primary      → NUMBER | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
+      primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
       function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
       list         → "[" ( expression ( "," expression )* )? "]"
 
@@ -632,6 +632,11 @@ defmodule Predicator.Parser do
     {:ok, {:literal, value}, advance(state)}
   end
 
+  # Parse float literal
+  defp parse_primary_token(state, {:float, _line, _col, _len, value}) do
+    {:ok, {:literal, value}, advance(state)}
+  end
+
   # Parse string literal
   defp parse_primary_token(state, {:string, _line, _col, _len, value, quote_type}) do
     {:ok, {:string_literal, value, quote_type}, advance(state)}
@@ -718,6 +723,7 @@ defmodule Predicator.Parser do
 
   @spec format_token(atom(), term()) :: binary()
   defp format_token(:integer, value), do: "number '#{value}'"
+  defp format_token(:float, value), do: "number '#{value}'"
   defp format_token(:string, value), do: "string \"#{value}\""
   defp format_token(:boolean, value), do: "boolean '#{value}'"
   defp format_token(:date, value), do: "date '#{Date.to_iso8601(value)}'"

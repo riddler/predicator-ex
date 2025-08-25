@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Type Coercion and Float Support
+- **Float Literal Support**: Extended lexer to parse floating-point numbers (e.g., `3.14`, `0.5`)
+- **Float Token Type**: Added `:float` token type to distinguish from integers
+- **Parser Float Handling**: Updated parser to handle float tokens and create appropriate AST nodes
+- **Arithmetic with Floats**: All arithmetic operations now support both integers and floats
+  - Addition, subtraction, multiplication work seamlessly with mixed numeric types
+  - Division returns float when needed, integer when evenly divisible
+  - Modulo remains integer-only as per mathematical conventions
+- **String Concatenation with `+` Operator**: Implemented JavaScript-like type coercion
+  - `"Hello" + "World"` → `"HelloWorld"` (string concatenation)
+  - `"Count: " + 5` → `"Count: 5"` (string + number coercion)
+  - `42 + " items"` → `"42 items"` (number + string coercion)
+- **Type Coercion Rules**: 
+  - Number + Number → Numeric addition (supports mixed int/float)
+  - String + String → String concatenation
+  - String + Number → String concatenation (number converted to string)
+  - Number + String → String concatenation (number converted to string)
+- **Comparison Enhancements**: Numbers of different types (int/float) can be compared
+- **Unary Minus for Floats**: Unary minus operator now works with floating-point numbers
+- **Error Message Updates**: Updated error messages from "integer" to "number" where appropriate
+- **Comprehensive Testing**: Added 28 new tests covering all type coercion scenarios
+
 ## [2.2.0] - 2025-08-24
 
 ### Added
