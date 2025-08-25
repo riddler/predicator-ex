@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.0.0] - TBD
+## [3.0.0] - 2025-08-25
 
 ### Added
 
@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ```elixir
 # Valid assignment targets resolve to location paths
 Predicator.context_location("user.profile.name", %{})                    # {:ok, ["user", "profile", "name"]}
-Predicator.context_location("items[0]", %{})                             # {:ok, ["items", 0]}  
+Predicator.context_location("items[0]", %{})                             # {:ok, ["items", 0]}
 Predicator.context_location("data['users'][index]['profile']", %{"index" => 2})  # {:ok, ["data", "users", 2, "profile"]}
 
 # Invalid assignment targets return structured errors
@@ -68,7 +68,7 @@ Predicator.context_location("score + 1", %{})                            # {:err
   - `"Hello" + "World"` → `"HelloWorld"` (string concatenation)
   - `"Count: " + 5` → `"Count: 5"` (string + number coercion)
   - `42 + " items"` → `"42 items"` (number + string coercion)
-- **Type Coercion Rules**: 
+- **Type Coercion Rules**:
   - Number + Number → Numeric addition (supports mixed int/float)
   - String + String → String concatenation
   - String + Number → String concatenation (number converted to string)
@@ -101,7 +101,7 @@ This is a **major breaking change** affecting how dot notation is parsed and eva
 context = %{"user.email" => "john@example.com"}
 Predicator.evaluate("user.email = 'john@example.com'", context)  # No longer matches
 
-# AFTER (v3.0.0+) - Use proper nested structures  
+# AFTER (v3.0.0+) - Use proper nested structures
 context = %{"user" => %{"email" => "john@example.com"}}
 Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correctly
 ```
@@ -122,7 +122,7 @@ Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correct
 
 ### Added
 
-#### Bracket Access and Property Access Enhancement  
+#### Bracket Access and Property Access Enhancement
 - **Complete Bracket Notation Support**: Implemented full bracket access functionality (`obj['key']`, `arr[0]`, `obj[variable]`)
 - **Parser Extensions**: Added postfix parsing for bracket access with recursive chaining support
 - **Grammar Enhancement**: Updated grammar with postfix operations: `unary → postfix`, `postfix → primary ( "[" expression "]" )*`
@@ -239,7 +239,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 #### Core Language Features
 - **Comparison Operators**: Full support for `>`, `<`, `>=`, `<=`, `=`, `!=` with proper type handling
 - **Logical Operators**: Case-insensitive `AND`/`and`, `OR`/`or`, `NOT`/`not` with correct precedence
-- **Data Types**: 
+- **Data Types**:
   - Numbers (integers): `42`, `-17`
   - Strings (double-quoted): `"hello"`, `"world"`
   - Booleans: `true`, `false`
@@ -249,7 +249,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
   - Identifiers: `score`, `user_name`, `is_active`
 
 #### Advanced Operations
-- **Membership Operators**: 
+- **Membership Operators**:
   - `in` for element-in-collection testing (`role in ["admin", "manager"]`)
   - `contains` for collection-contains-element testing (`[1, 2, 3] contains 2`)
 - **Parenthesized Expressions**: Full support with proper precedence handling
