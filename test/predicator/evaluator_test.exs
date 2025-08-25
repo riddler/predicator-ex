@@ -89,7 +89,6 @@ defmodule Predicator.EvaluatorTest do
     end
   end
 
-
   describe "evaluate/2 with mixed instructions" do
     test "load then literal" do
       instructions = [
