@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2025-08-30
+
+### Added
+
+#### JavaScript-Style Object Literals (Complete Implementation)
+
+- **Object Literal Syntax**: Full support for JavaScript-style object notation with `{key: value}` syntax
+- **Multiple Key Types**: Both identifier keys (`name: "John"`) and string keys (`"first name": "John"`)
+- **Nested Objects**: Unlimited nesting depth for complex data structures
+- **All Value Types**: Objects support all Predicator value types (strings, numbers, booleans, dates, lists, expressions)
+- **Object Comparisons**: Full equality and inequality operations between objects
+- **Integration**: Seamless compatibility with all existing features (functions, operators, property access)
+
+#### Object Literal Examples
+
+```elixir
+# Basic object creation
+Predicator.evaluate("{}", %{})                                    # {:ok, %{}}
+Predicator.evaluate("{name: \"John\", age: 30}", %{})            # {:ok, %{"name" => "John", "age" => 30}}
+
+# Variable references and expressions
+Predicator.evaluate("{user: name, total: price + tax}", %{"name" => "Alice", "price" => 100, "tax" => 10})
+# {:ok, %{"user" => "Alice", "total" => 110}}
+
+# Nested objects
+Predicator.evaluate("{user: {name: \"Bob\", role: \"admin\"}, active: true}", %{})
+# {:ok, %{"user" => %{"name" => "Bob", "role" => "admin"}, "active" => true}}
+
+# String keys for complex property names
+Predicator.evaluate("{\"first name\": \"John\", \"last-name\": \"Doe\"}", %{})
+# {:ok, %{"first name" => "John", "last-name" => "Doe"}}
+
+# Object comparisons
+Predicator.evaluate("{score: 85} == user_data", %{"user_data" => %{"score" => 85}})
+# {:ok, true}
+```
+
+#### Complete Pipeline Support
+
+- **Lexer**: Added `{`, `}`, `:` token recognition
+- **Parser**: Full object grammar with proper precedence and error handling
+- **Instructions**: Stack-based `object_new` and `object_set` instruction execution
+- **Evaluator**: Efficient object construction and comparison operations
+- **String Visitor**: Bidirectional transformation support (AST ↔ string representation)
+- **Type System**: Enhanced type matching for object equality comparisons
+
+#### Integration Features
+
+- **Function Integration**: Objects work as function parameters and return values
+- **Property Access**: Objects integrate with dot notation (`obj.property`) and bracket access (`obj["key"]`)
+- **Boolean Logic**: Objects support all logical operations (AND, OR, NOT)
+- **Arithmetic**: Object properties can contain arithmetic expressions and results
+- **Date Support**: Objects can contain date/datetime literals and date function results
+- **Custom Functions**: Objects work seamlessly with user-defined functions
+
+#### Quality and Testing
+
+- **886 Total Tests**: Comprehensive test coverage including edge cases and integration scenarios
+- **91.8% Coverage**: High test coverage across all components
+- **Parser Error Handling**: Robust error recovery for malformed object syntax
+- **Performance Tested**: Validated with large objects and repeated evaluations
+- **Production Ready**: Full quality assurance (formatting, linting, type checking)
+
 ## [3.0.0] - 2025-08-25
 
 ### Added

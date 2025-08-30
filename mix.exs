@@ -1,6 +1,7 @@
 defmodule Predicator.MixProject do
   use Mix.Project
 
+  @app :predicator
   @version "3.0.0"
   @description "A secure, non-evaling condition (boolean predicate) engine for end users"
   @source_url "https://github.com/riddler/predicator-ex"
@@ -15,7 +16,7 @@ defmodule Predicator.MixProject do
 
   def project do
     [
-      app: :predicator,
+      app: @app,
       version: @version,
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
@@ -48,15 +49,14 @@ defmodule Predicator.MixProject do
 
   def application do
     [
-      extra_applications: [:logger],
-      mod: {Predicator.Application, []}
+      extra_applications: [:logger]
     ]
   end
 
   defp package do
     [
-      name: :predicator,
-      files: ~w(lib mix.exs README.md LICENSE CHANGELOG.md),
+      name: @app,
+      files: ~w(lib/predicator* mix.exs README.md LICENSE CHANGELOG.md),
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
       maintainers: ["Predicator Team"]
@@ -69,7 +69,7 @@ defmodule Predicator.MixProject do
       source_ref: "v#{@version}",
       canonical: "https://hexdocs.pm/predicator",
       source_url: @source_url,
-      extras: ["README.md", "CHANGELOG.md"],
+      extras: ["README.md", "LICENSE", "CHANGELOG.md"],
       main: "readme"
     ]
   end
