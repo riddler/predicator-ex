@@ -679,31 +679,31 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - equality operators" do
     test "converts equality (==) expression" do
-      ast = {:equality, :equal_equal, {:identifier, "x"}, {:identifier, "y"}}
+      ast = {:comparison, :eq, {:identifier, "x"}, {:identifier, "y"}}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "x == y"
+      assert result == "x = y"
     end
 
     test "converts inequality (!=) with equality syntax" do
-      ast = {:equality, :ne, {:identifier, "status"}, {:literal, "active"}}
+      ast = {:comparison, :ne, {:identifier, "status"}, {:literal, "active"}}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s(status != "active")
     end
 
     test "converts equality with explicit parentheses" do
-      ast = {:equality, :equal_equal, {:literal, 1}, {:literal, 1}}
+      ast = {:comparison, :eq, {:literal, 1}, {:literal, 1}}
       result = StringVisitor.visit(ast, parentheses: :explicit)
 
-      assert result == "(1 == 1)"
+      assert result == "(1 = 1)"
     end
 
     test "converts equality with compact spacing" do
-      ast = {:equality, :equal_equal, {:identifier, "a"}, {:identifier, "b"}}
+      ast = {:comparison, :eq, {:identifier, "a"}, {:identifier, "b"}}
       result = StringVisitor.visit(ast, spacing: :compact)
 
-      assert result == "a==b"
+      assert result == "a=b"
     end
   end
 
@@ -730,11 +730,11 @@ defmodule Predicator.Visitors.StringVisitorTest do
     test "converts complex nested expression" do
       # !(x + y == 10)
       arithmetic = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      equality = {:equality, :equal_equal, arithmetic, {:literal, 10}}
+      equality = {:comparison, :eq, arithmetic, {:literal, 10}}
       ast = {:unary, :bang, equality}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "!x + y == 10"
+      assert result == "!x + y = 10"
     end
   end
 end

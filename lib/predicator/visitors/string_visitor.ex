@@ -168,10 +168,6 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
-  def visit({:equality, op, left, right}, opts) do
-    format_binary_operator(op, left, right, opts)
-  end
-
   def visit({:arithmetic, op, left, right}, opts) do
     format_binary_operator(op, left, right, opts)
   end
@@ -237,7 +233,6 @@ defmodule Predicator.Visitors.StringVisitor do
 
   @spec format_operator(
           Parser.comparison_op()
-          | Parser.equality_op()
           | Parser.arithmetic_op()
           | Parser.unary_op()
         ) :: binary()
@@ -247,7 +242,6 @@ defmodule Predicator.Visitors.StringVisitor do
   defp format_operator(:lte), do: "<="
   defp format_operator(:eq), do: "="
   defp format_operator(:ne), do: "!="
-  defp format_operator(:equal_equal), do: "=="
   defp format_operator(:add), do: "+"
   defp format_operator(:subtract), do: "-"
   defp format_operator(:multiply), do: "*"
@@ -263,7 +257,6 @@ defmodule Predicator.Visitors.StringVisitor do
   # Helper function to format binary operators (comparison, equality, arithmetic)
   @spec format_binary_operator(
           Parser.comparison_op()
-          | Parser.equality_op()
           | Parser.arithmetic_op(),
           Parser.ast(),
           Parser.ast(),

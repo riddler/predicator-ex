@@ -94,7 +94,7 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize("status != \"inactive\"")
 
       expected =
-        {:equality, :ne, {:identifier, "status"}, {:string_literal, "inactive", :double}}
+        {:comparison, :ne, {:identifier, "status"}, {:string_literal, "inactive", :double}}
 
       assert Parser.parse(tokens) == {:ok, expected}
     end
@@ -1065,7 +1065,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       expected_ast =
-        {:equality, :equal_equal, {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
+        {:comparison, :eq, {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
          {:arithmetic, :multiply, {:identifier, "c"}, {:identifier, "d"}}}
 
       assert {:ok, ^expected_ast} = result

@@ -354,9 +354,8 @@ Predicator uses a multi-stage compilation pipeline:
 expression   → logical_or
 logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
-logical_not  → ("NOT" | "not") logical_not | equality
-equality     → comparison ( ("==" | "!=") comparison )*
-comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "!=" | "in" | "contains" ) addition )?
+logical_not  → ("NOT" | "not") logical_not | comparison
+comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "==" | "!=" | "in" | "contains" ) addition )?
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix

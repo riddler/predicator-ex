@@ -54,12 +54,12 @@ defmodule Predicator.CompilerTest do
 
     test "works with equality operators" do
       equality_operators = %{
-        :equal_equal => "EQ",
+        :eq => "EQ",
         :ne => "NE"
       }
 
       for {ast_op, instruction_op} <- equality_operators do
-        ast = {:equality, ast_op, {:identifier, "x"}, {:literal, 1}}
+        ast = {:comparison, ast_op, {:identifier, "x"}, {:literal, 1}}
         result = Compiler.to_instructions(ast)
 
         assert result == [
