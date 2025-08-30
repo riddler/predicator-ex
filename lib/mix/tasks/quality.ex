@@ -252,7 +252,7 @@ defmodule Mix.Tasks.Quality do
     Mix.raise("Markdown linting failed")
   end
 
-  defp check_and_handle_git_changes(change_type, commit_message) do
+  defp check_and_handle_git_changes(change_type, _commit_message) do
     case System.cmd("git", ["diff", "--quiet"], stderr_to_stdout: true) do
       {_output, 0} ->
         Mix.shell().info("✅ No files were actually modified")

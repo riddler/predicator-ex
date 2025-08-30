@@ -936,6 +936,10 @@ defmodule Predicator.Parser do
                 {:error, message, line, col}
             end
 
+          {:string, line, col, _len, value, _quote_type} ->
+            {:error, "Expected ':' after object key but found #{format_token(:string, value)}",
+             line, col}
+
           {type, line, col, _len, token_value} ->
             {:error, "Expected ':' after object key but found #{format_token(type, token_value)}",
              line, col}
