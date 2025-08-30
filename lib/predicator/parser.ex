@@ -23,9 +23,12 @@ defmodule Predicator.Parser do
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
       unary        → ( "-" | "!" ) unary | postfix
       postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
-      primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
+      primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | object | "(" expression ")"
       function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
       list         → "[" ( expression ( "," expression )* )? "]"
+      object       → "{" ( object_entry ( "," object_entry )* )? "}"
+      object_entry → object_key ":" expression
+      object_key   → IDENTIFIER | STRING
 
   ## Examples
 
@@ -63,6 +66,7 @@ defmodule Predicator.Parser do
   - `{:logical_or, left, right}` - A logical OR expression
   - `{:logical_not, operand}` - A logical NOT expression
   - `{:list, elements}` - A list literal
+  - `{:object, entries}` - An object literal with key-value pairs
   - `{:membership, operator, left, right}` - A membership operation (in/contains)
   - `{:function_call, name, arguments}` - A function call with arguments
   - `{:bracket_access, object, key}` - A bracket access expression (obj[key])
@@ -80,8 +84,21 @@ defmodule Predicator.Parser do
           | {:logical_or, ast(), ast()}
           | {:logical_not, ast()}
           | {:list, [ast()]}
+          | {:object, [object_entry()]}
           | {:function_call, binary(), [ast()]}
           | {:bracket_access, ast(), ast()}
+
+  @typedoc """
+  An object entry (key-value pair) in an object literal.
+
+  The key can be either an identifier or a string literal.
+  """
+  @type object_entry :: {object_key(), ast()}
+
+  @typedoc """
+  A key in an object literal - either an identifier or string literal.
+  """
+  @type object_key :: {:identifier, binary()} | {:string_literal, binary()}
 
   @typedoc """
   Comparison operators in the AST.
@@ -713,9 +730,16 @@ defmodule Predicator.Parser do
     parse_list(state)
   end
 
+  # Parse object literal
+  defp parse_primary_token(state, {:lbrace, _line, _col, _len, _value}) do
+    parse_object(state)
+  end
+
   # Handle unexpected tokens
   defp parse_primary_token(_state, {type, line, col, _len, value}) do
-    expected = "number, string, boolean, date, datetime, identifier, function call, list, or '('"
+    expected =
+      "number, string, boolean, date, datetime, identifier, function call, list, object, or '('"
+
     {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col}
   end
 
@@ -763,6 +787,9 @@ defmodule Predicator.Parser do
   defp format_token(:rparen, _value), do: "')'"
   defp format_token(:lbracket, _value), do: "'['"
   defp format_token(:rbracket, _value), do: "']'"
+  defp format_token(:lbrace, _value), do: "'{'"
+  defp format_token(:rbrace, _value), do: "'}'"
+  defp format_token(:colon, _value), do: "':'"
   defp format_token(:comma, _value), do: "','"
   defp format_token(:plus, _value), do: "'+'"
   defp format_token(:minus, _value), do: "'-'"
@@ -830,6 +857,116 @@ defmodule Predicator.Parser do
 
       {:error, message, line, col} ->
         {:error, message, line, col}
+    end
+  end
+
+  # Parse object literals: {key1: value1, key2: value2, ...}
+  @spec parse_object(parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_object(state) do
+    # Consume opening brace
+    brace_state = advance(state)
+
+    case peek_token(brace_state) do
+      # Empty object
+      {:rbrace, _line, _col, _len, _value} ->
+        {:ok, {:object, []}, advance(brace_state)}
+
+      # Non-empty object
+      _token ->
+        case parse_object_entries(brace_state, []) do
+          {:ok, entries, final_state} ->
+            case peek_token(final_state) do
+              {:rbrace, _line, _col, _len, _value} ->
+                {:ok, {:object, Enum.reverse(entries)}, advance(final_state)}
+
+              {type, line, col, _len, value} ->
+                {:error, "Expected '}' but found #{format_token(type, value)}", line, col}
+
+              nil ->
+                {:error, "Expected '}' but reached end of input", 1, 1}
+            end
+
+          {:error, message, line, col} ->
+            {:error, message, line, col}
+        end
+    end
+  end
+
+  # Parse object entries recursively
+  @spec parse_object_entries(parser_state(), [object_entry()]) ::
+          {:ok, [object_entry()], parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_object_entries(state, acc) do
+    case parse_object_entry(state) do
+      {:ok, entry, new_state} ->
+        new_acc = [entry | acc]
+
+        case peek_token(new_state) do
+          {:comma, _line, _col, _len, _value} ->
+            # More entries, consume comma and continue
+            comma_state = advance(new_state)
+            parse_object_entries(comma_state, new_acc)
+
+          _token ->
+            # No more entries
+            {:ok, new_acc, new_state}
+        end
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse a single object entry: key: value
+  @spec parse_object_entry(parser_state()) ::
+          {:ok, object_entry(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_object_entry(state) do
+    case parse_object_key(state) do
+      {:ok, key, key_state} ->
+        case peek_token(key_state) do
+          {:colon, _line, _col, _len, _value} ->
+            colon_state = advance(key_state)
+
+            case parse_expression(colon_state) do
+              {:ok, value, value_state} ->
+                {:ok, {key, value}, value_state}
+
+              {:error, message, line, col} ->
+                {:error, message, line, col}
+            end
+
+          {type, line, col, _len, token_value} ->
+            {:error, "Expected ':' after object key but found #{format_token(type, token_value)}",
+             line, col}
+
+          nil ->
+            {:error, "Expected ':' after object key but reached end of input", 1, 1}
+        end
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Parse object key (identifier or string literal)
+  @spec parse_object_key(parser_state()) ::
+          {:ok, object_key(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_object_key(state) do
+    case peek_token(state) do
+      {:identifier, _line, _col, _len, value} ->
+        {:ok, {:identifier, value}, advance(state)}
+
+      {:string, _line, _col, _len, value, _quote_type} ->
+        {:ok, {:string_literal, value}, advance(state)}
+
+      {type, line, col, _len, value} ->
+        {:error,
+         "Expected identifier or string for object key but found #{format_token(type, value)}",
+         line, col}
+
+      nil ->
+        {:error, "Expected object key but reached end of input", 1, 1}
     end
   end
 

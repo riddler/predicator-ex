@@ -52,7 +52,7 @@ defmodule PredicatorTest do
                result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"
     end
 
     test "returns error for invalid syntax" do
@@ -60,7 +60,7 @@ defmodule PredicatorTest do
       assert {:error, %Predicator.Errors.ParseError{message: message}} = result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'"
     end
   end
 
@@ -179,7 +179,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"
 
       assert message =~ "line 1, column 8"
     end

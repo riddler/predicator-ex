@@ -234,7 +234,7 @@ defmodule Predicator do
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
       iex> Predicator.compile("score >")
-      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input at line 1, column 8"}
+      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 8"}
   """
   @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile(expression) when is_binary(expression) do
