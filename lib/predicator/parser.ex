@@ -139,7 +139,7 @@ defmodule Predicator.Parser do
       iex> Predicator.Parser.parse(tokens)
       {:ok, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}}
 
-      iex> {:ok, tokens} = Predicator.Lexer.tokenize("name = \\"John\\"")  
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("name = \\"John\\"")
       iex> Predicator.Parser.parse(tokens)
       {:ok, {:comparison, :eq, {:identifier, "name"}, {:string_literal, "John", :double}}}
 

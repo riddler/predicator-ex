@@ -64,7 +64,7 @@ defmodule Predicator.Visitors.StringVisitor do
 
   - `:spacing` controls whitespace:
     - `:normal` - standard spacing: "score > 85"
-    - `:compact` - minimal spacing: "score>85"  
+    - `:compact` - minimal spacing: "score>85"
     - `:verbose` - extra spacing: "score  >  85"
   """
   @impl Predicator.Visitor

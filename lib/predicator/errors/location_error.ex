@@ -8,7 +8,7 @@ defmodule Predicator.Errors.LocationError do
   ## Error Types
 
   - `:not_assignable` - Expression cannot be used as an assignment target
-  - `:invalid_node` - Unknown or unsupported AST node type  
+  - `:invalid_node` - Unknown or unsupported AST node type
   - `:undefined_variable` - Variable referenced in bracket key is not defined
   - `:invalid_key` - Bracket key is not a valid string or integer
   - `:computed_key` - Computed expressions cannot be used as assignment keys

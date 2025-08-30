@@ -12,9 +12,9 @@ defmodule Predicator.Compiler do
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
       # Future visitors will enable:
-      # iex> Predicator.Compiler.to_string(ast) 
+      # iex> Predicator.Compiler.to_string(ast)
       # "score > 85"
-      
+
       # iex> Predicator.Compiler.to_dot(ast)
       # "digraph {...}"
   """

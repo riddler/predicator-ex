@@ -35,6 +35,7 @@ def deps do
   ]
 end
 ```
+
 ## Quick Start
 
 ```elixir
@@ -220,7 +221,8 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 {:ok, true}
 ```
 
-### Key Features:
+### Key Features
+
 - **Dot notation**: `user.profile.name` for nested object access
 - **Bracket notation**: `user['profile']['name']` for dynamic key access  
 - **Array indexing**: `items[0]`, `scores[index]` for list access
@@ -234,6 +236,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 ## Supported Operations
 
 ### Arithmetic Operators
+
 | Operator | Description | Example |
 |----------|-------------|---------|
 | `+`      | Addition | `score + bonus`, `2 + 3 * 4` |
@@ -244,6 +247,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 | `-`      | Unary minus | `-amount`, `-(x + y)` |
 
 ### Comparison Operators
+
 | Operator | Description | Example |
 |----------|-------------|---------|
 | `>`      | Greater than | `score > 85`, `#2024-01-15# > #2024-01-10#` |
@@ -254,6 +258,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 | `!=`     | Not equal | `role != 'guest'` |
 
 ### Logical Operators
+
 | Operator | Description | Example |
 |----------|-------------|---------|
 | `AND`    | Logical AND (case-insensitive) | `score > 85 AND age >= 18` |
@@ -261,6 +266,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 | `NOT`    | Logical NOT (case-insensitive) | `NOT expired` |
 
 ### Membership Operators
+
 | Operator | Description | Example |
 |----------|-------------|---------|
 | `in`     | Element in collection | `role in ['admin', 'manager']` |
@@ -269,6 +275,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 ### Built-in Functions
 
 #### String Functions
+
 | Function | Description | Example |
 |----------|-------------|---------|
 | `len(string)` | String length | `len(name) > 3` |
@@ -277,6 +284,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 | `trim(string)` | Remove whitespace | `len(trim(input)) > 0` |
 
 #### Numeric Functions  
+
 | Function | Description | Example |
 |----------|-------------|---------|
 | `abs(number)` | Absolute value | `abs(balance) < 100` |
@@ -284,6 +292,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 | `min(a, b)` | Minimum of two numbers | `min(age, 65) >= 18` |
 
 #### Date Functions
+
 | Function | Description | Example |
 |----------|-------------|---------|
 | `year(date)` | Extract year | `year(created_at) = 2024` |
@@ -404,6 +413,7 @@ iex> Predicator.evaluate("len('hello')", %{})
 #### Function Format
 
 Custom functions must follow this format:
+
 - **Map Key**: Function name (string)
 - **Map Value**: `{arity, function}` tuple where:
   - `arity`: Number of arguments the function expects (integer)
@@ -457,12 +467,14 @@ iex> Predicator.context_location("items[missing_var]", %{})
 ### Assignable vs Non-Assignable Expressions
 
 **✅ Valid Assignment Targets:**
+
 - Simple identifiers: `user`, `score`, `config`
 - Property access: `user.name`, `config.database.host`
 - Bracket access: `items[0]`, `user['profile']`, `data["key"]`
 - Mixed notation: `user.settings['theme']`, `data['users'][0].profile`
 
 **❌ Invalid Assignment Targets:**
+
 - Literals: `42`, `"hello"`, `true`, `#2024-01-15#`
 - Function calls: `len(name)`, `upper(role)`, `max(a, b)`
 - Arithmetic expressions: `score + 1`, `items[i + 1]`

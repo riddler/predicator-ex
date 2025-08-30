@@ -7,7 +7,7 @@ defmodule Predicator.Evaluator do
 
   Supported instruction types:
   - `["lit", value]` - Push literal value onto stack
-  - `["load", variable_name]` - Load variable from context onto stack  
+  - `["load", variable_name]` - Load variable from context onto stack
   - `["compare", operator]` - Compare top two stack values with operator
   - `["and"]` - Logical AND of top two boolean values
   - `["or"]` - Logical OR of top two boolean values

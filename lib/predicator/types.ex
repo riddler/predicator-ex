@@ -11,7 +11,7 @@ defmodule Predicator.Types do
 
   Values can be:
   - `boolean()` - true/false values
-  - `integer()` - integer numeric values  
+  - `integer()` - integer numeric values
   - `float()` - floating-point numeric values
   - `binary()` - string values
   - `list()` - lists of values
@@ -38,7 +38,7 @@ defmodule Predicator.Types do
   ## Examples
 
       %{"score" => 85, "name" => "Alice"}
-      %{score: 85, name: "Alice"} 
+      %{score: 85, name: "Alice"}
   """
   @type context :: %{required(binary() | atom()) => value()}
 
@@ -49,11 +49,11 @@ defmodule Predicator.Types do
   and remaining elements are arguments.
 
   Currently supported instructions:
-  - `["lit", value()]` - Push literal value onto stack  
+  - `["lit", value()]` - Push literal value onto stack
   - `["load", binary()]` - Load variable from context onto stack
   - `["compare", binary()]` - Compare top two stack values with operator
   - `["and"]` - Logical AND of top two boolean values
-  - `["or"]` - Logical OR of top two boolean values  
+  - `["or"]` - Logical OR of top two boolean values
   - `["not"]` - Logical NOT of top boolean value
   - `["in"]` - Membership test (element in collection)
   - `["contains"]` - Membership test (collection contains element)
@@ -143,7 +143,7 @@ defmodule Predicator.Types do
 
   Represents the path to an assignable location in nested data structures:
   - Simple property: `["user", "name"]`
-  - Array index: `["items", 0, "price"]` 
+  - Array index: `["items", 0, "price"]`
   - Dynamic property: `["user", "settings", "theme"]` (for `user.settings["theme"]`)
   """
   @type location_path :: [binary() | non_neg_integer()]
@@ -194,7 +194,7 @@ defmodule Predicator.Types do
 
   Two values have matching types if they are both:
   - integers
-  - booleans  
+  - booleans
   - binaries (strings)
   - lists
   - dates

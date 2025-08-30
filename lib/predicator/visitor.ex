@@ -15,7 +15,7 @@ defmodule Predicator.Visitor do
           value
         end
 
-        @impl true  
+        @impl true
         def visit({:identifier, name}, _opts) do
           name
         end

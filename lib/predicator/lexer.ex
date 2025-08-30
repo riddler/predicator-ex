@@ -16,7 +16,7 @@ defmodule Predicator.Lexer do
       iex> Predicator.Lexer.tokenize("score > 85")
       {:ok, [
         {:identifier, 1, 1, 5, "score"},
-        {:gt, 1, 7, 1, ">"},  
+        {:gt, 1, 7, 1, ">"},
         {:integer, 1, 9, 2, 85},
         {:eof, 1, 11, 0, nil}
       ]}
@@ -27,7 +27,7 @@ defmodule Predicator.Lexer do
 
   Contains:
   - `line` - 1-based line number
-  - `column` - 1-based column number  
+  - `column` - 1-based column number
   - `length` - number of characters in the token
   """
   @type position :: {line :: pos_integer(), column :: pos_integer(), length :: pos_integer()}

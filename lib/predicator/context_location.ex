@@ -12,7 +12,7 @@ defmodule Predicator.ContextLocation do
   to a specific location in the context data structure:
 
   - `["user"]` - top-level variable `user`
-  - `["user", "name"]` - property access `user.name`  
+  - `["user", "name"]` - property access `user.name`
   - `["items", 0]` - array access `items[0]`
   - `["user", "profile", "settings", "theme"]` - nested access `user.profile.settings.theme`
 
@@ -20,7 +20,7 @@ defmodule Predicator.ContextLocation do
 
   **Assignable (valid locations):**
   - Simple identifiers: `user`
-  - Property access: `user.name`, `obj.prop`  
+  - Property access: `user.name`, `obj.prop`
   - Bracket access: `items[0]`, `obj["key"]`
   - Mixed notation: `user.items[0].name`, `data["users"][0]["profile"]`
 
@@ -81,10 +81,10 @@ defmodule Predicator.ContextLocation do
   ## Examples
 
       # Simple identifier
-      resolve({:identifier, "user"}, %{}) 
+      resolve({:identifier, "user"}, %{})
       #=> {:ok, ["user"]}
 
-      # Property access  
+      # Property access
       resolve({:property_access, {:identifier, "user"}, "name"}, %{})
       #=> {:ok, ["user", "name"]}
 

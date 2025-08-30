@@ -50,14 +50,16 @@ list         → "[" ( expression ( "," expression )* )? "]"
 ### Development Workflow
 
 After implementing a new set of functionality
-  - ensure the local project is not on the main branch
-  - identify all code issues by running 'mix quality'
-  - fix those issues
-  - if necessary update the CHANGELOG, README and CLAUDE documents
-  - prompt me if I would like to create a git commit
-  - if so, create a git commit with title and message
+
+- ensure the local project is not on the main branch
+- identify all code issues by running 'mix quality'
+- fix those issues
+- if necessary update the CHANGELOG, README and CLAUDE documents
+- prompt me if I would like to create a git commit
+- if so, create a git commit with title and message
 
 ### Testing Commands
+
 ```bash
 mix test                    # Run all tests
 mix test --watch           # Watch mode  
@@ -66,6 +68,7 @@ mix test.coverage.html     # HTML coverage report
 ```
 
 ### Code Quality Commands
+
 ```bash
 mix quality                # Run all quality checks (format, credo, coverage, dialyzer)
 mix quality.check          # Check quality without fixing
@@ -75,32 +78,37 @@ mix dialyzer              # Type checking
 ```
 
 ### Coverage Stats
+
 - **Overall**: 92.2%
 - **Evaluator**: 95.7% (arithmetic with type coercion, unary, and all operations)
 - **StringVisitor**: 97.5% (all formatting options)
 - **InstructionsVisitor**: 95.2% (all AST node types)
 - **Lexer**: 98.4% (all token types including floats and arithmetic)
-- **Parser**: 86.4% (complex expressions with precedence and float support) 
+- **Parser**: 86.4% (complex expressions with precedence and float support)
 - **Target**: >90% for all components ✅
 
 ## Key Design Decisions
 
 ### Security First
+
 - No `eval()` or dynamic code execution
 - All expressions compiled to safe instruction sequences
 - Input validation at lexer/parser level
 
 ### Error Handling
+
 - Comprehensive error messages with line/column positions
 - Graceful error propagation through pipeline stages
 - Type-safe error handling with `{:ok, result} | {:error, message, line, col}` tuples
 
 ### Performance
+
 - Compile-once, evaluate-many pattern supported
 - Efficient instruction-based execution
 - Minimal memory allocation during evaluation
 
 ### Complexity Management
+
 - Credo complexity warnings suppressed for lexer/parser with explanatory comments
 - High complexity is appropriate and necessary for these functions
 - Well-tested and contained complexity
@@ -136,6 +144,7 @@ test/predicator/
 ## Recent Additions (2025)
 
 ### Type Coercion and Float Support (v2.3.0)
+
 - **Float Literals**: Lexer supports floating-point numbers (e.g., `3.14`, `0.5`)
 - **Numeric Types**: Both integers and floats supported in arithmetic operations
 - **String Concatenation**: `+` operator performs string concatenation when at least one operand is a string
@@ -145,6 +154,7 @@ test/predicator/
   - String + Number → String concatenation (number converted to string)
   - Number + String → String concatenation (number converted to string)
 - **Examples**:
+
   ```elixir
   Predicator.evaluate("3.14 * 2", %{})           # {:ok, 6.28}
   Predicator.evaluate("'Hello' + ' World'", %{}) # {:ok, "Hello World"}
@@ -153,6 +163,7 @@ test/predicator/
   ```
 
 ### Function System (v2.0.0 - Architecture Overhaul)
+
 - **Built-in Functions**: System functions automatically available in all evaluations
   - **String functions**: `len(string)`, `upper(string)`, `lower(string)`, `trim(string)`
   - **Numeric functions**: `abs(number)`, `max(a, b)`, `min(a, b)`
@@ -161,7 +172,8 @@ test/predicator/
 - **Function Format**: `%{name => {arity, function}}` where function takes `[args], context` and returns `{:ok, result}` or `{:error, message}`
 - **Function Merging**: Custom functions merged with system functions, allowing overrides
 - **Thread Safety**: No global state - functions scoped to individual evaluation calls
-- **Examples**: 
+- **Examples**:
+
   ```elixir
   custom_functions = %{
     "double" => {1, fn [n], _context -> {:ok, n * 2} end},
@@ -174,6 +186,7 @@ test/predicator/
   ```
 
 ### Arithmetic and Unary Operations (v2.1.0 - Complete Implementation)
+
 - **Full Arithmetic Support**: Complete parsing and evaluation pipeline for arithmetic expressions
   - **Binary operations**: `+` (addition), `-` (subtraction), `*` (multiplication), `/` (division), `%` (modulo)
   - **Unary operations**: `-` (unary minus), `!` (unary bang/logical NOT)
@@ -182,6 +195,7 @@ test/predicator/
 - **Error Handling**: Division by zero protection, type checking, comprehensive error messages
 - **Pattern Matching**: Idiomatic Elixir implementation using pattern matching for clean code
 - **Examples**:
+
   ```elixir
   Predicator.evaluate("2 + 3 * 4", %{})        # {:ok, 14} - correct precedence
   Predicator.evaluate("(10 - 5) / 2", %{})     # {:ok, 2} - parentheses and division
@@ -190,6 +204,7 @@ test/predicator/
   ```
 
 ### Date and DateTime Support
+
 - **Syntax**: `#2024-01-15#` (date), `#2024-01-15T10:30:00Z#` (datetime)
 - **Lexer**: Added date tokenization with ISO 8601 parsing
 - **Parser**: Extended AST to support date literals
@@ -197,20 +212,23 @@ test/predicator/
 - **StringVisitor**: Round-trip formatting `#date#` syntax
 
 ### List Literals and Membership
+
 - **Syntax**: `[1, 2, 3]`, `["admin", "manager"]`
 - **Operators**: `in` (element in list), `contains` (list contains element)
 - **Examples**: `role in ["admin", "manager"]`, `[1, 2, 3] contains 2`
 
 ### Logical Operator Enhancements
+
 - **Case-insensitive**: Both `AND`/`and`, `OR`/`or`, `NOT`/`not` supported
 - **Pattern matching**: Refactored evaluator and parser to use pattern matching over case statements
 - **Plain boolean expressions**: Support for `active`, `expired` without `= true`
 
 ### Nested Data Structure Access (v1.1.0 + Bracket Access Enhancement)
+
 - **Dot Notation**: Access deeply nested data structures using `.` syntax
 - **Bracket Notation**: Dynamic property and array access using `[key]` syntax (NEW)
 - **Mixed Access**: Combine both notations like `user.settings['theme']` (NEW)
-- **Syntax**: 
+- **Syntax**:
   - Dot: `user.profile.name`, `config.database.settings.ssl`
   - Bracket: `user['profile']['name']`, `items[0]`, `scores[index]`
   - Mixed: `user.settings['theme']`, `data['users'][0].name`
@@ -218,11 +236,11 @@ test/predicator/
 - **Array Indexing**: Full array access with bounds checking (`items[0]`, `scores[index]`)
 - **Dynamic Keys**: Variable and expression-based keys (`obj[key]`, `items[i + 1]`)
 - **Parser**: Added postfix parsing for bracket access with recursive chaining
-- **Evaluator**: 
+- **Evaluator**:
   - Enhanced `load_nested_value/2` for dot notation
   - New `access_value/2` for bracket access with comprehensive type handling
 - **Error Handling**: Returns `:undefined` for missing paths, out-of-bounds access, or non-map/non-array intermediate values
-- **Examples**: 
+- **Examples**:
   - `user.name.first = "John"` (dot notation)
   - `user['profile']['role'] = "admin"` (bracket notation)
   - `items[0] = "apple"` (array access)
@@ -231,19 +249,21 @@ test/predicator/
 - **Backwards Compatible**: Simple variable names and existing dot notation work exactly as before
 
 ### Location Expressions for SCXML (v2.2.0 - Phase 2 Complete)
+
 - **Purpose**: SCXML datamodel location expressions for assignment operations (`<assign>` elements)
 - **API Function**: `Predicator.context_location/3` - resolves location paths for assignment targets
 - **Location Paths**: Returns lists like `["user", "name"]`, `["items", 0, "property"]` for navigation
 - **Validation**: Distinguishes assignable locations (l-values) from computed expressions (r-values)
 - **Error Handling**: Structured `LocationError` with detailed error types and context
 - **Core Module**: `Predicator.ContextLocation` with comprehensive location resolution logic
-- **Error Types**: 
+- **Error Types**:
   - `:not_assignable` - Expression cannot be used as assignment target (literals, functions, etc.)
   - `:invalid_node` - Unknown or unsupported AST node type
   - `:undefined_variable` - Variable referenced in bracket key is not defined
   - `:invalid_key` - Bracket key is not a valid string or integer
   - `:computed_key` - Computed expressions cannot be used as assignment keys
 - **Examples**:
+
   ```elixir
   Predicator.context_location("user.profile.name", %{})          # {:ok, ["user", "profile", "name"]}
   Predicator.context_location("items[0]", %{})                   # {:ok, ["items", 0]}
@@ -251,6 +271,7 @@ test/predicator/
   Predicator.context_location("len(name)", %{})                  # {:error, %LocationError{type: :not_assignable}}
   Predicator.context_location("42", %{})                         # {:error, %LocationError{type: :not_assignable}}
   ```
+
 - **Assignable Locations**: Simple identifiers, property access, bracket access, mixed notation
 - **Non-Assignable**: Literals, function calls, arithmetic expressions, comparisons, any computed values
 - **Mixed Notation Support**: `user.settings['theme']`, `data['users'][0].profile` fully supported
@@ -259,6 +280,7 @@ test/predicator/
 ## Breaking Changes
 
 ### v2.2.0 - Property Access Parsing Overhaul
+
 - **Changed**: Complete reimplementation of dot notation parsing from dotted identifiers to proper property access AST
 - **Breaking**: Expressions like `user.email` now parsed as `{:property_access, {:identifier, "user"}, "email"}` instead of `{:identifier, "user.email"}`
 - **Impact**: Context keys with dots like `"user.email"` will no longer match the identifier `user.email` - they are now parsed as property access
@@ -272,6 +294,7 @@ test/predicator/
 - **Full Compatibility**: All existing expressions without dots work exactly as before
 
 ### v2.0.0 - Custom Function Architecture Overhaul
+
 - **Removed**: Global function registry system (`Predicator.Functions.Registry` module)
 - **Removed**: `Predicator.register_function/3`, `Predicator.clear_custom_functions/0`, `Predicator.list_custom_functions/0`
 - **Changed**: Custom functions now passed via `functions:` option in `evaluate/3` calls instead of global registration
@@ -279,6 +302,7 @@ test/predicator/
 - **Migration**: Replace registry calls with function maps passed to `evaluate/3`
 
 ### v1.1.0 - Nested Access Parsing
+
 - **Changed**: Variables containing dots (e.g., `"user.email"`) now parsed as nested access paths
 - **Impact**: Context keys like `"user.profile.name"` will no longer match identifier `user.profile.name`
 - **Solution**: Use proper nested data structures instead of flat keys with dots
@@ -286,6 +310,7 @@ test/predicator/
 ## Common Tasks
 
 ### Adding New Operators
+
 1. Add token type to `lexer.ex`
 2. Add parsing logic to `parser.ex`  
 3. Add instruction type to `types.ex`
@@ -295,6 +320,7 @@ test/predicator/
 7. Add comprehensive tests
 
 ### Adding New Data Types
+
 1. Update lexer tokenization (see date implementation)
 2. Update parser grammar and AST types
 3. Update type specifications in `types.ex`
@@ -303,6 +329,7 @@ test/predicator/
 6. Add tests for all pipeline components
 
 ### Debugging Issues
+
 - Use `mix test --trace` for detailed test output
 - Check coverage with `mix test.coverage.html`
 - Use `mix dialyzer` for type issues
@@ -336,12 +363,14 @@ test/predicator/
 ## Troubleshooting
 
 ### Common Issues
+
 - **Credo Complexity**: Intentionally suppressed for lexer/parser functions
 - **Doctest Escaping**: Use simple examples without nested quotes  
 - **Coverage Gaps**: Focus on error paths and edge cases
 - **Type Errors**: Check `@spec` definitions match implementation
 
 ### Development Environment
+
 - Elixir ~> 1.11 required
 - All dependencies in development/test only
 - No runtime dependencies for core functionality
