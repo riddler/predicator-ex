@@ -880,6 +880,87 @@ defmodule PredicatorTest do
     end
   end
 
+  describe "object literals" do
+    test "evaluates simple object literals" do
+      assert Predicator.evaluate("{}", %{}) == {:ok, %{}}
+      assert Predicator.evaluate("{name: \"John\"}", %{}) == {:ok, %{"name" => "John"}}
+
+      assert Predicator.evaluate("{age: 30, active: true}", %{}) ==
+               {:ok, %{"age" => 30, "active" => true}}
+    end
+
+    test "evaluates object literals with variable references" do
+      context = %{"username" => "alice", "score" => 95}
+
+      assert Predicator.evaluate("{user: username, points: score}", context) ==
+               {:ok, %{"user" => "alice", "points" => 95}}
+    end
+
+    test "evaluates nested object literals" do
+      expected = %{
+        "user" => %{"name" => "Bob", "role" => "admin"},
+        "settings" => %{"theme" => "dark"}
+      }
+
+      assert Predicator.evaluate(
+               ~s|{user: {name: "Bob", role: "admin"}, settings: {theme: "dark"}}|,
+               %{}
+             ) ==
+               {:ok, expected}
+    end
+
+    test "evaluates object literals with string keys" do
+      assert Predicator.evaluate(~s|{"first name": "John", "last name": "Doe"}|, %{}) ==
+               {:ok, %{"first name" => "John", "last name" => "Doe"}}
+    end
+
+    test "evaluates object literals with expression values" do
+      context = %{"base" => 100, "rate" => 0.1}
+
+      assert Predicator.evaluate("{total: base + base * rate}", context) ==
+               {:ok, %{"total" => 110.0}}
+    end
+
+    test "object equality and comparison" do
+      context = %{"user_data" => %{"score" => 85}}
+
+      assert Predicator.evaluate("{score: 85} == user_data", context) == {:ok, true}
+      assert Predicator.evaluate("{score: 90} != user_data", context) == {:ok, true}
+      assert Predicator.evaluate("{} == {}", %{}) == {:ok, true}
+      assert Predicator.evaluate("{} != {name: \"test\"}", %{}) == {:ok, true}
+    end
+
+    test "parses object expressions correctly" do
+      {:ok, ast} = Predicator.parse("{name: \"John\"}")
+      assert match?({:object, [{{:identifier, "name"}, {:string_literal, "John", :double}}]}, ast)
+
+      {:ok, ast} = Predicator.parse("{}")
+      assert match?({:object, []}, ast)
+    end
+
+    test "compiles object expressions correctly" do
+      {:ok, instructions} = Predicator.compile("{}")
+      assert instructions == [["object_new"]]
+
+      {:ok, instructions} = Predicator.compile("{name: \"John\"}")
+      assert instructions == [["object_new"], ["lit", "John"], ["object_set", "name"]]
+
+      {:ok, instructions} = Predicator.compile("{name: \"John\", age: 30}")
+
+      assert instructions == [
+               ["object_new"],
+               ["lit", "John"],
+               ["object_set", "name"],
+               ["lit", 30],
+               ["object_set", "age"]
+             ]
+    end
+
+    test "handles undefined variables in object values" do
+      assert Predicator.evaluate("{name: missing_var}", %{}) == {:ok, %{"name" => :undefined}}
+    end
+  end
+
   describe "date literals and comparisons" do
     test "evaluates date literals" do
       assert Predicator.evaluate("#2024-01-15#", %{}) == {:ok, ~D[2024-01-15]}

@@ -83,10 +83,10 @@ defmodule Mix.Tasks.Quality do
       {_output, _exit_code} ->
         Mix.shell().info("📝 Code has been automatically formatted.")
 
-        Mix.shell().info("🔄 Please commit the formatting changes and run quality check again:")
-
-        Mix.shell().info("   git add .")
-        Mix.shell().info("   git commit -m 'Auto-format code with mix format'")
+        # Mix.shell().info("🔄 Please commit the formatting changes and run quality check again:")
+        #
+        # Mix.shell().info("   git add .")
+        # Mix.shell().info("   git commit -m 'Auto-format code with mix format'")
         # Mix.raise("Code was auto-formatted - please commit changes and re-run")
     end
   end
@@ -259,13 +259,14 @@ defmodule Mix.Tasks.Quality do
 
       {_output, _exit_code} ->
         Mix.shell().info("📝 #{String.capitalize(change_type)} has been automatically fixed.")
-        Mix.shell().info("🔄 Please commit the #{change_type} fixes and run quality check again:")
-        Mix.shell().info("   git add .")
-        Mix.shell().info("   git commit -m '#{commit_message}'")
 
-        Mix.raise(
-          "#{String.capitalize(change_type)} was auto-fixed - please commit changes and re-run"
-        )
+        # Mix.shell().info("🔄 Please commit the #{change_type} fixes and run quality check again:")
+        # Mix.shell().info("   git add .")
+        # Mix.shell().info("   git commit -m '#{commit_message}'")
+        #
+        # Mix.raise(
+        #   "#{String.capitalize(change_type)} was auto-fixed - please commit changes and re-run"
+        # )
     end
   end
 

@@ -201,6 +201,7 @@ defmodule Predicator.Types do
   - booleans
   - binaries (strings)
   - lists
+  - maps (objects)
   - dates
   - datetimes
 
@@ -210,6 +211,9 @@ defmodule Predicator.Types do
       true
 
       iex> Predicator.Types.types_match?("hello", "world")
+      true
+
+      iex> Predicator.Types.types_match?(%{a: 1}, %{b: 2})
       true
 
       iex> Predicator.Types.types_match?(1, "hello")
@@ -222,5 +226,9 @@ defmodule Predicator.Types do
   def types_match?(a, b) when is_list(a) and is_list(b), do: true
   def types_match?(%Date{} = _a, %Date{} = _b), do: true
   def types_match?(%DateTime{} = _a, %DateTime{} = _b), do: true
+
+  def types_match?(a, b) when is_map(a) and is_map(b) and not is_struct(a) and not is_struct(b),
+    do: true
+
   def types_match?(_a, _b), do: false
 end
