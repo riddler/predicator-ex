@@ -37,6 +37,11 @@ defmodule Predicator.MixProject do
         "test.coverage": :test,
         "test.coverage.html": :test,
         "test.coverage.detail": :test
+      ],
+      dialyzer: [
+        plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
+        plt_add_apps: [:mix, :ex_unit],
+        warnings: [:unknown]
       ]
     ]
   end
@@ -71,13 +76,6 @@ defmodule Predicator.MixProject do
 
   defp aliases do
     [
-      quality: ["format", "credo --strict", "coveralls", "dialyzer"],
-      "quality.check": [
-        "format --check-formatted",
-        "credo --strict",
-        "coveralls",
-        "dialyzer"
-      ],
       "test.coverage": ["coveralls"],
       "test.coverage.html": ["coveralls.html"],
       "test.coverage.detail": ["coveralls.detail"]
