@@ -294,6 +294,17 @@ defmodule Predicator.Evaluator do
     execute_function_call(evaluator, function_name, arg_count)
   end
 
+  # Object creation instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["object_new"]) do
+    execute_object_new(evaluator)
+  end
+
+  # Object property set instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["object_set", key])
+       when is_binary(key) do
+    execute_object_set(evaluator, key)
+  end
+
   # Unknown instruction - catch-all clause
   defp execute_instruction(%__MODULE__{}, unknown) do
     {:error,
@@ -794,5 +805,26 @@ defmodule Predicator.Evaluator do
       value ->
         value
     end
+  end
+
+  @spec execute_object_new(__MODULE__.t()) :: {:ok, __MODULE__.t()}
+  defp execute_object_new(%__MODULE__{stack: stack} = evaluator) do
+    new_object = %{}
+    {:ok, %{evaluator | stack: [new_object | stack]}}
+  end
+
+  @spec execute_object_set(__MODULE__.t(), binary()) :: {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_object_set(%__MODULE__{stack: [value, object | rest]} = evaluator, key)
+       when is_map(object) do
+    updated_object = Map.put(object, key, value)
+    {:ok, %{evaluator | stack: [updated_object | rest]}}
+  end
+
+  defp execute_object_set(%__MODULE__{stack: [_value, _non_object | _rest]} = _evaluator, _key) do
+    {:error, "Cannot set property on non-object value"}
+  end
+
+  defp execute_object_set(%__MODULE__{stack: stack} = _evaluator, _key) when length(stack) < 2 do
+    {:error, EvaluationError.insufficient_operands(:object_set, length(stack), 2)}
   end
 end

@@ -162,6 +162,19 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     end
   end
 
+  def visit({:object, entries}, opts) do
+    # Build object from key-value pairs
+    # Each entry is {key_node, value_node}
+    instructions =
+      Enum.flat_map(entries, fn {key, value} ->
+        key_str = extract_key_string(key)
+        value_instructions = visit(value, opts)
+        value_instructions ++ [["object_set", key_str]]
+      end)
+
+    [["object_new"]] ++ instructions
+  end
+
   def visit({:membership, op, left, right}, opts) do
     # Post-order traversal: operands first, then operator
     left_instructions = visit(left, opts)
@@ -222,4 +235,9 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       _other -> false
     end)
   end
+
+  # Helper function to extract string from object key node
+  @spec extract_key_string(Parser.object_key()) :: binary()
+  defp extract_key_string({:identifier, name}), do: name
+  defp extract_key_string({:string_literal, value}), do: value
 end
