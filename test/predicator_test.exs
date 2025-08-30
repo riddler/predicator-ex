@@ -959,6 +959,40 @@ defmodule PredicatorTest do
     test "handles undefined variables in object values" do
       assert Predicator.evaluate("{name: missing_var}", %{}) == {:ok, %{"name" => :undefined}}
     end
+
+    test "decompiles object expressions" do
+      {:ok, ast} = Predicator.parse("{}")
+      assert Predicator.decompile(ast) == "{}"
+
+      {:ok, ast} = Predicator.parse("{name: \"John\"}")
+      assert Predicator.decompile(ast) == ~s({name: "John"})
+
+      {:ok, ast} = Predicator.parse(~s|{"first name": "John", "last name": "Doe"}|)
+      assert Predicator.decompile(ast) == ~s({"first name": "John", "last name": "Doe"})
+
+      {:ok, ast} = Predicator.parse("{age: 30, active: true}")
+      assert Predicator.decompile(ast) == "{age: 30, active: true}"
+    end
+
+    test "object round-trip consistency" do
+      expressions = [
+        "{}",
+        "{name: \"John\"}",
+        "{age: 30, active: true}",
+        ~s|{"first name": "John"}|,
+        "{user: {name: \"Bob\", role: \"admin\"}}",
+        "{total: price + tax}"
+      ]
+
+      for expr <- expressions do
+        {:ok, ast} = Predicator.parse(expr)
+        decompiled = Predicator.decompile(ast)
+        {:ok, ast2} = Predicator.parse(decompiled)
+
+        # ASTs should be equivalent after round-trip
+        assert ast == ast2, "Round-trip failed for: #{expr}"
+      end
+    end
   end
 
   describe "date literals and comparisons" do

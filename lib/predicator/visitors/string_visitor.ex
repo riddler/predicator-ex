@@ -35,6 +35,18 @@ defmodule Predicator.Visitors.StringVisitor do
       iex> ast = {:function_call, "len", [{:identifier, "name"}]}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "len(name)"
+
+      iex> ast = {:object, []}
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
+      "{}"
+
+      iex> ast = {:object, [{{:identifier, "name"}, {:literal, "John"}}]}
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
+      ~s({name: "John"})
+
+      iex> ast = {:object, [{{:string_literal, "first name"}, {:literal, "John"}}]}
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
+      ~s({"first name": "John"})
   """
 
   @behaviour Predicator.Visitor
@@ -203,6 +215,24 @@ defmodule Predicator.Visitors.StringVisitor do
     "#{function_name}(#{args_str})"
   end
 
+  def visit({:object, entries}, opts) do
+    case entries do
+      [] ->
+        "{}"
+
+      _non_empty_entries ->
+        entry_strings =
+          Enum.map(entries, fn {key, value} ->
+            key_str = format_object_key(key)
+            value_str = visit(value, opts)
+            "#{key_str}: #{value_str}"
+          end)
+
+        entries_str = Enum.join(entry_strings, ", ")
+        "{#{entries_str}}"
+    end
+  end
+
   # Helper functions
 
   @spec format_operator(
@@ -266,4 +296,8 @@ defmodule Predicator.Visitors.StringVisitor do
   defp get_parentheses_mode(opts) do
     Keyword.get(opts, :parentheses, :minimal)
   end
+
+  @spec format_object_key(Parser.object_key()) :: binary()
+  defp format_object_key({:identifier, name}), do: name
+  defp format_object_key({:string_literal, value}), do: ~s("#{value}")
 end
