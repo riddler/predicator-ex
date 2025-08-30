@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### Location Expressions for SCXML Assignment Operations (Phase 2 Complete)
+
 - **SCXML Location Expressions**: Complete implementation of location path resolution for SCXML `<assign>` operations
 - **New API Function**: `Predicator.context_location/3` - resolves assignable location paths from expressions
 - **Location Path Resolution**: Returns navigation paths like `["user", "name"]`, `["items", 0, "property"]` for SCXML assignment targets
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Structured Error Handling**: `Predicator.Errors.LocationError` with detailed error types and context information
 
 #### Location Expression Examples
+
 ```elixir
 # Valid assignment targets resolve to location paths
 Predicator.context_location("user.profile.name", %{})                    # {:ok, ["user", "profile", "name"]}
@@ -33,6 +35,7 @@ Predicator.context_location("score + 1", %{})                            # {:err
 ```
 
 #### Error Types and Validation
+
 - **`:not_assignable`**: Expression cannot be used as assignment target (literals, functions, computed expressions)
 - **`:invalid_node`**: Unknown or unsupported AST node type encountered during resolution
 - **`:undefined_variable`**: Variable referenced in bracket key is not defined in evaluation context
@@ -40,6 +43,7 @@ Predicator.context_location("score + 1", %{})                            # {:err
 - **`:computed_key`**: Computed expressions cannot be used as assignment target keys
 
 #### Assignable vs Non-Assignable Classifications
+
 - **✅ Valid Assignment Targets**: Simple identifiers, property access, bracket access, mixed notation
   - `user`, `score`, `config.database.host`
   - `items[0]`, `user['profile']`, `data["settings"]`
@@ -50,6 +54,7 @@ Predicator.context_location("score + 1", %{})                            # {:err
   - `score + 1`, `items[i + 1]`, `score > 85`
 
 #### Technical Implementation
+
 - **Full Location Resolution**: Recursive resolution of nested property access and bracket access
 - **Mixed Notation Support**: Complete support for expressions like `user.settings['theme']` and `data['users'][0].name`
 - **Variable Key Resolution**: Bracket keys can reference context variables for dynamic access patterns
@@ -57,6 +62,7 @@ Predicator.context_location("score + 1", %{})                            # {:err
 - **Comprehensive Testing**: 49 comprehensive tests covering all location resolution scenarios and error cases
 
 #### Type Coercion and Float Support
+
 - **Float Literal Support**: Extended lexer to parse floating-point numbers (e.g., `3.14`, `0.5`)
 - **Float Token Type**: Added `:float` token type to distinguish from integers
 - **Parser Float Handling**: Updated parser to handle float tokens and create appropriate AST nodes
@@ -81,6 +87,7 @@ Predicator.context_location("score + 1", %{})                            # {:err
 ### Changed
 
 #### Property Access Parsing Architecture Overhaul (Breaking Changes)
+
 - **Complete Dot Notation Reimplementation**: Transformed from dotted identifiers to proper property access AST nodes
 - **Lexer Breaking Change**: Dots removed from valid identifier characters, now parsed as separate tokens
 - **Parser Grammar Enhancement**: Added property access grammar `postfix → primary ( "[" expression "]" | "." IDENTIFIER )*`
@@ -91,11 +98,13 @@ Predicator.context_location("score + 1", %{})                            # {:err
 ### Breaking Changes
 
 #### v3.0.0 - Property Access Parsing Overhaul
+
 This is a **major breaking change** affecting how dot notation is parsed and evaluated:
 
 **⚠️ Context Key Impact**: Context keys containing dots (e.g., `"user.email"`) will no longer match dot notation expressions (`user.email`). The expression `user.email` is now parsed as property access requiring nested structure `%{"user" => %{"email" => "..."}}`
 
 **Migration Required**:
+
 ```elixir
 # BEFORE (v2.2.0 and earlier) - WILL NO LONGER WORK
 context = %{"user.email" => "john@example.com"}
@@ -107,12 +116,14 @@ Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correct
 ```
 
 **Technical Changes**:
+
 - **Lexer**: Dots no longer valid in identifier characters, parsed as separate `:dot` tokens
 - **Parser**: New property access AST nodes `{:property_access, left_node, property}`
 - **Evaluator**: New `access` instruction handler, removed dotted identifier support from `load_from_context`
 - **Instructions**: `user.email` generates `[["load", "user"], ["access", "email"]]` instead of `[["load", "user.email"]]`
 
 **Benefits**:
+
 - Enables mixed notation: `user.settings['theme']`, `data['users'][0].name`
 - Supports SCXML location expressions for assignment operations
 - Proper property access semantics for complex data structures
@@ -123,6 +134,7 @@ Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correct
 ### Added
 
 #### Bracket Access and Property Access Enhancement
+
 - **Complete Bracket Notation Support**: Implemented full bracket access functionality (`obj['key']`, `arr[0]`, `obj[variable]`)
 - **Parser Extensions**: Added postfix parsing for bracket access with recursive chaining support
 - **Grammar Enhancement**: Updated grammar with postfix operations: `unary → postfix`, `postfix → primary ( "[" expression "]" )*`
@@ -136,6 +148,7 @@ Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correct
 - **Comprehensive Testing**: Added 12 new parser tests covering all bracket access scenarios
 
 #### Error Handling Architecture Refactoring
+
 - **Modular Error Structure**: Refactored monolithic error handling into individual error modules under `lib/predicator/errors/`
 - **Shared Error Utilities**: Created `Predicator.Errors` module with common utility functions for consistent error formatting
 - **Individual Error Modules**: Split error handling into focused modules:
@@ -151,6 +164,7 @@ Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correct
 ### Added
 
 #### Arithmetic and Unary Operations (Complete Implementation)
+
 - **Full Arithmetic Support**: Complete parsing and evaluation pipeline for arithmetic expressions
   - **Binary operations**: `+` (addition), `-` (subtraction), `*` (multiplication), `/` (division), `%` (modulo)
   - **Unary operations**: `-` (unary minus), `!` (unary bang/logical NOT)
@@ -164,6 +178,7 @@ Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correct
 ### Changed
 
 #### Custom Function Architecture Overhaul
+
 - **Breaking Change**: Removed global function registry system in favor of evaluation-time function parameters
 - **New API**: Custom functions now passed via `functions:` option in `Predicator.evaluate/3` calls
 - **Function Format**: Custom functions use `%{name => {arity, function}}` format where function takes `[args], context` and returns `{:ok, result}` or `{:error, message}`
@@ -172,6 +187,7 @@ Predicator.evaluate("user.email = 'john@example.com'", context)  # Works correct
 - **Simplified Startup**: No application-level function registry initialization required
 
 #### Examples
+
 ```elixir
 # Old registry-based approach (removed)
 Predicator.register_function("double", 1, fn [n], _context -> {:ok, n * 2} end)
@@ -187,6 +203,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 ```
 
 #### Removed APIs
+
 - `Predicator.register_function/3` - Use `functions:` option instead
 - `Predicator.clear_custom_functions/0` - No longer needed
 - `Predicator.list_custom_functions/0` - No longer needed
@@ -195,6 +212,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 ### Breaking Changes
 
 #### v2.0.0 - Custom Function Architecture Overhaul
+
 - **Removed**: Global function registry system (`Predicator.Functions.Registry` module)
 - **Removed**: `Predicator.register_function/3`, `Predicator.clear_custom_functions/0`, `Predicator.list_custom_functions/0`
 - **Changed**: Custom functions now passed via `functions:` option in `evaluate/3` calls instead of global registration
@@ -206,6 +224,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 ### Added
 
 #### Nested Data Structure Access
+
 - **Dot Notation Support**: Access deeply nested data structures using dot notation syntax
 - **Enhanced Lexer**: Extended identifier tokenization to include dots (`.`) as valid characters
 - **Recursive Context Loading**: Added `load_nested_value/2` function for traversing nested maps
@@ -214,6 +233,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 - **Unlimited Nesting Depth**: Support for arbitrarily deep nested structures
 
 #### Single Quote String Support
+
 - **Dual Quote Types**: Added support for single-quoted strings (`'hello'`) alongside double-quoted strings (`"hello"`)
 - **Quote Type Preservation**: Round-trip parsing and decompilation preserves original quote type
 - **Enhanced Lexer**: Extended string tokenization to handle both quote types with proper escaping
@@ -223,6 +243,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 ### Breaking Changes
 
 #### v1.1.0 - Nested Access Parsing
+
 - **Changed**: Variables containing dots (e.g., `"user.email"`) now parsed as nested access paths
 - **Impact**: Context keys like `"user.profile.name"` will no longer match identifier `user.profile.name`
 - **Solution**: Use proper nested data structures instead of flat keys with dots
@@ -230,6 +251,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 ## [1.0.1] - 2025-08-20
 
 ### Documentation
+
 - Fixes main page for Hex docs
 
 ## [1.0.0] - 2025-08-19
@@ -237,6 +259,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 ### Added
 
 #### Core Language Features
+
 - **Comparison Operators**: Full support for `>`, `<`, `>=`, `<=`, `=`, `!=` with proper type handling
 - **Logical Operators**: Case-insensitive `AND`/`and`, `OR`/`or`, `NOT`/`not` with correct precedence
 - **Data Types**:
@@ -249,6 +272,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
   - Identifiers: `score`, `user_name`, `is_active`
 
 #### Advanced Operations
+
 - **Membership Operators**:
   - `in` for element-in-collection testing (`role in ["admin", "manager"]`)
   - `contains` for collection-contains-element testing (`[1, 2, 3] contains 2`)
@@ -256,6 +280,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 - **Plain Boolean Expressions**: Support for bare identifiers (`active`, `expired`) without explicit `= true`
 
 #### Function System
+
 - **Built-in System Functions**:
   - **String functions**: `len(string)`, `upper(string)`, `lower(string)`, `trim(string)`
   - **Numeric functions**: `abs(number)`, `max(a, b)`, `min(a, b)`
@@ -265,12 +290,14 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 - **Context-Aware Functions**: Functions receive evaluation context for dynamic behavior
 
 #### Architecture & Performance
+
 - **Multi-Stage Compilation Pipeline**: Expression → Lexer → Parser → Compiler → Instructions → Evaluator
 - **Compile-Once, Evaluate-Many**: Pre-compile expressions for repeated evaluation
 - **Stack-Based Evaluator**: Efficient instruction execution with minimal overhead
 - **Comprehensive Error Handling**: Detailed error messages with line/column positioning
 
 #### Developer Experience
+
 - **String Decompilation**: Convert AST back to readable expressions with formatting options
 - **Multiple Evaluation APIs**:
   - `evaluate/2` - Returns `{:ok, result}` or `{:error, message}`
@@ -284,6 +311,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 **⚠️ COMPLETE LIBRARY REWRITE ⚠️**
 
 Version 1.0.0 is a **complete rewrite** of the Predicator library with entirely new:
+
 - API design and function signatures
 - Expression syntax and grammar
 - Internal architecture and data structures
@@ -294,6 +322,7 @@ Version 1.0.0 is a **complete rewrite** of the Predicator library with entirely 
 **Migration from versions < 1.0.0 has NOT been tested and is NOT guaranteed to work.**
 
 If you are upgrading from a pre-1.0.0 version:
+
 1. **Treat this as a new library adoption**, not an upgrade
 2. **Review all documentation** - APIs have completely changed
 3. **Test thoroughly** in development environments

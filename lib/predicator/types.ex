@@ -11,7 +11,7 @@ defmodule Predicator.Types do
 
   Values can be:
   - `boolean()` - true/false values
-  - `integer()` - integer numeric values  
+  - `integer()` - integer numeric values
   - `float()` - floating-point numeric values
   - `binary()` - string values
   - `list()` - lists of values
@@ -38,7 +38,7 @@ defmodule Predicator.Types do
   ## Examples
 
       %{"score" => 85, "name" => "Alice"}
-      %{score: 85, name: "Alice"} 
+      %{score: 85, name: "Alice"}
   """
   @type context :: %{required(binary() | atom()) => value()}
 
@@ -49,11 +49,11 @@ defmodule Predicator.Types do
   and remaining elements are arguments.
 
   Currently supported instructions:
-  - `["lit", value()]` - Push literal value onto stack  
+  - `["lit", value()]` - Push literal value onto stack
   - `["load", binary()]` - Load variable from context onto stack
   - `["compare", binary()]` - Compare top two stack values with operator
   - `["and"]` - Logical AND of top two boolean values
-  - `["or"]` - Logical OR of top two boolean values  
+  - `["or"]` - Logical OR of top two boolean values
   - `["not"]` - Logical NOT of top boolean value
   - `["in"]` - Membership test (element in collection)
   - `["contains"]` - Membership test (collection contains element)
@@ -65,6 +65,8 @@ defmodule Predicator.Types do
   - `["unary_minus"]` - Pop one value, negate it, push result
   - `["unary_bang"]` - Pop one value, logical NOT it, push result
   - `["bracket_access"]` - Pop key and object, push object[key] result
+  - `["object_new"]` - Push new empty object onto stack
+  - `["object_set", binary()]` - Pop value and object, set object[key] = value, push object
   - `["call", binary(), integer()]` - Call built-in function with arguments from stack
 
   ## Examples
@@ -83,6 +85,8 @@ defmodule Predicator.Types do
       ["unary_minus"]       # Pop one value, negate it, push result
       ["unary_bang"]        # Pop one value, logical NOT it, push result
       ["bracket_access"]    # Pop key and object, push object[key]
+      ["object_new"]        # Push new empty object onto stack
+      ["object_set", "name"] # Pop value and object, set object["name"] = value, push object
       ["call", "len", 1]    # Pop 1 argument, call len function, push result
   """
   @type instruction :: [binary() | value()]
@@ -143,7 +147,7 @@ defmodule Predicator.Types do
 
   Represents the path to an assignable location in nested data structures:
   - Simple property: `["user", "name"]`
-  - Array index: `["items", 0, "price"]` 
+  - Array index: `["items", 0, "price"]`
   - Dynamic property: `["user", "settings", "theme"]` (for `user.settings["theme"]`)
   """
   @type location_path :: [binary() | non_neg_integer()]
@@ -194,9 +198,10 @@ defmodule Predicator.Types do
 
   Two values have matching types if they are both:
   - integers
-  - booleans  
+  - booleans
   - binaries (strings)
   - lists
+  - maps (objects)
   - dates
   - datetimes
 
@@ -206,6 +211,9 @@ defmodule Predicator.Types do
       true
 
       iex> Predicator.Types.types_match?("hello", "world")
+      true
+
+      iex> Predicator.Types.types_match?(%{a: 1}, %{b: 2})
       true
 
       iex> Predicator.Types.types_match?(1, "hello")
@@ -218,5 +226,9 @@ defmodule Predicator.Types do
   def types_match?(a, b) when is_list(a) and is_list(b), do: true
   def types_match?(%Date{} = _a, %Date{} = _b), do: true
   def types_match?(%DateTime{} = _a, %DateTime{} = _b), do: true
+
+  def types_match?(a, b) when is_map(a) and is_map(b) and not is_struct(a) and not is_struct(b),
+    do: true
+
   def types_match?(_a, _b), do: false
 end

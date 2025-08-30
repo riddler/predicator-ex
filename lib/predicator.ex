@@ -100,8 +100,8 @@ defmodule Predicator do
       # Type coercion with + operator (string concatenation)
       iex> Predicator.evaluate("score + 'hello'", %{"score" => 5})
       {:ok, "5hello"}
-      
-      # Error handling for incompatible types  
+
+      # Error handling for incompatible types
       iex> {:error, error} = Predicator.evaluate("score * true", %{"score" => 5})
       iex> String.contains?(error.message, "multiply requires")
       true
@@ -234,7 +234,7 @@ defmodule Predicator do
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
       iex> Predicator.compile("score >")
-      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input at line 1, column 8"}
+      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 8"}
   """
   @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile(expression) when is_binary(expression) do
@@ -395,7 +395,7 @@ defmodule Predicator do
   to a specific location in the context data structure:
 
   - `["user"]` - top-level variable `user`
-  - `["user", "name"]` - property access `user.name`  
+  - `["user", "name"]` - property access `user.name`
   - `["items", 0]` - array access `items[0]`
   - `["user", "profile", "settings", "theme"]` - nested `user.profile.settings.theme`
 
@@ -403,7 +403,7 @@ defmodule Predicator do
 
   **Assignable (valid locations):**
   - Simple identifiers: `user`
-  - Property access: `user.name`, `obj.prop`  
+  - Property access: `user.name`, `obj.prop`
   - Bracket access: `items[0]`, `obj["key"]`
   - Mixed notation: `user.items[0].name`
 
@@ -446,10 +446,10 @@ defmodule Predicator do
       {:ok, ["items", 1]}
 
       # Error: cannot assign to literal
-      iex> {:error, %Predicator.Errors.LocationError{type: :not_assignable}} = 
+      iex> {:error, %Predicator.Errors.LocationError{type: :not_assignable}} =
       ...>   Predicator.context_location("42", %{})
 
-      # Error: cannot assign to function call  
+      # Error: cannot assign to function call
       iex> {:error, %Predicator.Errors.LocationError{type: :not_assignable}} =
       ...>   Predicator.context_location("len(items)", %{"items" => [1, 2, 3]})
 
@@ -461,12 +461,12 @@ defmodule Predicator do
 
       # In an SCXML state machine
       location_expr = "user.profile.settings['theme']"
-      
+
       case Predicator.context_location(location_expr, datamodel_context) do
         {:ok, path} ->
           # Use path for assignment: ["user", "profile", "settings", "theme"]
           update_datamodel_at_path(datamodel, path, new_value)
-          
+
         {:error, %Predicator.Errors.LocationError{} = error} ->
           # Handle invalid assignment target
           {:error, "Invalid assignment location: \#{error.message}"}

@@ -7,7 +7,7 @@ defmodule Predicator.Evaluator do
 
   Supported instruction types:
   - `["lit", value]` - Push literal value onto stack
-  - `["load", variable_name]` - Load variable from context onto stack  
+  - `["load", variable_name]` - Load variable from context onto stack
   - `["compare", operator]` - Compare top two stack values with operator
   - `["and"]` - Logical AND of top two boolean values
   - `["or"]` - Logical OR of top two boolean values
@@ -294,6 +294,17 @@ defmodule Predicator.Evaluator do
     execute_function_call(evaluator, function_name, arg_count)
   end
 
+  # Object creation instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["object_new"]) do
+    execute_object_new(evaluator)
+  end
+
+  # Object property set instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["object_set", key])
+       when is_binary(key) do
+    execute_object_set(evaluator, key)
+  end
+
   # Unknown instruction - catch-all clause
   defp execute_instruction(%__MODULE__{}, unknown) do
     {:error,
@@ -345,7 +356,8 @@ defmodule Predicator.Evaluator do
                   (is_binary(a) and is_binary(b)) or
                   (is_list(a) and is_list(b)) or
                   (is_struct(a, Date) and is_struct(b, Date)) or
-                  (is_struct(a, DateTime) and is_struct(b, DateTime))
+                  (is_struct(a, DateTime) and is_struct(b, DateTime)) or
+                  (is_map(a) and is_map(b) and not is_struct(a) and not is_struct(b))
 
   @spec compare_values(Types.value(), Types.value(), binary()) :: Types.value()
   defp compare_values(:undefined, _right, _operator), do: :undefined
@@ -794,5 +806,26 @@ defmodule Predicator.Evaluator do
       value ->
         value
     end
+  end
+
+  @spec execute_object_new(__MODULE__.t()) :: {:ok, __MODULE__.t()}
+  defp execute_object_new(%__MODULE__{stack: stack} = evaluator) do
+    new_object = %{}
+    {:ok, %{evaluator | stack: [new_object | stack]}}
+  end
+
+  @spec execute_object_set(__MODULE__.t(), binary()) :: {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_object_set(%__MODULE__{stack: [value, object | rest]} = evaluator, key)
+       when is_map(object) do
+    updated_object = Map.put(object, key, value)
+    {:ok, %{evaluator | stack: [updated_object | rest]}}
+  end
+
+  defp execute_object_set(%__MODULE__{stack: [_value, _non_object | _rest]} = _evaluator, _key) do
+    {:error, "Cannot set property on non-object value"}
+  end
+
+  defp execute_object_set(%__MODULE__{stack: stack} = _evaluator, _key) when length(stack) < 2 do
+    {:error, EvaluationError.insufficient_operands(:object_set, length(stack), 2)}
   end
 end

@@ -16,7 +16,7 @@ defmodule Predicator.Lexer do
       iex> Predicator.Lexer.tokenize("score > 85")
       {:ok, [
         {:identifier, 1, 1, 5, "score"},
-        {:gt, 1, 7, 1, ">"},  
+        {:gt, 1, 7, 1, ">"},
         {:integer, 1, 9, 2, 85},
         {:eof, 1, 11, 0, nil}
       ]}
@@ -27,7 +27,7 @@ defmodule Predicator.Lexer do
 
   Contains:
   - `line` - 1-based line number
-  - `column` - 1-based column number  
+  - `column` - 1-based column number
   - `length` - number of characters in the token
   """
   @type position :: {line :: pos_integer(), column :: pos_integer(), length :: pos_integer()}
@@ -40,6 +40,7 @@ defmodule Predicator.Lexer do
   @type token ::
           {:identifier, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:integer, pos_integer(), pos_integer(), pos_integer(), integer()}
+          | {:float, pos_integer(), pos_integer(), pos_integer(), float()}
           | {:string, pos_integer(), pos_integer(), pos_integer(), binary(), :double | :single}
           | {:boolean, pos_integer(), pos_integer(), pos_integer(), boolean()}
           | {:date, pos_integer(), pos_integer(), pos_integer(), Date.t()}
@@ -66,6 +67,9 @@ defmodule Predicator.Lexer do
           | {:rparen, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:lbracket, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:rbracket, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:lbrace, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:rbrace, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:colon, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:comma, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:dot, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:in_op, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -311,6 +315,18 @@ defmodule Predicator.Lexer do
 
       ?] ->
         token = {:rbracket, line, col, 1, "]"}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?{ ->
+        token = {:lbrace, line, col, 1, "{"}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?} ->
+        token = {:rbrace, line, col, 1, "}"}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?: ->
+        token = {:colon, line, col, 1, ":"}
         tokenize_chars(rest, line, col + 1, [token | tokens])
 
       ?, ->

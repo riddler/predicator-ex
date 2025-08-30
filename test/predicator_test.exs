@@ -52,7 +52,7 @@ defmodule PredicatorTest do
                result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"
     end
 
     test "returns error for invalid syntax" do
@@ -60,7 +60,7 @@ defmodule PredicatorTest do
       assert {:error, %Predicator.Errors.ParseError{message: message}} = result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>'"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'"
     end
   end
 
@@ -179,7 +179,7 @@ defmodule PredicatorTest do
       assert {:error, message} = result
 
       assert message =~
-               "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input"
+               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"
 
       assert message =~ "line 1, column 8"
     end
@@ -877,6 +877,121 @@ defmodule PredicatorTest do
       # CONTAINS with non-list on left side
       result = Predicator.evaluate("1 contains 2", %{})
       assert {:error, _message} = result
+    end
+  end
+
+  describe "object literals" do
+    test "evaluates simple object literals" do
+      assert Predicator.evaluate("{}", %{}) == {:ok, %{}}
+      assert Predicator.evaluate("{name: \"John\"}", %{}) == {:ok, %{"name" => "John"}}
+
+      assert Predicator.evaluate("{age: 30, active: true}", %{}) ==
+               {:ok, %{"age" => 30, "active" => true}}
+    end
+
+    test "evaluates object literals with variable references" do
+      context = %{"username" => "alice", "score" => 95}
+
+      assert Predicator.evaluate("{user: username, points: score}", context) ==
+               {:ok, %{"user" => "alice", "points" => 95}}
+    end
+
+    test "evaluates nested object literals" do
+      expected = %{
+        "user" => %{"name" => "Bob", "role" => "admin"},
+        "settings" => %{"theme" => "dark"}
+      }
+
+      assert Predicator.evaluate(
+               ~s|{user: {name: "Bob", role: "admin"}, settings: {theme: "dark"}}|,
+               %{}
+             ) ==
+               {:ok, expected}
+    end
+
+    test "evaluates object literals with string keys" do
+      assert Predicator.evaluate(~s|{"first name": "John", "last name": "Doe"}|, %{}) ==
+               {:ok, %{"first name" => "John", "last name" => "Doe"}}
+    end
+
+    test "evaluates object literals with expression values" do
+      context = %{"base" => 100, "rate" => 0.1}
+
+      assert Predicator.evaluate("{total: base + base * rate}", context) ==
+               {:ok, %{"total" => 110.0}}
+    end
+
+    test "object equality and comparison" do
+      context = %{"user_data" => %{"score" => 85}}
+
+      assert Predicator.evaluate("{score: 85} == user_data", context) == {:ok, true}
+      assert Predicator.evaluate("{score: 90} != user_data", context) == {:ok, true}
+      assert Predicator.evaluate("{} == {}", %{}) == {:ok, true}
+      assert Predicator.evaluate("{} != {name: \"test\"}", %{}) == {:ok, true}
+    end
+
+    test "parses object expressions correctly" do
+      {:ok, ast} = Predicator.parse("{name: \"John\"}")
+      assert match?({:object, [{{:identifier, "name"}, {:string_literal, "John", :double}}]}, ast)
+
+      {:ok, ast} = Predicator.parse("{}")
+      assert match?({:object, []}, ast)
+    end
+
+    test "compiles object expressions correctly" do
+      {:ok, instructions} = Predicator.compile("{}")
+      assert instructions == [["object_new"]]
+
+      {:ok, instructions} = Predicator.compile("{name: \"John\"}")
+      assert instructions == [["object_new"], ["lit", "John"], ["object_set", "name"]]
+
+      {:ok, instructions} = Predicator.compile("{name: \"John\", age: 30}")
+
+      assert instructions == [
+               ["object_new"],
+               ["lit", "John"],
+               ["object_set", "name"],
+               ["lit", 30],
+               ["object_set", "age"]
+             ]
+    end
+
+    test "handles undefined variables in object values" do
+      assert Predicator.evaluate("{name: missing_var}", %{}) == {:ok, %{"name" => :undefined}}
+    end
+
+    test "decompiles object expressions" do
+      {:ok, ast} = Predicator.parse("{}")
+      assert Predicator.decompile(ast) == "{}"
+
+      {:ok, ast} = Predicator.parse("{name: \"John\"}")
+      assert Predicator.decompile(ast) == ~s({name: "John"})
+
+      {:ok, ast} = Predicator.parse(~s|{"first name": "John", "last name": "Doe"}|)
+      assert Predicator.decompile(ast) == ~s({"first name": "John", "last name": "Doe"})
+
+      {:ok, ast} = Predicator.parse("{age: 30, active: true}")
+      assert Predicator.decompile(ast) == "{age: 30, active: true}"
+    end
+
+    test "object round-trip consistency" do
+      expressions = [
+        "{}",
+        "{name: \"John\"}",
+        "{age: 30, active: true}",
+        ~s|{"first name": "John"}|,
+        "{user: {name: \"Bob\", role: \"admin\"}}",
+        "{total: price + tax}"
+      ]
+
+      for expr <- expressions do
+        {:ok, ast} = Predicator.parse(expr)
+        decompiled = Predicator.decompile(ast)
+        {:ok, ast2} = Predicator.parse(decompiled)
+
+        # ASTs should be equivalent after round-trip
+        assert ast == ast2, "Round-trip failed for: #{expr}"
+      end
     end
   end
 
