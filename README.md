@@ -23,6 +23,7 @@ Predicator allows you to safely evaluate user-defined expressions without the se
 - 🧠 **Smart Logic**: Logical operators with proper precedence (`AND`, `OR`, `NOT`)
 - 🔧 **Functions**: Built-in functions for string, numeric, and date operations
 - 🌳 **Nested Access**: Dot notation and bracket access for deep data structures (`user.profile.name`, `user['profile']['name']`, `items[0]`)
+- 📦 **Object Literals**: JavaScript-style object notation with `{key: value}` syntax for complex data structures
 
 ## Installation
 
@@ -31,7 +32,7 @@ Add `predicator` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:predicator, "~> 3.0"}
+    {:predicator, "~> 3.1"}
   ]
 end
 ```
@@ -141,6 +142,33 @@ iex> Predicator.decompile(ast)
 iex> {:ok, ast} = Predicator.parse("score > 85 AND #2024-01-15# in dates")
 iex> Predicator.decompile(ast)
 "score > 85 AND #2024-01-15# IN dates"
+
+# Object literals - JavaScript-style object notation
+iex> Predicator.evaluate!("{}", %{})
+%{}
+
+iex> Predicator.evaluate!("{name: \"John\", age: 30}", %{})
+%{"name" => "John", "age" => 30}
+
+# Objects with variable references and expressions
+iex> Predicator.evaluate!("{user: name, total: price + tax}", %{"name" => "Alice", "price" => 100, "tax" => 10})
+%{"user" => "Alice", "total" => 110}
+
+# Nested objects for complex data structures
+iex> Predicator.evaluate!("{user: {name: \"Bob\", role: \"admin\"}, active: true}", %{})
+%{"user" => %{"name" => "Bob", "role" => "admin"}, "active" => true}
+
+# String keys for complex property names
+iex> Predicator.evaluate!("{\"first name\": \"John\", \"user-id\": 42}", %{})
+%{"first name" => "John", "user-id" => 42}
+
+# Object comparisons
+iex> Predicator.evaluate!("{score: 85} == user_data", %{"user_data" => %{"score" => 85}})
+true
+
+# Objects work with functions and all operators
+iex> Predicator.evaluate!("{username: upper(name), active: score > 80}", %{"name" => "alice", "score" => 95})
+%{"username" => "ALICE", "active" => true}
 ```
 
 ## Nested Data Access
@@ -301,12 +329,13 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 
 ## Data Types
 
-- **Numbers**: `42`, `-17` (integers)
+- **Numbers**: `42`, `-17` (integers), `3.14`, `-2.5` (floats)
 - **Strings**: `'hello'`, `'world'` (single-quoted) or `"hello"`, `"world"` (double-quoted, with escape sequences)
 - **Booleans**: `true`, `false` (or plain identifiers like `active`, `expired`)
 - **Dates**: `#2024-01-15#` (ISO 8601 date format)
 - **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with timezone)
 - **Lists**: `[1, 2, 3]`, `['admin', 'manager']` (homogeneous collections)
+- **Objects**: `{}`, `{name: "John", age: 30}`, `{user: {role: "admin"}}` (JavaScript-style object literals)
 - **Identifiers**: `score`, `user_name`, `is_active`, `user.profile.name`, `user['key']`, `items[0]` (variable references with dot notation and bracket notation for nested data)
 
 ## Architecture
@@ -332,9 +361,12 @@ addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
 postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
-primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | "(" expression ")"
+primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | function_call | list | object | "(" expression ")"
 function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
+object       → "{" ( object_entry ( "," object_entry )* )? "}"
+object_entry → object_key ":" expression
+object_key   → IDENTIFIER | STRING
 ```
 
 ### Core Components

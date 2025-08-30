@@ -4,7 +4,7 @@ This document provides context for Claude Code when working on the Predicator pr
 
 ## Project Overview
 
-Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports arithmetic operators (+, -, *, /, %) with proper precedence, comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT), date/datetime literals, list literals, membership operators (in, contains), function calls with built-in system functions, nested data structure access using dot notation, and bracket access for dynamic property and array access.
+Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports arithmetic operators (+, -, *, /, %) with proper precedence, comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT), date/datetime literals, list literals, object literals with JavaScript-style syntax, membership operators (in, contains), function calls with built-in system functions, nested data structure access using dot notation, and bracket access for dynamic property and array access.
 
 ## Architecture
 
@@ -27,9 +27,12 @@ addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
 postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
-primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | function_call | "(" expression ")"
+primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | object | function_call | "(" expression ")"
 function_call → IDENTIFIER "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
+object       → "{" ( object_entry ( "," object_entry )* )? "}"
+object_entry → object_key ":" expression
+object_key   → IDENTIFIER | STRING
 ```
 
 ### Core Components
@@ -135,13 +138,35 @@ test/predicator/
 ├── parser_test.exs  
 ├── compiler_test.exs
 ├── evaluator_test.exs
-├── predicator_test.exs        # Integration tests
-└── visitors/                  # Visitor tests
+├── object_evaluation_test.exs     # Object literal evaluation tests
+├── object_edge_cases_test.exs     # Object literal edge cases
+├── object_integration_test.exs    # Object literal integration tests
+├── predicator_test.exs            # Integration tests
+└── visitors/                      # Visitor tests
     ├── string_visitor_test.exs
     └── instructions_visitor_test.exs
 ```
 
 ## Recent Additions (2025)
+
+### Object Literals (v3.1.0 - JavaScript-Style Objects)
+- **Syntax Support**: Complete JavaScript-style object literal syntax (`{}`, `{name: "John"}`, `{user: {role: "admin"}}`)
+- **Lexer Extensions**: Added `:lbrace`, `:rbrace`, `:colon` tokens for object parsing
+- **Parser Grammar**: Comprehensive object parsing with proper precedence and error handling
+- **AST Nodes**: New `{:object, entries}` AST node type for object representation
+- **Stack-based Compilation**: Uses `object_new` and `object_set` instructions for efficient evaluation
+- **Evaluator Support**: Object construction and equality comparison with type-safe guards
+- **String Decompilation**: Round-trip formatting preserves original object syntax
+- **Key Types**: Both identifier keys (`name`) and string keys (`"name"`) supported
+- **Nested Objects**: Unlimited nesting depth with proper evaluation order
+- **Type Safety**: Enhanced type matching guards to support maps while preserving Date/DateTime separation
+- **Comprehensive Testing**: 47 new tests covering evaluation, edge cases, and integration scenarios
+- **Examples**:
+  ```elixir
+  Predicator.evaluate("{name: 'John', age: 30}", %{})  # Object construction
+  Predicator.evaluate("{score: 85} = user_data", %{"user_data" => %{"score" => 85}})  # Comparison
+  Predicator.evaluate("{user: {role: 'admin'}}", %{})  # Nested objects
+  ```
 
 ### Type Coercion and Float Support (v2.3.0)
 
@@ -216,6 +241,20 @@ test/predicator/
 - **Syntax**: `[1, 2, 3]`, `["admin", "manager"]`
 - **Operators**: `in` (element in list), `contains` (list contains element)
 - **Examples**: `role in ["admin", "manager"]`, `[1, 2, 3] contains 2`
+
+### Object Literals (v3.1.0 - JavaScript-Style Objects)
+- **Syntax**: `{}`, `{name: "John"}`, `{user: {role: "admin", active: true}}`
+- **Key Types**: Identifiers (`name`) and strings (`"name"`) supported as keys
+- **Nested Objects**: Unlimited nesting depth with proper evaluation order
+- **Stack-based Compilation**: Uses `object_new` and `object_set` instructions for efficient evaluation
+- **Type Safety**: Object equality comparisons with proper map type guards
+- **String Decompilation**: Round-trip formatting preserves original syntax
+- **Examples**:
+  ```elixir
+  Predicator.evaluate("{name: 'John'} = user_data", %{})  # Object comparison
+  Predicator.evaluate("{score: 85, active: true}", %{})   # Object construction
+  Predicator.evaluate("user = {profile: {name: 'Alice'}}", %{})  # Nested objects
+  ```
 
 ### Logical Operator Enhancements
 
@@ -342,7 +381,7 @@ test/predicator/
 - **Property Testing**: Comprehensive input validation
 - **Error Path Testing**: All error conditions covered
 - **Round-trip Testing**: AST → String → AST consistency
-- **Current Test Count**: 569 tests (65 doctests + 504 regular tests)
+- **Current Test Count**: 886 tests (65 doctests + 821 regular tests)
 
 ## Code Standards
 
