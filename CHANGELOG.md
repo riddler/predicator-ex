@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2025-08-31
+
+### Added
+
+#### Strict Equality Operators
+
+- **New Operators**: Added `===` (strict equality) and `!==` (strict inequality) operators
+- **Type-Safe Comparisons**: Strict operators compare both value and type, unlike loose equality
+- **Round-Trip Preservation**: Operators maintain their exact form during parse/decompile cycles
+- **Complete Pipeline Support**: Full lexer, parser, evaluator, and visitor implementation
+- **Comprehensive Testing**: 23 tests covering all aspects of strict equality functionality
+
+#### Examples
+
+```elixir
+# Strict equality - same type and value required
+Predicator.evaluate("5 === 5", %{})      # {:ok, true}
+Predicator.evaluate("5 === '5'", %{})    # {:ok, false} - different types
+
+# Strict inequality - true when type or value differs
+Predicator.evaluate("5 !== '5'", %{})    # {:ok, true} - different types
+Predicator.evaluate("1 !== true", %{})   # {:ok, true} - different types
+
+# Operator distinction preserved
+Predicator.parse("x = y") |> elem(1) |> Predicator.decompile()   # "x = y"
+Predicator.parse("x == y") |> elem(1) |> Predicator.decompile()  # "x == y"  
+Predicator.parse("x === y") |> elem(1) |> Predicator.decompile() # "x === y"
+```
+
+#### Technical Implementation
+
+- **Lexer**: Added `:strict_equal` and `:strict_ne` token types with proper precedence
+- **Parser**: Extended comparison grammar to support strict operators
+- **Evaluator**: Added `STRICT_EQ` and `STRICT_NE` instruction handlers
+- **StringVisitor**: Added decompilation support for round-trip accuracy
+- **Type Safety**: Works with all data types including `:undefined` values
+
 ## [3.1.0] - 2025-08-30
 
 ### Added
