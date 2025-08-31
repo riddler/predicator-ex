@@ -75,6 +75,7 @@ defmodule Predicator.Lexer do
           | {:in_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:contains_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:qualified_function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:eof, pos_integer(), pos_integer(), pos_integer(), nil}
 
   @typedoc """
@@ -189,31 +190,40 @@ defmodule Predicator.Lexer do
 
         tokenize_chars(remaining, line, col + consumed, [token | tokens])
 
-      # Identifiers (including potential function calls)
+      # Identifiers (including potential function calls and qualified identifiers)
       c when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or c == ?_ ->
         {identifier, remaining, consumed} = take_identifier([char | rest])
 
-        # Check if this is a function call by looking ahead for '('
-        case skip_whitespace(remaining) do
-          [?( | _rest] ->
-            # Check if this identifier is a keyword that should not become a function
-            case classify_identifier(identifier) do
-              {:identifier, _value} ->
-                # This is a regular identifier followed by '(', so it's a function call
-                token = {:function_name, line, col, consumed, identifier}
-                tokenize_chars(remaining, line, col + consumed, [token | tokens])
+        # Check for qualified identifier (namespace.function)
+        case remaining do
+          [?. | [next_char | _]]
+          when (next_char >= ?a and next_char <= ?z) or
+                 (next_char >= ?A and next_char <= ?Z) or
+                 next_char == ?_ ->
+            # Try to build a qualified identifier
+            case take_qualified_identifier(identifier, remaining, consumed) do
+              {:qualified, qualified_name, new_remaining, total_consumed} ->
+                # Check if this is a function call
+                case skip_whitespace(new_remaining) do
+                  [?( | _] ->
+                    token = {:qualified_function_name, line, col, total_consumed, qualified_name}
+                    tokenize_chars(new_remaining, line, col + total_consumed, [token | tokens])
 
-              {token_type, value} ->
-                # This is a keyword, keep it as the keyword (don't make it a function)
-                token = {token_type, line, col, consumed, value}
-                tokenize_chars(remaining, line, col + consumed, [token | tokens])
+                  _ ->
+                    # Not a function call, treat as regular identifier and let parser handle the dot
+                    {token_type, value} = classify_identifier(identifier)
+                    token = {token_type, line, col, consumed, value}
+                    tokenize_chars(remaining, line, col + consumed, [token | tokens])
+                end
+
+              :not_qualified ->
+                # Regular identifier followed by something else
+                handle_regular_identifier(identifier, remaining, consumed, line, col, tokens)
             end
 
-          _no_function_call ->
-            # Regular identifier or keyword
-            {token_type, value} = classify_identifier(identifier)
-            token = {token_type, line, col, consumed, value}
-            tokenize_chars(remaining, line, col + consumed, [token | tokens])
+          _ ->
+            # Not followed by a dot or not a qualified identifier
+            handle_regular_identifier(identifier, remaining, consumed, line, col, tokens)
         end
 
       # Operators
@@ -448,6 +458,81 @@ defmodule Predicator.Lexer do
   defp classify_identifier("CONTAINS"), do: {:contains_op, "CONTAINS"}
   defp classify_identifier("contains"), do: {:contains_op, "contains"}
   defp classify_identifier(id), do: {:identifier, id}
+
+  # Helper function to handle regular identifier (not qualified)
+  @spec handle_regular_identifier(
+          binary(),
+          charlist(),
+          pos_integer(),
+          pos_integer(),
+          pos_integer(),
+          [token()]
+        ) ::
+          {:ok, [token()]} | {:error, binary()}
+  defp handle_regular_identifier(identifier, remaining, consumed, line, col, tokens) do
+    # Check if this is a function call by looking ahead for '('
+    case skip_whitespace(remaining) do
+      [?( | _rest] ->
+        # Check if this identifier is a keyword that should not become a function
+        case classify_identifier(identifier) do
+          {:identifier, _value} ->
+            # This is a regular identifier followed by '(', so it's a function call
+            token = {:function_name, line, col, consumed, identifier}
+            tokenize_chars(remaining, line, col + consumed, [token | tokens])
+
+          {token_type, value} ->
+            # This is a keyword, keep it as the keyword (don't make it a function)
+            token = {token_type, line, col, consumed, value}
+            tokenize_chars(remaining, line, col + consumed, [token | tokens])
+        end
+
+      _no_function_call ->
+        # Regular identifier or keyword
+        {token_type, value} = classify_identifier(identifier)
+        token = {token_type, line, col, consumed, value}
+        tokenize_chars(remaining, line, col + consumed, [token | tokens])
+    end
+  end
+
+  # Helper function to take a qualified identifier (namespace.function.etc)
+  @spec take_qualified_identifier(binary(), charlist(), pos_integer()) ::
+          {:qualified, binary(), charlist(), pos_integer()} | :not_qualified
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp take_qualified_identifier(first_part, [?. | rest], consumed) do
+    # Check if the next character starts a valid identifier
+    case rest do
+      [c | _] when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or c == ?_ ->
+        # Take the next identifier part
+        {next_part, remaining, part_consumed} = take_identifier(rest)
+
+        # Build the qualified name so far
+        qualified_name = first_part <> "." <> next_part
+        # +1 for the dot
+        total_consumed = consumed + 1 + part_consumed
+
+        # Check if there's another dot for deeper nesting
+        case remaining do
+          [?. | [next_c | _]]
+          when (next_c >= ?a and next_c <= ?z) or
+                 (next_c >= ?A and next_c <= ?Z) or
+                 next_c == ?_ ->
+            # Continue building the qualified identifier
+            take_qualified_identifier(qualified_name, remaining, total_consumed)
+
+          _ ->
+            # No more dots or not a valid identifier after dot
+            {:qualified, qualified_name, remaining, total_consumed}
+        end
+
+      _ ->
+        # Not a valid identifier after the dot
+        :not_qualified
+    end
+  end
+
+  defp take_qualified_identifier(_first_part, _remaining, _consumed) do
+    :not_qualified
+  end
 
   # Helper function to skip whitespace characters for lookahead
   @spec skip_whitespace(charlist()) :: charlist()
