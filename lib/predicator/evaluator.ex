@@ -226,7 +226,7 @@ defmodule Predicator.Evaluator do
 
   # Comparison instruction
   defp execute_instruction(%__MODULE__{} = evaluator, ["compare", operator])
-       when operator in ["GT", "LT", "EQ", "GTE", "LTE", "NE"] do
+       when operator in ["GT", "LT", "EQ", "GTE", "LTE", "NE", "STRICT_EQ", "STRICT_NE"] do
     execute_compare(evaluator, operator)
   end
 
@@ -362,8 +362,18 @@ defmodule Predicator.Evaluator do
                   (is_map(a) and is_map(b) and not is_struct(a) and not is_struct(b))
 
   @spec compare_values(Types.value(), Types.value(), binary()) :: Types.value()
-  defp compare_values(:undefined, _right, _operator), do: :undefined
-  defp compare_values(_left, :undefined, _operator), do: :undefined
+  # Handle undefined values for non-strict operators
+  defp compare_values(:undefined, _right, operator)
+       when operator not in ["STRICT_EQ", "STRICT_NE"],
+       do: :undefined
+
+  defp compare_values(_left, :undefined, operator)
+       when operator not in ["STRICT_EQ", "STRICT_NE"],
+       do: :undefined
+
+  # Strict equality works on all types, including :undefined
+  defp compare_values(left, right, "STRICT_EQ"), do: left === right
+  defp compare_values(left, right, "STRICT_NE"), do: left !== right
 
   defp compare_values(left, right, operator) when types_match(left, right) do
     case operator do

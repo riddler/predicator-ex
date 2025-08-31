@@ -416,3 +416,9 @@ test/predicator/
 - Elixir ~> 1.11 required
 - All dependencies in development/test only
 - No runtime dependencies for core functionality
+
+- When creating git commit messages:
+  - be concise but informative, and highlight the functional changes
+  - no need to mention code quality improvements as they are expected (unless the functional change is about code quality improvements)
+  - commit titles should be less than 50 characters and be in the simple present tense (active voice)
+  - commit descriptions should wrap at about 72 characters and also be in the simple present tense (active voice)

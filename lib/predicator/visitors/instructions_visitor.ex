@@ -193,7 +193,10 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   defp map_comparison_op(:gte), do: "GTE"
   defp map_comparison_op(:lte), do: "LTE"
   defp map_comparison_op(:eq), do: "EQ"
+  defp map_comparison_op(:equal_equal), do: "EQ"
   defp map_comparison_op(:ne), do: "NE"
+  defp map_comparison_op(:strict_eq), do: "STRICT_EQ"
+  defp map_comparison_op(:strict_ne), do: "STRICT_NE"
 
   # Helper function to map AST arithmetic operators to instruction format
   @spec map_arithmetic_op(Parser.arithmetic_op()) :: binary()
