@@ -14,11 +14,6 @@ defmodule Predicator.Functions.SystemFunctions do
   - `lower(string)` - Converts string to lowercase
   - `trim(string)` - Removes leading and trailing whitespace
 
-  ### Numeric Functions
-  - `abs(number)` - Returns the absolute value of a number
-  - `max(a, b)` - Returns the larger of two numbers
-  - `min(a, b)` - Returns the smaller of two numbers
-
   ### Date Functions
   - `year(date)` - Extracts the year from a date or datetime
   - `month(date)` - Extracts the month from a date or datetime
@@ -26,16 +21,16 @@ defmodule Predicator.Functions.SystemFunctions do
 
   ## Examples
 
-      iex> Predicator.BuiltInFunctions.call("len", ["hello"])
+      iex> Predicator.Functions.SystemFunctions.call("len", ["hello"])
       {:ok, 5}
 
-      iex> Predicator.BuiltInFunctions.call("upper", ["world"])
+      iex> Predicator.Functions.SystemFunctions.call("upper", ["world"])
       {:ok, "WORLD"}
 
-      iex> Predicator.BuiltInFunctions.call("max", [10, 5])
-      {:ok, 10}
+      iex> Predicator.Functions.SystemFunctions.call("year", [~D[2023-05-15]])
+      {:ok, 2023}
 
-      iex> Predicator.BuiltInFunctions.call("unknown", [])
+      iex> Predicator.Functions.SystemFunctions.call("unknown", [])
       {:error, "Unknown function: unknown"}
   """
 
@@ -68,11 +63,6 @@ defmodule Predicator.Functions.SystemFunctions do
       "upper" => {1, &call_upper/2},
       "lower" => {1, &call_lower/2},
       "trim" => {1, &call_trim/2},
-
-      # Numeric functions
-      "abs" => {1, &call_abs/2},
-      "max" => {2, &call_max/2},
-      "min" => {2, &call_min/2},
 
       # Date functions
       "year" => {1, &call_year/2},
@@ -133,47 +123,6 @@ defmodule Predicator.Functions.SystemFunctions do
 
   defp call_trim(_args, _context) do
     {:error, "trim() expects exactly 1 argument"}
-  end
-
-  # Numeric function implementations
-
-  @spec call_abs([Types.value()], Types.context()) :: function_result()
-  defp call_abs([value], _context) when is_integer(value) do
-    {:ok, abs(value)}
-  end
-
-  defp call_abs([_value], _context) do
-    {:error, "abs() expects a numeric argument"}
-  end
-
-  defp call_abs(_args, _context) do
-    {:error, "abs() expects exactly 1 argument"}
-  end
-
-  @spec call_max([Types.value()], Types.context()) :: function_result()
-  defp call_max([a, b], _context) when is_integer(a) and is_integer(b) do
-    {:ok, max(a, b)}
-  end
-
-  defp call_max([_a, _b], _context) do
-    {:error, "max() expects two numeric arguments"}
-  end
-
-  defp call_max(_args, _context) do
-    {:error, "max() expects exactly 2 arguments"}
-  end
-
-  @spec call_min([Types.value()], Types.context()) :: function_result()
-  defp call_min([a, b], _context) when is_integer(a) and is_integer(b) do
-    {:ok, min(a, b)}
-  end
-
-  defp call_min([_a, _b], _context) do
-    {:error, "min() expects two numeric arguments"}
-  end
-
-  defp call_min(_args, _context) do
-    {:error, "min() expects exactly 2 arguments"}
   end
 
   # Date function implementations

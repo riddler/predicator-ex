@@ -44,32 +44,6 @@ defmodule Predicator.Functions.SystemFunctionsCoverageTest do
       assert {:error, "trim() expects exactly 1 argument"} = trim_func.(["a", "b"], %{})
     end
 
-    test "abs/2 with wrong number of arguments" do
-      {1, abs_func} = SystemFunctions.all_functions()["abs"]
-
-      # Test with no arguments
-      assert {:error, "abs() expects exactly 1 argument"} = abs_func.([], %{})
-
-      # Test with too many arguments
-      assert {:error, "abs() expects exactly 1 argument"} = abs_func.([1, 2], %{})
-    end
-
-    test "max/2 with wrong number of arguments" do
-      {2, max_func} = SystemFunctions.all_functions()["max"]
-
-      # Test with wrong number of arguments
-      assert {:error, "max() expects exactly 2 arguments"} = max_func.([1], %{})
-      assert {:error, "max() expects exactly 2 arguments"} = max_func.([1, 2, 3], %{})
-    end
-
-    test "min/2 with wrong number of arguments" do
-      {2, min_func} = SystemFunctions.all_functions()["min"]
-
-      # Test with wrong number of arguments
-      assert {:error, "min() expects exactly 2 arguments"} = min_func.([1], %{})
-      assert {:error, "min() expects exactly 2 arguments"} = min_func.([1, 2, 3], %{})
-    end
-
     test "year/2 with wrong number of arguments" do
       {1, year_func} = SystemFunctions.all_functions()["year"]
 

@@ -644,6 +644,11 @@ defmodule Predicator.Parser do
     parse_function_call(state, name)
   end
 
+  # Parse qualified function call (namespace.function)
+  defp parse_primary_token(state, {:qualified_function_name, _line, _col, _len, name}) do
+    parse_function_call(state, name)
+  end
+
   # Parse parenthesized expression
   defp parse_primary_token(state, {:lparen, _line, _col, _len, _value}) do
     paren_state = advance(state)
@@ -742,6 +747,7 @@ defmodule Predicator.Parser do
   defp format_token(:or_or, _value), do: "'||'"
   defp format_token(:bang, _value), do: "'!'"
   defp format_token(:function_name, value), do: "function '#{value}'"
+  defp format_token(:qualified_function_name, value), do: "function '#{value}'"
   defp format_token(:eof, _value), do: "end of input"
 
   # Parse list literals: [element1, element2, ...]

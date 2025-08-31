@@ -149,6 +149,7 @@ test/predicator/
 ## Recent Additions (2025)
 
 ### Object Literals (v3.1.0 - JavaScript-Style Objects)
+
 - **Syntax Support**: Complete JavaScript-style object literal syntax (`{}`, `{name: "John"}`, `{user: {role: "admin"}}`)
 - **Lexer Extensions**: Added `:lbrace`, `:rbrace`, `:colon` tokens for object parsing
 - **Parser Grammar**: Comprehensive object parsing with proper precedence and error handling
@@ -161,6 +162,7 @@ test/predicator/
 - **Type Safety**: Enhanced type matching guards to support maps while preserving Date/DateTime separation
 - **Comprehensive Testing**: 47 new tests covering evaluation, edge cases, and integration scenarios
 - **Examples**:
+
   ```elixir
   Predicator.evaluate("{name: 'John', age: 30}", %{})  # Object construction
   Predicator.evaluate("{score: 85} = user_data", %{"user_data" => %{"score" => 85}})  # Comparison
@@ -242,6 +244,7 @@ test/predicator/
 - **Examples**: `role in ["admin", "manager"]`, `[1, 2, 3] contains 2`
 
 ### Object Literals (v3.1.0 - JavaScript-Style Objects)
+
 - **Syntax**: `{}`, `{name: "John"}`, `{user: {role: "admin", active: true}}`
 - **Key Types**: Identifiers (`name`) and strings (`"name"`) supported as keys
 - **Nested Objects**: Unlimited nesting depth with proper evaluation order
@@ -249,6 +252,7 @@ test/predicator/
 - **Type Safety**: Object equality comparisons with proper map type guards
 - **String Decompilation**: Round-trip formatting preserves original syntax
 - **Examples**:
+
   ```elixir
   Predicator.evaluate("{name: 'John'} = user_data", %{})  # Object comparison
   Predicator.evaluate("{score: 85, active: true}", %{})   # Object construction

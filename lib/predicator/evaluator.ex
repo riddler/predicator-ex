@@ -25,7 +25,7 @@ defmodule Predicator.Evaluator do
   - `["call", function_name, arg_count]` - Call function with arguments from stack
   """
 
-  alias Predicator.Functions.SystemFunctions
+  alias Predicator.Functions.{JSONFunctions, MathFunctions, SystemFunctions}
   alias Predicator.Types
   alias Predicator.Errors.{EvaluationError, TypeMismatchError}
 
@@ -79,9 +79,11 @@ defmodule Predicator.Evaluator do
   def evaluate(instructions, context \\ %{}, opts \\ [])
       when is_list(instructions) and is_map(context) do
     # Merge custom functions with system functions
-    custom_functions = Keyword.get(opts, :functions, %{})
-    system_functions = SystemFunctions.all_functions()
-    merged_functions = Map.merge(system_functions, custom_functions)
+    merged_functions =
+      SystemFunctions.all_functions()
+      |> Map.merge(JSONFunctions.all_functions())
+      |> Map.merge(MathFunctions.all_functions())
+      |> Map.merge(Keyword.get(opts, :functions, %{}))
 
     evaluator = %__MODULE__{
       instructions: instructions,

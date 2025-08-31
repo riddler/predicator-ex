@@ -277,8 +277,8 @@ defmodule UnaryEvaluationTest do
     end
 
     test "unary minus with function calls" do
-      assert {:ok, result} = evaluate("-abs(value)", %{"value" => -15})
-      # -abs(-15) = -15 = -15
+      assert {:ok, result} = evaluate("-Math.abs(value)", %{"value" => -15})
+      # -Math.abs(-15) = -15 = -15
       assert result == -15
     end
 
