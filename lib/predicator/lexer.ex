@@ -52,6 +52,8 @@ defmodule Predicator.Lexer do
           | {:eq, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:ne, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:equal_equal, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:strict_equal, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:strict_ne, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:plus, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:minus, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:multiply, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -251,6 +253,10 @@ defmodule Predicator.Lexer do
 
       ?! ->
         case rest do
+          [?=, ?= | rest3] ->
+            token = {:strict_ne, line, col, 3, "!=="}
+            tokenize_chars(rest3, line, col + 3, [token | tokens])
+
           [?= | rest2] ->
             token = {:ne, line, col, 2, "!="}
             tokenize_chars(rest2, line, col + 2, [token | tokens])
@@ -262,6 +268,10 @@ defmodule Predicator.Lexer do
 
       ?= ->
         case rest do
+          [?=, ?= | rest3] ->
+            token = {:strict_equal, line, col, 3, "==="}
+            tokenize_chars(rest3, line, col + 3, [token | tokens])
+
           [?= | rest2] ->
             token = {:equal_equal, line, col, 2, "=="}
             tokenize_chars(rest2, line, col + 2, [token | tokens])

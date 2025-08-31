@@ -100,7 +100,8 @@ defmodule Predicator.Parser do
   @typedoc """
   Comparison operators in the AST.
   """
-  @type comparison_op :: :gt | :lt | :gte | :lte | :eq | :ne
+  @type comparison_op ::
+          :gt | :lt | :gte | :lte | :eq | :equal_equal | :ne | :strict_eq | :strict_ne
 
   @typedoc """
   Arithmetic operators in the AST.
@@ -330,13 +331,30 @@ defmodule Predicator.Parser do
         case peek_token(new_state) do
           # Comparison operators (including equality)
           {op_type, _line, _col, _len, _value}
-          when op_type in [:gt, :lt, :gte, :lte, :eq, :equal_equal, :ne] ->
+          when op_type in [
+                 :gt,
+                 :lt,
+                 :gte,
+                 :lte,
+                 :eq,
+                 :equal_equal,
+                 :ne,
+                 :strict_equal,
+                 :strict_ne
+               ] ->
             op_state = advance(new_state)
 
             case parse_addition(op_state) do
               {:ok, right, final_state} ->
-                # Map == to :eq for consistency, != stays as :ne
-                normalized_op = if op_type == :equal_equal, do: :eq, else: op_type
+                # Map tokens to AST operators
+                normalized_op =
+                  case op_type do
+                    :equal_equal -> :equal_equal
+                    :strict_equal -> :strict_eq
+                    :strict_ne -> :strict_ne
+                    _other_op_type -> op_type
+                  end
+
                 ast = {:comparison, normalized_op, left, right}
                 {:ok, ast, final_state}
 
@@ -724,6 +742,9 @@ defmodule Predicator.Parser do
   defp format_token(:lte, _value), do: "'<='"
   defp format_token(:eq, _value), do: "'='"
   defp format_token(:ne, _value), do: "'!='"
+  defp format_token(:equal_equal, _value), do: "'=='"
+  defp format_token(:strict_equal, _value), do: "'==='"
+  defp format_token(:strict_ne, _value), do: "'!=='"
   defp format_token(:and_op, _value), do: "'AND'"
   defp format_token(:or_op, _value), do: "'OR'"
   defp format_token(:not_op, _value), do: "'NOT'"
@@ -742,7 +763,6 @@ defmodule Predicator.Parser do
   defp format_token(:multiply, _value), do: "'*'"
   defp format_token(:divide, _value), do: "'/'"
   defp format_token(:modulo, _value), do: "'%'"
-  defp format_token(:equal_equal, _value), do: "'=='"
   defp format_token(:and_and, _value), do: "'&&'"
   defp format_token(:or_or, _value), do: "'||'"
   defp format_token(:bang, _value), do: "'!'"

@@ -1065,7 +1065,7 @@ defmodule Predicator.ParserTest do
       result = Parser.parse(tokens)
 
       expected_ast =
-        {:comparison, :eq, {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
+        {:comparison, :equal_equal, {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
          {:arithmetic, :multiply, {:identifier, "c"}, {:identifier, "d"}}}
 
       assert {:ok, ^expected_ast} = result
