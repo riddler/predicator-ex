@@ -101,7 +101,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for not equal comparison" do
-      ast = {:equality, :ne, {:identifier, "status"}, {:literal, "inactive"}}
+      ast = {:comparison, :ne, {:identifier, "status"}, {:literal, "inactive"}}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -510,7 +510,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - equality operators" do
     test "generates instructions for equality (==)" do
-      ast = {:equality, :equal_equal, {:identifier, "x"}, {:identifier, "y"}}
+      ast = {:comparison, :eq, {:identifier, "x"}, {:identifier, "y"}}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -521,7 +521,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for inequality (!=) with equality syntax" do
-      ast = {:equality, :ne, {:identifier, "status"}, {:literal, "active"}}
+      ast = {:comparison, :ne, {:identifier, "status"}, {:literal, "active"}}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -534,7 +534,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     test "generates instructions for complex equality expression" do
       # x + y == 10
       arithmetic = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      ast = {:equality, :equal_equal, arithmetic, {:literal, 10}}
+      ast = {:comparison, :eq, arithmetic, {:literal, 10}}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -582,7 +582,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     test "generates instructions for complex nested expression" do
       # !(x + y == 10)
       arithmetic = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      equality = {:equality, :equal_equal, arithmetic, {:literal, 10}}
+      equality = {:comparison, :eq, arithmetic, {:literal, 10}}
       ast = {:unary, :bang, equality}
       result = InstructionsVisitor.visit(ast, [])
 

@@ -16,9 +16,8 @@ defmodule Predicator.Parser do
       expression   → logical_or
       logical_or   → logical_and ( "OR" | "||" logical_and )*
       logical_and  → logical_not ( "AND" | "&&" logical_not )*
-      logical_not  → "NOT" | "!" logical_not | equality
-      equality     → comparison ( ( "==" | "!=" ) comparison )*
-      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "in" | "contains" ) addition )?
+      logical_not  → "NOT" | "!" logical_not | comparison
+      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "==" | "!=" | "in" | "contains" ) addition )?
       addition     → multiplication ( ( "+" | "-" ) multiplication )*
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
       unary        → ( "-" | "!" ) unary | postfix
@@ -58,8 +57,7 @@ defmodule Predicator.Parser do
   - `{:literal, value}` - A literal value (number, boolean, list, date, datetime)
   - `{:string_literal, value, quote_type}` - A string literal with quote type information
   - `{:identifier, name}` - A variable reference
-  - `{:comparison, operator, left, right}` - A comparison expression
-  - `{:equality, operator, left, right}` - An equality expression (== !=)
+  - `{:comparison, operator, left, right}` - A comparison expression (including equality)
   - `{:arithmetic, operator, left, right}` - An arithmetic expression (+, -, *, /, %)
   - `{:unary, operator, operand}` - A unary expression (-, !)
   - `{:logical_and, left, right}` - A logical AND expression
@@ -76,7 +74,6 @@ defmodule Predicator.Parser do
           | {:string_literal, binary(), :double | :single}
           | {:identifier, binary()}
           | {:comparison, comparison_op(), ast(), ast()}
-          | {:equality, equality_op(), ast(), ast()}
           | {:arithmetic, arithmetic_op(), ast(), ast()}
           | {:unary, unary_op(), ast()}
           | {:membership, membership_op(), ast(), ast()}
@@ -103,12 +100,7 @@ defmodule Predicator.Parser do
   @typedoc """
   Comparison operators in the AST.
   """
-  @type comparison_op :: :gt | :lt | :gte | :lte | :eq
-
-  @typedoc """
-  Equality operators in the AST.
-  """
-  @type equality_op :: :equal_equal | :ne
+  @type comparison_op :: :gt | :lt | :gte | :lte | :eq | :ne
 
   @typedoc """
   Arithmetic operators in the AST.
@@ -321,62 +313,9 @@ defmodule Predicator.Parser do
     end
   end
 
-  # No NOT operator, parse equality
+  # No NOT operator, parse comparison
   defp parse_logical_not_token(state, _token) do
-    parse_equality(state)
-  end
-
-  # Parse equality expressions (== !=)
-  @spec parse_equality(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
-  defp parse_equality(state) do
-    case parse_comparison(state) do
-      {:ok, left, new_state} ->
-        parse_equality_rest(left, new_state)
-
-      {:error, message, line, col} ->
-        {:error, message, line, col}
-    end
-  end
-
-  @spec parse_equality_rest(ast(), parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
-  defp parse_equality_rest(left, state) do
-    token = peek_token(state)
-    parse_equality_rest_token(left, state, token)
-  end
-
-  # Parse == operator
-  defp parse_equality_rest_token(left, state, {:equal_equal, _line, _col, _len, _value}) do
-    eq_state = advance(state)
-
-    case parse_comparison(eq_state) do
-      {:ok, right, final_state} ->
-        ast = {:equality, :equal_equal, left, right}
-        parse_equality_rest(ast, final_state)
-
-      {:error, message, line, col} ->
-        {:error, message, line, col}
-    end
-  end
-
-  # Parse != operator
-  defp parse_equality_rest_token(left, state, {:ne, _line, _col, _len, _value}) do
-    ne_state = advance(state)
-
-    case parse_comparison(ne_state) do
-      {:ok, right, final_state} ->
-        ast = {:equality, :ne, left, right}
-        parse_equality_rest(ast, final_state)
-
-      {:error, message, line, col} ->
-        {:error, message, line, col}
-    end
-  end
-
-  # No equality operator, return left operand
-  defp parse_equality_rest_token(left, state, _token) do
-    {:ok, left, state}
+    parse_comparison(state)
   end
 
   # Parse comparison expressions
@@ -389,14 +328,16 @@ defmodule Predicator.Parser do
     case parse_addition(state) do
       {:ok, left, new_state} ->
         case peek_token(new_state) do
-          # Comparison operators
+          # Comparison operators (including equality)
           {op_type, _line, _col, _len, _value}
-          when op_type in [:gt, :lt, :gte, :lte, :eq] ->
+          when op_type in [:gt, :lt, :gte, :lte, :eq, :equal_equal, :ne] ->
             op_state = advance(new_state)
 
             case parse_addition(op_state) do
               {:ok, right, final_state} ->
-                ast = {:comparison, op_type, left, right}
+                # Map == to :eq for consistency, != stays as :ne
+                normalized_op = if op_type == :equal_equal, do: :eq, else: op_type
+                ast = {:comparison, normalized_op, left, right}
                 {:ok, ast, final_state}
 
               {:error, message, line, col} ->
