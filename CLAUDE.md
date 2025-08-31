@@ -416,3 +416,5 @@ test/predicator/
 - Elixir ~> 1.11 required
 - All dependencies in development/test only
 - No runtime dependencies for core functionality
+
+- When creating git commit messages, be concise but informative, and highlight the functional changes. No need to mention code quality improvements as they are expected (unless the functional change is about code quality improvements)
