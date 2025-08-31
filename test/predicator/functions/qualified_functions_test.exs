@@ -4,11 +4,15 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
   """
 
   use ExUnit.Case
-  doctest Predicator.Functions.JSONFunctions
+
+  alias Predicator.Lexer
+  alias Predicator.Functions.{JSONFunctions, MathFunctions}
+
+  doctest JSONFunctions
 
   describe "lexer qualified identifiers" do
     test "tokenizes single qualified function" do
-      {:ok, tokens} = Predicator.Lexer.tokenize("JSON.stringify(value)")
+      {:ok, tokens} = Lexer.tokenize("JSON.stringify(value)")
 
       assert tokens == [
                {:qualified_function_name, 1, 1, 14, "JSON.stringify"},
@@ -20,7 +24,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
     end
 
     test "tokenizes multi-level qualified function" do
-      {:ok, tokens} = Predicator.Lexer.tokenize("Company.Utils.JSON.stringify(data)")
+      {:ok, tokens} = Lexer.tokenize("Company.Utils.JSON.stringify(data)")
 
       assert tokens == [
                {:qualified_function_name, 1, 1, 28, "Company.Utils.JSON.stringify"},
@@ -32,7 +36,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
     end
 
     test "distinguishes qualified functions from property access" do
-      {:ok, tokens} = Predicator.Lexer.tokenize("user.name.first")
+      {:ok, tokens} = Lexer.tokenize("user.name.first")
 
       assert tokens == [
                {:identifier, 1, 1, 4, "user"},
@@ -45,7 +49,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
     end
 
     test "handles mixed qualified functions and property access" do
-      {:ok, tokens} = Predicator.Lexer.tokenize("JSON.stringify(user.profile)")
+      {:ok, tokens} = Lexer.tokenize("JSON.stringify(user.profile)")
 
       assert tokens == [
                {:qualified_function_name, 1, 1, 14, "JSON.stringify"},
@@ -93,7 +97,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
 
   describe "JSON functions" do
     setup do
-      %{functions: Predicator.Functions.JSONFunctions.all_functions()}
+      %{functions: JSONFunctions.all_functions()}
     end
 
     test "JSON.stringify converts objects to JSON strings", %{functions: functions} do
@@ -223,8 +227,8 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
 
   describe "integration tests" do
     setup do
-      json_functions = Predicator.Functions.JSONFunctions.all_functions()
-      math_functions = Predicator.Functions.MathFunctions.all_functions()
+      json_functions = JSONFunctions.all_functions()
+      math_functions = MathFunctions.all_functions()
 
       %{functions: Map.merge(json_functions, math_functions)}
     end

@@ -24,11 +24,11 @@ defmodule FunctionCallsIntegrationTest do
     end
 
     test "evaluates numeric functions" do
-      assert {:ok, 10} = evaluate("max(5, 10)")
-      assert {:ok, 5} = evaluate("min(5, 10)")
+      assert {:ok, 10} = evaluate("Math.max(5, 10)")
+      assert {:ok, 5} = evaluate("Math.min(5, 10)")
 
       context = %{"negative_val" => -10}
-      assert {:ok, 10} = evaluate("abs(negative_val)", context)
+      assert {:ok, 10} = evaluate("Math.abs(negative_val)", context)
     end
 
     test "evaluates date functions" do
@@ -45,10 +45,10 @@ defmodule FunctionCallsIntegrationTest do
     end
 
     test "evaluates function with multiple arguments" do
-      assert {:ok, 15} = evaluate("max(10, 15)")
+      assert {:ok, 15} = evaluate("Math.max(10, 15)")
 
       context = %{"a" => 8, "b" => 12}
-      assert {:ok, 12} = evaluate("max(a, b)", context)
+      assert {:ok, 12} = evaluate("Math.max(a, b)", context)
     end
 
     test "function in logical expression" do

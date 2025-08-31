@@ -4,11 +4,14 @@ defmodule Predicator.Functions.MathFunctionsTest do
   """
 
   use ExUnit.Case
-  doctest Predicator.Functions.MathFunctions
+
+  alias Predicator.Functions.MathFunctions
+
+  doctest MathFunctions
 
   describe "Math functions" do
     setup do
-      %{functions: Predicator.Functions.MathFunctions.all_functions()}
+      %{functions: MathFunctions.all_functions()}
     end
 
     test "Math.pow raises base to power", %{functions: functions} do

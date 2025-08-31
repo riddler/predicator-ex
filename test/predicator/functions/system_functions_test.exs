@@ -40,32 +40,6 @@ defmodule Predicator.Functions.SystemFunctionsTest do
       assert msg =~ "trim() expects 1 arguments, got 0"
     end
 
-    test "numeric functions with wrong arity" do
-      # abs() with no arguments
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("abs()", %{})
-      assert msg =~ "abs() expects 1 arguments, got 0"
-
-      # abs() with multiple arguments
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("abs(5, 10)", %{})
-
-      assert msg =~ "abs() expects 1 arguments, got 2"
-
-      # max() with wrong arity
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("max()", %{})
-      assert msg =~ "max() expects 2 arguments, got 0"
-
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("max(5)", %{})
-      assert msg =~ "max() expects 2 arguments, got 1"
-
-      # min() with wrong arity
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("min()", %{})
-      assert msg =~ "min() expects 2 arguments, got 0"
-
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("min(10)", %{})
-      assert msg =~ "min() expects 2 arguments, got 1"
-    end
-
     test "date functions with wrong arity" do
       # year() with no arguments
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("year()", %{})
@@ -136,49 +110,6 @@ defmodule Predicator.Functions.SystemFunctionsTest do
     end
   end
 
-  describe "numeric functions error cases" do
-    test "abs with invalid argument types" do
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("abs('not_a_number')", %{})
-
-      assert msg =~ "abs() expects a numeric argument"
-
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("abs(true)", %{})
-
-      assert msg =~ "abs() expects a numeric argument"
-    end
-
-    test "max with invalid argument types" do
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("max('a', 5)", %{})
-
-      assert msg =~ "max() expects two numeric arguments"
-
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("max(5, 'b')", %{})
-
-      assert msg =~ "max() expects two numeric arguments"
-
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("max(true, false)", %{})
-
-      assert msg =~ "max() expects two numeric arguments"
-    end
-
-    test "min with invalid argument types" do
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("min('a', 5)", %{})
-
-      assert msg =~ "min() expects two numeric arguments"
-
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("min(5, 'b')", %{})
-
-      assert msg =~ "min() expects two numeric arguments"
-    end
-  end
-
   describe "date functions error cases" do
     test "year with invalid argument types" do
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
@@ -227,9 +158,6 @@ defmodule Predicator.Functions.SystemFunctionsTest do
         "upper",
         "lower",
         "trim",
-        "abs",
-        "max",
-        "min",
         "year",
         "month",
         "day"
@@ -251,9 +179,6 @@ defmodule Predicator.Functions.SystemFunctionsTest do
       assert {1, _upper_func} = functions["upper"]
       assert {1, _lower_func} = functions["lower"]
       assert {1, _trim_func} = functions["trim"]
-      assert {1, _abs_func} = functions["abs"]
-      assert {2, _max_func} = functions["max"]
-      assert {2, _min_func} = functions["min"]
       assert {1, _year_func} = functions["year"]
       assert {1, _month_func} = functions["month"]
       assert {1, _day_func} = functions["day"]

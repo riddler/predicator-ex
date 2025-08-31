@@ -196,7 +196,7 @@ defmodule Predicator.Lexer do
 
         # Check for qualified identifier (namespace.function)
         case remaining do
-          [?. | [next_char | _]]
+          [?. | [next_char | _rest]]
           when (next_char >= ?a and next_char <= ?z) or
                  (next_char >= ?A and next_char <= ?Z) or
                  next_char == ?_ ->
@@ -205,11 +205,11 @@ defmodule Predicator.Lexer do
               {:qualified, qualified_name, new_remaining, total_consumed} ->
                 # Check if this is a function call
                 case skip_whitespace(new_remaining) do
-                  [?( | _] ->
+                  [?( | _remaining_after_paren] ->
                     token = {:qualified_function_name, line, col, total_consumed, qualified_name}
                     tokenize_chars(new_remaining, line, col + total_consumed, [token | tokens])
 
-                  _ ->
+                  _not_function_call ->
                     # Not a function call, treat as regular identifier and let parser handle the dot
                     {token_type, value} = classify_identifier(identifier)
                     token = {token_type, line, col, consumed, value}
@@ -221,7 +221,7 @@ defmodule Predicator.Lexer do
                 handle_regular_identifier(identifier, remaining, consumed, line, col, tokens)
             end
 
-          _ ->
+          _not_qualified_pattern ->
             # Not followed by a dot or not a qualified identifier
             handle_regular_identifier(identifier, remaining, consumed, line, col, tokens)
         end
@@ -501,7 +501,7 @@ defmodule Predicator.Lexer do
   defp take_qualified_identifier(first_part, [?. | rest], consumed) do
     # Check if the next character starts a valid identifier
     case rest do
-      [c | _] when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or c == ?_ ->
+      [c | _char_rest] when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or c == ?_ ->
         # Take the next identifier part
         {next_part, remaining, part_consumed} = take_identifier(rest)
 
@@ -512,19 +512,19 @@ defmodule Predicator.Lexer do
 
         # Check if there's another dot for deeper nesting
         case remaining do
-          [?. | [next_c | _]]
+          [?. | [next_c | _remaining_chars]]
           when (next_c >= ?a and next_c <= ?z) or
                  (next_c >= ?A and next_c <= ?Z) or
                  next_c == ?_ ->
             # Continue building the qualified identifier
             take_qualified_identifier(qualified_name, remaining, total_consumed)
 
-          _ ->
+          _no_more_dots ->
             # No more dots or not a valid identifier after dot
             {:qualified, qualified_name, remaining, total_consumed}
         end
 
-      _ ->
+      _invalid_char ->
         # Not a valid identifier after the dot
         :not_qualified
     end

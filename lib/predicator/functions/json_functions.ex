@@ -33,32 +33,28 @@ defmodule Predicator.Functions.JSONFunctions do
   end
 
   defp call_stringify([value], _context) do
-    try do
-      case Jason.encode(value) do
-        {:ok, json} ->
-          {:ok, json}
+    case Jason.encode(value) do
+      {:ok, json} ->
+        {:ok, json}
 
-        {:error, _} ->
-          # For values that can't be JSON encoded, convert to string
-          {:ok, inspect(value)}
-      end
-    rescue
-      error -> {:error, "JSON.stringify failed: #{Exception.message(error)}"}
+      {:error, _encode_error} ->
+        # For values that can't be JSON encoded, convert to string
+        {:ok, inspect(value)}
     end
+  rescue
+    error -> {:error, "JSON.stringify failed: #{Exception.message(error)}"}
   end
 
   defp call_parse([json_string], _context) when is_binary(json_string) do
-    try do
-      case Jason.decode(json_string) do
-        {:ok, value} ->
-          {:ok, value}
+    case Jason.decode(json_string) do
+      {:ok, value} ->
+        {:ok, value}
 
-        {:error, error} ->
-          {:error, "Invalid JSON: #{Exception.message(error)}"}
-      end
-    rescue
-      error -> {:error, "JSON.parse failed: #{Exception.message(error)}"}
+      {:error, error} ->
+        {:error, "Invalid JSON: #{Exception.message(error)}"}
     end
+  rescue
+    error -> {:error, "JSON.parse failed: #{Exception.message(error)}"}
   end
 
   defp call_parse([_value], _context) do
