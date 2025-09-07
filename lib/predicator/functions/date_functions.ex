@@ -11,7 +11,7 @@ defmodule Predicator.Functions.DateFunctions do
   - `year(date)` - Extracts the year from a date or datetime
   - `month(date)` - Extracts the month from a date or datetime
   - `day(date)` - Extracts the day from a date or datetime
-  - `Date.now()` - Returns the current UTC datetime
+  - `now()` - Returns the current UTC datetime (alias for Date.now())
 
   ## Examples
 
@@ -50,7 +50,7 @@ defmodule Predicator.Functions.DateFunctions do
       "year" => {1, &call_year/2},
       "month" => {1, &call_month/2},
       "day" => {1, &call_day/2},
-      "Date.now" => {0, &call_date_now/2}
+      "now" => {0, &call_date_now/2}
     }
   end
 

@@ -28,7 +28,7 @@ defmodule Predicator.Evaluator do
   """
 
   alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
-  alias Predicator.Types
+  alias Predicator.{Duration, Types}
   alias Predicator.Errors.{EvaluationError, TypeMismatchError}
 
   @typedoc "Internal evaluator state"
@@ -539,10 +539,17 @@ defmodule Predicator.Evaluator do
     end
   end
 
-  # Subtraction - numeric only
-  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :subtract)
-       when is_number(left) and is_number(right) do
-    {:ok, %__MODULE__{evaluator | stack: [left - right | rest]}}
+  # Subtraction with date arithmetic support
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :subtract) do
+    result = apply_subtraction(left, right)
+
+    case result do
+      {:ok, value} ->
+        {:ok, %__MODULE__{evaluator | stack: [value | rest]}}
+
+      {:error, _error} = error_result ->
+        error_result
+    end
   end
 
   # Multiplication - numeric only
@@ -622,7 +629,37 @@ defmodule Predicator.Evaluator do
     {:ok, to_string(left) <> right}
   end
 
+  # Date + Duration = Date/DateTime
+  defp apply_addition(%Date{} = date, duration) when is_map(duration) do
+    if duration_map?(duration) do
+      {:ok, Duration.add_to_date(date, duration)}
+    else
+      apply_addition_fallback(date, duration)
+    end
+  end
+
+  defp apply_addition(%DateTime{} = datetime, duration) when is_map(duration) do
+    if duration_map?(duration) do
+      {:ok, Duration.add_to_datetime(datetime, duration)}
+    else
+      apply_addition_fallback(datetime, duration)
+    end
+  end
+
+  # Duration + Date = Date/DateTime (commutative)
+  defp apply_addition(duration, %Date{} = date) when is_map(duration) do
+    apply_addition(date, duration)
+  end
+
+  defp apply_addition(duration, %DateTime{} = datetime) when is_map(duration) do
+    apply_addition(datetime, duration)
+  end
+
   defp apply_addition(left, right) do
+    apply_addition_fallback(left, right)
+  end
+
+  defp apply_addition_fallback(left, right) do
     left_type = get_value_type(left)
     right_type = get_value_type(right)
 
@@ -630,6 +667,71 @@ defmodule Predicator.Evaluator do
      TypeMismatchError.binary(
        :add,
        :number_or_string,
+       {left_type, right_type},
+       {left, right}
+     )}
+  end
+
+  # Subtraction operations with date arithmetic
+  @spec apply_subtraction(Types.value(), Types.value()) :: {:ok, Types.value()} | {:error, term()}
+  defp apply_subtraction(left, right) when is_number(left) and is_number(right) do
+    {:ok, left - right}
+  end
+
+  # Date - Date = Duration (difference in days as a duration)
+  defp apply_subtraction(%Date{} = left_date, %Date{} = right_date) do
+    days_diff = Date.diff(left_date, right_date)
+    duration = Duration.new(days: days_diff)
+    {:ok, duration}
+  end
+
+  # DateTime - DateTime = Duration (difference in seconds as a duration)
+  defp apply_subtraction(%DateTime{} = left_datetime, %DateTime{} = right_datetime) do
+    seconds_diff = DateTime.diff(left_datetime, right_datetime, :second)
+    duration = Duration.new(seconds: seconds_diff)
+    {:ok, duration}
+  end
+
+  # Mixed Date/DateTime subtraction (convert Date to start of day UTC)
+  defp apply_subtraction(%Date{} = date, %DateTime{} = datetime) do
+    {:ok, date_as_datetime} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
+    apply_subtraction(date_as_datetime, datetime)
+  end
+
+  defp apply_subtraction(%DateTime{} = datetime, %Date{} = date) do
+    {:ok, date_as_datetime} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
+    apply_subtraction(datetime, date_as_datetime)
+  end
+
+  # Date - Duration = Date/DateTime
+  defp apply_subtraction(%Date{} = date, duration) when is_map(duration) do
+    if duration_map?(duration) do
+      {:ok, Duration.subtract_from_date(date, duration)}
+    else
+      apply_subtraction_fallback(date, duration)
+    end
+  end
+
+  defp apply_subtraction(%DateTime{} = datetime, duration) when is_map(duration) do
+    if duration_map?(duration) do
+      {:ok, Duration.subtract_from_datetime(datetime, duration)}
+    else
+      apply_subtraction_fallback(datetime, duration)
+    end
+  end
+
+  defp apply_subtraction(left, right) do
+    apply_subtraction_fallback(left, right)
+  end
+
+  defp apply_subtraction_fallback(left, right) do
+    left_type = get_value_type(left)
+    right_type = get_value_type(right)
+
+    {:error,
+     TypeMismatchError.binary(
+       :subtract,
+       :number_or_date,
        {left_type, right_type},
        {left, right}
      )}
@@ -643,8 +745,21 @@ defmodule Predicator.Evaluator do
   defp get_value_type(value) when is_list(value), do: :list
   defp get_value_type(%Date{}), do: :date
   defp get_value_type(%DateTime{}), do: :datetime
+
   defp get_value_type(:undefined), do: :undefined
-  defp get_value_type(_other), do: :unknown
+
+  defp get_value_type(value) when is_map(value) do
+    # Check if it's a duration map (has required duration keys)
+    if duration_map?(value), do: :duration, else: :map
+  end
+
+  # Helper to check if a map is a duration (only called with maps)
+  defp duration_map?(value) do
+    Map.has_key?(value, :years) and Map.has_key?(value, :months) and
+      Map.has_key?(value, :weeks) and Map.has_key?(value, :days) and
+      Map.has_key?(value, :hours) and Map.has_key?(value, :minutes) and
+      Map.has_key?(value, :seconds)
+  end
 
   @spec execute_unary(t(), :minus | :bang) :: {:ok, t()} | {:error, term()}
   defp execute_unary(%__MODULE__{stack: [value | rest]} = evaluator, :minus)
