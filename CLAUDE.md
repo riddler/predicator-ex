@@ -21,17 +21,19 @@ expression   → logical_or
 logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
 logical_not  → ("NOT" | "not") logical_not | comparison
-comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "==" | "!=" | "in" | "contains" ) addition )?
+comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
 postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
-primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | list | object | function_call | "(" expression ")"
-function_call → IDENTIFIER "(" ( expression ( "," expression )* )? ")"
+primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | duration | relative_date | list | object | function_call | "(" expression ")"
+function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
 object       → "{" ( object_entry ( "," object_entry )* )? "}"
 object_entry → object_key ":" expression
 object_key   → IDENTIFIER | STRING
+duration     → NUMBER UNIT+
+relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
 ```
 
 ### Core Components
