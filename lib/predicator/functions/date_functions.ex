@@ -47,10 +47,10 @@ defmodule Predicator.Functions.DateFunctions do
   def all_functions do
     %{
       # Date functions
-      "year" => {1, &call_year/2},
-      "month" => {1, &call_month/2},
-      "day" => {1, &call_day/2},
-      "now" => {0, &call_date_now/2}
+      "Date.year" => {1, &call_year/2},
+      "Date.month" => {1, &call_month/2},
+      "Date.day" => {1, &call_day/2},
+      "Date.now" => {0, &call_date_now/2}
     }
   end
 
@@ -66,11 +66,11 @@ defmodule Predicator.Functions.DateFunctions do
   end
 
   def call_year([_value], _context) do
-    {:error, "year() expects a date or datetime argument"}
+    {:error, "Date.year() expects a date or datetime argument"}
   end
 
   def call_year(_args, _context) do
-    {:error, "year() expects exactly 1 argument"}
+    {:error, "Date.year() expects exactly 1 argument"}
   end
 
   @spec call_month([Types.value()], Types.context()) :: function_result()
@@ -83,11 +83,11 @@ defmodule Predicator.Functions.DateFunctions do
   end
 
   def call_month([_value], _context) do
-    {:error, "month() expects a date or datetime argument"}
+    {:error, "Date.month() expects a date or datetime argument"}
   end
 
   def call_month(_args, _context) do
-    {:error, "month() expects exactly 1 argument"}
+    {:error, "Date.month() expects exactly 1 argument"}
   end
 
   @spec call_day([Types.value()], Types.context()) :: function_result()
@@ -100,11 +100,11 @@ defmodule Predicator.Functions.DateFunctions do
   end
 
   def call_day([_value], _context) do
-    {:error, "day() expects a date or datetime argument"}
+    {:error, "Date.day() expects a date or datetime argument"}
   end
 
   def call_day(_args, _context) do
-    {:error, "day() expects exactly 1 argument"}
+    {:error, "Date.day() expects exactly 1 argument"}
   end
 
   @spec call_date_now([Types.value()], Types.context()) :: function_result()

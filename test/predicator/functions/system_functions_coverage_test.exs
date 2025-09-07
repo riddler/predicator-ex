@@ -45,56 +45,56 @@ defmodule Predicator.Functions.SystemFunctionsCoverageTest do
     end
 
     test "year/2 with wrong number of arguments" do
-      {1, year_func} = DateFunctions.all_functions()["year"]
+      {1, year_func} = DateFunctions.all_functions()["Date.year"]
 
       # Test with no arguments
-      assert {:error, "year() expects exactly 1 argument"} = year_func.([], %{})
+      assert {:error, "Date.year() expects exactly 1 argument"} = year_func.([], %{})
 
       # Test with too many arguments
       date = Date.from_iso8601!("2024-01-15")
-      assert {:error, "year() expects exactly 1 argument"} = year_func.([date, date], %{})
+      assert {:error, "Date.year() expects exactly 1 argument"} = year_func.([date, date], %{})
     end
 
     test "month/2 with wrong number of arguments" do
-      {1, month_func} = DateFunctions.all_functions()["month"]
+      {1, month_func} = DateFunctions.all_functions()["Date.month"]
 
       # Test with no arguments
-      assert {:error, "month() expects exactly 1 argument"} = month_func.([], %{})
+      assert {:error, "Date.month() expects exactly 1 argument"} = month_func.([], %{})
 
       # Test with too many arguments
       date = Date.from_iso8601!("2024-01-15")
-      assert {:error, "month() expects exactly 1 argument"} = month_func.([date, date], %{})
+      assert {:error, "Date.month() expects exactly 1 argument"} = month_func.([date, date], %{})
     end
 
     test "day/2 with wrong number of arguments" do
-      {1, day_func} = DateFunctions.all_functions()["day"]
+      {1, day_func} = DateFunctions.all_functions()["Date.day"]
 
       # Test with no arguments
-      assert {:error, "day() expects exactly 1 argument"} = day_func.([], %{})
+      assert {:error, "Date.day() expects exactly 1 argument"} = day_func.([], %{})
 
       # Test with too many arguments
       date = Date.from_iso8601!("2024-01-15")
-      assert {:error, "day() expects exactly 1 argument"} = day_func.([date, date], %{})
+      assert {:error, "Date.day() expects exactly 1 argument"} = day_func.([date, date], %{})
     end
   end
 
   describe "date functions with DateTime objects" do
     test "year/2 with DateTime" do
-      {1, year_func} = DateFunctions.all_functions()["year"]
+      {1, year_func} = DateFunctions.all_functions()["Date.year"]
 
       datetime = ~U[2024-01-15 10:30:00Z]
       assert {:ok, 2024} = year_func.([datetime], %{})
     end
 
     test "month/2 with DateTime" do
-      {1, month_func} = DateFunctions.all_functions()["month"]
+      {1, month_func} = DateFunctions.all_functions()["Date.month"]
 
       datetime = ~U[2024-01-15 10:30:00Z]
       assert {:ok, 1} = month_func.([datetime], %{})
     end
 
     test "day/2 with DateTime" do
-      {1, day_func} = DateFunctions.all_functions()["day"]
+      {1, day_func} = DateFunctions.all_functions()["Date.day"]
 
       datetime = ~U[2024-01-15 10:30:00Z]
       assert {:ok, 15} = day_func.([datetime], %{})

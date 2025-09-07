@@ -9,9 +9,9 @@ defmodule Predicator.Functions.DateFunctionsTest do
 
       # Check that all expected functions are present
       expected_functions = [
-        "year",
-        "month",
-        "day",
+        "Date.year",
+        "Date.month",
+        "Date.day",
         "Date.now"
       ]
 
@@ -27,106 +27,106 @@ defmodule Predicator.Functions.DateFunctionsTest do
       functions = DateFunctions.all_functions()
 
       # Check specific arities
-      assert {1, _year_func} = functions["year"]
-      assert {1, _month_func} = functions["month"]
-      assert {1, _day_func} = functions["day"]
+      assert {1, _year_func} = functions["Date.year"]
+      assert {1, _month_func} = functions["Date.month"]
+      assert {1, _day_func} = functions["Date.day"]
       assert {0, _date_now_func} = functions["Date.now"]
     end
   end
 
-  describe "year function" do
+  describe "Date.year function" do
     test "extracts year from Date" do
-      {1, year_func} = DateFunctions.all_functions()["year"]
+      {1, year_func} = DateFunctions.all_functions()["Date.year"]
 
       date = ~D[2023-05-15]
       assert {:ok, 2023} = year_func.([date], %{})
     end
 
     test "extracts year from DateTime" do
-      {1, year_func} = DateFunctions.all_functions()["year"]
+      {1, year_func} = DateFunctions.all_functions()["Date.year"]
 
       datetime = ~U[2023-05-15 10:30:00Z]
       assert {:ok, 2023} = year_func.([datetime], %{})
     end
 
     test "returns error for non-date argument" do
-      {1, year_func} = DateFunctions.all_functions()["year"]
+      {1, year_func} = DateFunctions.all_functions()["Date.year"]
 
-      assert {:error, "year() expects a date or datetime argument"} =
+      assert {:error, "Date.year() expects a date or datetime argument"} =
                year_func.(["not a date"], %{})
     end
 
     test "returns error for wrong argument count" do
-      {1, year_func} = DateFunctions.all_functions()["year"]
+      {1, year_func} = DateFunctions.all_functions()["Date.year"]
 
-      assert {:error, "year() expects exactly 1 argument"} = year_func.([], %{})
+      assert {:error, "Date.year() expects exactly 1 argument"} = year_func.([], %{})
 
       date = ~D[2023-05-15]
-      assert {:error, "year() expects exactly 1 argument"} = year_func.([date, date], %{})
+      assert {:error, "Date.year() expects exactly 1 argument"} = year_func.([date, date], %{})
     end
   end
 
-  describe "month function" do
+  describe "Date.month function" do
     test "extracts month from Date" do
-      {1, month_func} = DateFunctions.all_functions()["month"]
+      {1, month_func} = DateFunctions.all_functions()["Date.month"]
 
       date = ~D[2023-05-15]
       assert {:ok, 5} = month_func.([date], %{})
     end
 
     test "extracts month from DateTime" do
-      {1, month_func} = DateFunctions.all_functions()["month"]
+      {1, month_func} = DateFunctions.all_functions()["Date.month"]
 
       datetime = ~U[2023-05-15 10:30:00Z]
       assert {:ok, 5} = month_func.([datetime], %{})
     end
 
     test "returns error for non-date argument" do
-      {1, month_func} = DateFunctions.all_functions()["month"]
+      {1, month_func} = DateFunctions.all_functions()["Date.month"]
 
-      assert {:error, "month() expects a date or datetime argument"} =
+      assert {:error, "Date.month() expects a date or datetime argument"} =
                month_func.(["not a date"], %{})
     end
 
     test "returns error for wrong argument count" do
-      {1, month_func} = DateFunctions.all_functions()["month"]
+      {1, month_func} = DateFunctions.all_functions()["Date.month"]
 
-      assert {:error, "month() expects exactly 1 argument"} = month_func.([], %{})
+      assert {:error, "Date.month() expects exactly 1 argument"} = month_func.([], %{})
 
       date = ~D[2023-05-15]
-      assert {:error, "month() expects exactly 1 argument"} = month_func.([date, date], %{})
+      assert {:error, "Date.month() expects exactly 1 argument"} = month_func.([date, date], %{})
     end
   end
 
-  describe "day function" do
+  describe "Date.day function" do
     test "extracts day from Date" do
-      {1, day_func} = DateFunctions.all_functions()["day"]
+      {1, day_func} = DateFunctions.all_functions()["Date.day"]
 
       date = ~D[2023-05-15]
       assert {:ok, 15} = day_func.([date], %{})
     end
 
     test "extracts day from DateTime" do
-      {1, day_func} = DateFunctions.all_functions()["day"]
+      {1, day_func} = DateFunctions.all_functions()["Date.day"]
 
       datetime = ~U[2023-05-15 10:30:00Z]
       assert {:ok, 15} = day_func.([datetime], %{})
     end
 
     test "returns error for non-date argument" do
-      {1, day_func} = DateFunctions.all_functions()["day"]
+      {1, day_func} = DateFunctions.all_functions()["Date.day"]
 
-      assert {:error, "day() expects a date or datetime argument"} =
+      assert {:error, "Date.day() expects a date or datetime argument"} =
                day_func.(["not a date"], %{})
     end
 
     test "returns error for wrong argument count" do
-      {1, day_func} = DateFunctions.all_functions()["day"]
+      {1, day_func} = DateFunctions.all_functions()["Date.day"]
 
-      assert {:error, "day() expects exactly 1 argument"} = day_func.([], %{})
+      assert {:error, "Date.day() expects exactly 1 argument"} = day_func.([], %{})
 
       date = ~D[2023-05-15]
-      assert {:error, "day() expects exactly 1 argument"} = day_func.([date, date], %{})
+      assert {:error, "Date.day() expects exactly 1 argument"} = day_func.([date, date], %{})
     end
   end
 

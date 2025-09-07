@@ -196,11 +196,11 @@ defmodule Predicator.DateArithmeticTest do
       context = %{"start" => ~D[2024-01-15]}
 
       # Test with year extraction
-      assert {:ok, result} = Predicator.evaluate("year(start + 1y)", context)
+      assert {:ok, result} = Predicator.evaluate("Date.year(start + 1y)", context)
       assert result == 2025
 
       # Test with month extraction
-      assert {:ok, result} = Predicator.evaluate("month(start + 2mo)", context)
+      assert {:ok, result} = Predicator.evaluate("Date.month(start + 2mo)", context)
       assert result == 3
     end
 
