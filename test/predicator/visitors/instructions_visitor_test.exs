@@ -622,4 +622,135 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
              ]
     end
   end
+
+  describe "visit/2 - duration nodes" do
+    test "generates duration instruction for simple duration" do
+      ast = {:duration, [{5, "d"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[5, "d"]]]]
+    end
+
+    test "generates duration instruction for multiple units" do
+      ast = {:duration, [{1, "d"}, {8, "h"}, {30, "m"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[1, "d"], [8, "h"], [30, "m"]]]]
+    end
+
+    test "generates duration instruction for all unit types" do
+      ast = {:duration, [{2, "y"}, {3, "mo"}, {4, "w"}, {5, "d"}, {6, "h"}, {7, "m"}, {8, "s"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [
+               [
+                 "duration",
+                 [[2, "y"], [3, "mo"], [4, "w"], [5, "d"], [6, "h"], [7, "m"], [8, "s"]]
+               ]
+             ]
+    end
+
+    test "generates duration instruction for long unit names" do
+      ast = {:duration, [{1, "year"}, {2, "months"}, {3, "weeks"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[1, "year"], [2, "months"], [3, "weeks"]]]]
+    end
+
+    test "generates duration instruction for zero values" do
+      ast = {:duration, [{0, "d"}, {0, "h"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[0, "d"], [0, "h"]]]]
+    end
+
+    test "generates duration instruction for large values" do
+      ast = {:duration, [{999, "y"}, {365, "d"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[999, "y"], [365, "d"]]]]
+    end
+  end
+
+  describe "visit/2 - relative date nodes" do
+    test "generates instructions for relative date with ago" do
+      duration_ast = {:duration, [{1, "d"}, {8, "h"}]}
+      ast = {:relative_date, duration_ast, :ago}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[1, "d"], [8, "h"]]], ["relative_date", "ago"]]
+    end
+
+    test "generates instructions for relative date with future" do
+      duration_ast = {:duration, [{2, "h"}, {30, "m"}]}
+      ast = {:relative_date, duration_ast, :future}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[2, "h"], [30, "m"]]], ["relative_date", "future"]]
+    end
+
+    test "generates instructions for relative date with next" do
+      duration_ast = {:duration, [{1, "w"}]}
+      ast = {:relative_date, duration_ast, :next}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[1, "w"]]], ["relative_date", "next"]]
+    end
+
+    test "generates instructions for relative date with last" do
+      duration_ast = {:duration, [{6, "mo"}]}
+      ast = {:relative_date, duration_ast, :last}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[6, "mo"]]], ["relative_date", "last"]]
+    end
+
+    test "generates instructions for complex relative date" do
+      duration_ast = {:duration, [{1, "y"}, {2, "mo"}, {3, "d"}]}
+      ast = {:relative_date, duration_ast, :ago}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["duration", [[1, "y"], [2, "mo"], [3, "d"]]], ["relative_date", "ago"]]
+    end
+
+    test "generates instructions for relative date in comparison" do
+      duration_ast = {:duration, [{1, "d"}]}
+      relative_date_ast = {:relative_date, duration_ast, :ago}
+      ast = {:comparison, :gt, {:identifier, "created_at"}, relative_date_ast}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [
+               ["load", "created_at"],
+               ["duration", [[1, "d"]]],
+               ["relative_date", "ago"],
+               ["compare", "GT"]
+             ]
+    end
+
+    test "generates instructions for complex expression with multiple relative dates" do
+      # created_at > 1d ago AND updated_at < 1h from now
+      created_duration = {:duration, [{1, "d"}]}
+      created_relative = {:relative_date, created_duration, :ago}
+      created_comparison = {:comparison, :gt, {:identifier, "created_at"}, created_relative}
+
+      updated_duration = {:duration, [{1, "h"}]}
+      updated_relative = {:relative_date, updated_duration, :future}
+      updated_comparison = {:comparison, :lt, {:identifier, "updated_at"}, updated_relative}
+
+      ast = {:logical_and, created_comparison, updated_comparison}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [
+               ["load", "created_at"],
+               ["duration", [[1, "d"]]],
+               ["relative_date", "ago"],
+               ["compare", "GT"],
+               ["load", "updated_at"],
+               ["duration", [[1, "h"]]],
+               ["relative_date", "future"],
+               ["compare", "LT"],
+               ["and"]
+             ]
+    end
+  end
 end

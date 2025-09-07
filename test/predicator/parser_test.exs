@@ -1362,4 +1362,135 @@ defmodule Predicator.ParserTest do
       assert {:ok, ^expected_ast} = result
     end
   end
+
+  describe "parse/1 - duration expressions" do
+    test "parses simple duration with single unit" do
+      {:ok, tokens} = Lexer.tokenize("5d")
+      result = Parser.parse(tokens)
+      assert {:ok, {:duration, [{5, "d"}]}} = result
+    end
+
+    test "parses duration with multiple units" do
+      {:ok, tokens} = Lexer.tokenize("1d8h30m")
+      result = Parser.parse(tokens)
+      assert {:ok, {:duration, [{30, "m"}, {8, "h"}, {1, "d"}]}} = result
+    end
+
+    test "parses duration with all unit types" do
+      {:ok, tokens} = Lexer.tokenize("2y3mo4w5d6h7m8s")
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:duration, [{8, "s"}, {7, "m"}, {6, "h"}, {5, "d"}, {4, "w"}, {3, "mo"}, {2, "y"}]}} =
+               result
+    end
+
+    test "parses duration with single character units" do
+      {:ok, tokens} = Lexer.tokenize("1y2mo3w4d5h6m7s")
+      result = Parser.parse(tokens)
+
+      assert {:ok,
+              {:duration, [{7, "s"}, {6, "m"}, {5, "h"}, {4, "d"}, {3, "w"}, {2, "mo"}, {1, "y"}]}} =
+               result
+    end
+
+    test "parses relative date with 'ago'" do
+      {:ok, tokens} = Lexer.tokenize("1d8h ago")
+      result = Parser.parse(tokens)
+      assert {:ok, {:relative_date, {:duration, [{8, "h"}, {1, "d"}]}, :ago}} = result
+    end
+
+    test "parses relative date with 'from now'" do
+      {:ok, tokens} = Lexer.tokenize("2h30m from now")
+      result = Parser.parse(tokens)
+      assert {:ok, {:relative_date, {:duration, [{30, "m"}, {2, "h"}]}, :future}} = result
+    end
+
+    test "parses relative date with 'next'" do
+      {:ok, tokens} = Lexer.tokenize("next 1w")
+      result = Parser.parse(tokens)
+      assert {:ok, {:relative_date, {:duration, [{1, "w"}]}, :next}} = result
+    end
+
+    test "parses relative date with 'last'" do
+      {:ok, tokens} = Lexer.tokenize("last 6mo")
+      result = Parser.parse(tokens)
+      assert {:ok, {:relative_date, {:duration, [{6, "mo"}]}, :last}} = result
+    end
+
+    test "duration in comparison expression" do
+      {:ok, tokens} = Lexer.tokenize("created_at > 1d ago")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:comparison, :gt, {:identifier, "created_at"},
+         {:relative_date, {:duration, [{1, "d"}]}, :ago}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "duration in complex expression" do
+      {:ok, tokens} = Lexer.tokenize("created_at > 1d ago AND updated_at < 1h from now")
+      result = Parser.parse(tokens)
+
+      expected_ast =
+        {:logical_and,
+         {:comparison, :gt, {:identifier, "created_at"},
+          {:relative_date, {:duration, [{1, "d"}]}, :ago}},
+         {:comparison, :lt, {:identifier, "updated_at"},
+          {:relative_date, {:duration, [{1, "h"}]}, :future}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "returns error for invalid duration sequence" do
+      {:ok, tokens} = Lexer.tokenize("1d8x")
+      result = Parser.parse(tokens)
+      assert {:error, _message, _line, _col} = result
+    end
+
+    test "returns error for missing 'now' after 'from'" do
+      {:ok, tokens} = Lexer.tokenize("1d from yesterday")
+      result = Parser.parse(tokens)
+      assert {:error, _message, _line, _col} = result
+    end
+
+    test "returns error for 'from' without duration" do
+      {:ok, tokens} = Lexer.tokenize("from now")
+      result = Parser.parse(tokens)
+      assert {:error, _message, _line, _col} = result
+    end
+
+    test "returns error for 'ago' without duration" do
+      {:ok, tokens} = Lexer.tokenize("ago")
+      result = Parser.parse(tokens)
+      assert {:error, _message, _line, _col} = result
+    end
+
+    test "returns error for 'next' without duration" do
+      {:ok, tokens} = Lexer.tokenize("next")
+      result = Parser.parse(tokens)
+      assert {:error, _message, _line, _col} = result
+    end
+
+    test "returns error for 'last' without duration" do
+      {:ok, tokens} = Lexer.tokenize("last")
+      result = Parser.parse(tokens)
+      assert {:error, _message, _line, _col} = result
+    end
+
+    test "parses zero duration" do
+      {:ok, tokens} = Lexer.tokenize("0d")
+      result = Parser.parse(tokens)
+      assert {:ok, {:duration, [{0, "d"}]}} = result
+    end
+
+    test "parses large duration numbers" do
+      {:ok, tokens} = Lexer.tokenize("999y365d24h60m60s")
+      result = Parser.parse(tokens)
+
+      assert {:ok, {:duration, [{60, "s"}, {60, "m"}, {24, "h"}, {365, "d"}, {999, "y"}]}} =
+               result
+    end
+  end
 end

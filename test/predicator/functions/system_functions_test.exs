@@ -157,10 +157,7 @@ defmodule Predicator.Functions.SystemFunctionsTest do
         "len",
         "upper",
         "lower",
-        "trim",
-        "year",
-        "month",
-        "day"
+        "trim"
       ]
 
       for func_name <- expected_functions do
@@ -179,9 +176,6 @@ defmodule Predicator.Functions.SystemFunctionsTest do
       assert {1, _upper_func} = functions["upper"]
       assert {1, _lower_func} = functions["lower"]
       assert {1, _trim_func} = functions["trim"]
-      assert {1, _year_func} = functions["year"]
-      assert {1, _month_func} = functions["month"]
-      assert {1, _day_func} = functions["day"]
     end
   end
 end

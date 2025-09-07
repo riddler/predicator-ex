@@ -14,11 +14,6 @@ defmodule Predicator.Functions.SystemFunctions do
   - `lower(string)` - Converts string to lowercase
   - `trim(string)` - Removes leading and trailing whitespace
 
-  ### Date Functions
-  - `year(date)` - Extracts the year from a date or datetime
-  - `month(date)` - Extracts the month from a date or datetime
-  - `day(date)` - Extracts the day from a date or datetime
-
   ## Examples
 
       iex> Predicator.Functions.SystemFunctions.call("len", ["hello"])
@@ -26,9 +21,6 @@ defmodule Predicator.Functions.SystemFunctions do
 
       iex> Predicator.Functions.SystemFunctions.call("upper", ["world"])
       {:ok, "WORLD"}
-
-      iex> Predicator.Functions.SystemFunctions.call("year", [~D[2023-05-15]])
-      {:ok, 2023}
 
       iex> Predicator.Functions.SystemFunctions.call("unknown", [])
       {:error, "Unknown function: unknown"}
@@ -62,12 +54,7 @@ defmodule Predicator.Functions.SystemFunctions do
       "len" => {1, &call_len/2},
       "upper" => {1, &call_upper/2},
       "lower" => {1, &call_lower/2},
-      "trim" => {1, &call_trim/2},
-
-      # Date functions
-      "year" => {1, &call_year/2},
-      "month" => {1, &call_month/2},
-      "day" => {1, &call_day/2}
+      "trim" => {1, &call_trim/2}
     }
   end
 
@@ -123,58 +110,5 @@ defmodule Predicator.Functions.SystemFunctions do
 
   defp call_trim(_args, _context) do
     {:error, "trim() expects exactly 1 argument"}
-  end
-
-  # Date function implementations
-
-  @spec call_year([Types.value()], Types.context()) :: function_result()
-  defp call_year([%Date{year: year}], _context) do
-    {:ok, year}
-  end
-
-  defp call_year([%DateTime{year: year}], _context) do
-    {:ok, year}
-  end
-
-  defp call_year([_value], _context) do
-    {:error, "year() expects a date or datetime argument"}
-  end
-
-  defp call_year(_args, _context) do
-    {:error, "year() expects exactly 1 argument"}
-  end
-
-  @spec call_month([Types.value()], Types.context()) :: function_result()
-  defp call_month([%Date{month: month}], _context) do
-    {:ok, month}
-  end
-
-  defp call_month([%DateTime{month: month}], _context) do
-    {:ok, month}
-  end
-
-  defp call_month([_value], _context) do
-    {:error, "month() expects a date or datetime argument"}
-  end
-
-  defp call_month(_args, _context) do
-    {:error, "month() expects exactly 1 argument"}
-  end
-
-  @spec call_day([Types.value()], Types.context()) :: function_result()
-  defp call_day([%Date{day: day}], _context) do
-    {:ok, day}
-  end
-
-  defp call_day([%DateTime{day: day}], _context) do
-    {:ok, day}
-  end
-
-  defp call_day([_value], _context) do
-    {:error, "day() expects a date or datetime argument"}
-  end
-
-  defp call_day(_args, _context) do
-    {:error, "day() expects exactly 1 argument"}
   end
 end

@@ -78,6 +78,12 @@ defmodule Predicator.Lexer do
           | {:contains_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:qualified_function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:duration_unit, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:ago_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:from_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:now_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:next_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:last_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:eof, pos_integer(), pos_integer(), pos_integer(), nil}
 
   @typedoc """
@@ -179,18 +185,36 @@ defmodule Predicator.Lexer do
       ?\r ->
         tokenize_chars(rest, line, col, tokens)
 
-      # Numbers
+      # Numbers (with potential duration units)
       c when c >= ?0 and c <= ?9 ->
         {number, remaining, consumed} = take_number([char | rest])
 
-        token =
-          if is_integer(number) do
-            {:integer, line, col, consumed, number}
-          else
-            {:float, line, col, consumed, number}
-          end
+        # Check for duration units after the number (only for integers)
+        if is_integer(number) do
+          case try_parse_duration_after_number(number, remaining) do
+            {:ok, duration_tokens, new_remaining, total_consumed} ->
+              # Generate tokens for the number-duration sequence
+              tokenize_number_duration_sequence(
+                number,
+                duration_tokens,
+                new_remaining,
+                line,
+                col,
+                consumed,
+                total_consumed,
+                tokens
+              )
 
-        tokenize_chars(remaining, line, col + consumed, [token | tokens])
+            :not_duration ->
+              # Regular number token
+              token = {:integer, line, col, consumed, number}
+              tokenize_chars(remaining, line, col + consumed, [token | tokens])
+          end
+        else
+          # Float - no duration units supported
+          token = {:float, line, col, consumed, number}
+          tokenize_chars(remaining, line, col + consumed, [token | tokens])
+        end
 
       # Identifiers (including potential function calls and qualified identifiers)
       c when (c >= ?a and c <= ?z) or (c >= ?A and c <= ?Z) or c == ?_ ->
@@ -467,6 +491,11 @@ defmodule Predicator.Lexer do
   defp classify_identifier("in"), do: {:in_op, "in"}
   defp classify_identifier("CONTAINS"), do: {:contains_op, "CONTAINS"}
   defp classify_identifier("contains"), do: {:contains_op, "contains"}
+  defp classify_identifier("ago"), do: {:ago_op, "ago"}
+  defp classify_identifier("from"), do: {:from_op, "from"}
+  defp classify_identifier("now"), do: {:now_op, "now"}
+  defp classify_identifier("next"), do: {:next_op, "next"}
+  defp classify_identifier("last"), do: {:last_op, "last"}
   defp classify_identifier(id), do: {:identifier, id}
 
   # Helper function to handle regular identifier (not qualified)
@@ -621,5 +650,127 @@ defmodule Predicator.Lexer do
         {:error, _reason} -> {:error, "Invalid date format: #{content}"}
       end
     end
+  end
+
+  # Duration parsing functions (simplified approach with no-spaces constraint)
+
+  @spec try_parse_duration_after_number(integer(), charlist()) ::
+          {:ok, [{binary(), binary()}], charlist(), pos_integer()} | :not_duration
+  defp try_parse_duration_after_number(_number, remaining) do
+    # Convert remaining charlist to string for easier parsing
+    remaining_str = List.to_string(remaining)
+
+    case extract_duration_units_from_start(remaining_str) do
+      {:ok, duration_units, leftover, consumed_chars} ->
+        # Convert leftover back to charlist
+        new_remaining = String.to_charlist(leftover)
+        {:ok, duration_units, new_remaining, consumed_chars}
+
+      :no_match ->
+        :not_duration
+    end
+  end
+
+  @spec extract_duration_units_from_start(binary()) ::
+          {:ok, [{binary(), binary()}], binary(), pos_integer()} | :no_match
+  defp extract_duration_units_from_start(str) do
+    case parse_duration_units_from_start(str, []) do
+      {[], _remaining} ->
+        :no_match
+
+      {units, remaining} ->
+        consumed = String.length(str) - String.length(remaining)
+        {:ok, units, remaining, consumed}
+    end
+  end
+
+  @spec parse_duration_units_from_start(binary(), [{binary(), binary()}]) ::
+          {[{binary(), binary()}], binary()}
+  defp parse_duration_units_from_start(str, acc) do
+    case extract_duration_unit(str) do
+      {:ok, value, unit, remaining} ->
+        parse_duration_units_from_start(remaining, [{value, unit} | acc])
+
+      :no_match ->
+        {Enum.reverse(acc), str}
+    end
+  end
+
+  @spec extract_duration_unit(binary()) ::
+          {:ok, binary(), binary(), binary()} | :no_match
+  defp extract_duration_unit(str) do
+    cond do
+      # Match unit followed by digits (for sequences like "d8h")
+      match = Regex.run(~r/^(mo)(\d.*)/, str) ->
+        [_full_match, unit, remaining] = match
+        {:ok, "", unit, remaining}
+
+      match = Regex.run(~r/^([ydhmsw])(\d.*)/, str) ->
+        [_full_match, unit, remaining] = match
+        {:ok, "", unit, remaining}
+
+      # Match unit at end or followed by non-digits (for cases like "d" or "d ago")
+      match = Regex.run(~r/^(mo)(\D.*|$)/, str) ->
+        [_full_match, unit, remaining] = match
+        {:ok, "", unit, remaining}
+
+      match = Regex.run(~r/^([ydhmsw])(\D.*|$)/, str) ->
+        [_full_match, unit, remaining] = match
+        {:ok, "", unit, remaining}
+
+      true ->
+        :no_match
+    end
+  end
+
+  @spec duration_unit?(binary()) :: boolean()
+  defp duration_unit?("d"), do: true
+  defp duration_unit?("h"), do: true
+  defp duration_unit?("m"), do: true
+  defp duration_unit?("s"), do: true
+  defp duration_unit?("w"), do: true
+  defp duration_unit?("mo"), do: true
+  defp duration_unit?("y"), do: true
+  defp duration_unit?(_unit), do: false
+
+  @spec tokenize_number_duration_sequence(
+          integer(),
+          [{binary(), binary()}],
+          charlist(),
+          pos_integer(),
+          pos_integer(),
+          pos_integer(),
+          pos_integer(),
+          [token()]
+        ) :: {:ok, [token()]}
+  defp tokenize_number_duration_sequence(
+         number,
+         duration_units,
+         remaining,
+         line,
+         col,
+         number_consumed,
+         total_consumed,
+         tokens
+       ) do
+    # Generate number token followed by duration unit tokens
+    number_token = {:integer, line, col, number_consumed, number}
+
+    {final_tokens, _final_col} =
+      Enum.reduce(duration_units, {[number_token | tokens], col + number_consumed}, fn {_value,
+                                                                                        unit},
+                                                                                       {acc_tokens,
+                                                                                        current_col} ->
+        if duration_unit?(unit) do
+          unit_token = {:duration_unit, line, current_col, String.length(unit), unit}
+          new_col = current_col + String.length(unit)
+          {[unit_token | acc_tokens], new_col}
+        else
+          # This shouldn't happen with our regex patterns, but handle gracefully
+          {acc_tokens, current_col}
+        end
+      end)
+
+    tokenize_chars(remaining, line, col + number_consumed + total_consumed, final_tokens)
   end
 end

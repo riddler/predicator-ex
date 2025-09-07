@@ -186,6 +186,20 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     arg_instructions ++ call_instruction
   end
 
+  def visit({:duration, units}, _opts) do
+    # Compile duration to a serializable instruction: ["duration", [{value, "unit"}, ...]]
+    # Convert from parser format [{integer(), binary()}] to instruction format
+    serializable_units = Enum.map(units, fn {value, unit} -> [value, unit] end)
+    [["duration", serializable_units]]
+  end
+
+  def visit({:relative_date, duration_ast, direction}, opts) do
+    # Compile relative date expression: duration instructions + relative_date instruction
+    duration_instructions = visit(duration_ast, opts)
+    direction_str = map_relative_direction(direction)
+    duration_instructions ++ [["relative_date", direction_str]]
+  end
+
   # Helper function to map AST comparison operators to instruction format
   @spec map_comparison_op(Parser.comparison_op()) :: binary()
   defp map_comparison_op(:gt), do: "GT"
@@ -215,6 +229,13 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   @spec map_membership_op(Parser.membership_op()) :: binary()
   defp map_membership_op(:in), do: "in"
   defp map_membership_op(:contains), do: "contains"
+
+  # Helper function to map relative direction atoms to instruction format
+  @spec map_relative_direction(Parser.relative_direction()) :: binary()
+  defp map_relative_direction(:ago), do: "ago"
+  defp map_relative_direction(:future), do: "future"
+  defp map_relative_direction(:next), do: "next"
+  defp map_relative_direction(:last), do: "last"
 
   # Helper function to check if all elements in a list are literals
   @spec all_literals?([Parser.ast()]) :: boolean()
