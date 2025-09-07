@@ -275,7 +275,7 @@ defmodule Predicator.ObjectIntegrationTest do
 
       result =
         Predicator.evaluate(
-          "{year: year(event_date), month: month(event_date), day: day(event_date)}",
+          "{year: Date.year(event_date), month: Date.month(event_date), day: Date.day(event_date)}",
           context
         )
 

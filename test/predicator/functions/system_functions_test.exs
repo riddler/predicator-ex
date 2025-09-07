@@ -41,17 +41,23 @@ defmodule Predicator.Functions.SystemFunctionsTest do
     end
 
     test "date functions with wrong arity" do
-      # year() with no arguments
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("year()", %{})
-      assert msg =~ "year() expects 1 arguments, got 0"
+      # Date.year() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("Date.year()", %{})
 
-      # month() with no arguments
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("month()", %{})
-      assert msg =~ "month() expects 1 arguments, got 0"
+      assert msg =~ "Date.year() expects 1 arguments, got 0"
 
-      # day() with no arguments
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = evaluate("day()", %{})
-      assert msg =~ "day() expects 1 arguments, got 0"
+      # Date.month() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("Date.month()", %{})
+
+      assert msg =~ "Date.month() expects 1 arguments, got 0"
+
+      # Date.day() with no arguments
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("Date.day()", %{})
+
+      assert msg =~ "Date.day() expects 1 arguments, got 0"
     end
   end
 
@@ -113,38 +119,38 @@ defmodule Predicator.Functions.SystemFunctionsTest do
   describe "date functions error cases" do
     test "year with invalid argument types" do
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("year('not_a_date')", %{})
+               evaluate("Date.year('not_a_date')", %{})
 
-      assert msg =~ "year() expects a date or datetime argument"
+      assert msg =~ "Date.year() expects a date or datetime argument"
 
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("year(123)", %{})
+               evaluate("Date.year(123)", %{})
 
-      assert msg =~ "year() expects a date or datetime argument"
+      assert msg =~ "Date.year() expects a date or datetime argument"
     end
 
     test "month with invalid argument types" do
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("month('not_a_date')", %{})
+               evaluate("Date.month('not_a_date')", %{})
 
-      assert msg =~ "month() expects a date or datetime argument"
+      assert msg =~ "Date.month() expects a date or datetime argument"
 
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("month(true)", %{})
+               evaluate("Date.month(true)", %{})
 
-      assert msg =~ "month() expects a date or datetime argument"
+      assert msg =~ "Date.month() expects a date or datetime argument"
     end
 
     test "day with invalid argument types" do
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("day('not_a_date')", %{})
+               evaluate("Date.day('not_a_date')", %{})
 
-      assert msg =~ "day() expects a date or datetime argument"
+      assert msg =~ "Date.day() expects a date or datetime argument"
 
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
-               evaluate("day(false)", %{})
+               evaluate("Date.day(false)", %{})
 
-      assert msg =~ "day() expects a date or datetime argument"
+      assert msg =~ "Date.day() expects a date or datetime argument"
     end
   end
 
@@ -157,10 +163,7 @@ defmodule Predicator.Functions.SystemFunctionsTest do
         "len",
         "upper",
         "lower",
-        "trim",
-        "year",
-        "month",
-        "day"
+        "trim"
       ]
 
       for func_name <- expected_functions do
@@ -179,9 +182,6 @@ defmodule Predicator.Functions.SystemFunctionsTest do
       assert {1, _upper_func} = functions["upper"]
       assert {1, _lower_func} = functions["lower"]
       assert {1, _trim_func} = functions["trim"]
-      assert {1, _year_func} = functions["year"]
-      assert {1, _month_func} = functions["month"]
-      assert {1, _day_func} = functions["day"]
     end
   end
 end

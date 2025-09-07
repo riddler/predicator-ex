@@ -33,9 +33,9 @@ defmodule FunctionCallsIntegrationTest do
 
     test "evaluates date functions" do
       context = %{"created_at" => ~D[2024-03-15]}
-      assert {:ok, 2024} = evaluate("year(created_at)", context)
-      assert {:ok, 3} = evaluate("month(created_at)", context)
-      assert {:ok, 15} = evaluate("day(created_at)", context)
+      assert {:ok, 2024} = evaluate("Date.year(created_at)", context)
+      assert {:ok, 3} = evaluate("Date.month(created_at)", context)
+      assert {:ok, 15} = evaluate("Date.day(created_at)", context)
     end
 
     test "evaluates string functions" do

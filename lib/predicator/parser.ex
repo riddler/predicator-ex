@@ -49,12 +49,19 @@ defmodule Predicator.Parser do
   @typedoc """
   A value that can appear in literals.
   """
-  @type value :: boolean() | integer() | binary() | [value()] | Date.t() | DateTime.t()
+  @type value ::
+          boolean()
+          | integer()
+          | binary()
+          | [value()]
+          | Date.t()
+          | DateTime.t()
+          | Predicator.Types.duration()
 
   @typedoc """
   Abstract Syntax Tree node types.
 
-  - `{:literal, value}` - A literal value (number, boolean, list, date, datetime)
+  - `{:literal, value}` - A literal value (number, boolean, list, date, datetime, duration)
   - `{:string_literal, value, quote_type}` - A string literal with quote type information
   - `{:identifier, name}` - A variable reference
   - `{:comparison, operator, left, right}` - A comparison expression (including equality)
@@ -68,6 +75,8 @@ defmodule Predicator.Parser do
   - `{:membership, operator, left, right}` - A membership operation (in/contains)
   - `{:function_call, name, arguments}` - A function call with arguments
   - `{:bracket_access, object, key}` - A bracket access expression (obj[key])
+  - `{:duration, units}` - A duration literal (e.g., 3d8h)
+  - `{:relative_date, duration, direction}` - A relative date expression (e.g., 3d ago, next 2w)
   """
   @type ast ::
           {:literal, value()}
@@ -84,6 +93,8 @@ defmodule Predicator.Parser do
           | {:object, [object_entry()]}
           | {:function_call, binary(), [ast()]}
           | {:bracket_access, ast(), ast()}
+          | {:duration, [{integer(), binary()}]}
+          | {:relative_date, ast(), relative_direction()}
 
   @typedoc """
   An object entry (key-value pair) in an object literal.
@@ -117,6 +128,11 @@ defmodule Predicator.Parser do
   Membership operators in the AST.
   """
   @type membership_op :: :in | :contains
+
+  @typedoc """
+  Relative date directions in the AST.
+  """
+  @type relative_direction :: :ago | :future | :next | :last
 
   @typedoc """
   Parser result - either success with AST or error with details.
@@ -599,6 +615,32 @@ defmodule Predicator.Parser do
             # Recursively parse more postfix operations
             parse_postfix_operations(property_access, final_state)
 
+          # Allow duration operators as property names (like user.name.last)
+          {:last_op, _line, _col, _len, property_name} ->
+            property_access = {:property_access, expr, property_name}
+            final_state = advance(dot_state)
+            parse_postfix_operations(property_access, final_state)
+
+          {:next_op, _line, _col, _len, property_name} ->
+            property_access = {:property_access, expr, property_name}
+            final_state = advance(dot_state)
+            parse_postfix_operations(property_access, final_state)
+
+          {:ago_op, _line, _col, _len, property_name} ->
+            property_access = {:property_access, expr, property_name}
+            final_state = advance(dot_state)
+            parse_postfix_operations(property_access, final_state)
+
+          {:from_op, _line, _col, _len, property_name} ->
+            property_access = {:property_access, expr, property_name}
+            final_state = advance(dot_state)
+            parse_postfix_operations(property_access, final_state)
+
+          {:now_op, _line, _col, _len, property_name} ->
+            property_access = {:property_access, expr, property_name}
+            final_state = advance(dot_state)
+            parse_postfix_operations(property_access, final_state)
+
           {type, line, col, _len, value} ->
             {:error, "Expected property name after '.' but found #{format_token(type, value)}",
              line, col}
@@ -622,9 +664,22 @@ defmodule Predicator.Parser do
     parse_primary_token(state, token)
   end
 
-  # Parse integer literal
+  # Parse integer literal (may be start of duration)
   defp parse_primary_token(state, {:integer, _line, _col, _len, value}) do
-    {:ok, {:literal, value}, advance(state)}
+    # Check if this integer is followed by duration units
+    next_state = advance(state)
+
+    case parse_duration_sequence_from_integer(value, next_state) do
+      {:ok, duration_ast, final_state} ->
+        {:ok, duration_ast, final_state}
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+
+      :not_duration ->
+        # Regular integer literal
+        {:ok, {:literal, value}, next_state}
+    end
   end
 
   # Parse float literal
@@ -699,6 +754,15 @@ defmodule Predicator.Parser do
     parse_object(state)
   end
 
+  # Parse duration direction keywords
+  defp parse_primary_token(state, {:next_op, _line, _col, _len, _value}) do
+    parse_relative_date_expression(state, :next)
+  end
+
+  defp parse_primary_token(state, {:last_op, _line, _col, _len, _value}) do
+    parse_relative_date_expression(state, :last)
+  end
+
   # Handle unexpected tokens
   defp parse_primary_token(_state, {type, line, col, _len, value}) do
     expected =
@@ -750,6 +814,12 @@ defmodule Predicator.Parser do
   defp format_token(:not_op, _value), do: "'NOT'"
   defp format_token(:in_op, _value), do: "'IN'"
   defp format_token(:contains_op, _value), do: "'CONTAINS'"
+  defp format_token(:duration_unit, value), do: "duration unit '#{value}'"
+  defp format_token(:ago_op, _value), do: "'ago'"
+  defp format_token(:from_op, _value), do: "'from'"
+  defp format_token(:now_op, _value), do: "'now'"
+  defp format_token(:next_op, _value), do: "'next'"
+  defp format_token(:last_op, _value), do: "'last'"
   defp format_token(:lparen, _value), do: "'('"
   defp format_token(:rparen, _value), do: "')'"
   defp format_token(:lbracket, _value), do: "'['"
@@ -1006,6 +1076,100 @@ defmodule Predicator.Parser do
             # No more arguments
             {:ok, new_acc, new_state}
         end
+
+      {:error, message, line, col} ->
+        {:error, message, line, col}
+    end
+  end
+
+  # Duration parsing functions
+
+  @spec parse_duration_sequence_from_integer(integer(), parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), integer(), integer()} | :not_duration
+  defp parse_duration_sequence_from_integer(number, state) do
+    case peek_token(state) do
+      {:duration_unit, _line, _col, _len, unit} ->
+        # Found duration unit, parse the full duration sequence
+        parse_duration_sequence([{number, unit}], advance(state))
+
+      _token ->
+        # Not followed by duration unit
+        :not_duration
+    end
+  end
+
+  @spec parse_duration_sequence([{integer(), binary()}], parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), integer(), integer()}
+  defp parse_duration_sequence(units, state) do
+    case peek_token(state) do
+      {:integer, _line, _col, _len, number} ->
+        # Check if this integer is followed by a duration unit
+        next_state = advance(state)
+
+        case peek_token(next_state) do
+          {:duration_unit, _line, _col, _len, unit} ->
+            # Continue building duration sequence
+            new_units = units ++ [{number, unit}]
+            parse_duration_sequence(new_units, advance(next_state))
+
+          _token ->
+            # End of duration sequence, check for direction operators
+            duration_ast = {:duration, Enum.reverse(units)}
+            parse_duration_with_direction(duration_ast, state)
+        end
+
+      _token ->
+        # End of duration sequence, check for direction operators
+        duration_ast = {:duration, Enum.reverse(units)}
+        parse_duration_with_direction(duration_ast, state)
+    end
+  end
+
+  @spec parse_duration_with_direction(ast(), parser_state()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), integer(), integer()}
+  defp parse_duration_with_direction(duration_ast, state) do
+    case peek_token(state) do
+      {:ago_op, _line, _col, _len, _value} ->
+        {:ok, {:relative_date, duration_ast, :ago}, advance(state)}
+
+      {:from_op, _line, _col, _len, _value} ->
+        # Expect 'now' after 'from'
+        from_state = advance(state)
+
+        case peek_token(from_state) do
+          {:now_op, _line, _col, _len, _value} ->
+            {:ok, {:relative_date, duration_ast, :future}, advance(from_state)}
+
+          {type, line, col, _len, value} ->
+            {:error, "Expected 'now' after 'from' but found #{format_token(type, value)}", line,
+             col}
+
+          nil ->
+            {:error, "Expected 'now' after 'from' but reached end of input", 1, 1}
+        end
+
+      _token ->
+        # Just a duration, no direction
+        {:ok, duration_ast, state}
+    end
+  end
+
+  @spec parse_relative_date_expression(parser_state(), relative_direction()) ::
+          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_relative_date_expression(state, direction) do
+    # Advance past the direction keyword (next/last)
+    next_state = advance(state)
+
+    # Expect a duration expression
+    case parse_primary(next_state) do
+      {:ok, {:duration, _units} = duration_ast, final_state} ->
+        {:ok, {:relative_date, duration_ast, direction}, final_state}
+
+      {:ok, _other_ast, _final_state} ->
+        {type, line, col, _len, value} = peek_token(next_state)
+
+        {:error, "Expected duration after '#{direction}' but found #{format_token(type, value)}",
+         line, col}
 
       {:error, message, line, col} ->
         {:error, message, line, col}

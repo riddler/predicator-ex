@@ -229,6 +229,22 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
+  def visit({:duration, units}, _opts) do
+    unit_strings = Enum.map(units, fn {value, unit} -> "#{value}#{unit}" end)
+    Enum.join(unit_strings, "")
+  end
+
+  def visit({:relative_date, duration_ast, direction}, opts) do
+    duration_str = visit(duration_ast, opts)
+
+    case direction do
+      :ago -> "#{duration_str} ago"
+      :future -> "#{duration_str} from now"
+      :next -> "next #{duration_str}"
+      :last -> "last #{duration_str}"
+    end
+  end
+
   # Helper functions
 
   @spec format_operator(

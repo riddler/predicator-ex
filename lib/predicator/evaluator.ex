@@ -23,10 +23,12 @@ defmodule Predicator.Evaluator do
   - `["unary_bang"]` - Logical NOT of top boolean value
   - `["bracket_access"]` - Pop key and object, push object[key] result
   - `["call", function_name, arg_count]` - Call function with arguments from stack
+  - `["duration", units]` - Create duration value from unit list
+  - `["relative_date", direction]` - Calculate relative date from duration and direction
   """
 
-  alias Predicator.Functions.{JSONFunctions, MathFunctions, SystemFunctions}
-  alias Predicator.Types
+  alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
+  alias Predicator.{Duration, Types}
   alias Predicator.Errors.{EvaluationError, TypeMismatchError}
 
   @typedoc "Internal evaluator state"
@@ -81,6 +83,7 @@ defmodule Predicator.Evaluator do
     # Merge custom functions with system functions
     merged_functions =
       SystemFunctions.all_functions()
+      |> Map.merge(DateFunctions.all_functions())
       |> Map.merge(JSONFunctions.all_functions())
       |> Map.merge(MathFunctions.all_functions())
       |> Map.merge(Keyword.get(opts, :functions, %{}))
@@ -307,6 +310,17 @@ defmodule Predicator.Evaluator do
     execute_object_set(evaluator, key)
   end
 
+  # Duration instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["duration", units]) when is_list(units) do
+    execute_duration(evaluator, units)
+  end
+
+  # Relative date instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["relative_date", direction])
+       when is_binary(direction) do
+    execute_relative_date(evaluator, direction)
+  end
+
   # Unknown instruction - catch-all clause
   defp execute_instruction(%__MODULE__{}, unknown) do
     {:error,
@@ -525,10 +539,17 @@ defmodule Predicator.Evaluator do
     end
   end
 
-  # Subtraction - numeric only
-  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :subtract)
-       when is_number(left) and is_number(right) do
-    {:ok, %__MODULE__{evaluator | stack: [left - right | rest]}}
+  # Subtraction with date arithmetic support
+  defp execute_arithmetic(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :subtract) do
+    result = apply_subtraction(left, right)
+
+    case result do
+      {:ok, value} ->
+        {:ok, %__MODULE__{evaluator | stack: [value | rest]}}
+
+      {:error, _error} = error_result ->
+        error_result
+    end
   end
 
   # Multiplication - numeric only
@@ -608,7 +629,37 @@ defmodule Predicator.Evaluator do
     {:ok, to_string(left) <> right}
   end
 
+  # Date + Duration = Date/DateTime
+  defp apply_addition(%Date{} = date, duration) when is_map(duration) do
+    if duration_map?(duration) do
+      {:ok, Duration.add_to_date(date, duration)}
+    else
+      apply_addition_fallback(date, duration)
+    end
+  end
+
+  defp apply_addition(%DateTime{} = datetime, duration) when is_map(duration) do
+    if duration_map?(duration) do
+      {:ok, Duration.add_to_datetime(datetime, duration)}
+    else
+      apply_addition_fallback(datetime, duration)
+    end
+  end
+
+  # Duration + Date = Date/DateTime (commutative)
+  defp apply_addition(duration, %Date{} = date) when is_map(duration) do
+    apply_addition(date, duration)
+  end
+
+  defp apply_addition(duration, %DateTime{} = datetime) when is_map(duration) do
+    apply_addition(datetime, duration)
+  end
+
   defp apply_addition(left, right) do
+    apply_addition_fallback(left, right)
+  end
+
+  defp apply_addition_fallback(left, right) do
     left_type = get_value_type(left)
     right_type = get_value_type(right)
 
@@ -616,6 +667,71 @@ defmodule Predicator.Evaluator do
      TypeMismatchError.binary(
        :add,
        :number_or_string,
+       {left_type, right_type},
+       {left, right}
+     )}
+  end
+
+  # Subtraction operations with date arithmetic
+  @spec apply_subtraction(Types.value(), Types.value()) :: {:ok, Types.value()} | {:error, term()}
+  defp apply_subtraction(left, right) when is_number(left) and is_number(right) do
+    {:ok, left - right}
+  end
+
+  # Date - Date = Duration (difference in days as a duration)
+  defp apply_subtraction(%Date{} = left_date, %Date{} = right_date) do
+    days_diff = Date.diff(left_date, right_date)
+    duration = Duration.new(days: days_diff)
+    {:ok, duration}
+  end
+
+  # DateTime - DateTime = Duration (difference in seconds as a duration)
+  defp apply_subtraction(%DateTime{} = left_datetime, %DateTime{} = right_datetime) do
+    seconds_diff = DateTime.diff(left_datetime, right_datetime, :second)
+    duration = Duration.new(seconds: seconds_diff)
+    {:ok, duration}
+  end
+
+  # Mixed Date/DateTime subtraction (convert Date to start of day UTC)
+  defp apply_subtraction(%Date{} = date, %DateTime{} = datetime) do
+    {:ok, date_as_datetime} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
+    apply_subtraction(date_as_datetime, datetime)
+  end
+
+  defp apply_subtraction(%DateTime{} = datetime, %Date{} = date) do
+    {:ok, date_as_datetime} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
+    apply_subtraction(datetime, date_as_datetime)
+  end
+
+  # Date - Duration = Date/DateTime
+  defp apply_subtraction(%Date{} = date, duration) when is_map(duration) do
+    if duration_map?(duration) do
+      {:ok, Duration.subtract_from_date(date, duration)}
+    else
+      apply_subtraction_fallback(date, duration)
+    end
+  end
+
+  defp apply_subtraction(%DateTime{} = datetime, duration) when is_map(duration) do
+    if duration_map?(duration) do
+      {:ok, Duration.subtract_from_datetime(datetime, duration)}
+    else
+      apply_subtraction_fallback(datetime, duration)
+    end
+  end
+
+  defp apply_subtraction(left, right) do
+    apply_subtraction_fallback(left, right)
+  end
+
+  defp apply_subtraction_fallback(left, right) do
+    left_type = get_value_type(left)
+    right_type = get_value_type(right)
+
+    {:error,
+     TypeMismatchError.binary(
+       :subtract,
+       :number_or_date,
        {left_type, right_type},
        {left, right}
      )}
@@ -629,8 +745,21 @@ defmodule Predicator.Evaluator do
   defp get_value_type(value) when is_list(value), do: :list
   defp get_value_type(%Date{}), do: :date
   defp get_value_type(%DateTime{}), do: :datetime
+
   defp get_value_type(:undefined), do: :undefined
-  defp get_value_type(_other), do: :unknown
+
+  defp get_value_type(value) when is_map(value) do
+    # Check if it's a duration map (has required duration keys)
+    if duration_map?(value), do: :duration, else: :map
+  end
+
+  # Helper to check if a map is a duration (only called with maps)
+  defp duration_map?(value) do
+    Map.has_key?(value, :years) and Map.has_key?(value, :months) and
+      Map.has_key?(value, :weeks) and Map.has_key?(value, :days) and
+      Map.has_key?(value, :hours) and Map.has_key?(value, :minutes) and
+      Map.has_key?(value, :seconds)
+  end
 
   @spec execute_unary(t(), :minus | :bang) :: {:ok, t()} | {:error, term()}
   defp execute_unary(%__MODULE__{stack: [value | rest]} = evaluator, :minus)
@@ -839,5 +968,162 @@ defmodule Predicator.Evaluator do
 
   defp execute_object_set(%__MODULE__{stack: stack} = _evaluator, _key) when length(stack) < 2 do
     {:error, EvaluationError.insufficient_operands(:object_set, length(stack), 2)}
+  end
+
+  @spec execute_duration(__MODULE__.t(), [[integer() | binary()]]) ::
+          {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_duration(%__MODULE__{} = evaluator, units) when is_list(units) do
+    case convert_units_to_duration_map(units) do
+      {:ok, duration_map} ->
+        {:ok, push_stack(evaluator, duration_map)}
+
+      {:error, error_struct} ->
+        {:error, error_struct}
+    end
+  end
+
+  # Helper function to convert units list to duration map
+  @spec convert_units_to_duration_map([[integer() | binary()]]) ::
+          {:ok, Types.duration()} | {:error, struct()}
+  defp convert_units_to_duration_map(units) do
+    initial_duration = %{years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0}
+
+    Enum.reduce_while(units, {:ok, initial_duration}, fn
+      [value, unit], {:ok, acc} when is_integer(value) and is_binary(unit) ->
+        case unit_string_to_atom(unit) do
+          {:ok, unit_atom} ->
+            {:cont, {:ok, Map.put(acc, unit_atom, value)}}
+
+          {:error, _reason} ->
+            {:halt,
+             {:error,
+              EvaluationError.new(
+                "Invalid duration unit: #{unit}",
+                "invalid_duration_unit",
+                :evaluate
+              )}}
+        end
+
+      invalid_unit, _acc ->
+        {:halt,
+         {:error,
+          EvaluationError.new(
+            "Invalid duration unit format: #{inspect(invalid_unit)}",
+            "invalid_duration_format",
+            :evaluate
+          )}}
+    end)
+  end
+
+  @spec execute_relative_date(__MODULE__.t(), binary()) ::
+          {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_relative_date(%__MODULE__{stack: [duration | rest]} = evaluator, direction)
+       when is_map(duration) and is_binary(direction) do
+    case calculate_relative_date(duration, direction) do
+      {:ok, target_datetime} ->
+        {:ok, %{evaluator | stack: [target_datetime | rest]}}
+
+      {:error, error_struct} ->
+        {:error, error_struct}
+    end
+  end
+
+  defp execute_relative_date(%__MODULE__{stack: [non_duration | _rest]}, _direction) do
+    {:error,
+     EvaluationError.new(
+       "Relative date operation requires a duration on the stack, got: #{inspect(non_duration)}",
+       "invalid_stack_value",
+       :evaluate
+     )}
+  end
+
+  defp execute_relative_date(%__MODULE__{stack: []}, _direction) do
+    {:error, EvaluationError.insufficient_operands(:relative_date, 0, 1)}
+  end
+
+  # Helper function to calculate relative date
+  @spec calculate_relative_date(Types.duration(), binary()) ::
+          {:ok, DateTime.t()} | {:error, struct()}
+  defp calculate_relative_date(duration, direction) do
+    now = DateTime.utc_now()
+
+    case direction do
+      "ago" ->
+        {:ok, subtract_duration(now, duration)}
+
+      "future" ->
+        {:ok, add_duration(now, duration)}
+
+      "next" ->
+        {:ok, add_duration(now, duration)}
+
+      "last" ->
+        {:ok, subtract_duration(now, duration)}
+
+      _unknown_direction ->
+        {:error,
+         EvaluationError.new(
+           "Unknown relative date direction: #{direction}",
+           "invalid_direction",
+           :evaluate
+         )}
+    end
+  end
+
+  # Helper functions for duration operations
+
+  @spec unit_string_to_atom(binary()) :: {:ok, atom()} | {:error, :invalid_unit}
+  defp unit_string_to_atom("y"), do: {:ok, :years}
+  defp unit_string_to_atom("year"), do: {:ok, :years}
+  defp unit_string_to_atom("years"), do: {:ok, :years}
+  defp unit_string_to_atom("mo"), do: {:ok, :months}
+  defp unit_string_to_atom("month"), do: {:ok, :months}
+  defp unit_string_to_atom("months"), do: {:ok, :months}
+  defp unit_string_to_atom("w"), do: {:ok, :weeks}
+  defp unit_string_to_atom("week"), do: {:ok, :weeks}
+  defp unit_string_to_atom("weeks"), do: {:ok, :weeks}
+  defp unit_string_to_atom("d"), do: {:ok, :days}
+  defp unit_string_to_atom("day"), do: {:ok, :days}
+  defp unit_string_to_atom("days"), do: {:ok, :days}
+  defp unit_string_to_atom("h"), do: {:ok, :hours}
+  defp unit_string_to_atom("hour"), do: {:ok, :hours}
+  defp unit_string_to_atom("hours"), do: {:ok, :hours}
+  defp unit_string_to_atom("m"), do: {:ok, :minutes}
+  defp unit_string_to_atom("min"), do: {:ok, :minutes}
+  defp unit_string_to_atom("minute"), do: {:ok, :minutes}
+  defp unit_string_to_atom("minutes"), do: {:ok, :minutes}
+  defp unit_string_to_atom("s"), do: {:ok, :seconds}
+  defp unit_string_to_atom("sec"), do: {:ok, :seconds}
+  defp unit_string_to_atom("second"), do: {:ok, :seconds}
+  defp unit_string_to_atom("seconds"), do: {:ok, :seconds}
+  defp unit_string_to_atom(_unknown_unit), do: {:error, :invalid_unit}
+
+  @spec add_duration(DateTime.t(), Types.duration()) :: DateTime.t()
+  defp add_duration(datetime, duration) do
+    total_seconds = duration_to_seconds(duration)
+    DateTime.add(datetime, total_seconds, :second)
+  end
+
+  @spec subtract_duration(DateTime.t(), Types.duration()) :: DateTime.t()
+  defp subtract_duration(datetime, duration) do
+    total_seconds = duration_to_seconds(duration)
+    DateTime.add(datetime, -total_seconds, :second)
+  end
+
+  # Helper function to convert duration to total seconds
+  @spec duration_to_seconds(Types.duration()) :: integer()
+  defp duration_to_seconds(duration) do
+    # Calculate total seconds for all time units (weeks, days, hours, minutes, seconds)
+    # For years and months, we'll approximate using days for now
+    years_in_days = Map.get(duration, :years, 0) * 365
+    months_in_days = Map.get(duration, :months, 0) * 30
+
+    years_in_days * 24 * 3600 +
+      months_in_days * 24 * 3600 +
+      Map.get(duration, :weeks, 0) * 7 * 24 * 3600 +
+      Map.get(duration, :days, 0) * 24 * 3600 +
+      Map.get(duration, :hours, 0) * 3600 +
+      Map.get(duration, :minutes, 0) * 60 +
+      Map.get(duration, :seconds, 0)
   end
 end

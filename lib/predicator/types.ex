@@ -7,6 +7,34 @@ defmodule Predicator.Types do
   """
 
   @typedoc """
+  A duration representing a time span.
+
+  Duration is represented as a map with fields for different time units:
+  - `years` - number of years (default: 0)
+  - `months` - number of months (default: 0)
+  - `weeks` - number of weeks (default: 0)
+  - `days` - number of days (default: 0)
+  - `hours` - number of hours (default: 0)
+  - `minutes` - number of minutes (default: 0)
+  - `seconds` - number of seconds (default: 0)
+
+  ## Examples
+
+      %Duration{days: 3, hours: 8}  # 3 days 8 hours
+      %Duration{weeks: 2}           # 2 weeks
+      %Duration{minutes: 30}        # 30 minutes
+  """
+  @type duration :: %{
+          years: non_neg_integer(),
+          months: non_neg_integer(),
+          weeks: non_neg_integer(),
+          days: non_neg_integer(),
+          hours: non_neg_integer(),
+          minutes: non_neg_integer(),
+          seconds: non_neg_integer()
+        }
+
+  @typedoc """
   A single value that can be used in predicates.
 
   Values can be:
@@ -17,6 +45,7 @@ defmodule Predicator.Types do
   - `list()` - lists of values
   - `Date.t()` - date values
   - `DateTime.t()` - datetime values
+  - `duration()` - duration values for time spans
   - `:undefined` - represents undefined/null values
   """
   @type value ::
@@ -27,6 +56,7 @@ defmodule Predicator.Types do
           | list()
           | Date.t()
           | DateTime.t()
+          | duration()
           | :undefined
 
   @typedoc """
