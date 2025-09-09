@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2025-09-09
+
+### Added
+
+#### Adds milliseconds support to duration system
+
+- New 'ms' unit support in lexer, parser, and evaluator
+- Duration.to_milliseconds/1 function for high-precision calculations
+- Pattern matching guards for automatic precision selection
+- Smart DateTime arithmetic (millisecond vs second precision)
+- Comprehensive test coverage with 89 new tests
+- Refactors evaluator to use Duration module functions (DRY)
+
+#### Examples
+
+- 500ms ago, 2s750ms from now
+- #2024-01-15T10:30:00.000Z# + 1s500ms
+- Automatic precision: ms > 0 triggers millisecond precision
+
 ## [3.4.0] - 2025-09-09
 
 ### Added
