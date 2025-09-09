@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2025-09-09
+
+### Added
+
+#### Durations and relative date/time arithmetic
+
+- New duration literals and relative date expressions (e.g., `3d ago`, `2w from now`, `next 1mo`, `last 1y`)
+- Date and DateTime arithmetic using durations (e.g., `#2024-01-10# + 5d`, `#2024-01-15T10:30:00Z# - 2h`)
+- Grammar additions: `duration` and `relative_date` productions
+- Full pipeline support (lexer, parser, compiler, evaluator, string visitor) with tests
+
+#### Examples:
+
+```elixir
+Predicator.evaluate("created_at > 3d ago", %{"created_at" => ~U[2024-01-20 00:00:00Z]})
+Predicator.evaluate("due_at < 2w from now", %{"due_at" => Date.add(Date.utc_today(), 10)})
+Predicator.evaluate("#2024-01-10# + 5d = #2024-01-15#", %{})
+Predicator.evaluate("#2024-01-15T10:30:00Z# - 2h < #2024-01-15T10:30:00Z#", %{})
+```
+
+### Documentation
+
+- Updated EBNF grammar in docs
+- Added AGENTS.md with model-agnostic agent guidance; `CLAUDE.md` now references the same content
+
 ## [3.3.0] - 2025-08-31
 
 ### Added
