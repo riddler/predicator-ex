@@ -152,17 +152,17 @@ test/predicator/
 ### Durations and Relative Dates (v3.4.0)
 
 - Natural-language durations and relative time expressions
-- Relative dates: `3 days ago`, `2 weeks from now`, `next month`, `last year`
-- Date/DateTime arithmetic: `#2024-01-10# + 5 days`, `#2024-01-15T10:30:00Z# - 2 hours`
+- Relative dates: `3d ago`, `2w from now`, `next 1mo`, `last 1y`
+- Date/DateTime arithmetic: `#2024-01-10# + 5d`, `#2024-01-15T10:30:00Z# - 2h`
 - Grammar updates: `duration` and `relative_date` productions
 - Full pipeline support (lexer, parser, compiler, evaluator, string visitor) with tests
 - Examples:
 
   ```elixir
-  Predicator.evaluate("created_at > 3 days ago", %{"created_at" => ~U[2024-01-20 00:00:00Z]})
-  Predicator.evaluate("due_at < 2 weeks from now", %{"due_at" => Date.add(Date.utc_today(), 10)})
-  Predicator.evaluate("#2024-01-10# + 5 days = #2024-01-15#", %{})
-  Predicator.evaluate("#2024-01-15T10:30:00Z# - 2 hours < #2024-01-15T10:30:00Z#", %{})
+  Predicator.evaluate("created_at > 3d ago", %{"created_at" => ~U[2024-01-20 00:00:00Z]})
+  Predicator.evaluate("due_at < 2w from now", %{"due_at" => Date.add(Date.utc_today(), 10)})
+  Predicator.evaluate("#2024-01-10# + 5d = #2024-01-15#", %{})
+  Predicator.evaluate("#2024-01-15T10:30:00Z# - 2h < #2024-01-15T10:30:00Z#", %{})
   ```
 
 ### Object Literals (v3.1.0 - JavaScript-Style Objects)

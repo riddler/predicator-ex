@@ -60,16 +60,16 @@ iex> Predicator.evaluate!("created_at < #2024-01-15T10:30:00Z#", %{"created_at" 
 true
 
 # Durations, relative dates, and date arithmetic
-iex> Predicator.evaluate!("created_at > 3 days ago", %{"created_at" => ~U[2024-01-20 00:00:00Z]})
+iex> Predicator.evaluate!("created_at > 3d ago", %{"created_at" => ~U[2024-01-20 00:00:00Z]})
 true
 
-iex> Predicator.evaluate!("due_at < 2 weeks from now", %{"due_at" => Date.add(Date.utc_today(), 10)})
+iex> Predicator.evaluate!("due_at < 2w from now", %{"due_at" => Date.add(Date.utc_today(), 10)})
 true
 
-iex> Predicator.evaluate!("#2024-01-10# + 5 days = #2024-01-15#", %{})
+iex> Predicator.evaluate!("#2024-01-10# + 5d = #2024-01-15#", %{})
 true
 
-iex> Predicator.evaluate!("#2024-01-15T10:30:00Z# - 2 hours < #2024-01-15T10:30:00Z#", %{})
+iex> Predicator.evaluate!("#2024-01-15T10:30:00Z# - 2h < #2024-01-15T10:30:00Z#", %{})
 true
 
 # List literals and membership
@@ -348,9 +348,9 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 - **Booleans**: `true`, `false` (or plain identifiers like `active`, `expired`)
 - **Dates**: `#2024-01-15#` (ISO 8601 date format)
 - **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with timezone)
-- **Durations**: Natural units for time spans (e.g., `3 days`, `2 hours`, `15 minutes`)
-  - In relative expressions: `3 days ago`, `2 weeks from now`, `next month`, `last year`
-  - In arithmetic: `#2024-01-10# + 5 days`, `#2024-01-15T10:30:00Z# - 2 hours`
+- **Durations**: Natural units for time spans (e.g., `3d`, `2h`, `15m`)
+  - In relative expressions: `3d ago`, `2w from now`, `next 1mo`, `last 1y`
+  - In arithmetic: `#2024-01-10# + 5d`, `#2024-01-15T10:30:00Z# - 2h`
 - **Lists**: `[1, 2, 3]`, `['admin', 'manager']` (homogeneous collections)
 - **Objects**: `{}`, `{name: "John", age: 30}`, `{user: {role: "admin"}}` (JavaScript-style object literals)
 - **Identifiers**: `score`, `user_name`, `is_active`, `user.profile.name`, `user['key']`, `items[0]` (variable references with dot notation and bracket notation for nested data)
