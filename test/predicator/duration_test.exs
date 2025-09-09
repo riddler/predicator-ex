@@ -15,7 +15,8 @@ defmodule Predicator.DurationTest do
                days: 0,
                hours: 0,
                minutes: 0,
-               seconds: 0
+               seconds: 0,
+               milliseconds: 0
              }
     end
 
@@ -29,7 +30,8 @@ defmodule Predicator.DurationTest do
                days: 3,
                hours: 8,
                minutes: 30,
-               seconds: 0
+               seconds: 0,
+               milliseconds: 0
              }
     end
 
@@ -42,7 +44,8 @@ defmodule Predicator.DurationTest do
           days: 4,
           hours: 5,
           minutes: 6,
-          seconds: 7
+          seconds: 7,
+          milliseconds: 123
         )
 
       assert duration.years == 1
@@ -52,6 +55,7 @@ defmodule Predicator.DurationTest do
       assert duration.hours == 5
       assert duration.minutes == 6
       assert duration.seconds == 7
+      assert duration.milliseconds == 123
     end
   end
 
@@ -364,6 +368,125 @@ defmodule Predicator.DurationTest do
     test "formats years only" do
       duration = Duration.new(years: 1)
       assert Duration.to_string(duration) == "1y"
+    end
+
+    test "formats milliseconds" do
+      duration = Duration.new(milliseconds: 500)
+      assert Duration.to_string(duration) == "500ms"
+    end
+
+    test "formats complex duration with milliseconds" do
+      duration = Duration.new(seconds: 30, milliseconds: 250)
+      assert Duration.to_string(duration) == "30s250ms"
+    end
+  end
+
+  describe "milliseconds support" do
+    test "creates duration with milliseconds only" do
+      duration = Duration.new(milliseconds: 500)
+      assert duration.milliseconds == 500
+    end
+
+    test "adds milliseconds unit" do
+      duration = Duration.new() |> Duration.add_unit("ms", 750)
+      assert duration.milliseconds == 750
+    end
+
+    test "accumulates millisecond values" do
+      duration = Duration.new(milliseconds: 200) |> Duration.add_unit("ms", 300)
+      assert duration.milliseconds == 500
+    end
+
+    test "from_units handles milliseconds" do
+      {:ok, duration} = Duration.from_units([{"500", "ms"}])
+      assert duration.milliseconds == 500
+    end
+
+    test "from_units handles mixed units with milliseconds" do
+      {:ok, duration} = Duration.from_units([{"1", "s"}, {"500", "ms"}])
+      assert duration.seconds == 1
+      assert duration.milliseconds == 500
+    end
+  end
+
+  describe "to_milliseconds/1" do
+    test "converts simple milliseconds" do
+      duration = Duration.new(milliseconds: 500)
+      assert Duration.to_milliseconds(duration) == 500
+    end
+
+    test "converts seconds to milliseconds" do
+      duration = Duration.new(seconds: 2)
+      assert Duration.to_milliseconds(duration) == 2000
+    end
+
+    test "converts mixed seconds and milliseconds" do
+      duration = Duration.new(seconds: 1, milliseconds: 500)
+      assert Duration.to_milliseconds(duration) == 1500
+    end
+
+    test "converts minutes to milliseconds" do
+      duration = Duration.new(minutes: 1, seconds: 30, milliseconds: 250)
+      expected = 1 * 60_000 + 30 * 1_000 + 250
+      assert Duration.to_milliseconds(duration) == expected
+    end
+
+    test "converts hours to milliseconds" do
+      duration = Duration.new(hours: 1)
+      assert Duration.to_milliseconds(duration) == 3_600_000
+    end
+
+    test "converts days to milliseconds" do
+      duration = Duration.new(days: 1)
+      assert Duration.to_milliseconds(duration) == 86_400_000
+    end
+
+    test "converts zero duration" do
+      duration = Duration.new()
+      assert Duration.to_milliseconds(duration) == 0
+    end
+
+    test "converts complex duration to milliseconds" do
+      duration = Duration.new(hours: 1, minutes: 30, seconds: 45, milliseconds: 123)
+      expected = 1 * 3_600_000 + 30 * 60_000 + 45 * 1_000 + 123
+      assert Duration.to_milliseconds(duration) == expected
+    end
+  end
+
+  describe "datetime operations with milliseconds" do
+    test "add_to_datetime uses millisecond precision when milliseconds present" do
+      datetime = ~U[2024-01-15T10:30:00.000Z]
+      duration = Duration.new(seconds: 1, milliseconds: 500)
+      result = Duration.add_to_datetime(datetime, duration)
+      assert result == ~U[2024-01-15T10:30:01.500Z]
+    end
+
+    test "add_to_datetime uses second precision when no milliseconds" do
+      datetime = ~U[2024-01-15T10:30:00.000Z]
+      duration = Duration.new(seconds: 5)
+      result = Duration.add_to_datetime(datetime, duration)
+      assert result == ~U[2024-01-15T10:30:05.000Z]
+    end
+
+    test "subtract_from_datetime uses millisecond precision when milliseconds present" do
+      datetime = ~U[2024-01-15T10:30:02.750Z]
+      duration = Duration.new(seconds: 1, milliseconds: 250)
+      result = Duration.subtract_from_datetime(datetime, duration)
+      assert result == ~U[2024-01-15T10:30:01.500Z]
+    end
+
+    test "subtract_from_datetime uses second precision when no milliseconds" do
+      datetime = ~U[2024-01-15T10:30:05.000Z]
+      duration = Duration.new(seconds: 2)
+      result = Duration.subtract_from_datetime(datetime, duration)
+      assert result == ~U[2024-01-15T10:30:03.000Z]
+    end
+
+    test "millisecond precision with complex durations" do
+      datetime = ~U[2024-01-15T10:30:00.000Z]
+      duration = Duration.new(minutes: 1, seconds: 30, milliseconds: 750)
+      result = Duration.add_to_datetime(datetime, duration)
+      assert result == ~U[2024-01-15T10:31:30.750Z]
     end
   end
 end

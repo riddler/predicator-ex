@@ -31,7 +31,8 @@ defmodule Predicator.Types do
           days: non_neg_integer(),
           hours: non_neg_integer(),
           minutes: non_neg_integer(),
-          seconds: non_neg_integer()
+          seconds: non_neg_integer(),
+          milliseconds: non_neg_integer()
         }
 
   @typedoc """
