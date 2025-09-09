@@ -8,10 +8,10 @@ defmodule Predicator.Duration do
   ## Examples
 
       iex> Predicator.Duration.new(days: 3, hours: 8)
-      %{years: 0, months: 0, weeks: 0, days: 3, hours: 8, minutes: 0, seconds: 0}
+      %{years: 0, months: 0, weeks: 0, days: 3, hours: 8, minutes: 0, seconds: 0, milliseconds: 0}
 
       iex> Predicator.Duration.from_units([{"3", "d"}, {"8", "h"}])
-      {:ok, %{years: 0, months: 0, weeks: 0, days: 3, hours: 8, minutes: 0, seconds: 0}}
+      {:ok, %{years: 0, months: 0, weeks: 0, days: 3, hours: 8, minutes: 0, seconds: 0, milliseconds: 0}}
 
       iex> Predicator.Duration.to_seconds(%{days: 1, hours: 2, minutes: 30})
       95400
@@ -27,10 +27,10 @@ defmodule Predicator.Duration do
   ## Examples
 
       iex> Predicator.Duration.new(days: 2, hours: 3)
-      %{years: 0, months: 0, weeks: 0, days: 2, hours: 3, minutes: 0, seconds: 0}
+      %{years: 0, months: 0, weeks: 0, days: 2, hours: 3, minutes: 0, seconds: 0, milliseconds: 0}
 
       iex> Predicator.Duration.new()
-      %{years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0}
+      %{years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, milliseconds: 0}
   """
   @spec new(keyword()) :: Types.duration()
   def new(opts \\ []) do
@@ -41,7 +41,8 @@ defmodule Predicator.Duration do
       days: Keyword.get(opts, :days, 0),
       hours: Keyword.get(opts, :hours, 0),
       minutes: Keyword.get(opts, :minutes, 0),
-      seconds: Keyword.get(opts, :seconds, 0)
+      seconds: Keyword.get(opts, :seconds, 0),
+      milliseconds: Keyword.get(opts, :milliseconds, 0)
     }
   end
 
@@ -53,7 +54,7 @@ defmodule Predicator.Duration do
   ## Examples
 
       iex> Predicator.Duration.from_units([{"3", "d"}, {"8", "h"}])
-      {:ok, %{years: 0, months: 0, weeks: 0, days: 3, hours: 8, minutes: 0, seconds: 0}}
+      {:ok, %{years: 0, months: 0, weeks: 0, days: 3, hours: 8, minutes: 0, seconds: 0, milliseconds: 0}}
 
       iex> Predicator.Duration.from_units([{"invalid", "d"}])
       {:error, "Invalid duration value: invalid"}
@@ -90,7 +91,7 @@ defmodule Predicator.Duration do
 
       iex> duration = Predicator.Duration.new(days: 1)
       iex> Predicator.Duration.add_unit(duration, "h", 3)
-      %{years: 0, months: 0, weeks: 0, days: 1, hours: 3, minutes: 0, seconds: 0}
+      %{years: 0, months: 0, weeks: 0, days: 1, hours: 3, minutes: 0, seconds: 0, milliseconds: 0}
   """
   @spec add_unit(Types.duration(), binary(), non_neg_integer()) :: Types.duration()
   def add_unit(duration, "y", value), do: %{duration | years: duration.years + value}
@@ -100,6 +101,9 @@ defmodule Predicator.Duration do
   def add_unit(duration, "h", value), do: %{duration | hours: duration.hours + value}
   def add_unit(duration, "m", value), do: %{duration | minutes: duration.minutes + value}
   def add_unit(duration, "s", value), do: %{duration | seconds: duration.seconds + value}
+
+  def add_unit(duration, "ms", value),
+    do: %{duration | milliseconds: duration.milliseconds + value}
 
   def add_unit(_duration, unit, _value) do
     throw({:error, "Unknown duration unit: #{unit}"})
@@ -129,6 +133,33 @@ defmodule Predicator.Duration do
       Map.get(duration, :weeks, 0) * 604_800 +
       Map.get(duration, :months, 0) * 2_592_000 +
       Map.get(duration, :years, 0) * 31_536_000
+  end
+
+  @doc """
+  Converts a duration to total milliseconds (approximate for months and years).
+
+  Uses approximate conversions:
+  - 1 month = 30 days
+  - 1 year = 365 days
+
+  ## Examples
+
+      iex> Predicator.Duration.to_milliseconds(%{seconds: 1, milliseconds: 500})
+      1500
+
+      iex> Predicator.Duration.to_milliseconds(%{minutes: 1, seconds: 30, milliseconds: 250})
+      90250
+  """
+  @spec to_milliseconds(Types.duration()) :: integer()
+  def to_milliseconds(duration) do
+    Map.get(duration, :milliseconds, 0) +
+      Map.get(duration, :seconds, 0) * 1_000 +
+      Map.get(duration, :minutes, 0) * 60_000 +
+      Map.get(duration, :hours, 0) * 3_600_000 +
+      Map.get(duration, :days, 0) * 86_400_000 +
+      Map.get(duration, :weeks, 0) * 604_800_000 +
+      Map.get(duration, :months, 0) * 2_592_000_000 +
+      Map.get(duration, :years, 0) * 31_536_000_000
   end
 
   @doc """
@@ -171,6 +202,11 @@ defmodule Predicator.Duration do
       ~U[2024-01-17T14:00:00Z]
   """
   @spec add_to_datetime(DateTime.t(), Types.duration()) :: DateTime.t()
+  def add_to_datetime(datetime, %{milliseconds: ms} = duration) when ms > 0 do
+    total_ms = to_milliseconds(duration)
+    DateTime.add(datetime, total_ms, :millisecond)
+  end
+
   def add_to_datetime(datetime, duration) do
     total_seconds = to_seconds(duration)
     DateTime.add(datetime, total_seconds, :second)
@@ -216,6 +252,11 @@ defmodule Predicator.Duration do
       ~U[2024-01-15T10:30:00Z]
   """
   @spec subtract_from_datetime(DateTime.t(), Types.duration()) :: DateTime.t()
+  def subtract_from_datetime(datetime, %{milliseconds: ms} = duration) when ms > 0 do
+    total_ms = to_milliseconds(duration)
+    DateTime.add(datetime, -total_ms, :millisecond)
+  end
+
   def subtract_from_datetime(datetime, duration) do
     total_seconds = to_seconds(duration)
     DateTime.add(datetime, -total_seconds, :second)
@@ -243,7 +284,8 @@ defmodule Predicator.Duration do
       {:days, "d"},
       {:hours, "h"},
       {:minutes, "m"},
-      {:seconds, "s"}
+      {:seconds, "s"},
+      {:milliseconds, "ms"}
     ]
 
     parts =

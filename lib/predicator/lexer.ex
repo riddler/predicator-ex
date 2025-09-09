@@ -700,20 +700,22 @@ defmodule Predicator.Lexer do
           {:ok, binary(), binary(), binary()} | :no_match
   defp extract_duration_unit(str) do
     cond do
-      # Match unit followed by digits (for sequences like "d8h")
-      match = Regex.run(~r/^(mo)(\d.*)/, str) ->
+      # Match multi-character units first (ms, mo) followed by digits
+      match = Regex.run(~r/^(ms|mo)(\d.*)/, str) ->
         [_full_match, unit, remaining] = match
         {:ok, "", unit, remaining}
 
+      # Match single-character units followed by digits
       match = Regex.run(~r/^([ydhmsw])(\d.*)/, str) ->
         [_full_match, unit, remaining] = match
         {:ok, "", unit, remaining}
 
-      # Match unit at end or followed by non-digits (for cases like "d" or "d ago")
-      match = Regex.run(~r/^(mo)(\D.*|$)/, str) ->
+      # Match multi-character units at end or followed by non-digits (ms, mo)
+      match = Regex.run(~r/^(ms|mo)(\D.*|$)/, str) ->
         [_full_match, unit, remaining] = match
         {:ok, "", unit, remaining}
 
+      # Match single-character units at end or followed by non-digits
       match = Regex.run(~r/^([ydhmsw])(\D.*|$)/, str) ->
         [_full_match, unit, remaining] = match
         {:ok, "", unit, remaining}
@@ -728,6 +730,7 @@ defmodule Predicator.Lexer do
   defp duration_unit?("h"), do: true
   defp duration_unit?("m"), do: true
   defp duration_unit?("s"), do: true
+  defp duration_unit?("ms"), do: true
   defp duration_unit?("w"), do: true
   defp duration_unit?("mo"), do: true
   defp duration_unit?("y"), do: true

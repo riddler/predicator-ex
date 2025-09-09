@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Grammar additions: `duration` and `relative_date` productions
 - Full pipeline support (lexer, parser, compiler, evaluator, string visitor) with tests
 
-#### Examples:
+#### Examples
 
 ```elixir
 Predicator.evaluate("created_at > 3d ago", %{"created_at" => ~U[2024-01-20 00:00:00Z]})

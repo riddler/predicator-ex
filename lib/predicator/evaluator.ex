@@ -1096,34 +1096,30 @@ defmodule Predicator.Evaluator do
   defp unit_string_to_atom("sec"), do: {:ok, :seconds}
   defp unit_string_to_atom("second"), do: {:ok, :seconds}
   defp unit_string_to_atom("seconds"), do: {:ok, :seconds}
+  defp unit_string_to_atom("ms"), do: {:ok, :milliseconds}
+  defp unit_string_to_atom("millisecond"), do: {:ok, :milliseconds}
+  defp unit_string_to_atom("milliseconds"), do: {:ok, :milliseconds}
   defp unit_string_to_atom(_unknown_unit), do: {:error, :invalid_unit}
 
   @spec add_duration(DateTime.t(), Types.duration()) :: DateTime.t()
+  defp add_duration(datetime, %{milliseconds: ms} = duration) when ms > 0 do
+    total_ms = Predicator.Duration.to_milliseconds(duration)
+    DateTime.add(datetime, total_ms, :millisecond)
+  end
+
   defp add_duration(datetime, duration) do
-    total_seconds = duration_to_seconds(duration)
+    total_seconds = Predicator.Duration.to_seconds(duration)
     DateTime.add(datetime, total_seconds, :second)
   end
 
   @spec subtract_duration(DateTime.t(), Types.duration()) :: DateTime.t()
-  defp subtract_duration(datetime, duration) do
-    total_seconds = duration_to_seconds(duration)
-    DateTime.add(datetime, -total_seconds, :second)
+  defp subtract_duration(datetime, %{milliseconds: ms} = duration) when ms > 0 do
+    total_ms = Predicator.Duration.to_milliseconds(duration)
+    DateTime.add(datetime, -total_ms, :millisecond)
   end
 
-  # Helper function to convert duration to total seconds
-  @spec duration_to_seconds(Types.duration()) :: integer()
-  defp duration_to_seconds(duration) do
-    # Calculate total seconds for all time units (weeks, days, hours, minutes, seconds)
-    # For years and months, we'll approximate using days for now
-    years_in_days = Map.get(duration, :years, 0) * 365
-    months_in_days = Map.get(duration, :months, 0) * 30
-
-    years_in_days * 24 * 3600 +
-      months_in_days * 24 * 3600 +
-      Map.get(duration, :weeks, 0) * 7 * 24 * 3600 +
-      Map.get(duration, :days, 0) * 24 * 3600 +
-      Map.get(duration, :hours, 0) * 3600 +
-      Map.get(duration, :minutes, 0) * 60 +
-      Map.get(duration, :seconds, 0)
+  defp subtract_duration(datetime, duration) do
+    total_seconds = Predicator.Duration.to_seconds(duration)
+    DateTime.add(datetime, -total_seconds, :second)
   end
 end
