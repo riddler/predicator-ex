@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-08-04
+
 ### Added
 
 #### Auto-vivifying path assignment for SCXML location expressions
