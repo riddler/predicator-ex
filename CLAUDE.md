@@ -33,7 +33,7 @@ orchestrator overrides every row here.
 | Action | Trigger | Still unauthorized when |
 |---|---|---|
 | `bd` task tracking (`create`, `claim`, `update`, `note`) | any time | never - this is the default profile too |
-| `mix quality`, `mix quality.check`, `mix test` | any time | never - running the gate costs nothing but time |
+| `mix quality`, `mix quality --profile loop`, `mix test` | any time | never - running the gate costs nothing but time |
 | `git commit` on the issue's feature branch | the claimed issue's work is complete **and** full `mix quality` is green; a change touching no Elixir code has no gate to run and may commit on review of the diff alone | on `main`, on a red gate, on a partial or scoped run, or with unrelated changes in the tree |
 | `git rebase` onto `origin/main` | a branch landed on `origin/main` | a conflict appears - abort and report, do not resolve unasked |
 | `git push`, `gh pr create` | the user asks for it in their own words | inferred from "the work is done"; finishing an issue is not a request to publish it |
@@ -107,17 +107,25 @@ this repo (ADR-0001).
 ## Build & Test
 
 ```bash
-mix quality                # full gate: format, credo --strict, coverage, dialyzer
-mix quality.check          # same checks, without fixing formatting
+mix quality                # full gate: format, compile, credo --strict,
+                           # dialyzer, deps audit, suite with coverage
+mix quality --profile loop # inner loop: skips dialyzer and coverage, runs
+                           # only the tests covering changed code
+mix quality --format json  # the same run, as a report you can route on
 mix test                   # run the suite
-mix test --watch           # watch mode
 mix test.coverage          # coverage report
 mix test.coverage.html     # HTML coverage report
 ```
 
-Full `mix quality` must be green before any commit. Coverage target is >90% for
-every component. The gate is a hand-rolled `mix` task today; migrating it to
-ex_quality is tracked as `px-t54`.
+Full `mix quality` must be green before any commit. `--profile loop` is for
+iterating between edits; a scoped green is not a full green, and it never
+substitutes for the pre-commit run. Coverage target is >90% for every
+component, enforced by `coveralls.json`.
+
+The gate is [ex_quality](https://hex.pm/packages/ex_quality), configured in
+`.quality.exs`. Do not weaken it to get a run green: no lowered threshold, no
+`enabled: false`, no `--skip-*` on the final check, no `@tag :skip`. If a
+finding is genuinely wrong for this repo, report it and let a human decide.
 
 Toolchain versions are pinned in `mise.toml` - `mise install` provisions Erlang
 and Elixir matching what CI builds with.

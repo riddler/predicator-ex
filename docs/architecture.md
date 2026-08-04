@@ -11,7 +11,7 @@ Predicator is a secure, non-evaluative condition engine for processing end-user 
 
 ## Architecture
 
-```
+```text
 Expression String → Lexer → Parser → Compiler → Instructions → Evaluator
                                     ↓
                               StringVisitor (decompile)
@@ -19,7 +19,7 @@ Expression String → Lexer → Parser → Compiler → Instructions → Evaluat
 
 ### Grammar with Operator Precedence
 
-```
+```text
 expression   → logical_or
 logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
@@ -66,7 +66,6 @@ be green before a commit, and user-facing changes update `CHANGELOG.md` under
 
 ```bash
 mix test                    # Run all tests
-mix test --watch           # Watch mode  
 mix test.coverage          # Coverage report
 mix test.coverage.html     # HTML coverage report
 ```
@@ -74,12 +73,19 @@ mix test.coverage.html     # HTML coverage report
 ### Code Quality Commands
 
 ```bash
-mix quality                # Run all quality checks (format, credo, coverage, dialyzer)
-mix quality.check          # Check quality without fixing
+mix quality                # Run all quality checks (format, compile, credo,
+                           # dialyzer, deps audit, suite with coverage)
+mix quality --profile loop # Inner loop: no dialyzer, no coverage, changed
+                           # tests only. Never the final check.
 mix format                 # Format code
 mix credo --strict         # Lint with strict mode
 mix dialyzer              # Type checking
 ```
+
+The gate is [ex_quality](https://hex.pm/packages/ex_quality); what it runs is
+configured in `.quality.exs`, and the thresholds it enforces stay with the
+tools that own them - `coveralls.json` for the 90% coverage minimum, `.credo.exs`
+for the checks, `mix.exs` for the Dialyzer PLT.
 
 ### Coverage Stats
 
@@ -119,7 +125,7 @@ mix dialyzer              # Type checking
 
 ## File Structure
 
-```
+```text
 lib/predicator/
 ├── lexer.ex           # Tokenization with position tracking
 ├── parser.ex          # Recursive descent parser  
