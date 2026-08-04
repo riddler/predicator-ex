@@ -17,7 +17,7 @@ defmodule Predicator.Parser do
       logical_or   → logical_and ( "OR" | "||" logical_and )*
       logical_and  → logical_not ( "AND" | "&&" logical_not )*
       logical_not  → "NOT" | "!" logical_not | comparison
-      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
+      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" (deprecated) | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
       addition     → multiplication ( ( "+" | "-" ) multiplication )*
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
       unary        → ( "-" | "!" ) unary | postfix
@@ -30,6 +30,13 @@ defmodule Predicator.Parser do
       object_key   → IDENTIFIER | STRING
       duration     → NUMBER UNIT+
       relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
+
+  > #### Deprecated: `=` as equality {: .warning}
+  >
+  > Using `=` as an equality operator is deprecated. It still parses and still
+  > compiles to `["compare", "EQ"]`, but parsing one emits a deprecation
+  > warning, and Predicator 4.0 makes expression-position `=` a parse error.
+  > Use `==` instead.
 
   ## Examples
 
@@ -47,6 +54,8 @@ defmodule Predicator.Parser do
   """
 
   alias Predicator.Lexer
+
+  require Logger
 
   @typedoc """
   A value that can appear in literals.
@@ -177,6 +186,8 @@ defmodule Predicator.Parser do
   """
   @spec parse([Lexer.token()]) :: result()
   def parse(tokens) when is_list(tokens) do
+    warn_deprecated_equals(tokens)
+
     state = %{tokens: tokens, position: 0}
 
     case parse_expression(state) do
@@ -196,6 +207,35 @@ defmodule Predicator.Parser do
       {:error, message, line, col} ->
         {:error, message, line, col}
     end
+  end
+
+  # Emits a single deprecation warning if the token stream uses `=` as an
+  # equality operator. In 3.8 there is no assignment grammar, so every `:eq`
+  # token is expression-position; the statement grammar (px-tbv.1) must refine
+  # this check rather than inherit it.
+  @spec warn_deprecated_equals([Lexer.token()]) :: :ok
+  defp warn_deprecated_equals(tokens) do
+    if deprecation_warnings_enabled?() do
+      case Enum.find(tokens, &match?({:eq, _line, _col, _len, _value}, &1)) do
+        {:eq, line, col, _len, _value} ->
+          Logger.warning(
+            "[predicator] `=` as an equality operator is deprecated and becomes " <>
+              "a parse error in Predicator 4.0. Use `==` instead. " <>
+              "First occurrence at line #{line}, column #{col}. " <>
+              "Silence with `config :predicator, deprecation_warnings: false`."
+          )
+
+        nil ->
+          :ok
+      end
+    end
+
+    :ok
+  end
+
+  @spec deprecation_warnings_enabled?() :: boolean()
+  defp deprecation_warnings_enabled? do
+    Application.get_env(:predicator, :deprecation_warnings, true) != false
   end
 
   # Parse expression (top level)

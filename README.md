@@ -11,7 +11,7 @@ Predicator allows you to safely evaluate user-defined expressions without the se
 ## Features
 
 - 🔒 **Secure**: No `eval()` or dynamic code execution - safe for end-user input
-- 🎯 **Simple**: Clean, intuitive expression syntax (`score > 85`, `name = 'John'`)
+- 🎯 **Simple**: Clean, intuitive expression syntax (`score > 85`, `name == 'John'`)
 - 🚀 **Fast**: Compiled expressions execute efficiently with minimal overhead
 - 🛡️ **Type Safe**: Built with comprehensive specs and rigorous testing
 - 🎨 **Flexible**: Support for literals, identifiers, comparisons, and parentheses
@@ -46,10 +46,10 @@ iex> Predicator.evaluate!("score > 85", %{"score" => 92})
 true
 
 # String comparisons (double or single quotes)
-iex> Predicator.evaluate!("name = 'Alice'", %{"name" => "Alice"})
+iex> Predicator.evaluate!("name == 'Alice'", %{"name" => "Alice"})
 true
 
-iex> Predicator.evaluate!("name = \"Alice\"", %{"name" => "Alice"})
+iex> Predicator.evaluate!("name == \"Alice\"", %{"name" => "Alice"})
 true
 
 # Date and datetime literals
@@ -66,7 +66,7 @@ true
 iex> Predicator.evaluate!("due_at < 2w from now", %{"due_at" => Date.add(Date.utc_today(), 10)})
 true
 
-iex> Predicator.evaluate!("#2024-01-10# + 5d = #2024-01-15#", %{})
+iex> Predicator.evaluate!("#2024-01-10# + 5d == #2024-01-15#", %{})
 true
 
 iex> Predicator.evaluate!("#2024-01-15T10:30:00Z# - 2h < #2024-01-15T10:30:00Z#", %{})
@@ -109,7 +109,7 @@ iex> Predicator.evaluate!("score + ' points'", %{"score" => 100})
 iex> Predicator.evaluate!("score > 85 AND age >= 18", %{"score" => 92, "age" => 25})
 true
 
-iex> Predicator.evaluate!("role = 'admin' OR role = 'manager'", %{"role" => "admin"})  
+iex> Predicator.evaluate!("role == 'admin' OR role == 'manager'", %{"role" => "admin"})  
 true
 
 iex> Predicator.evaluate!("NOT expired AND active", %{"expired" => false, "active" => true})
@@ -123,10 +123,10 @@ true
 iex> Predicator.evaluate!("len(name) > 3", %{"name" => "Alice"})
 true
 
-iex> Predicator.evaluate!("upper(role) = 'ADMIN'", %{"role" => "admin"})
+iex> Predicator.evaluate!("upper(role) == 'ADMIN'", %{"role" => "admin"})
 true
 
-iex> Predicator.evaluate!("year(created_at) = 2024", %{"created_at" => ~D[2024-03-15]})
+iex> Predicator.evaluate!("year(created_at) == 2024", %{"created_at" => ~D[2024-03-15]})
 true
 
 # Compile once, evaluate many times for performance
@@ -149,9 +149,9 @@ iex> Predicator.evaluate([["lit", 42]])
 {:ok, 42}
 
 # Round-trip: parse and decompile expressions (preserves quote style)
-iex> {:ok, ast} = Predicator.parse("name = 'John'")
+iex> {:ok, ast} = Predicator.parse("name == 'John'")
 iex> Predicator.decompile(ast)
-"name = 'John'"
+"name == 'John'"
 
 iex> {:ok, ast} = Predicator.parse("score > 85 AND #2024-01-15# in dates")
 iex> Predicator.decompile(ast)
@@ -206,34 +206,34 @@ context = %{
 }
 
 # Access nested values with dot notation
-iex> Predicator.evaluate("user.name.first = 'John'", context)
+iex> Predicator.evaluate("user.name.first == 'John'", context)
 {:ok, true}
 
 iex> Predicator.evaluate("user.age > 18", context)
 {:ok, true}
 
-iex> Predicator.evaluate("config.database.port = 5432", context)
+iex> Predicator.evaluate("config.database.port == 5432", context)
 {:ok, true}
 
 # Access with bracket notation
-iex> Predicator.evaluate("user['name']['first'] = 'John'", context)
+iex> Predicator.evaluate("user['name']['first'] == 'John'", context)
 {:ok, true}
 
-iex> Predicator.evaluate("user['settings']['theme'] = 'dark'", context)
+iex> Predicator.evaluate("user['settings']['theme'] == 'dark'", context)
 {:ok, true}
 
 # Array access with bracket notation
-iex> Predicator.evaluate("items[0] = 'apple'", context)
+iex> Predicator.evaluate("items[0] == 'apple'", context)
 {:ok, true}
 
 iex> Predicator.evaluate("scores[1] > 90", context)
 {:ok, true}
 
 # Mixed notation styles
-iex> Predicator.evaluate("user.settings['theme'] = 'dark'", context)
+iex> Predicator.evaluate("user.settings['theme'] == 'dark'", context)
 {:ok, true}
 
-iex> Predicator.evaluate("user['profile'].role = 'admin'", context)
+iex> Predicator.evaluate("user['profile'].role == 'admin'", context)
 {:ok, true}
 
 # Dynamic array access
@@ -245,16 +245,16 @@ iex> Predicator.evaluate("user['name']['first'] + ' ' + user['name']['last']", c
 {:ok, "John Doe"}
 
 # Use in complex expressions
-iex> Predicator.evaluate("user.profile.role = 'admin' AND user.settings.notifications", context)
+iex> Predicator.evaluate("user.profile.role == 'admin' AND user.settings.notifications", context)
 {:ok, true}
 
 # Missing paths return :undefined
-iex> Predicator.evaluate("user.profile.email = 'test'", context)
+iex> Predicator.evaluate("user.profile.email == 'test'", context)
 {:ok, :undefined}
 
 # Works with both string and atom keys
 atom_context = %{user: %{name: %{first: "Jane"}}}
-iex> Predicator.evaluate("user.name.first = 'Jane'", atom_context)
+iex> Predicator.evaluate("user.name.first == 'Jane'", atom_context)
 {:ok, true}
 
 # Access nested lists
@@ -296,15 +296,25 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 | `<`      | Less than | `age < 30`, `created_at < #2024-01-15T10:00:00Z#` |
 | `>=`     | Greater than or equal | `points >= 100` |
 | `<=`     | Less than or equal | `count <= 5` |
-| `=`      | Equal | `status = 'active'`, `date = #2024-01-15#` |
+| `==`     | Equal | `status == 'active'`, `date == #2024-01-15#` |
 | `!=`     | Not equal | `role != 'guest'` |
+| `===`    | Strict equal (no type coercion) | `count === 5` |
+| `!==`    | Strict not equal (no type coercion) | `count !== "5"` |
+| `=`      | Equal - **deprecated**, use `==` | `status = 'active'` |
+
+> **Deprecated: `=` as equality.** Using `=` for equality still works and still
+> compiles to `["compare", "EQ"]`, but parsing one emits a deprecation warning.
+> **Predicator 4.0 makes expression-position `=` a parse error** - `=` is being
+> reserved for assignment in the forthcoming statement grammar. Migrate to `==`
+> before upgrading. Silence the warning with
+> `config :predicator, deprecation_warnings: false`.
 
 ### Logical Operators
 
 | Operator | Description | Example |
 |----------|-------------|---------|
 | `AND`    | Logical AND (case-insensitive) | `score > 85 AND age >= 18` |
-| `OR`     | Logical OR (case-insensitive) | `role = 'admin' OR role = 'manager'` |
+| `OR`     | Logical OR (case-insensitive) | `role == 'admin' OR role == 'manager'` |
 | `NOT`    | Logical NOT (case-insensitive) | `NOT expired` |
 
 ### Membership Operators
@@ -321,8 +331,8 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 | Function | Description | Example |
 |----------|-------------|---------|
 | `len(string)` | String length | `len(name) > 3` |
-| `upper(string)` | Convert to uppercase | `upper(role) = 'ADMIN'` |
-| `lower(string)` | Convert to lowercase | `lower(name) = 'alice'` |
+| `upper(string)` | Convert to uppercase | `upper(role) == 'ADMIN'` |
+| `lower(string)` | Convert to lowercase | `lower(name) == 'alice'` |
 | `trim(string)` | Remove whitespace | `len(trim(input)) > 0` |
 
 #### Numeric Functions  
@@ -337,8 +347,8 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `year(date)` | Extract year | `year(created_at) = 2024` |
-| `month(date)` | Extract month | `month(birthday) = 12` |
+| `year(date)` | Extract year | `year(created_at) == 2024` |
+| `month(date)` | Extract month | `month(birthday) == 12` |
 | `day(date)` | Extract day | `day(deadline) <= 15` |
 
 ## Data Types
@@ -438,10 +448,10 @@ custom_functions = %{
 iex> Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: custom_functions)
 {:ok, true}
 
-iex> Predicator.evaluate("user_role() = 'admin'", %{"current_user_role" => "admin"}, functions: custom_functions)
+iex> Predicator.evaluate("user_role() == 'admin'", %{"current_user_role" => "admin"}, functions: custom_functions)
 {:ok, true}
 
-iex> Predicator.evaluate("divide(10, 2) = 5", %{}, functions: custom_functions)
+iex> Predicator.evaluate("divide(10, 2) == 5", %{}, functions: custom_functions)
 {:ok, true}
 
 iex> Predicator.evaluate("divide(10, 0)", %{}, functions: custom_functions)
@@ -528,7 +538,7 @@ iex> Predicator.context_location("items[missing_var]", %{})
 - Literals: `42`, `"hello"`, `true`, `#2024-01-15#`
 - Function calls: `len(name)`, `upper(role)`, `max(a, b)`
 - Arithmetic expressions: `score + 1`, `items[i + 1]`
-- Comparison results: `score > 85`, `name = "John"`
+- Comparison results: `score > 85`, `name == "John"`
 - Any computed expressions that cannot serve as memory locations
 
 ### Location Path Format
