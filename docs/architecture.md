@@ -81,7 +81,10 @@ Predicator has Ruby and JavaScript implementations in the
 expression string is not. Parity is already partial - objects, durations, and
 strict equality postdate the siblings - and ADR-0001 adds four more opcodes
 (`jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`, `store`) that they
-do not yet implement.
+do not yet implement. The Elixir side ships the first two as of 3.7.0: `AND`
+and `OR` now short-circuit, and a compiled instruction list containing
+`jump_if_falsy_or_pop` or `jump_if_true_or_pop` will not run on a sibling that
+hasn't added them.
 
 ### The `=` grammar break (4.0)
 
@@ -413,6 +416,29 @@ test/predicator/
 - **Case-insensitive**: Both `AND`/`and`, `OR`/`or`, `NOT`/`not` supported
 - **Pattern matching**: Refactored evaluator and parser to use pattern matching over case statements
 - **Plain boolean expressions**: Support for `active`, `expired` without `= true`
+
+### Short-Circuit Evaluation (v3.7.0)
+
+- **Compilation**: `a AND b` compiles to `a`'s instructions, then
+  `["jump_if_falsy_or_pop", offset]`, then `b`'s instructions; `a OR b`
+  mirrors it with `["jump_if_true_or_pop", offset]`. `offset` is the distance
+  from the jump instruction to the instruction after `b`.
+- **`:undefined` is ECMAScript-aligned, not symmetric**: "falsy" is `false` or
+  `:undefined`; "true" is exactly `true`. `undefined AND x` short-circuits to
+  `:undefined` without evaluating `x`; `undefined OR x` falls through and takes
+  `x`'s value. A non-boolean, non-`:undefined` value at a jump is still a
+  `TypeMismatchError` - the opcodes validate, they don't coerce.
+- **Examples**: `a AND b` ->
+  `[["load","a"],["jump_if_falsy_or_pop",2],["load","b"]]`;
+  `evaluate("false AND score > 5", %{})` -> `{:ok, false}` without evaluating
+  `score > 5` at all, where 3.5.0 raised `TypeMismatchError` on an unbound
+  `score`
+- **Backward compatible**: `["and"]` and `["or"]` remain accepted by the
+  evaluator for previously compiled artifacts; the compiler simply stops
+  emitting them (ADR-0001)
+- **Cross-language**: `jump_if_falsy_or_pop` and `jump_if_true_or_pop` are ISA
+  v2 additions. The Ruby and JavaScript siblings do not implement them yet, so
+  an instruction list containing either will not run there.
 
 ### Nested Data Structure Access (v1.1.0 + Bracket Access Enhancement)
 

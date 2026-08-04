@@ -22,7 +22,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
       iex> ast = {:logical_and, {:literal, true}, {:literal, false}}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
-      [["lit", true], ["lit", false], ["and"]]
+      [["lit", true], ["jump_if_falsy_or_pop", 2], ["lit", false]]
 
       iex> ast = {:function_call, "len", [{:identifier, "name"}]}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
@@ -108,21 +108,27 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   end
 
   def visit({:logical_and, left, right}, opts) do
-    # Post-order traversal: left operand, right operand, then operator
+    # Short-circuit: if left is falsy (false or :undefined), jump past right
+    # and leave left's value as the result. Otherwise pop and fall through
+    # into right - the AND's value is right's value. (ADR-0001)
     left_instructions = visit(left, opts)
     right_instructions = visit(right, opts)
-    op_instruction = [["and"]]
+    offset = length(right_instructions) + 1
+    jump_instruction = [["jump_if_falsy_or_pop", offset]]
 
-    left_instructions ++ right_instructions ++ op_instruction
+    left_instructions ++ jump_instruction ++ right_instructions
   end
 
   def visit({:logical_or, left, right}, opts) do
-    # Post-order traversal: left operand, right operand, then operator
+    # Short-circuit: if left is exactly true, jump past right and leave left's
+    # value as the result. Otherwise (false or :undefined) pop and fall through
+    # into right - the OR's value is right's value. (ADR-0001)
     left_instructions = visit(left, opts)
     right_instructions = visit(right, opts)
-    op_instruction = [["or"]]
+    offset = length(right_instructions) + 1
+    jump_instruction = [["jump_if_true_or_pop", offset]]
 
-    left_instructions ++ right_instructions ++ op_instruction
+    left_instructions ++ jump_instruction ++ right_instructions
   end
 
   def visit({:logical_not, operand}, opts) do

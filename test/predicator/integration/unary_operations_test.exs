@@ -72,7 +72,7 @@ defmodule UnaryEvaluationTest do
     end
 
     test "unary bang in logical context" do
-      instructions = [["lit", true], ["unary_bang"], ["lit", false], ["or"]]
+      instructions = [["lit", true], ["unary_bang"], ["jump_if_true_or_pop", 2], ["lit", false]]
       result = Evaluator.evaluate(instructions, %{})
       # (!true) OR false = false OR false = false
       assert result == false

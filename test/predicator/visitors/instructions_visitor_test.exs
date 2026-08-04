@@ -141,8 +141,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
       assert result == [
                ["lit", true],
-               ["lit", false],
-               ["and"]
+               ["jump_if_falsy_or_pop", 2],
+               ["lit", false]
              ]
     end
 
@@ -152,8 +152,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
       assert result == [
                ["load", "admin"],
-               ["lit", false],
-               ["or"]
+               ["jump_if_true_or_pop", 2],
+               ["lit", false]
              ]
     end
 
@@ -194,16 +194,16 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["load", "score"],
                ["lit", 85],
                ["compare", "GT"],
+               ["jump_if_falsy_or_pop", 4],
                ["load", "age"],
                ["lit", 18],
                ["compare", "GTE"],
-               ["and"],
+               # Final OR
+               ["jump_if_true_or_pop", 4],
                # Right side of OR: admin = true
                ["load", "admin"],
                ["lit", true],
-               ["compare", "EQ"],
-               # Final OR
-               ["or"]
+               ["compare", "EQ"]
              ]
     end
 
@@ -221,10 +221,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["load", "score"],
                ["lit", 85],
                ["compare", "GT"],
+               ["jump_if_falsy_or_pop", 4],
                ["load", "name"],
                ["lit", "John"],
-               ["compare", "EQ"],
-               ["and"]
+               ["compare", "EQ"]
              ]
     end
 
@@ -242,10 +242,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["load", "role"],
                ["lit", "admin"],
                ["compare", "EQ"],
+               ["jump_if_true_or_pop", 4],
                ["load", "role"],
                ["lit", "manager"],
-               ["compare", "EQ"],
-               ["or"]
+               ["compare", "EQ"]
              ]
     end
 
@@ -310,10 +310,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["load", "score"],
                ["lit", 85],
                ["compare", "GT"],
+               ["jump_if_falsy_or_pop", 4],
                ["load", "age"],
                ["lit", 18],
-               ["compare", "GTE"],
-               ["and"]
+               ["compare", "GTE"]
              ]
     end
 
@@ -329,10 +329,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["load", "role"],
                ["lit", "admin"],
                ["compare", "EQ"],
+               ["jump_if_true_or_pop", 4],
                ["load", "role"],
                ["lit", "manager"],
-               ["compare", "EQ"],
-               ["or"]
+               ["compare", "EQ"]
              ]
     end
 
@@ -573,9 +573,9 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       assert result == [
                ["load", "active"],
                ["unary_bang"],
+               ["jump_if_falsy_or_pop", 3],
                ["load", "expired"],
-               ["unary_bang"],
-               ["and"]
+               ["unary_bang"]
              ]
     end
 
@@ -613,12 +613,12 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["add"],
                ["lit", 5],
                ["compare", "GT"],
+               ["jump_if_falsy_or_pop", 6],
                ["load", "c"],
                ["load", "d"],
                ["subtract"],
                ["lit", 10],
-               ["compare", "LT"],
-               ["and"]
+               ["compare", "LT"]
              ]
     end
   end
@@ -745,11 +745,11 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["duration", [[1, "d"]]],
                ["relative_date", "ago"],
                ["compare", "GT"],
+               ["jump_if_falsy_or_pop", 5],
                ["load", "updated_at"],
                ["duration", [[1, "h"]]],
                ["relative_date", "future"],
-               ["compare", "LT"],
-               ["and"]
+               ["compare", "LT"]
              ]
     end
   end

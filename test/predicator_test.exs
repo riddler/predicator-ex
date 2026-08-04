@@ -493,10 +493,10 @@ defmodule PredicatorTest do
 
     test "compile function generates correct instructions for logical operators" do
       {:ok, instructions} = Predicator.compile("true AND false")
-      assert instructions == [["lit", true], ["lit", false], ["and"]]
+      assert instructions == [["lit", true], ["jump_if_falsy_or_pop", 2], ["lit", false]]
 
       {:ok, instructions} = Predicator.compile("true OR false")
-      assert instructions == [["lit", true], ["lit", false], ["or"]]
+      assert instructions == [["lit", true], ["jump_if_true_or_pop", 2], ["lit", false]]
 
       {:ok, instructions} = Predicator.compile("NOT true")
       assert instructions == [["lit", true], ["not"]]
@@ -593,7 +593,12 @@ defmodule PredicatorTest do
       assert instructions == [["load", "active"]]
 
       {:ok, instructions} = Predicator.compile("active AND expired")
-      assert instructions == [["load", "active"], ["load", "expired"], ["and"]]
+
+      assert instructions == [
+               ["load", "active"],
+               ["jump_if_falsy_or_pop", 2],
+               ["load", "expired"]
+             ]
     end
 
     test "parses and decompiles plain boolean expressions" do
@@ -690,10 +695,10 @@ defmodule PredicatorTest do
 
     test "compiles lowercase operators correctly" do
       {:ok, instructions} = Predicator.compile("true and false")
-      assert instructions == [["lit", true], ["lit", false], ["and"]]
+      assert instructions == [["lit", true], ["jump_if_falsy_or_pop", 2], ["lit", false]]
 
       {:ok, instructions} = Predicator.compile("true or false")
-      assert instructions == [["lit", true], ["lit", false], ["or"]]
+      assert instructions == [["lit", true], ["jump_if_true_or_pop", 2], ["lit", false]]
 
       {:ok, instructions} = Predicator.compile("not true")
       assert instructions == [["lit", true], ["not"]]
