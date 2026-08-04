@@ -589,6 +589,37 @@ Two rules worth knowing:
 
 Note that `context_assign/4` takes the context first, unlike `context_location/3`: it transforms a context and returns a new one, so it composes in a pipeline.
 
+## Cross-Language Siblings
+
+Predicator has sibling implementations in Ruby and JavaScript, in the
+[riddler/predicator](https://github.com/riddler/predicator) monorepo
+(`impl/rb`, `impl/ts`). The instruction list - not the expression string - is
+the interchange format between them.
+
+### `=` diverges from 4.0 onward
+
+Predicator-ex 4.0 makes `=` **assignment-only**, valid only in statement
+position. `==` and `===` become the only equality operators, and a `=` in
+expression position is a parse error. The Ruby and JavaScript parsers still
+accept `=` as equality, and will until they adopt the same rule.
+
+What that does and does not affect:
+
+- **Surface syntax diverges.** A stored rule string like `status = 'active'`
+  parses in Ruby and JavaScript and fails to parse in Elixir on 4.0. Write
+  `status == 'active'` for a string that must parse everywhere.
+- **The instruction set does not change.** Both spellings compile to
+  `["compare", "EQ"]`. Compiled artifacts still interchange across all three
+  implementations, and nothing already compiled is invalidated.
+
+So the break is a source-level one: share instruction lists across languages
+freely, and treat any expression string shared across languages as needing
+`==`.
+
+The reasoning behind the change is in
+[ADR-0001](docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md); the
+siblings' wider instruction-set parity gap is described there too.
+
 ## Development
 
 ### Setup

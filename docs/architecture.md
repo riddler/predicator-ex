@@ -52,6 +52,38 @@ relative_date → duration "ago" | duration "from" "now" | "next" duration | "la
   - **SystemFunctions**: Built-in system functions (len, upper, abs, max, etc.) provided via `all_functions/0`
 - **Main API** (`lib/predicator.ex`): Public interface with convenience functions
 
+## Cross-Language Siblings
+
+Predicator has Ruby and JavaScript implementations in the
+[riddler/predicator](https://github.com/riddler/predicator) monorepo
+(`impl/rb`, `impl/ts`). The instruction list is the interchange format; the
+expression string is not. Parity is already partial - objects, durations, and
+strict equality postdate the siblings - and ADR-0001 adds four more opcodes
+(`jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`, `store`) that they
+do not yet implement.
+
+### The `=` grammar break (4.0)
+
+4.0 makes `=` assignment-only and valid only in statement position; `==` and
+`===` are the only equality operators, and `=` in expression position is a
+parse error. 3.8 warns first, so consumers get one release of notice.
+
+The siblings' lexers still tokenize `=` as an equality operator
+(`impl/rb/lib/predicator/lexer.rex` line 21, `impl/ts/src/tokens.js` line 70),
+and their parsers will keep accepting `status = 'active'` until they adopt the
+same rule.
+
+Scope of the divergence:
+
+- **Surface syntax only.** A rule string using `=` for equality parses in Ruby
+  and JavaScript and fails to parse in Elixir on 4.0.
+- **The instruction set is untouched.** `=` and `==` both compile to
+  `["compare", "EQ"]`, so compiled artifacts still interchange in every
+  direction and no stored instruction list is invalidated by the break.
+
+ADR-0001's consequences call for the matching note in each sibling README.
+Adopting the rule in the siblings is coordinated in that repo, not here.
+
 ## Development
 
 ### Development Workflow
