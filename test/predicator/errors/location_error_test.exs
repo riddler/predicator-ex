@@ -133,4 +133,37 @@ defmodule Predicator.Errors.LocationErrorTest do
       assert error.details.expression == expression
     end
   end
+
+  describe "not_a_container/3" do
+    test "creates error for a scalar intermediate" do
+      error = LocationError.not_a_container("user", "user", 5)
+
+      assert error.type == :not_a_container
+      assert error.message == "Cannot assign through non-container value at 'user'"
+      assert error.details.location == "user"
+      assert error.details.segment == "user"
+      assert error.details.value == 5
+      assert error.details.value_type == "integer"
+    end
+
+    test "creates error for a string segment against a list" do
+      error = LocationError.not_a_container("items.name", "name", [1, 2])
+
+      assert error.type == :not_a_container
+      assert error.message == "Cannot assign through non-container value at 'items.name'"
+      assert error.details.segment == "name"
+      assert error.details.value_type == "list"
+    end
+  end
+
+  describe "invalid_index/2" do
+    test "creates error for a negative index" do
+      error = LocationError.invalid_index("items[-1]", -1)
+
+      assert error.type == :invalid_index
+      assert error.message == "Invalid list index -1 at 'items[-1]'"
+      assert error.details.location == "items[-1]"
+      assert error.details.index == -1
+    end
+  end
 end

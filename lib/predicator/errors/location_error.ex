@@ -4,14 +4,22 @@ defmodule Predicator.Errors.LocationError do
 
   This error is raised when attempting to resolve a location path for assignment
   operations, but the expression does not represent a valid assignable location.
+  It also covers the write-time failures of `Predicator.ContextLocation.put/3`.
 
   ## Error Types
+
+  Resolution failures:
 
   - `:not_assignable` - Expression cannot be used as an assignment target
   - `:invalid_node` - Unknown or unsupported AST node type
   - `:undefined_variable` - Variable referenced in bracket key is not defined
   - `:invalid_key` - Bracket key is not a valid string or integer
   - `:computed_key` - Computed expressions cannot be used as assignment keys
+
+  Write failures:
+
+  - `:not_a_container` - Path traverses a value that is neither a map nor a list
+  - `:invalid_index` - List index in the path is out of range (negative)
 
   ## Examples
 
@@ -39,7 +47,13 @@ defmodule Predicator.Errors.LocationError do
   """
 
   @type error_type ::
-          :not_assignable | :invalid_node | :undefined_variable | :invalid_key | :computed_key
+          :not_assignable
+          | :invalid_node
+          | :undefined_variable
+          | :invalid_key
+          | :computed_key
+          | :not_a_container
+          | :invalid_index
 
   @type t :: %__MODULE__{
           type: error_type(),
@@ -120,6 +134,38 @@ defmodule Predicator.Errors.LocationError do
       details: %{
         expression: expression
       }
+    }
+  end
+
+  @doc """
+  Creates a LocationError for assignment through a non-container value.
+
+  Used when a location path traverses a value that is neither a map nor a list,
+  so intermediate structure cannot be created without destroying existing data.
+  """
+  @spec not_a_container(binary(), term(), term()) :: t()
+  def not_a_container(location, segment, value) do
+    %__MODULE__{
+      type: :not_a_container,
+      message: "Cannot assign through non-container value at '#{location}'",
+      details: %{
+        location: location,
+        segment: segment,
+        value: value,
+        value_type: get_type_name(value)
+      }
+    }
+  end
+
+  @doc """
+  Creates a LocationError for an out-of-range list index in a location path.
+  """
+  @spec invalid_index(binary(), integer()) :: t()
+  def invalid_index(location, index) do
+    %__MODULE__{
+      type: :invalid_index,
+      message: "Invalid list index #{index} at '#{location}'",
+      details: %{location: location, index: index}
     }
   end
 
