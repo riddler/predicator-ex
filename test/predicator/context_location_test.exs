@@ -534,4 +534,89 @@ defmodule Predicator.ContextLocationTest do
       assert context == %{"user" => 5}
     end
   end
+
+  describe "context_assign/4 expression forms" do
+    test "assigns to a simple identifier" do
+      assert {:ok, %{"user" => "Ada"}} = Predicator.context_assign(%{}, "user", "Ada")
+    end
+
+    test "assigns through property access, vivifying intermediates" do
+      assert {:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}} =
+               Predicator.context_assign(%{}, "user.profile.name", "Ada")
+    end
+
+    test "assigns into a list by index" do
+      assert {:ok, %{"items" => ["x", 2, 3]}} =
+               Predicator.context_assign(%{"items" => [1, 2, 3]}, "items[0]", "x")
+    end
+
+    test "assigns through a quoted bracket key" do
+      assert {:ok, %{"user" => %{"settings" => %{"theme" => "dark"}}}} =
+               Predicator.context_assign(%{}, "user.settings['theme']", "dark")
+    end
+
+    test "assigns through mixed bracket and property notation" do
+      assert {:ok, %{"data" => %{"users" => [%{"name" => "Ada"}]}}} =
+               Predicator.context_assign(%{}, "data['users'][0].name", "Ada")
+    end
+
+    test "resolves a variable bracket key against the pre-assignment context" do
+      context = %{"index" => 1, "items" => [1, 2, 3]}
+
+      assert {:ok, %{"index" => 1, "items" => [1, "x", 3]}} =
+               Predicator.context_assign(context, "items[index]", "x")
+    end
+
+    test "composes sequentially to build a nested structure" do
+      assert {:ok, context} = Predicator.context_assign(%{}, "user.profile.name", "Ada")
+      assert {:ok, context} = Predicator.context_assign(context, "user.profile.age", 36)
+      assert {:ok, context} = Predicator.context_assign(context, "user.tags[0]", "admin")
+
+      assert context == %{
+               "user" => %{
+                 "profile" => %{"name" => "Ada", "age" => 36},
+                 "tags" => ["admin"]
+               }
+             }
+    end
+  end
+
+  describe "context_assign/4 error propagation" do
+    test "surfaces parse errors unchanged" do
+      assert {:error, %Predicator.Errors.ParseError{}} =
+               Predicator.context_assign(%{}, "user.", "Ada")
+    end
+
+    test "surfaces not_assignable for literals" do
+      assert {:error, %LocationError{type: :not_assignable}} =
+               Predicator.context_assign(%{}, "42", "Ada")
+    end
+
+    test "surfaces not_assignable for function calls" do
+      assert {:error, %LocationError{type: :not_assignable}} =
+               Predicator.context_assign(%{"items" => [1]}, "len(items)", 1)
+    end
+
+    test "surfaces not_assignable for arithmetic expressions" do
+      assert {:error, %LocationError{type: :not_assignable}} =
+               Predicator.context_assign(%{"user" => %{"age" => 30}}, "user.age + 1", 31)
+    end
+
+    test "does not vivify an undefined bracket key variable" do
+      assert {:error, %LocationError{type: :undefined_variable}} =
+               Predicator.context_assign(%{"items" => [1]}, "items[missing]", "x")
+    end
+
+    test "propagates write-time collisions from put/3" do
+      assert {:error, %LocationError{type: :not_a_container} = error} =
+               Predicator.context_assign(%{"user" => 5}, "user.profile.name", "Ada")
+
+      assert error.details.location == "user"
+    end
+
+    test "propagates invalid_index for a negative bracket index" do
+      assert {:error, %LocationError{type: :invalid_index}} =
+               Predicator.context_assign(%{"items" => [1, 2]}, "items[-1]", "x")
+    end
+  end
 end
