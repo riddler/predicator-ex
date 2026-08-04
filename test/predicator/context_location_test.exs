@@ -1,6 +1,8 @@
 defmodule Predicator.ContextLocationTest do
   use ExUnit.Case, async: true
 
+  doctest Predicator.ContextLocation
+
   alias Predicator
   alias Predicator.{ContextLocation, Lexer, Parser}
   alias Predicator.Errors.LocationError
@@ -356,6 +358,180 @@ defmodule Predicator.ContextLocationTest do
     test "handles empty string as bracket key" do
       context = %{"obj" => %{}, "key" => ""}
       assert {:ok, ["obj", ""]} = Predicator.context_location("obj[key]", context)
+    end
+  end
+
+  describe "put/3 with simple paths" do
+    test "writes a single segment into an empty context" do
+      assert {:ok, %{"name" => "Ada"}} = ContextLocation.put(%{}, ["name"], "Ada")
+    end
+
+    test "overwrites an existing scalar leaf" do
+      assert {:ok, %{"name" => "Ada"}} =
+               ContextLocation.put(%{"name" => "Grace"}, ["name"], "Ada")
+    end
+
+    test "overwrites a leaf that currently holds a map" do
+      context = %{"user" => %{"name" => "Grace"}}
+
+      assert {:ok, %{"user" => "replaced"}} = ContextLocation.put(context, ["user"], "replaced")
+    end
+
+    test "overwrites a leaf that currently holds a list" do
+      context = %{"items" => [1, 2, 3]}
+
+      assert {:ok, %{"items" => "replaced"}} = ContextLocation.put(context, ["items"], "replaced")
+    end
+
+    test "does not mutate the original context" do
+      original = %{"user" => %{"id" => 1}}
+
+      assert {:ok, updated} = ContextLocation.put(original, ["user", "name"], "Ada")
+      assert original == %{"user" => %{"id" => 1}}
+      assert updated["user"]["name"] == "Ada"
+    end
+
+    test "returns not_assignable for an empty path" do
+      assert {:error, %LocationError{type: :not_assignable} = error} =
+               ContextLocation.put(%{}, [], "Ada")
+
+      assert error.details.expression_type == "empty location path"
+    end
+  end
+
+  describe "put/3 with map vivification" do
+    test "vivifies a deep path from an empty context" do
+      assert {:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}} =
+               ContextLocation.put(%{}, ["user", "profile", "name"], "Ada")
+    end
+
+    test "vivifies only the missing part of a partial path" do
+      assert {:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}} =
+               ContextLocation.put(%{"user" => %{}}, ["user", "profile", "name"], "Ada")
+    end
+
+    test "preserves existing sibling keys through vivification" do
+      context = %{"user" => %{"id" => 1}, "other" => true}
+
+      assert {:ok, updated} = ContextLocation.put(context, ["user", "profile", "name"], "Ada")
+
+      assert updated == %{
+               "user" => %{"id" => 1, "profile" => %{"name" => "Ada"}},
+               "other" => true
+             }
+    end
+
+    test "treats a nil intermediate as absent and vivifies it" do
+      assert {:ok, %{"user" => %{"name" => "Ada"}}} =
+               ContextLocation.put(%{"user" => nil}, ["user", "name"], "Ada")
+    end
+
+    test "treats an :undefined intermediate as absent and vivifies it" do
+      assert {:ok, %{"user" => %{"name" => "Ada"}}} =
+               ContextLocation.put(%{"user" => :undefined}, ["user", "name"], "Ada")
+    end
+
+    test "never consults atom keys" do
+      assert {:ok, updated} = ContextLocation.put(%{user: %{}}, ["user", "name"], "Ada")
+      assert updated == %{"user" => %{"name" => "Ada"}, user: %{}}
+    end
+  end
+
+  describe "put/3 with list indices" do
+    test "vivifies a list when the next segment is an integer" do
+      assert {:ok, %{"items" => [:undefined, :undefined, "x"]}} =
+               ContextLocation.put(%{}, ["items", 2], "x")
+    end
+
+    test "pads an existing short list with :undefined" do
+      assert {:ok, %{"items" => [1, :undefined, "x"]}} =
+               ContextLocation.put(%{"items" => [1]}, ["items", 2], "x")
+    end
+
+    test "appends exactly at the end of a list" do
+      assert {:ok, %{"items" => [1, 2, "x"]}} =
+               ContextLocation.put(%{"items" => [1, 2]}, ["items", 2], "x")
+    end
+
+    test "replaces an in-range element" do
+      assert {:ok, %{"items" => [1, "x", 3]}} =
+               ContextLocation.put(%{"items" => [1, 2, 3]}, ["items", 1], "x")
+    end
+
+    test "vivifies through a list index into a map" do
+      assert {:ok, %{"data" => %{"users" => [%{"name" => "Ada"}]}}} =
+               ContextLocation.put(%{}, ["data", "users", 0, "name"], "Ada")
+    end
+
+    test "descends into an existing list element" do
+      context = %{"users" => [%{"name" => "Grace"}, %{"name" => "Ada"}]}
+
+      assert {:ok, %{"users" => [%{"name" => "Grace"}, %{"name" => "Lin"}]}} =
+               ContextLocation.put(context, ["users", 1, "name"], "Lin")
+    end
+
+    test "writes an integer key into an existing map" do
+      assert {:ok, updated} = ContextLocation.put(%{"obj" => %{"a" => 1}}, ["obj", 0], "x")
+      assert updated == %{"obj" => %{"a" => 1, 0 => "x"}}
+    end
+
+    test "returns invalid_index for a negative leaf index" do
+      assert {:error, %LocationError{type: :invalid_index} = error} =
+               ContextLocation.put(%{"items" => [1, 2]}, ["items", -1], "x")
+
+      assert error.details.index == -1
+      assert error.details.location == "items[-1]"
+    end
+
+    test "returns invalid_index for a negative interior index" do
+      assert {:error, %LocationError{type: :invalid_index} = error} =
+               ContextLocation.put(%{"items" => [1, 2]}, ["items", -1, "name"], "x")
+
+      assert error.details.location == "items[-1]"
+    end
+  end
+
+  describe "put/3 with container collisions" do
+    test "returns not_a_container for a scalar intermediate" do
+      assert {:error, %LocationError{type: :not_a_container} = error} =
+               ContextLocation.put(%{"user" => 5}, ["user", "name"], "Ada")
+
+      assert error.details.location == "user"
+      assert error.details.segment == "user"
+      assert error.details.value == 5
+      assert error.details.value_type == "integer"
+    end
+
+    test "names the offending location deep in a path" do
+      context = %{"user" => %{"profile" => "not a map"}}
+
+      assert {:error, %LocationError{type: :not_a_container} = error} =
+               ContextLocation.put(context, ["user", "profile", "name"], "Ada")
+
+      assert error.details.location == "user.profile"
+      assert error.message == "Cannot assign through non-container value at 'user.profile'"
+    end
+
+    test "returns not_a_container for a string leaf segment against a list" do
+      assert {:error, %LocationError{type: :not_a_container} = error} =
+               ContextLocation.put(%{"items" => [1]}, ["items", "name"], "x")
+
+      assert error.details.location == "items.name"
+      assert error.details.value == [1]
+    end
+
+    test "returns not_a_container for a string interior segment against a list" do
+      assert {:error, %LocationError{type: :not_a_container} = error} =
+               ContextLocation.put(%{"items" => [1]}, ["items", "name", "deep"], "x")
+
+      assert error.details.location == "items.name"
+    end
+
+    test "does not destroy data when a collision is reported" do
+      context = %{"user" => 5}
+
+      assert {:error, %LocationError{}} = ContextLocation.put(context, ["user", "name"], "Ada")
+      assert context == %{"user" => 5}
     end
   end
 end

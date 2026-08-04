@@ -30,6 +30,21 @@ defmodule Predicator.ContextLocation do
   - Arithmetic expressions: `user.age + 1`, `items[i + 1]`
   - Any computed values that can't be used as assignment targets
 
+  ## Assignment
+
+  `put/3` writes a value at a resolved location path, creating any missing
+  intermediate containers along the way (auto-vivification):
+
+  - A segment whose current value is missing, `nil`, or `:undefined` is created:
+    a `%{}` when the next segment is a string key, a `[]` when it is an integer
+    index.
+  - Existing data is never destroyed to make room. A path that traverses a
+    scalar returns a `:not_a_container` error, as does a string segment against
+    an existing list.
+  - Integer indices past the end of a list pad the gap with `:undefined`;
+    negative indices return `:invalid_index`.
+  - The leaf is always overwritten, whatever it currently holds.
+
   ## Examples
 
       iex> alias Predicator.{ContextLocation, Lexer, Parser}
@@ -38,6 +53,7 @@ defmodule Predicator.ContextLocation do
       iex> ContextLocation.resolve(ast, %{"user" => %{"name" => "John"}})
       {:ok, ["user", "name"]}
 
+      iex> alias Predicator.{ContextLocation, Lexer, Parser}
       iex> {:ok, tokens} = Lexer.tokenize("items[0]")
       iex> {:ok, ast} = Parser.parse(tokens)
       iex> ContextLocation.resolve(ast, %{"items" => [1, 2, 3]})
@@ -61,6 +77,14 @@ defmodule Predicator.ContextLocation do
   Returns either a successful path or a structured error explaining why the location is invalid.
   """
   @type location_result :: {:ok, location_path()} | {:error, LocationError.t()}
+
+  @typedoc """
+  Result of writing a value at a location path.
+
+  Returns either the updated context or a structured error explaining why the
+  write could not be performed.
+  """
+  @type put_result :: {:ok, Types.context()} | {:error, LocationError.t()}
 
   @doc """
   Resolves an AST node to a location path for assignment operations.
@@ -103,6 +127,61 @@ defmodule Predicator.ContextLocation do
       {:ok, path} -> {:ok, path}
       {:error, _error} = error -> error
     end
+  end
+
+  @doc """
+  Writes `value` into `context` at `path`, creating missing intermediate containers.
+
+  Auto-vivification is ECMAScript-like: a missing (or `nil`/`:undefined`) segment
+  is created as a map when the next segment is a string key, and as a list when
+  the next segment is an integer index. Existing data is never destroyed - a path
+  that traverses a scalar returns a `:not_a_container` error. The leaf is always
+  overwritten.
+
+  Integer indices past the end of an existing list pad the gap with `:undefined`.
+  Negative indices are rejected with `:invalid_index`. An integer segment against
+  an existing *map* is allowed and writes with the integer key, because refusing
+  would destroy data the caller put there.
+
+  > #### String and integer keys only {: .info}
+  >
+  > `put/3` consults string and integer keys, never atom keys. Writing
+  > `["user", "name"]` into a context holding `%{user: %{}}` vivifies a new
+  > `"user"` map beside the atom key rather than descending into it.
+
+  ## Parameters
+
+  - `context` - The context map to write into
+  - `path` - A location path as returned by `resolve/2`
+  - `value` - The value to write at the leaf
+
+  ## Returns
+
+  - `{:ok, context}` - The updated context
+  - `{:error, %LocationError{}}` - An error explaining why the write failed
+
+  ## Examples
+
+      iex> Predicator.ContextLocation.put(%{}, ["user", "profile", "name"], "Ada")
+      {:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}}
+
+      iex> Predicator.ContextLocation.put(%{"items" => [1]}, ["items", 2], "x")
+      {:ok, %{"items" => [1, :undefined, "x"]}}
+
+      iex> {:error, error} = Predicator.ContextLocation.put(%{"user" => 5}, ["user", "name"], "Ada")
+      iex> error.type
+      :not_a_container
+
+  """
+  @spec put(Types.context(), location_path(), term()) :: put_result()
+  def put(context, path, value)
+
+  def put(context, [], _value) when is_map(context) do
+    {:error, LocationError.not_assignable("empty location path", [])}
+  end
+
+  def put(context, path, value) when is_map(context) and is_list(path) do
+    do_put(context, path, value, [])
   end
 
   # Private implementation functions
@@ -241,4 +320,95 @@ defmodule Predicator.ContextLocation do
        computed_node
      )}
   end
+
+  # Assignment implementation
+  #
+  # `trail` accumulates the segments already traversed so error messages can name
+  # the offending location the way a document author wrote it.
+
+  # Leaf: overwrite whatever is there.
+  defp do_put(container, [segment], value, trail) do
+    set_in(container, segment, value, trail)
+  end
+
+  # Interior: vivify or descend, then write the updated child back.
+  defp do_put(container, [segment | rest], value, trail) do
+    with {:ok, child} <- fetch_in(container, segment, trail),
+         {:ok, child} <- vivify(child, hd(rest), trail ++ [segment]),
+         {:ok, updated} <- do_put(child, rest, value, trail ++ [segment]) do
+      set_in(container, segment, updated, trail)
+    end
+  end
+
+  # A missing/nil/undefined slot becomes a container shaped by the *next* segment.
+  defp vivify(absent, next_segment, _trail)
+       when absent in [nil, :undefined] and is_integer(next_segment) do
+    {:ok, []}
+  end
+
+  defp vivify(absent, _next_segment, _trail) when absent in [nil, :undefined] do
+    {:ok, %{}}
+  end
+
+  defp vivify(child, _next_segment, _trail) when is_map(child) or is_list(child) do
+    {:ok, child}
+  end
+
+  defp vivify(scalar, _next_segment, trail) do
+    {:error, LocationError.not_a_container(format_path(trail), List.last(trail), scalar)}
+  end
+
+  # Reading a segment. Maps take any key; lists take non-negative integers only.
+  defp fetch_in(map, segment, _trail) when is_map(map) do
+    {:ok, Map.get(map, segment)}
+  end
+
+  defp fetch_in(list, index, _trail) when is_list(list) and is_integer(index) and index >= 0 do
+    {:ok, Enum.at(list, index)}
+  end
+
+  defp fetch_in(list, index, trail) when is_list(list) and is_integer(index) do
+    {:error, LocationError.invalid_index(format_path(trail ++ [index]), index)}
+  end
+
+  defp fetch_in(list, key, trail) when is_list(list) do
+    {:error, LocationError.not_a_container(format_path(trail ++ [key]), key, list)}
+  end
+
+  # Writing a segment. Mirrors fetch_in, padding short lists with `:undefined`.
+  defp set_in(map, segment, value, _trail) when is_map(map) do
+    {:ok, Map.put(map, segment, value)}
+  end
+
+  defp set_in(list, index, value, _trail)
+       when is_list(list) and is_integer(index) and index >= 0 do
+    {:ok, write_at(list, index, value, length(list))}
+  end
+
+  defp set_in(list, index, _value, trail) when is_list(list) and is_integer(index) do
+    {:error, LocationError.invalid_index(format_path(trail ++ [index]), index)}
+  end
+
+  defp set_in(list, key, _value, trail) when is_list(list) do
+    {:error, LocationError.not_a_container(format_path(trail ++ [key]), key, list)}
+  end
+
+  defp write_at(list, index, value, size) when index < size do
+    List.replace_at(list, index, value)
+  end
+
+  defp write_at(list, index, value, size) do
+    list ++ List.duplicate(:undefined, index - size) ++ [value]
+  end
+
+  # Renders a trail the way a document author wrote it: `user.profile`, `items[2]`.
+  defp format_path(segments) do
+    segments
+    |> Enum.with_index()
+    |> Enum.map_join(fn {segment, position} -> format_segment(segment, position) end)
+  end
+
+  defp format_segment(index, _position) when is_integer(index), do: "[#{index}]"
+  defp format_segment(key, 0), do: "#{key}"
+  defp format_segment(key, _position), do: ".#{key}"
 end
