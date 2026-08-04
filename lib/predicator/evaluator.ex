@@ -11,6 +11,8 @@ defmodule Predicator.Evaluator do
   - `["compare", operator]` - Compare top two stack values with operator
   - `["and"]` - Logical AND of top two boolean values
   - `["or"]` - Logical OR of top two boolean values
+  - `["jump_if_falsy_or_pop", offset]` - If top of stack is `false` or `:undefined`, jump forward `offset` instructions leaving it on the stack; if `true`, pop and continue; any other type is a TypeMismatchError
+  - `["jump_if_true_or_pop", offset]` - If top of stack is exactly `true`, jump forward `offset` instructions leaving it on the stack; if `false` or `:undefined`, pop and continue; any other type is a TypeMismatchError
   - `["not"]` - Logical NOT of top boolean value
   - `["in"]` - Membership test (element in collection)
   - `["contains"]` - Membership test (collection contains element)
@@ -335,6 +337,18 @@ defmodule Predicator.Evaluator do
   defp execute_instruction(%__MODULE__{} = evaluator, ["make_list", count])
        when is_integer(count) and count >= 0 do
     execute_make_list(evaluator, count)
+  end
+
+  # Short-circuit AND: jump (leaving the value) if falsy, else pop and fall through
+  defp execute_instruction(%__MODULE__{} = evaluator, ["jump_if_falsy_or_pop", offset])
+       when is_integer(offset) and offset > 0 do
+    execute_jump_if_falsy_or_pop(evaluator, offset)
+  end
+
+  # Short-circuit OR: jump (leaving the value) if true, else pop and fall through
+  defp execute_instruction(%__MODULE__{} = evaluator, ["jump_if_true_or_pop", offset])
+       when is_integer(offset) and offset > 0 do
+    execute_jump_if_true_or_pop(evaluator, offset)
   end
 
   # Duration instruction
@@ -1020,6 +1034,53 @@ defmodule Predicator.Evaluator do
     else
       {:error, EvaluationError.insufficient_operands(:make_list, length(popped), count)}
     end
+  end
+
+  @spec execute_jump_if_falsy_or_pop(__MODULE__.t(), pos_integer()) ::
+          {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_jump_if_falsy_or_pop(%__MODULE__{stack: [top | _rest]} = evaluator, offset)
+       when top == false or top == :undefined do
+    {:ok, jump_to(evaluator, offset)}
+  end
+
+  defp execute_jump_if_falsy_or_pop(%__MODULE__{stack: [true | rest]} = evaluator, _offset) do
+    {:ok, %{evaluator | stack: rest}}
+  end
+
+  defp execute_jump_if_falsy_or_pop(%__MODULE__{stack: [top | _rest]}, _offset) do
+    got_type = get_value_type(top)
+    {:error, TypeMismatchError.unary(:jump_if_falsy_or_pop, :boolean, got_type, top)}
+  end
+
+  defp execute_jump_if_falsy_or_pop(%__MODULE__{stack: []}, _offset) do
+    {:error, EvaluationError.insufficient_operands(:jump_if_falsy_or_pop, 0, 1)}
+  end
+
+  @spec execute_jump_if_true_or_pop(__MODULE__.t(), pos_integer()) ::
+          {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_jump_if_true_or_pop(%__MODULE__{stack: [true | _rest]} = evaluator, offset) do
+    {:ok, jump_to(evaluator, offset)}
+  end
+
+  defp execute_jump_if_true_or_pop(%__MODULE__{stack: [top | rest]} = evaluator, _offset)
+       when top == false or top == :undefined do
+    {:ok, %{evaluator | stack: rest}}
+  end
+
+  defp execute_jump_if_true_or_pop(%__MODULE__{stack: [top | _rest]}, _offset) do
+    got_type = get_value_type(top)
+    {:error, TypeMismatchError.unary(:jump_if_true_or_pop, :boolean, got_type, top)}
+  end
+
+  defp execute_jump_if_true_or_pop(%__MODULE__{stack: []}, _offset) do
+    {:error, EvaluationError.insufficient_operands(:jump_if_true_or_pop, 0, 1)}
+  end
+
+  # Sets instruction_pointer so that the unconditional +1 in
+  # advance_instruction_pointer/1 lands exactly on current_ip + offset.
+  @spec jump_to(__MODULE__.t(), pos_integer()) :: __MODULE__.t()
+  defp jump_to(%__MODULE__{instruction_pointer: ip} = evaluator, offset) do
+    %{evaluator | instruction_pointer: ip + offset - 1}
   end
 
   @spec execute_duration(__MODULE__.t(), [[integer() | binary()]]) ::

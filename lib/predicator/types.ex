@@ -86,6 +86,8 @@ defmodule Predicator.Types do
   - `["compare", binary()]` - Compare top two stack values with operator
   - `["and"]` - Logical AND of top two boolean values
   - `["or"]` - Logical OR of top two boolean values
+  - `["jump_if_falsy_or_pop", integer()]` - Jump forward if top is falsy (leaving it), else pop
+  - `["jump_if_true_or_pop", integer()]` - Jump forward if top is true (leaving it), else pop
   - `["not"]` - Logical NOT of top boolean value
   - `["in"]` - Membership test (element in collection)
   - `["contains"]` - Membership test (collection contains element)
@@ -109,6 +111,8 @@ defmodule Predicator.Types do
       ["compare", "GT"]     # Pop two values, compare with >, push result
       ["and"]               # Pop two boolean values, push AND result
       ["or"]                # Pop two boolean values, push OR result
+      ["jump_if_falsy_or_pop", 3]  # If top is false/:undefined, jump 3 forward, else pop
+      ["jump_if_true_or_pop", 3]   # If top is true, jump 3 forward, else pop
       ["not"]               # Pop one boolean value, push NOT result
       ["add"]               # Pop two values, add them, push result
       ["subtract"]          # Pop two values, subtract them, push result

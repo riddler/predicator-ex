@@ -435,6 +435,83 @@ defmodule Predicator.EvaluatorTest do
     end
   end
 
+  describe "short-circuit jump instructions" do
+    test "jump_if_falsy_or_pop with false on top jumps, leaving false as the result" do
+      instructions = [["lit", false], ["jump_if_falsy_or_pop", 3], ["lit", 1], ["divide"]]
+      assert Evaluator.evaluate(instructions) == false
+    end
+
+    test "jump_if_falsy_or_pop with :undefined on top jumps, leaving :undefined as the result" do
+      instructions = [["load", "missing"], ["jump_if_falsy_or_pop", 3], ["lit", 1], ["divide"]]
+      assert Evaluator.evaluate(instructions) == :undefined
+    end
+
+    test "jump_if_falsy_or_pop with true on top pops and falls through" do
+      instructions = [["lit", true], ["jump_if_falsy_or_pop", 2], ["lit", 5]]
+      assert Evaluator.evaluate(instructions) == 5
+    end
+
+    test "jump_if_falsy_or_pop with a non-boolean, non-undefined top is a type mismatch" do
+      instructions = [["lit", 42], ["jump_if_falsy_or_pop", 2], ["lit", 5]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
+      assert msg =~ "Jump If Falsy OR Pop"
+    end
+
+    test "jump_if_falsy_or_pop with empty stack is an insufficient-operands error" do
+      instructions = [["jump_if_falsy_or_pop", 2]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "requires 1 value"
+    end
+
+    test "jump_if_true_or_pop with true on top jumps, leaving true as the result" do
+      instructions = [["lit", true], ["jump_if_true_or_pop", 3], ["lit", 1], ["divide"]]
+      assert Evaluator.evaluate(instructions) == true
+    end
+
+    test "jump_if_true_or_pop with :undefined on top pops and falls through" do
+      instructions = [["load", "missing"], ["jump_if_true_or_pop", 2], ["lit", 5]]
+      assert Evaluator.evaluate(instructions) == 5
+    end
+
+    test "jump_if_true_or_pop with false on top pops and falls through" do
+      instructions = [["lit", false], ["jump_if_true_or_pop", 2], ["lit", 5]]
+      assert Evaluator.evaluate(instructions) == 5
+    end
+
+    test "jump_if_true_or_pop with a non-boolean, non-undefined top is a type mismatch" do
+      instructions = [["lit", 42], ["jump_if_true_or_pop", 2], ["lit", 5]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
+      assert msg =~ "Jump If True OR Pop"
+    end
+
+    test "jump_if_true_or_pop with empty stack is an insufficient-operands error" do
+      instructions = [["jump_if_true_or_pop", 2]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "requires 1 value"
+    end
+
+    test "malformed offset falls through to unknown instruction" do
+      instructions = [["lit", true], ["jump_if_falsy_or_pop", 0]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Unknown instruction"
+
+      instructions = [["lit", true], ["jump_if_falsy_or_pop", "2"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Unknown instruction"
+    end
+
+    test "a jump landing exactly at the end of the instruction list finishes cleanly" do
+      instructions = [["lit", false], ["jump_if_falsy_or_pop", 1]]
+      assert Evaluator.evaluate(instructions) == false
+    end
+  end
+
   describe "date and datetime evaluation" do
     test "evaluates date comparisons" do
       date1 = ~D[2024-01-15]

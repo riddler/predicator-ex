@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `["make_list", n]` instruction: pops n values from the stack and pushes them
   as a list, in source order (ADR-0001, ISA v2).
+- `["jump_if_falsy_or_pop", offset]` and `["jump_if_true_or_pop", offset]`
+  instructions: relative, forward-only conditional jumps used to short-circuit
+  `AND`/`OR` (ADR-0001, ISA v2).
 - `Predicator.Context`: a bound evaluation context built once with `new/2`
   (merging builtin and custom functions a single time), rebound cheaply with
   `bind/3` and `assign/3`, and evaluated against many times via
@@ -32,6 +35,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   old check only matched a single-instruction `[["load", _]]` program, so an
   unbound variable inside a larger expression (`"missing > 5"`) silently
   returned `{:ok, :undefined}` instead of an error.
+
+### Fixed
+
+- **`AND` and `OR` now short-circuit.** Previously the compiler evaluated both
+  sides of every `AND`/`OR` unconditionally, so an unbound variable or a
+  runtime error on the side that should have been skipped surfaced as an
+  error - `false AND score > 5` with `score` unbound raised
+  `TypeMismatchError`, and `true OR (1 / 0) > 1` raised a division-by-zero
+  error. Both now evaluate to `false` and `true` respectively, matching every
+  mainstream language's `AND`/`OR` semantics and this library's own graceful
+  undefined-handling documentation. **This is an observable behavior change**:
+  expressions that previously returned `{:error, _}` now return `{:ok, _}`. A
+  consumer relying on the error was relying on the bug. `:undefined`
+  propagation is ECMAScript-aligned rather than symmetric - see
+  `docs/architecture.md`'s "Short-Circuit Evaluation" section for the exact
+  rule. Old compiled artifacts using `["and"]`/`["or"]` directly are
+  unaffected; the evaluator still accepts both opcodes.
 
 ### Deprecated
 
