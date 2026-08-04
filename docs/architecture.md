@@ -265,6 +265,14 @@ test/predicator/
 - **Syntax**: `[1, 2, 3]`, `["admin", "manager"]`
 - **Operators**: `in` (element in list), `contains` (list contains element)
 - **Examples**: `role in ["admin", "manager"]`, `[1, 2, 3] contains 2`
+- **Compilation**: all-literal lists compile to a single `["lit", [...]]`;
+  a list with any non-literal element compiles its elements in order followed
+  by `["make_list", n]`, which pops n values and pushes the list (ADR-0001)
+- **Examples**: `[1, 2, 3]` -> `[["lit", [1, 2, 3]]]`;
+  `[x + 1, y]` -> `[["load","x"],["lit",1],["add"],["load","y"],["make_list",2]]`
+- **Cross-language**: `make_list` is an ISA v2 addition. The Ruby and
+  JavaScript siblings do not implement it yet, so an instruction list
+  containing it will not run there. All-literal lists remain portable.
 
 ### Object Literals (v3.1.0 - JavaScript-Style Objects)
 

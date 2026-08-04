@@ -753,4 +753,85 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
              ]
     end
   end
+
+  describe "visit/2 - list nodes" do
+    test "all-literal integer list compiles to a single lit instruction" do
+      ast = {:list, [{:literal, 1}, {:literal, 2}, {:literal, 3}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["lit", [1, 2, 3]]]
+    end
+
+    test "all-literal string list compiles to a single lit instruction" do
+      ast = {:list, [{:string_literal, "a", :double}, {:string_literal, "b", :double}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["lit", ["a", "b"]]]
+    end
+
+    test "empty list compiles to a single lit instruction" do
+      ast = {:list, []}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["lit", []]]
+    end
+
+    test "identifier-only list compiles to make_list" do
+      ast = {:list, [{:identifier, "x"}, {:identifier, "y"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["load", "x"], ["load", "y"], ["make_list", 2]]
+    end
+
+    test "list with an arithmetic element compiles to make_list" do
+      ast =
+        {:list,
+         [
+           {:arithmetic, :add, {:identifier, "x"}, {:literal, 1}},
+           {:identifier, "y"}
+         ]}
+
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [
+               ["load", "x"],
+               ["lit", 1],
+               ["add"],
+               ["load", "y"],
+               ["make_list", 2]
+             ]
+    end
+
+    test "mixed literal and non-literal list compiles to make_list" do
+      ast = {:list, [{:literal, 1}, {:identifier, "x"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["lit", 1], ["load", "x"], ["make_list", 2]]
+    end
+
+    test "nested list with a non-literal outer element compiles to make_list" do
+      ast = {:list, [{:list, [{:literal, 1}, {:literal, 2}]}, {:identifier, "x"}]}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["lit", [1, 2]], ["load", "x"], ["make_list", 2]]
+    end
+
+    test "list with a function call element compiles to make_list" do
+      ast =
+        {:list,
+         [
+           {:function_call, "len", [{:identifier, "name"}]},
+           {:literal, 3}
+         ]}
+
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [
+               ["load", "name"],
+               ["call", "len", 1],
+               ["lit", 3],
+               ["make_list", 2]
+             ]
+    end
+  end
 end

@@ -98,6 +98,7 @@ defmodule Predicator.Types do
   - `["bracket_access"]` - Pop key and object, push object[key] result
   - `["object_new"]` - Push new empty object onto stack
   - `["object_set", binary()]` - Pop value and object, set object[key] = value, push object
+  - `["make_list", integer()]` - Pop n values, push them as a list
   - `["call", binary(), integer()]` - Call built-in function with arguments from stack
 
   ## Examples
@@ -118,6 +119,7 @@ defmodule Predicator.Types do
       ["bracket_access"]    # Pop key and object, push object[key]
       ["object_new"]        # Push new empty object onto stack
       ["object_set", "name"] # Pop value and object, set object["name"] = value, push object
+      ["make_list", 2]      # Pop 2 values, push them as a 2-element list
       ["call", "len", 1]    # Pop 1 argument, call len function, push result
   """
   @type instruction :: [binary() | value()]
