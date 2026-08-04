@@ -24,7 +24,7 @@ expression   → logical_or
 logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
 logical_not  → ("NOT" | "not") logical_not | comparison
-comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
+comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" (deprecated) | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
@@ -38,6 +38,12 @@ object_key   → IDENTIFIER | STRING
 duration     → NUMBER UNIT+
 relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
 ```
+
+`=` in the `comparison` production is **deprecated** as of 3.8. It still parses
+and still compiles to `["compare", "EQ"]`, but parsing one emits a deprecation
+warning (`px-8um.5`). 4.0 removes it from this production - see "The `=`
+grammar break (4.0)" under Cross-Language Siblings for the rule that replaces
+it and what it means for the Ruby and JavaScript implementations.
 
 ### Core Components
 

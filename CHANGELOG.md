@@ -12,6 +12,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `["make_list", n]` instruction: pops n values from the stack and pushes them
   as a list, in source order (ADR-0001, ISA v2).
 
+### Deprecated
+
+#### `=` as an equality operator
+
+- Parsing an expression that uses `=` as an equality operator now emits a
+  deprecation warning naming `==` as the replacement
+- Behavior is otherwise unchanged: `=` still parses and still compiles to
+  `["compare", "EQ"]`
+- **Predicator 4.0 will make expression-position `=` a parse error.** Migrate
+  to `==` before upgrading
+- The warning is emitted once per parse and can be silenced with
+  `config :predicator, deprecation_warnings: false`
+
+```elixir
+# Deprecated - warns, still works in 3.x
+Predicator.evaluate("status = 'active'", context)
+
+# Preferred
+Predicator.evaluate("status == 'active'", context)
+```
+
 ### Fixed
 
 - List literals with non-literal elements (`[x + 1, y]`) now compile and
