@@ -1,6 +1,9 @@
-# Agents: Predicator Development Context
+# Predicator: Architecture and Language Reference
 
-This document provides context for AI coding agents working on the Predicator project.
+This document is the detailed reference for the Predicator codebase: the
+grammar, the compilation pipeline, the component map, and the per-feature
+history behind them. `CLAUDE.md` at the repo root is the entry point and holds
+the working rules; this is what those rules are about.
 
 ## Project Overview
 
@@ -53,14 +56,11 @@ relative_date → duration "ago" | duration "from" "now" | "next" duration | "la
 
 ### Development Workflow
 
-After implementing a new set of functionality
-
-- ensure the local project is not on the main branch
-- identify all code issues by running 'mix quality'
-- fix those issues
-- if necessary update the CHANGELOG, README and AGENTS document
-- prompt me if I would like to create a git commit
-- if so, create a git commit with title and message
+The workflow rules - branch, gate, commit, push, close, release - live in
+`CLAUDE.md`'s agent-authority table, which is the single authority on them.
+The short version: work happens on a feature branch, full `mix quality` must
+be green before a commit, and user-facing changes update `CHANGELOG.md` under
+`## [Unreleased]` plus this document and the README where they are affected.
 
 ### Testing Commands
 
