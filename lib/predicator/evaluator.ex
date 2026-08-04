@@ -37,9 +37,12 @@ defmodule Predicator.Evaluator do
           instruction_pointer: non_neg_integer(),
           stack: [Types.value()],
           context: Types.context(),
-          functions: %{binary() => {non_neg_integer(), function()}},
+          functions: %{binary() => {function_arity(), function()}},
           halted: boolean()
         }
+
+  @typedoc "A function's accepted argument count(s): a fixed arity, or a set of arities for optional/variadic-style args"
+  @type function_arity :: non_neg_integer() | [non_neg_integer()]
 
   defstruct [
     :instructions,
@@ -57,7 +60,7 @@ defmodule Predicator.Evaluator do
   `MathFunctions`, in that order; `opts[:functions]` is merged last, so
   custom functions can shadow a builtin of the same name.
   """
-  @spec merge_functions(keyword()) :: %{binary() => {non_neg_integer(), function()}}
+  @spec merge_functions(keyword()) :: %{binary() => {function_arity(), function()}}
   def merge_functions(opts \\ []) do
     SystemFunctions.all_functions()
     |> Map.merge(DateFunctions.all_functions())
@@ -927,7 +930,7 @@ defmodule Predicator.Evaluator do
 
   # Call a function from the functions map
   @spec call_function(
-          %{binary() => {non_neg_integer(), function()}},
+          %{binary() => {function_arity(), function()}},
           binary(),
           [Types.value()],
           Types.context()
@@ -936,7 +939,7 @@ defmodule Predicator.Evaluator do
   defp call_function(functions, function_name, args, context) do
     case Map.get(functions, function_name) do
       {arity, function} ->
-        if length(args) == arity do
+        if arity_matches?(arity, length(args)) do
           try do
             function.(args, context)
           rescue
@@ -944,12 +947,24 @@ defmodule Predicator.Evaluator do
               {:error, "Function #{function_name}() raised: #{inspect(error)}"}
           end
         else
-          {:error, "Function #{function_name}() expects #{arity} arguments, got #{length(args)}"}
+          {:error,
+           "Function #{function_name}() expects #{describe_arity(arity)} arguments, got #{length(args)}"}
         end
 
       nil ->
         {:error, "Unknown function: #{function_name}"}
     end
+  end
+
+  @spec arity_matches?(function_arity(), non_neg_integer()) :: boolean()
+  defp arity_matches?(arity, count) when is_integer(arity), do: arity == count
+  defp arity_matches?(arities, count) when is_list(arities), do: count in arities
+
+  @spec describe_arity(function_arity()) :: binary()
+  defp describe_arity(arity) when is_integer(arity), do: to_string(arity)
+
+  defp describe_arity(arities) when is_list(arities) do
+    Enum.map_join(arities, " or ", &to_string/1)
   end
 
   @spec load_from_context(Types.context(), binary()) :: Types.value()

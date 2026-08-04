@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now delegates to it.
 - `Predicator.Context.bound?/2`: answers whether a root variable is bound in
   a context's data, checking both string and atom keys.
+- `starts_with(s, prefix)`, `ends_with(s, suffix)`, `substring(s, start[, len])`,
+  and `index_of(s, sub)` builtin string functions
 
 ### Fixed
 

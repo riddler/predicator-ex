@@ -26,7 +26,7 @@ defmodule Predicator.Context do
   @typedoc "A bound evaluation context."
   @type t :: %__MODULE__{
           data: Types.context(),
-          functions: %{binary() => {non_neg_integer(), function()}},
+          functions: %{binary() => {Evaluator.function_arity(), function()}},
           on_unbound: on_unbound()
         }
 
