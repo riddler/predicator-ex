@@ -61,7 +61,8 @@ defmodule Predicator.ContextLocation do
 
   """
 
-  alias Predicator.Errors.LocationError
+  alias Predicator.{Lexer, Parser}
+  alias Predicator.Errors.{LocationError, ParseError}
   alias Predicator.Types
 
   @typedoc """
@@ -126,6 +127,31 @@ defmodule Predicator.ContextLocation do
     case do_resolve_base(ast_node, context) do
       {:ok, path} -> {:ok, path}
       {:error, _error} = error -> error
+    end
+  end
+
+  @doc """
+  Tokenizes, parses, and resolves a location expression in one step.
+
+  Equivalent to parsing `expression` and calling `resolve/2` on the result,
+  except parse and tokenize errors are wrapped as `Predicator.Errors.ParseError`
+  the same way `Predicator.context_location/3` does - this *is* that
+  function's implementation, extracted so `Predicator.Context.assign/3` can
+  share it without depending on the `Predicator` module.
+  """
+  @spec resolve_expression(binary(), Types.context()) ::
+          location_result() | {:error, ParseError.t()}
+  def resolve_expression(expression, context)
+      when is_binary(expression) and is_map(context) do
+    case Lexer.tokenize(expression) do
+      {:ok, tokens} ->
+        case Parser.parse(tokens) do
+          {:ok, ast} -> resolve(ast, context)
+          {:error, message, line, column} -> {:error, ParseError.new(message, line, column)}
+        end
+
+      {:error, message, line, column} ->
+        {:error, ParseError.new(message, line, column)}
     end
   end
 

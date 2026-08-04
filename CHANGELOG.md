@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `["make_list", n]` instruction: pops n values from the stack and pushes them
   as a list, in source order (ADR-0001, ISA v2).
+- `Predicator.Context`: a bound evaluation context built once with `new/2`
+  (merging builtin and custom functions a single time), rebound cheaply with
+  `bind/3` and `assign/3`, and evaluated against many times via
+  `Predicator.evaluate/3`, which now accepts either a `%Context{}` or a bare
+  map
 
 ### Deprecated
 
