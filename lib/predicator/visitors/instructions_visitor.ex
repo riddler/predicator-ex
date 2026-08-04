@@ -133,23 +133,22 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     operand_instructions ++ op_instruction
   end
 
-  def visit({:list, elements}, _opts) do
-    # For list literals with only literal values, create a single "lit" instruction
-    # For more complex lists, this would need more sophisticated handling
-    case all_literals?(elements) do
-      true ->
-        literal_values =
-          Enum.map(elements, fn
-            {:literal, value} -> value
-            {:string_literal, value, _quote_type} -> value
-          end)
+  def visit({:list, elements}, opts) do
+    # All-literal lists compile to a single "lit" instruction: it is smaller,
+    # and it runs on the Ruby and JavaScript siblings, which do not implement
+    # make_list yet (ADR-0001).
+    if all_literals?(elements) do
+      literal_values =
+        Enum.map(elements, fn
+          {:literal, value} -> value
+          {:string_literal, value, _quote_type} -> value
+        end)
 
-        [["lit", literal_values]]
+      [["lit", literal_values]]
+    else
+      element_instructions = Enum.flat_map(elements, fn element -> visit(element, opts) end)
 
-      false ->
-        # For now, we'll require all list elements to be literals
-        # TODO: Handle mixed expressions in lists
-        raise "Non-literal list elements are not yet supported"
+      element_instructions ++ [["make_list", length(elements)]]
     end
   end
 

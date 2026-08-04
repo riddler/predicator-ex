@@ -115,6 +115,55 @@ defmodule Predicator.EvaluatorTest do
     end
   end
 
+  describe "make_list instruction" do
+    test "pops n values and pushes them as a list, preserving order" do
+      instructions = [["lit", 1], ["lit", 2], ["make_list", 2]]
+      assert Evaluator.evaluate(instructions) == [1, 2]
+    end
+
+    test "make_list 0 pushes an empty list" do
+      instructions = [["make_list", 0]]
+      assert Evaluator.evaluate(instructions) == []
+    end
+
+    test "returns insufficient_operands error when the stack is too short" do
+      instructions = [["lit", 1], ["make_list", 2]]
+      result = Evaluator.evaluate(instructions)
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "insufficient_operands"}} =
+               result
+    end
+
+    test "leaves values beneath count untouched" do
+      instructions = [["lit", 1], ["lit", 2], ["make_list", 1]]
+      assert Evaluator.evaluate(instructions) == [2]
+    end
+
+    test "handles mixed types" do
+      instructions = [["lit", 1], ["lit", "a"], ["lit", true], ["make_list", 3]]
+      assert Evaluator.evaluate(instructions) == [1, "a", true]
+    end
+
+    test "handles nested lists" do
+      instructions = [
+        ["lit", 1],
+        ["lit", 2],
+        ["make_list", 2],
+        ["lit", 3],
+        ["make_list", 2]
+      ]
+
+      assert Evaluator.evaluate(instructions) == [[1, 2], 3]
+    end
+
+    test "malformed count falls through to unknown-instruction error" do
+      instructions = [["make_list", "2"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
+      assert msg =~ "Unknown instruction:"
+    end
+  end
+
   describe "evaluate/2 error cases" do
     test "returns error for empty instruction list" do
       result = Evaluator.evaluate([])

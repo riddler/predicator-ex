@@ -310,6 +310,12 @@ defmodule Predicator.Evaluator do
     execute_object_set(evaluator, key)
   end
 
+  # List construction instruction
+  defp execute_instruction(%__MODULE__{} = evaluator, ["make_list", count])
+       when is_integer(count) and count >= 0 do
+    execute_make_list(evaluator, count)
+  end
+
   # Duration instruction
   defp execute_instruction(%__MODULE__{} = evaluator, ["duration", units]) when is_list(units) do
     execute_duration(evaluator, units)
@@ -968,6 +974,19 @@ defmodule Predicator.Evaluator do
 
   defp execute_object_set(%__MODULE__{stack: stack} = _evaluator, _key) when length(stack) < 2 do
     {:error, EvaluationError.insufficient_operands(:object_set, length(stack), 2)}
+  end
+
+  @spec execute_make_list(__MODULE__.t(), non_neg_integer()) ::
+          {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_make_list(%__MODULE__{stack: stack} = evaluator, count) do
+    {popped, rest} = Enum.split(stack, count)
+
+    if length(popped) == count do
+      # The stack holds elements in reverse source order, deepest first.
+      {:ok, %{evaluator | stack: [Enum.reverse(popped) | rest]}}
+    else
+      {:error, EvaluationError.insufficient_operands(:make_list, length(popped), count)}
+    end
   end
 
   @spec execute_duration(__MODULE__.t(), [[integer() | binary()]]) ::

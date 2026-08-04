@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `["make_list", n]` instruction: pops n values from the stack and pushes them
+  as a list, in source order (ADR-0001, ISA v2).
+
+### Fixed
+
+- List literals with non-literal elements (`[x + 1, y]`) now compile and
+  evaluate. Previously the compiler raised
+  `"Non-literal list elements are not yet supported"`, the one place the
+  errors-are-values convention was broken; errors from such expressions are now
+  returned as `{:error, _}` values like every other failure.
+
 ## [3.6.0] - 2026-08-04
 
 ### Added

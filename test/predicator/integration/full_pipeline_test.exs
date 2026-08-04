@@ -216,4 +216,58 @@ defmodule Predicator.IntegrationTest do
       assert result == true
     end
   end
+
+  describe "make_list integration" do
+    test "non-literal list evaluates in source order" do
+      assert Predicator.evaluate("[x + 1, y]", %{"x" => 1, "y" => 5}) == {:ok, [2, 5]}
+    end
+
+    test "membership over a constructed list" do
+      assert Predicator.evaluate("2 in [x + 1, y]", %{"x" => 1, "y" => 5}) == {:ok, true}
+    end
+
+    test "contains over a constructed list" do
+      assert Predicator.evaluate("[x + 1, y] contains 5", %{"x" => 1, "y" => 5}) == {:ok, true}
+    end
+
+    test "nested non-literal lists" do
+      assert Predicator.evaluate("[a, [b, c]]", %{"a" => 1, "b" => 2, "c" => 3}) ==
+               {:ok, [1, [2, 3]]}
+    end
+
+    test "mixed-type non-literal list" do
+      assert Predicator.evaluate("[name, score]", %{"name" => "x", "score" => 1}) ==
+               {:ok, ["x", 1]}
+    end
+
+    test "unbound identifier inside a non-literal list returns an error tuple, not a raise" do
+      assert {:error, %Predicator.Errors.TypeMismatchError{}} =
+               Predicator.evaluate("[x + 1]", %{})
+    end
+
+    test "all-literal fast path still compiles to a single lit instruction" do
+      assert Predicator.compile("[1, 2, 3]") == {:ok, [["lit", [1, 2, 3]]]}
+    end
+
+    test "non-literal list compiles to element instructions followed by make_list" do
+      assert Predicator.compile("[x + 1, y]") ==
+               {:ok,
+                [
+                  ["load", "x"],
+                  ["lit", 1],
+                  ["add"],
+                  ["load", "y"],
+                  ["make_list", 2]
+                ]}
+    end
+
+    test "round-trips a non-literal list back to parseable source" do
+      {:ok, tokens} = Lexer.tokenize("[x + 1, y]")
+      {:ok, ast} = Parser.parse(tokens)
+
+      source = Predicator.decompile(ast)
+
+      assert {:ok, _tokens} = Lexer.tokenize(source)
+    end
+  end
 end
