@@ -359,7 +359,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 
 Predicator uses a multi-stage compilation pipeline:
 
-```
+```text
   Expression String  →  Lexer → Parser → Compiler → Evaluator
          ↓                ↓       ↓         ↓           ↓
 'score > 85 OR admin' → Tokens → AST → Instructions → Result
@@ -560,6 +560,9 @@ mix test
 ```bash
 # Run all quality checks
 mix quality
+
+# Inner loop while iterating - not a substitute for the full run
+mix quality --profile loop
 
 # Individual checks  
 mix format              # Format code

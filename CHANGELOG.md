@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+#### Replaces the hand-rolled quality gate with ex_quality
+
+- `mix quality` is now [ex_quality](https://hex.pm/packages/ex_quality), configured
+  in `.quality.exs`; the vendored `lib/mix/tasks/quality.ex` has been removed
+- The gate runs format, compile (warnings as errors), Credo `--strict`, Dialyzer,
+  an unused-dependency and security audit, and the full suite with the existing
+  90% coverage minimum - stages run in parallel and report `file:line` findings
+- `mix quality --profile loop` replaces `--skip-dialyzer`: it skips Dialyzer and
+  coverage and runs only the tests covering changed code
+- `mix quality --format json` emits a machine-readable report
+- `mix quality.check` and `mix test --watch` are gone; the former no longer
+  existed as a task and the latter's `mix_test_watch` dependency was undeclared
+
 ## [3.5.0] - 2025-09-09
 
 ### Added
@@ -458,7 +473,7 @@ Predicator.evaluate("len('anything')", %{}, functions: custom_len)  # {:ok, "cus
 
 ### Breaking Changes
 
-**⚠️ COMPLETE LIBRARY REWRITE ⚠️**
+#### ⚠️ COMPLETE LIBRARY REWRITE ⚠️
 
 Version 1.0.0 is a **complete rewrite** of the Predicator library with entirely new:
 

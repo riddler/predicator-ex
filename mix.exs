@@ -13,7 +13,8 @@ defmodule Predicator.MixProject do
     {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
     {:ex_doc, "~> 0.31", only: :dev, runtime: false},
     {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-    {:excoveralls, "~> 0.18", only: :test}
+    {:excoveralls, "~> 0.18", only: :test},
+    {:ex_quality, "~> 0.13", only: :dev, runtime: false}
   ]
 
   def project do
@@ -29,14 +30,11 @@ defmodule Predicator.MixProject do
       aliases: aliases(),
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
-        "test.watch": :test,
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test,
         "coveralls.json": :test,
-        quality: :test,
-        "quality.check": :test,
         "test.coverage": :test,
         "test.coverage.html": :test,
         "test.coverage.detail": :test
