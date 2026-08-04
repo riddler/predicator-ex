@@ -43,7 +43,10 @@ relative_date → duration "ago" | duration "from" "now" | "next" duration | "la
 and still compiles to `["compare", "EQ"]`, but parsing one emits a deprecation
 warning (`px-8um.5`). 4.0 removes it from this production - see "The `=`
 grammar break (4.0)" under Cross-Language Siblings for the rule that replaces
-it and what it means for the Ruby and JavaScript implementations.
+it and what it means for the Ruby and JavaScript implementations, and
+[ADR-0002](adr/0002-the-equals-grammar-break.md) for the alternatives it was
+weighed against and the known-consumer survey behind the one-release notice
+period.
 
 ### Core Components
 
@@ -78,7 +81,8 @@ do not yet implement.
 
 4.0 makes `=` assignment-only and valid only in statement position; `==` and
 `===` are the only equality operators, and `=` in expression position is a
-parse error. 3.8 warns first, so consumers get one release of notice.
+parse error. 3.8 warns first, so consumers get one release of notice. See
+[ADR-0002](adr/0002-the-equals-grammar-break.md) for the decision record.
 
 The siblings' lexers still tokenize `=` as an equality operator
 (`impl/rb/lib/predicator/lexer.rex` line 21, `impl/ts/src/tokens.js` line 70),
