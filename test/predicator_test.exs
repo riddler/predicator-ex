@@ -1,6 +1,8 @@
 defmodule PredicatorTest do
   use ExUnit.Case, async: true
 
+  alias Predicator.Errors.UndefinedVariableError
+
   doctest Predicator
 
   describe "evaluate/2 with string expressions" do
@@ -41,8 +43,12 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("  score   >    85  ", %{"score" => 90}) == {:ok, true}
     end
 
-    test "returns :undefined for missing variables" do
-      assert Predicator.evaluate("missing > 5", %{}) == {:ok, :undefined}
+    test "returns an UndefinedVariableError for an unbound root variable inside a larger expression" do
+      # Regression pin (px-8um.4): the old [["load", _]] single-instruction
+      # heuristic only caught a bare `missing` load and silently returned
+      # {:ok, :undefined} for anything longer, like this comparison.
+      assert Predicator.evaluate("missing > 5", %{}) ==
+               {:error, UndefinedVariableError.new("missing")}
     end
 
     test "returns error for parse failures" do
@@ -555,7 +561,7 @@ defmodule PredicatorTest do
     end
 
     test "returns error for missing boolean variables" do
-      assert {:error, %Predicator.Errors.UndefinedVariableError{variable: "missing"}} =
+      assert {:error, %UndefinedVariableError{variable: "missing"}} =
                Predicator.evaluate("missing", %{})
     end
 
@@ -804,9 +810,12 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("[1, 2, 3] contains \"1\"", %{}) == {:ok, false}
     end
 
-    test "returns :undefined for missing variables" do
-      assert Predicator.evaluate("missing_var in [1, 2, 3]", %{}) == {:ok, :undefined}
-      assert Predicator.evaluate("[1, 2, 3] contains missing_var", %{}) == {:ok, :undefined}
+    test "returns an UndefinedVariableError for an unbound root variable" do
+      assert Predicator.evaluate("missing_var in [1, 2, 3]", %{}) ==
+               {:error, UndefinedVariableError.new("missing_var")}
+
+      assert Predicator.evaluate("[1, 2, 3] contains missing_var", %{}) ==
+               {:error, UndefinedVariableError.new("missing_var")}
     end
 
     test "parses list expressions correctly" do
@@ -1083,9 +1092,12 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("dates contains #2024-01-18#", context) == {:ok, false}
     end
 
-    test "handles :undefined for missing date variables" do
-      assert Predicator.evaluate("missing_date > #2024-01-15#", %{}) == {:ok, :undefined}
-      assert Predicator.evaluate("#2024-01-15# < missing_date", %{}) == {:ok, :undefined}
+    test "returns an UndefinedVariableError for an unbound root date variable" do
+      assert Predicator.evaluate("missing_date > #2024-01-15#", %{}) ==
+               {:error, UndefinedVariableError.new("missing_date")}
+
+      assert Predicator.evaluate("#2024-01-15# < missing_date", %{}) ==
+               {:error, UndefinedVariableError.new("missing_date")}
     end
 
     test "parses date expressions correctly" do
@@ -1204,7 +1216,8 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("user.profile.settings.theme = \"dark\"", context) ==
                {:ok, :undefined}
 
-      assert Predicator.evaluate("missing.path.here = \"value\"", context) == {:ok, :undefined}
+      assert Predicator.evaluate("missing.path.here = \"value\"", context) ==
+               {:error, UndefinedVariableError.new("missing")}
     end
 
     test "nested access with non-map intermediate values" do
@@ -1603,7 +1616,10 @@ defmodule PredicatorTest do
       context = %{"user" => %{"name" => "John"}}
 
       assert Predicator.evaluate("user['missing_key']", context) == {:ok, :undefined}
-      assert Predicator.evaluate("missing_object['key']", context) == {:ok, :undefined}
+
+      assert Predicator.evaluate("missing_object['key']", context) ==
+               {:error, UndefinedVariableError.new("missing_object")}
+
       assert Predicator.evaluate("user['name']['nested']", context) == {:ok, :undefined}
     end
 

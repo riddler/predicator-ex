@@ -85,6 +85,37 @@ defmodule Predicator.Context do
   end
 
   @doc """
+  Answers whether `name` is bound in `context`'s data - exactly, not the
+  `[["load", _]]` instruction-shape heuristic `Predicator.evaluate/3` used to
+  fall back on. Checks both string and atom keys, mirroring how a `load`
+  instruction resolves a name during evaluation
+  (`Predicator.Evaluator.load_from_context/2`).
+
+  ## Examples
+
+      iex> context = Predicator.Context.new(%{"score" => 85})
+      iex> Predicator.Context.bound?(context, "score")
+      true
+      iex> Predicator.Context.bound?(context, "missing")
+      false
+
+      iex> context = Predicator.Context.new(%{score: 85})
+      iex> Predicator.Context.bound?(context, "score")
+      true
+  """
+  @spec bound?(t(), binary()) :: boolean()
+  def bound?(%__MODULE__{data: data}, name) when is_binary(name) do
+    Map.has_key?(data, name) or atom_key_bound?(data, name)
+  end
+
+  @spec atom_key_bound?(Types.context(), binary()) :: boolean()
+  defp atom_key_bound?(data, name) do
+    Map.has_key?(data, String.to_existing_atom(name))
+  rescue
+    ArgumentError -> false
+  end
+
+  @doc """
   Assigns `value` at `path_or_expression`, returning the rebound context.
 
   `path_or_expression` is either a location expression string (resolved

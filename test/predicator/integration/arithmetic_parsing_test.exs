@@ -30,10 +30,11 @@ defmodule ArithmeticOperatorParserTest do
     end
 
     test "double equals operator works (equality parsing implemented)" do
-      # == now works because it's parsed as equality
-      assert {:ok, result} = evaluate("x == y", %{})
-      # Both x and y are undefined, so they're equal
-      assert result == :undefined
+      # == now works because it's parsed as equality. Both x and y are
+      # unbound roots, so this is now an UndefinedVariableError (px-8um.4),
+      # naming the first one the compiled program loads.
+      assert {:error, %Predicator.Errors.UndefinedVariableError{variable: "x"}} =
+               evaluate("x == y", %{})
     end
 
     test "logical and operator works (now parsed correctly)" do
@@ -77,8 +78,6 @@ defmodule ArithmeticOperatorParserTest do
       ]
 
       working_expressions = [
-        # Equality works
-        "x == y",
         # Logical AND works
         "true && false",
         # Logical OR works
@@ -101,6 +100,15 @@ defmodule ArithmeticOperatorParserTest do
         assert length(tokens) >= 3
         assert {:ok, _result} = evaluate(expr, %{})
       end
+
+      # Equality works - == is now parsed as equality (not a tokenizer
+      # failure), but with unbound roots this evaluates to an
+      # UndefinedVariableError rather than {:ok, _} (px-8um.4)
+      assert {:ok, tokens} = Predicator.Lexer.tokenize("x == y")
+      assert length(tokens) >= 3
+
+      assert {:error, %Predicator.Errors.UndefinedVariableError{variable: "x"}} =
+               evaluate("x == y", %{})
 
       # Special case: !active fails due to type error, not unknown instruction
       assert {:ok, tokens} = Predicator.Lexer.tokenize("!active")

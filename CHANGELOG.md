@@ -16,6 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bind/3` and `assign/3`, and evaluated against many times via
   `Predicator.evaluate/3`, which now accepts either a `%Context{}` or a bare
   map
+- `Predicator.Undefined`: the one public module that owns the `:undefined`
+  sentinel - `value/0`, `undefined?/1`, and `to_nil/1`/`from_nil/1`
+  normalizers for a JSON-shaped boundary. `Predicator.Types.undefined?/1`
+  now delegates to it.
+- `Predicator.Context.bound?/2`: answers whether a root variable is bound in
+  a context's data, checking both string and atom keys.
+
+### Fixed
+
+- `Predicator.evaluate/3` now correctly reports `UndefinedVariableError` for
+  any unbound root variable, not just a bare `variable_name` expression. The
+  old check only matched a single-instruction `[["load", _]]` program, so an
+  unbound variable inside a larger expression (`"missing > 5"`) silently
+  returned `{:ok, :undefined}` instead of an error.
 
 ### Deprecated
 

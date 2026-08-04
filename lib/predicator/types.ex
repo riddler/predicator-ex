@@ -47,7 +47,8 @@ defmodule Predicator.Types do
   - `Date.t()` - date values
   - `DateTime.t()` - datetime values
   - `duration()` - duration values for time spans
-  - `:undefined` - represents undefined/null values
+  - `:undefined` - represents undefined/null values; see `Predicator.Undefined`
+    for the canonical definition of the sentinel
   """
   @type value ::
           boolean()
@@ -215,6 +216,9 @@ defmodule Predicator.Types do
   @doc """
   Checks if a value is undefined.
 
+  Delegates to `Predicator.Undefined.undefined?/1` - see that module for the
+  canonical definition of the `:undefined` sentinel.
+
   ## Examples
 
       iex> Predicator.Types.undefined?(:undefined)
@@ -224,7 +228,7 @@ defmodule Predicator.Types do
       false
   """
   @spec undefined?(value()) :: boolean()
-  def undefined?(value), do: value == :undefined
+  def undefined?(value), do: Predicator.Undefined.undefined?(value)
 
   @doc """
   Checks if two values have matching types for operations.
