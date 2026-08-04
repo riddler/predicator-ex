@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Auto-vivifying path assignment for SCXML location expressions
+
+- `Predicator.ContextLocation.put/3` writes a value at a resolved location path,
+  creating missing intermediate maps and lists
+- `Predicator.context_assign/4` resolves a location expression and writes in one call
+- Integer path segments index lists and pad gaps with `:undefined`
+- Assigning through an existing scalar returns a `:not_a_container` error rather than
+  destroying data; negative indices return `:invalid_index`
+
+#### Examples
+
+```elixir
+Predicator.context_assign(%{}, "user.profile.name", "Ada")
+# {:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}}
+
+Predicator.context_assign(%{"items" => [1]}, "items[2]", "x")
+# {:ok, %{"items" => [1, :undefined, "x"]}}
+
+Predicator.ContextLocation.put(%{}, ["data", "users", 0, "name"], "Ada")
+# {:ok, %{"data" => %{"users" => [%{"name" => "Ada"}]}}}
+```
+
 ### Changed
 
 #### Replaces the hand-rolled quality gate with ex_quality

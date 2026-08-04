@@ -316,7 +316,10 @@ test/predicator/
 ### Location Expressions for SCXML (v2.2.0 - Phase 2 Complete)
 
 - **Purpose**: SCXML datamodel location expressions for assignment operations (`<assign>` elements)
-- **API Function**: `Predicator.context_location/3` - resolves location paths for assignment targets
+- **API Functions**:
+  - `Predicator.context_location/3` - resolves location paths for assignment targets
+  - `Predicator.context_assign/4` - resolves a location expression and writes at it (Unreleased)
+  - `Predicator.ContextLocation.put/3` - writes at an already-resolved path (Unreleased)
 - **Location Paths**: Returns lists like `["user", "name"]`, `["items", 0, "property"]` for navigation
 - **Validation**: Distinguishes assignable locations (l-values) from computed expressions (r-values)
 - **Error Handling**: Structured `LocationError` with detailed error types and context
@@ -327,6 +330,8 @@ test/predicator/
   - `:undefined_variable` - Variable referenced in bracket key is not defined
   - `:invalid_key` - Bracket key is not a valid string or integer
   - `:computed_key` - Computed expressions cannot be used as assignment keys
+  - `:not_a_container` - Write path traverses a value that is neither a map nor a list
+  - `:invalid_index` - List index in a write path is negative
 - **Examples**:
 
   ```elixir
@@ -341,6 +346,19 @@ test/predicator/
 - **Non-Assignable**: Literals, function calls, arithmetic expressions, comparisons, any computed values
 - **Mixed Notation Support**: `user.settings['theme']`, `data['users'][0].profile` fully supported
 - **SCXML Integration**: Enables safe assignment operations while preventing assignment to computed expressions
+- **Assignment Semantics** (Unreleased): auto-vivification is ECMAScript-like - a missing,
+  `nil`, or `:undefined` segment becomes a `%{}` when the next segment is a string and a
+  `[]` when it is an integer; integer indices past the end of a list pad with `:undefined`;
+  the leaf is always overwritten; existing data is never destroyed, so a scalar intermediate
+  or a string segment against a list is `:not_a_container`. Only string and integer keys are
+  consulted, never atom keys - `put/3` is the contract-stable primitive that later
+  releases write through, so its signature and these semantics are frozen
+
+  ```elixir
+  Predicator.context_assign(%{}, "user.profile.name", "Ada")     # {:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}}
+  Predicator.context_assign(%{"items" => [1]}, "items[2]", "x")  # {:ok, %{"items" => [1, :undefined, "x"]}}
+  Predicator.context_assign(%{"user" => 5}, "user.name", "Ada")  # {:error, %LocationError{type: :not_a_container}}
+  ```
 
 ## Breaking Changes
 
