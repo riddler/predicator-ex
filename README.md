@@ -546,6 +546,49 @@ Location paths are returned as lists representing the navigation path to a speci
 
 This feature enables safe assignment operations in SCXML processors while preventing assignment to computed values or literals.
 
+### Assignment
+
+Resolving a location tells you *where* to write. `Predicator.context_assign/4` performs the write, and `Predicator.ContextLocation.put/3` does the same given an already-resolved path:
+
+```elixir
+# Missing intermediate containers are created (auto-vivification)
+iex> Predicator.context_assign(%{}, "user.profile.name", "Ada")
+{:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}}
+
+# A string segment vivifies a map, an integer segment vivifies a list
+iex> Predicator.context_assign(%{}, "data['users'][0].name", "Ada")
+{:ok, %{"data" => %{"users" => [%{"name" => "Ada"}]}}}
+
+# Existing siblings are preserved
+iex> Predicator.context_assign(%{"user" => %{"id" => 1}}, "user.name", "Ada")
+{:ok, %{"user" => %{"id" => 1, "name" => "Ada"}}}
+
+# Indices past the end of a list pad the gap with :undefined
+iex> Predicator.context_assign(%{"items" => [1]}, "items[2]", "x")
+{:ok, %{"items" => [1, :undefined, "x"]}}
+
+# With an already-resolved path
+iex> Predicator.ContextLocation.put(%{}, ["user", "profile", "name"], "Ada")
+{:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}}
+```
+
+Auto-vivification never destroys existing data. Assigning through a value that is neither a map nor a list is an error, as is a negative list index:
+
+```elixir
+iex> Predicator.context_assign(%{"user" => 5}, "user.profile.name", "Ada")
+{:error, %Predicator.Errors.LocationError{type: :not_a_container}}
+
+iex> Predicator.context_assign(%{"items" => [1, 2]}, "items[-1]", "x")
+{:error, %Predicator.Errors.LocationError{type: :invalid_index}}
+```
+
+Two rules worth knowing:
+
+- **The leaf is always overwritten**, whatever it currently holds - including a map or a list.
+- **Only string and integer keys are consulted**, never atom keys. Assigning `user.name` into a context holding `%{user: %{}}` creates a new `"user"` map beside the atom key rather than descending into it.
+
+Note that `context_assign/4` takes the context first, unlike `context_location/3`: it transforms a context and returns a new one, so it composes in a pipeline.
+
 ## Development
 
 ### Setup
