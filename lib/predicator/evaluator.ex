@@ -28,7 +28,7 @@ defmodule Predicator.Evaluator do
   """
 
   alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
-  alias Predicator.{Duration, Types}
+  alias Predicator.{Duration, Types, Undefined}
   alias Predicator.Errors.{EvaluationError, TypeMismatchError}
 
   @typedoc "Internal evaluator state"
@@ -403,11 +403,11 @@ defmodule Predicator.Evaluator do
   # Handle undefined values for non-strict operators
   defp compare_values(:undefined, _right, operator)
        when operator not in ["STRICT_EQ", "STRICT_NE"],
-       do: :undefined
+       do: Undefined.value()
 
   defp compare_values(_left, :undefined, operator)
        when operator not in ["STRICT_EQ", "STRICT_NE"],
-       do: :undefined
+       do: Undefined.value()
 
   # Strict equality works on all types, including :undefined
   defp compare_values(left, right, "STRICT_EQ"), do: left === right
@@ -424,7 +424,7 @@ defmodule Predicator.Evaluator do
     end
   end
 
-  defp compare_values(_left, _right, _operator), do: :undefined
+  defp compare_values(_left, _right, _operator), do: Undefined.value()
 
   @spec values_equal?(Types.value(), Types.value()) :: boolean()
   defp values_equal?(:undefined, _value), do: false
@@ -506,10 +506,10 @@ defmodule Predicator.Evaluator do
     # left IN right - check if left is a member of right (list)
     case {left, right} do
       {:undefined, _value} ->
-        {:ok, %__MODULE__{evaluator | stack: [:undefined | rest]}}
+        {:ok, %__MODULE__{evaluator | stack: [Undefined.value() | rest]}}
 
       {_value, :undefined} ->
-        {:ok, %__MODULE__{evaluator | stack: [:undefined | rest]}}
+        {:ok, %__MODULE__{evaluator | stack: [Undefined.value() | rest]}}
 
       {_value, list} when is_list(list) ->
         result = Enum.any?(list, fn item -> values_equal?(left, item) end)
@@ -524,10 +524,10 @@ defmodule Predicator.Evaluator do
     # left CONTAINS right - check if left (list) contains right (value)
     case {left, right} do
       {:undefined, _value} ->
-        {:ok, %__MODULE__{evaluator | stack: [:undefined | rest]}}
+        {:ok, %__MODULE__{evaluator | stack: [Undefined.value() | rest]}}
 
       {_value, :undefined} ->
-        {:ok, %__MODULE__{evaluator | stack: [:undefined | rest]}}
+        {:ok, %__MODULE__{evaluator | stack: [Undefined.value() | rest]}}
 
       {list, _value} when is_list(list) ->
         result = Enum.any?(list, fn item -> values_equal?(item, right) end)
@@ -770,7 +770,7 @@ defmodule Predicator.Evaluator do
   defp get_value_type(%Date{}), do: :date
   defp get_value_type(%DateTime{}), do: :datetime
 
-  defp get_value_type(:undefined), do: :undefined
+  defp get_value_type(:undefined), do: Undefined.value()
 
   defp get_value_type(value) when is_map(value) do
     # Check if it's a duration map (has required duration keys)
@@ -837,10 +837,10 @@ defmodule Predicator.Evaluator do
         # Try as atom key if string key doesn't exist
         try do
           atom_key = String.to_existing_atom(key)
-          {:ok, Map.get(object, atom_key, :undefined)}
+          {:ok, Map.get(object, atom_key, Undefined.value())}
         rescue
           ArgumentError ->
-            {:ok, :undefined}
+            {:ok, Undefined.value()}
         end
 
       value ->
@@ -850,12 +850,12 @@ defmodule Predicator.Evaluator do
 
   defp access_value(object, key) when is_map(object) and is_atom(key) do
     # Map access with atom key
-    {:ok, Map.get(object, key, :undefined)}
+    {:ok, Map.get(object, key, Undefined.value())}
   end
 
   defp access_value(object, key) when is_map(object) and is_integer(key) do
     # Map access with integer key (maps can have integer keys too)
-    {:ok, Map.get(object, key, :undefined)}
+    {:ok, Map.get(object, key, Undefined.value())}
   end
 
   defp access_value(array, index) when is_list(array) and is_integer(index) and index >= 0 do
@@ -863,18 +863,18 @@ defmodule Predicator.Evaluator do
     if index < length(array) do
       {:ok, Enum.at(array, index)}
     else
-      {:ok, :undefined}
+      {:ok, Undefined.value()}
     end
   end
 
   defp access_value(array, index) when is_list(array) and is_integer(index) and index < 0 do
     # Negative index not supported, return undefined
-    {:ok, :undefined}
+    {:ok, Undefined.value()}
   end
 
   defp access_value(object, _key) when not is_map(object) and not is_list(object) do
     # Can't access properties of non-object/non-array values
-    {:ok, :undefined}
+    {:ok, Undefined.value()}
   end
 
   defp access_value(_object, key)
@@ -961,11 +961,11 @@ defmodule Predicator.Evaluator do
         # Try as atom key if string key doesn't exist
         try do
           atom_key = String.to_existing_atom(variable_name)
-          Map.get(context, atom_key, :undefined)
+          Map.get(context, atom_key, Undefined.value())
         rescue
           ArgumentError ->
             # String.to_existing_atom failed, variable doesn't exist
-            :undefined
+            Undefined.value()
         end
 
       value ->

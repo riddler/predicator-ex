@@ -61,7 +61,7 @@ defmodule Predicator.ContextLocation do
 
   """
 
-  alias Predicator.{Lexer, Parser}
+  alias Predicator.{Lexer, Parser, Undefined}
   alias Predicator.Errors.{LocationError, ParseError}
   alias Predicator.Types
 
@@ -424,7 +424,7 @@ defmodule Predicator.ContextLocation do
   end
 
   defp write_at(list, index, value, size) do
-    list ++ List.duplicate(:undefined, index - size) ++ [value]
+    list ++ List.duplicate(Undefined.value(), index - size) ++ [value]
   end
 
   # Renders a trail the way a document author wrote it: `user.profile`, `items[2]`.

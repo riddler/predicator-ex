@@ -79,6 +79,33 @@ defmodule Predicator.ContextTest do
     end
   end
 
+  describe "bound?/2" do
+    test "true for a bound string key" do
+      context = Context.new(%{"score" => 85})
+      assert Context.bound?(context, "score")
+    end
+
+    test "true for a bound atom key, looked up by string name" do
+      context = Context.new(%{score: 85})
+      assert Context.bound?(context, "score")
+    end
+
+    test "false for a name that isn't bound" do
+      context = Context.new(%{"score" => 85})
+      refute Context.bound?(context, "missing")
+    end
+
+    test "false for a name that has never been an atom, without raising" do
+      context = Context.new(%{"score" => 85})
+      refute Context.bound?(context, "definitely_not_an_existing_atom_xyz123")
+    end
+
+    test "true even when the bound value is :undefined itself" do
+      context = Context.new(%{"score" => :undefined})
+      assert Context.bound?(context, "score")
+    end
+  end
+
   describe "assign/3 with a string expression" do
     test "simple identifier" do
       context = Context.new(%{})

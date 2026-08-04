@@ -63,9 +63,15 @@ period.
 - **Context** (`lib/predicator/context.ex`): A bound evaluation context - `data`,
   `functions` (builtins merged with `opts[:functions]` once, at construction),
   and an `on_unbound` policy placeholder. `new/2` builds one, `bind/3` rebinds
-  a key in O(1), `assign/3` writes through `ContextLocation.put/3`. `evaluate/3`
-  accepts a `%Context{}` directly (skipping the per-call function merge) or a
-  bare map (unchanged behavior, via an internal one-shot `Context.new/2`)
+  a key in O(1), `assign/3` writes through `ContextLocation.put/3`,
+  `bound?/2` answers whether a root name is present in `data` (string or atom
+  key). `evaluate/3` accepts a `%Context{}` directly (skipping the per-call
+  function merge) or a bare map (unchanged behavior, via an internal one-shot
+  `Context.new/2`)
+- **Undefined** (`lib/predicator/undefined.ex`): The one public module that
+  owns the `:undefined` sentinel - `value/0`, `undefined?/1`, and
+  `to_nil/1`/`from_nil/1` normalizers for a JSON-shaped boundary.
+  `Predicator.Types.undefined?/1` delegates to it
 
 ## Cross-Language Siblings
 
@@ -226,6 +232,41 @@ test/predicator/
   Predicator.evaluate("score > 80", context)  # {:ok, true}, functions merged once
   context = Predicator.Context.bind(context, "score", 90)
   Predicator.evaluate("score > 80", context)  # {:ok, true}, no re-merge
+  ```
+
+### `Predicator.Undefined` and `Context.bound?/2` (v3.8.0, unreleased)
+
+- **`Predicator.Undefined`**: the one public module that owns the
+  `:undefined` sentinel - `value/0` (returns `:undefined`), `undefined?/1`,
+  and `to_nil/1`/`from_nil/1` normalizers for a JSON-shaped boundary. The
+  atom stays the runtime representation (pervasive in tests and the
+  Ruby/JavaScript siblings, part of the instruction interchange format);
+  this module names it and checks for it in one place instead of every call
+  site writing the literal atom. `Predicator.Types.undefined?/1` delegates
+  to it.
+- **`Predicator.Context.bound?/2`**: answers whether a root name is present
+  in a context's `data` - string key or atom key, mirroring
+  `Evaluator.load_from_context/2`'s own resolution.
+- **Fixes the `[["load", _]]` heuristic**: `Predicator.evaluate_instructions/3`
+  used to distinguish "unbound variable" from "bound to `:undefined`" by
+  matching the compiled program against a single-instruction shape - correct
+  only for a bare `variable_name` expression, and silently wrong for
+  anything longer (`"missing > 5"` compiles to three instructions and fell
+  through to an unconditional `{:ok, :undefined}`). The fixed check scans
+  every `["load", name]` instruction in the program and asks
+  `Context.bound?/2` about each one, returning `UndefinedVariableError` for
+  the first unbound name.
+- Depends on `px-8um.1` (`Predicator.Context`); the `on_unbound` policy
+  itself (`px-8um.3`) and context key normalization (`px-8um.2`) are
+  separate beads that build on this one.
+- Example:
+
+  ```elixir
+  Predicator.evaluate("missing > 5", %{})
+  # {:error, %Predicator.Errors.UndefinedVariableError{variable: "missing"}}
+
+  Predicator.evaluate("user.name.middle = \"X\"", %{"user" => %{"name" => %{}}})
+  # {:ok, :undefined} - "user" is bound, only the nested path is missing
   ```
 
 ### Durations and Relative Dates (v3.4.0)

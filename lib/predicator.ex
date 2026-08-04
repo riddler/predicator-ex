@@ -159,10 +159,9 @@ defmodule Predicator do
         {:error, error_struct}
 
       :undefined ->
-        # Check if this was an undefined variable access
-        case check_for_undefined_variables(instructions, context.data) do
-          {:error, error_struct} -> {:error, error_struct}
-          {:ok, :undefined} -> {:ok, :undefined}
+        case first_unbound_load(instructions, context) do
+          nil -> {:ok, :undefined}
+          variable_name -> {:error, UndefinedVariableError.new(variable_name)}
         end
 
       result ->
@@ -208,30 +207,22 @@ defmodule Predicator do
     end
   end
 
-  # Helper to detect undefined variable access
-  defp check_for_undefined_variables([["load", variable_name]], context)
-       when is_binary(variable_name) do
-    if Map.has_key?(context, variable_name) or
-         variable_has_atom_key?(context, variable_name) do
-      # Variable exists but has :undefined value
-      {:ok, :undefined}
-    else
-      {:error, UndefinedVariableError.new(variable_name)}
-    end
-  end
+  # An :undefined result is ambiguous on its own: it's either a genuinely
+  # unbound root variable or a value that legitimately evaluates to
+  # :undefined (a missing nested path, an out-of-bounds index, a type
+  # mismatch). Context.bound?/2 answers exactly, so scan every `load` in the
+  # program - not just a single top-level one, which is what the old
+  # [["load", _]] heuristic did and was silently wrong for anything longer -
+  # for the first name the context doesn't have.
+  @spec first_unbound_load(Types.instruction_list(), Context.t()) :: binary() | nil
+  defp first_unbound_load(instructions, context) do
+    Enum.find_value(instructions, fn
+      ["load", variable_name] when is_binary(variable_name) ->
+        unless Context.bound?(context, variable_name), do: variable_name
 
-  defp check_for_undefined_variables(_instructions, _context) do
-    # Complex expression resulted in :undefined
-    {:ok, :undefined}
-  end
-
-  # Helper to safely check for atom key without raising exceptions
-  defp variable_has_atom_key?(context, variable_name) do
-    atom_key = String.to_atom(variable_name)
-    Map.has_key?(context, atom_key)
-  rescue
-    ArgumentError -> false
-    SystemLimitError -> false
+      _instruction ->
+        nil
+    end)
   end
 
   @doc """
