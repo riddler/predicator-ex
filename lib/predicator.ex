@@ -491,4 +491,59 @@ defmodule Predicator do
         {:error, ParseError.new(message, line, col)}
     end
   end
+
+  @doc """
+  Assigns `value` at the location `expression` names within `context`.
+
+  Resolves the location expression the same way `context_location/3` does, then
+  writes through `Predicator.ContextLocation.put/3`, creating any missing
+  intermediate maps and lists. See `Predicator.ContextLocation.put/3` for the
+  full auto-vivification and collision rules.
+
+  The expression is resolved against the *pre-assignment* context, which matches
+  SCXML: a variable bracket key such as `items[index]` reads `index` as it stands
+  before the write.
+
+  > #### Argument order {: .info}
+  >
+  > `context` comes first because this function *transforms* a context and
+  > returns a new one, which makes it pipeline-friendly, whereas
+  > `context_location/3` merely inspects one.
+
+  ## Parameters
+
+  - `context` - The context map to write into
+  - `expression` - The location expression naming where to write
+  - `value` - The value to write
+  - `opts` - Reserved for future options
+
+  ## Returns
+
+  - `{:ok, context}` - The updated context
+  - `{:error, %Predicator.Errors.LocationError{}}` - The expression is not an
+    assignable location, or the write collided with existing data
+  - `{:error, %Predicator.Errors.ParseError{}}` - The expression did not parse
+
+  ## Examples
+
+      iex> Predicator.context_assign(%{}, "user.profile.name", "Ada")
+      {:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}}
+
+      iex> Predicator.context_assign(%{"items" => [1, 2, 3]}, "items[1]", "x")
+      {:ok, %{"items" => [1, "x", 3]}}
+
+      iex> {:error, error} = Predicator.context_assign(%{}, "len(items)", 1)
+      iex> error.type
+      :not_assignable
+
+  """
+  @spec context_assign(Types.context(), binary(), term(), keyword()) ::
+          {:ok, Types.context()} | {:error, struct()}
+  def context_assign(context, expression, value, opts \\ [])
+      when is_map(context) and is_binary(expression) do
+    case context_location(expression, context, opts) do
+      {:ok, path} -> ContextLocation.put(context, path, value)
+      {:error, _error} = error -> error
+    end
+  end
 end
