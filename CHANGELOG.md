@@ -35,9 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   old check only matched a single-instruction `[["load", _]]` program, so an
   unbound variable inside a larger expression (`"missing > 5"`) silently
   returned `{:ok, :undefined}` instead of an error.
-
-### Fixed
-
 - **`AND` and `OR` now short-circuit.** Previously the compiler evaluated both
   sides of every `AND`/`OR` unconditionally, so an unbound variable or a
   runtime error on the side that should have been skipped surfaced as an
