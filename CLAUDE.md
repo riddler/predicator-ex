@@ -86,6 +86,75 @@ non-interactive form: `cp -f`, `mv -f`, `rm -f`, `rm -rf`, `cp -rf`. Same for
 Also avoid `bd edit`, which opens `$EDITOR` and blocks. Use
 `bd update <id> --title/--description/--notes/--design` instead.
 
+## Worktrees, skills, and area labels
+
+Work is picked up one bead at a time and done in its own git worktree, so
+several agents can run in parallel without editing the same tree. The skills in
+`.claude/skills/` automate the loop:
+
+| Skill | What it does |
+|---|---|
+| `/next-issue`, `/next-issues` | pick ready beads, claim them, dispatch to worktrees |
+| `/new-worktree` | one issue, one branch, one worktree, one tmux window |
+| `/create-plan`, `/iterate-plan`, `/implement-plan` | plan in `docs/plans/`, then execute it |
+| `/commit` | gate, message, `Refs:` trailer, no attribution |
+| `/merge-request` | full gate, push, open the PR |
+| `/cleanup-worktrees`, `/refresh-worktree` | land merged work, rebase the survivors |
+
+Worktrees live at `../predicator-ex-worktrees/<bead-id>-<slug>`, cut from
+`origin/main`. The claim is the lock: `bd update <id> --claim` happens before the
+worktree exists, never after.
+
+### Area labels
+
+Every bead that changes files carries at least one `area:` label naming the part
+of the tree it touches. A bead may carry several.
+
+| Label | Covers |
+|---|---|
+| `area:lexer-parser` | `lib/predicator/lexer.ex`, `parser.ex`, `types.ex`, and their tests |
+| `area:evaluator` | `lib/predicator/compiler.ex`, `evaluator.ex`, `duration.ex`, and their tests |
+| `area:context` | `lib/predicator/context_location.ex` and the future Context struct |
+| `area:functions` | `lib/predicator/functions/**` |
+| `area:visitors` | `lib/predicator/visitor.ex`, `lib/predicator/visitors/**` |
+| `area:api` | `lib/predicator.ex`, `lib/predicator/errors.ex`, `lib/predicator/errors/**` |
+| `area:skills` | `.claude/**` |
+| `area:docs` | `docs/**`, `CLAUDE.md`, `README.md`, `CHANGELOG.md` |
+| `area:build` | `mix.exs`, `mix.lock`, `.quality.exs`, `.credo.exs`, `coveralls.json`, `mise.toml`, `.gitignore`, `.github/**` |
+
+**Two beads are batchable iff their area sets are disjoint.** That is the whole
+rule, and it is what lets `/next-issues` claim several beads at once without a
+human adjudicating each pair.
+
+**`area:build` is exclusive: a bead carrying it batches with nothing** and lands
+on `main` alone. It moves `mix.lock` and the gate config that every other
+worktree's warmed `_build` and quality run depend on, so a parallel branch does
+not merely conflict with it - it goes red for reasons that have nothing to do
+with the work in it, which is the failure `/refresh-worktree` exists to repair.
+
+Two clarifications that come up:
+
+- **Areas are about file collision, not subject matter.** Two beads both "about
+  durations" that touch disjoint files are batchable. Two beads in different
+  subsystems that both edit `mix.exs` are not. When in doubt, label by the paths
+  named in the acceptance criteria.
+- **The label is a prediction, deliberately.** It is written before the work
+  exists, so it is not derived from a diff and should not be. A branch that ends
+  up touching an area it was not labeled with is worth noticing at merge time,
+  not silently accepting - it means the split the batch was built on was wrong.
+
+`area:api` exists because `lib/predicator.ex` and the error structs are the one
+genuinely cross-cutting surface here: nearly every feature eventually widens the
+public façade or adds an error type, and folding that into whichever subsystem
+prompted it would make almost every pair of beads collide. A bead that adds a
+function *and* exposes it carries both labels, which is the correct answer -
+it does touch both.
+
+The one class of bead with no area label is work that changes no files in this
+repo: `upstream` beads, whose work happens in the Ruby or JavaScript sibling or
+in a downstream consumer. They collide with nothing here, so an area label on
+them would block batches for no reason.
+
 ## What this project is
 
 Predicator is a secure, non-evaluative condition engine: user-authored boolean
