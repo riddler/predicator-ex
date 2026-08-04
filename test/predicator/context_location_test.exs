@@ -619,4 +619,25 @@ defmodule Predicator.ContextLocationTest do
                Predicator.context_assign(%{"items" => [1, 2]}, "items[-1]", "x")
     end
   end
+
+  describe "resolve_expression/2" do
+    test "resolves a valid expression the same as tokenize + parse + resolve/2" do
+      {:ok, tokens} = Lexer.tokenize("user.profile.name")
+      {:ok, ast} = Parser.parse(tokens)
+      context = %{"user" => %{"profile" => %{"name" => "Ada"}}}
+
+      assert ContextLocation.resolve_expression("user.profile.name", context) ==
+               ContextLocation.resolve(ast, context)
+    end
+
+    test "wraps a parse error as a ParseError" do
+      assert {:error, %Predicator.Errors.ParseError{}} =
+               ContextLocation.resolve_expression("user.", %{})
+    end
+
+    test "wraps a tokenize error as a ParseError" do
+      assert {:error, %Predicator.Errors.ParseError{}} =
+               ContextLocation.resolve_expression("&", %{})
+    end
+  end
 end

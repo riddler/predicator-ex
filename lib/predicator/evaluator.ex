@@ -51,6 +51,48 @@ defmodule Predicator.Evaluator do
   ]
 
   @doc """
+  Merges the builtin function maps with `opts[:functions]`.
+
+  Builtins are `SystemFunctions`, `DateFunctions`, `JSONFunctions`, and
+  `MathFunctions`, in that order; `opts[:functions]` is merged last, so
+  custom functions can shadow a builtin of the same name.
+  """
+  @spec merge_functions(keyword()) :: %{binary() => {non_neg_integer(), function()}}
+  def merge_functions(opts \\ []) do
+    SystemFunctions.all_functions()
+    |> Map.merge(DateFunctions.all_functions())
+    |> Map.merge(JSONFunctions.all_functions())
+    |> Map.merge(MathFunctions.all_functions())
+    |> Map.merge(Keyword.get(opts, :functions, %{}))
+  end
+
+  @doc """
+  Runs an already-built evaluator to completion and extracts its result.
+
+  Unlike `evaluate/3`, this does no function merging - `evaluator.functions`
+  is used as given. This is what `evaluate/3` uses internally, and what
+  `Predicator.Context`-based evaluation uses to skip the per-call merge.
+  """
+  @spec evaluate_prepared(t()) :: Types.internal_result()
+  def evaluate_prepared(%__MODULE__{} = evaluator) do
+    case run(evaluator) do
+      {:ok, %__MODULE__{stack: [result | _rest]}} ->
+        result
+
+      {:ok, %__MODULE__{stack: []}} ->
+        {:error,
+         EvaluationError.new(
+           "Evaluation completed with empty stack",
+           "empty_stack",
+           :evaluate
+         )}
+
+      {:error, error_struct} when is_struct(error_struct) ->
+        {:error, error_struct}
+    end
+  end
+
+  @doc """
   Evaluates a list of instructions with the given context and options.
 
   Returns the top value on the stack when evaluation completes,
@@ -80,35 +122,11 @@ defmodule Predicator.Evaluator do
   @spec evaluate(Types.instruction_list(), Types.context(), keyword()) :: Types.internal_result()
   def evaluate(instructions, context \\ %{}, opts \\ [])
       when is_list(instructions) and is_map(context) do
-    # Merge custom functions with system functions
-    merged_functions =
-      SystemFunctions.all_functions()
-      |> Map.merge(DateFunctions.all_functions())
-      |> Map.merge(JSONFunctions.all_functions())
-      |> Map.merge(MathFunctions.all_functions())
-      |> Map.merge(Keyword.get(opts, :functions, %{}))
-
-    evaluator = %__MODULE__{
+    evaluate_prepared(%__MODULE__{
       instructions: instructions,
       context: context,
-      functions: merged_functions
-    }
-
-    case run(evaluator) do
-      {:ok, %__MODULE__{stack: [result | _rest]}} ->
-        result
-
-      {:ok, %__MODULE__{stack: []}} ->
-        {:error,
-         EvaluationError.new(
-           "Evaluation completed with empty stack",
-           "empty_stack",
-           :evaluate
-         )}
-
-      {:error, error_struct} when is_struct(error_struct) ->
-        {:error, error_struct}
-    end
+      functions: merge_functions(opts)
+    })
   end
 
   @doc """

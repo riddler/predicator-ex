@@ -57,6 +57,12 @@ it and what it means for the Ruby and JavaScript implementations.
 - **Functions** (`lib/predicator/functions/`): Function system components
   - **SystemFunctions**: Built-in system functions (len, upper, abs, max, etc.) provided via `all_functions/0`
 - **Main API** (`lib/predicator.ex`): Public interface with convenience functions
+- **Context** (`lib/predicator/context.ex`): A bound evaluation context - `data`,
+  `functions` (builtins merged with `opts[:functions]` once, at construction),
+  and an `on_unbound` policy placeholder. `new/2` builds one, `bind/3` rebinds
+  a key in O(1), `assign/3` writes through `ContextLocation.put/3`. `evaluate/3`
+  accepts a `%Context{}` directly (skipping the per-call function merge) or a
+  bare map (unchanged behavior, via an internal one-shot `Context.new/2`)
 
 ## Cross-Language Siblings
 
@@ -192,6 +198,31 @@ test/predicator/
 ```
 
 ## Recent Additions (2025)
+
+### `Predicator.Context` Struct (v3.8.0, unreleased)
+
+- **Persistent bound context**: `Predicator.Context.new/2` merges the four
+  builtin function maps plus `opts[:functions]` once, at construction, instead
+  of on every `evaluate/3` call
+- **`bind/3`**: an O(1) `Map.put/3` on `data`; `functions` and `on_unbound`
+  carry over unchanged
+- **`assign/3`**: writes through the existing `ContextLocation.put/3`
+  auto-vivifying algorithm, accepting either a location expression string or
+  an already-resolved path
+- **`Predicator.evaluate/3` dispatch**: accepts a `%Context{}` (evaluates
+  against its `data`/`functions` directly, no per-call merge) or a bare map
+  (unchanged behavior - a one-shot `Context.new/2` internally)
+- Foundation bead for the `px-8um` epic; `on_unbound` is stored and validated
+  but does not yet change evaluation behavior (`px-8um.3`), and context keys
+  are not yet normalized (`px-8um.2`)
+- Examples:
+
+  ```elixir
+  context = Predicator.Context.new(%{"score" => 85})
+  Predicator.evaluate("score > 80", context)  # {:ok, true}, functions merged once
+  context = Predicator.Context.bind(context, "score", 90)
+  Predicator.evaluate("score > 80", context)  # {:ok, true}, no re-merge
+  ```
 
 ### Durations and Relative Dates (v3.4.0)
 

@@ -38,6 +38,18 @@ defmodule Predicator do
       %{"score" => 85, "name" => "Alice"}
       %{score: 85, name: "Alice"}
 
+  A bare map is merged with the builtin functions on every `evaluate/3` call -
+  fine for one-off evaluation, wasteful when the same bindings are evaluated
+  against repeatedly. `Predicator.Context.new/2` builds that merge once into a
+  `%Predicator.Context{}`, which `evaluate/3` also accepts directly:
+
+      iex> context = Predicator.Context.new(%{"score" => 85})
+      iex> Predicator.evaluate("score > 80", context)
+      {:ok, true}
+      iex> context = Predicator.Context.bind(context, "score", 90)
+      iex> Predicator.evaluate("score > 80", context)
+      {:ok, true}
+
   ## Architecture
 
   Predicator uses a stack-based evaluation model:
@@ -46,7 +58,7 @@ defmodule Predicator do
   3. The final result is the top value on the stack when execution completes
   """
 
-  alias Predicator.{Compiler, ContextLocation, Evaluator, Lexer, Parser, Types}
+  alias Predicator.{Compiler, Context, ContextLocation, Evaluator, Lexer, Parser, Types}
   alias Predicator.Errors.{ParseError, UndefinedVariableError}
 
   @doc """
@@ -108,7 +120,7 @@ defmodule Predicator do
   """
   @spec evaluate(
           binary() | Types.instruction_list(),
-          Types.context(),
+          Types.context() | Context.t(),
           keyword()
         ) :: {:ok, Types.value()} | {:error, struct()}
   def evaluate(input, context \\ %{}, opts \\ [])
@@ -135,14 +147,20 @@ defmodule Predicator do
   end
 
   # Helper function to evaluate instructions and convert errors to new format
-  defp evaluate_instructions(instructions, context, opts) do
-    case Evaluator.evaluate(instructions, context, opts) do
+  defp evaluate_instructions(instructions, %Context{} = context, _opts) do
+    evaluator = %Evaluator{
+      instructions: instructions,
+      context: context.data,
+      functions: context.functions
+    }
+
+    case Evaluator.evaluate_prepared(evaluator) do
       {:error, error_struct} when is_struct(error_struct) ->
         {:error, error_struct}
 
       :undefined ->
         # Check if this was an undefined variable access
-        case check_for_undefined_variables(instructions, context) do
+        case check_for_undefined_variables(instructions, context.data) do
           {:error, error_struct} -> {:error, error_struct}
           {:ok, :undefined} -> {:ok, :undefined}
         end
@@ -150,6 +168,10 @@ defmodule Predicator do
       result ->
         {:ok, result}
     end
+  end
+
+  defp evaluate_instructions(instructions, context, opts) when is_map(context) do
+    evaluate_instructions(instructions, Context.new(context, opts), opts)
   end
 
   @doc """
@@ -477,19 +499,7 @@ defmodule Predicator do
           {:ok, ContextLocation.location_path()} | {:error, struct()}
   def context_location(expression, context \\ %{}, _opts \\ [])
       when is_binary(expression) and is_map(context) do
-    case Lexer.tokenize(expression) do
-      {:ok, tokens} ->
-        case Parser.parse(tokens) do
-          {:ok, ast} ->
-            ContextLocation.resolve(ast, context)
-
-          {:error, message, line, col} ->
-            {:error, ParseError.new(message, line, col)}
-        end
-
-      {:error, message, line, col} ->
-        {:error, ParseError.new(message, line, col)}
-    end
+    ContextLocation.resolve_expression(expression, context)
   end
 
   @doc """
