@@ -76,6 +76,42 @@ defmodule Predicator.Functions.SystemFunctionsCoverageTest do
       date = Date.from_iso8601!("2024-01-15")
       assert {:error, "Date.day() expects exactly 1 argument"} = day_func.([date, date], %{})
     end
+
+    test "starts_with/2 with wrong number of arguments" do
+      {2, starts_with_func} = SystemFunctions.all_functions()["starts_with"]
+
+      assert {:error, "starts_with() expects exactly 2 arguments"} = starts_with_func.([], %{})
+
+      assert {:error, "starts_with() expects exactly 2 arguments"} =
+               starts_with_func.(["a", "b", "c"], %{})
+    end
+
+    test "ends_with/2 with wrong number of arguments" do
+      {2, ends_with_func} = SystemFunctions.all_functions()["ends_with"]
+
+      assert {:error, "ends_with() expects exactly 2 arguments"} = ends_with_func.([], %{})
+
+      assert {:error, "ends_with() expects exactly 2 arguments"} =
+               ends_with_func.(["a", "b", "c"], %{})
+    end
+
+    test "index_of/2 with wrong number of arguments" do
+      {2, index_of_func} = SystemFunctions.all_functions()["index_of"]
+
+      assert {:error, "index_of() expects exactly 2 arguments"} = index_of_func.([], %{})
+
+      assert {:error, "index_of() expects exactly 2 arguments"} =
+               index_of_func.(["a", "b", "c"], %{})
+    end
+
+    test "substring/2 with wrong number of arguments" do
+      {[2, 3], substring_func} = SystemFunctions.all_functions()["substring"]
+
+      assert {:error, "substring() expects 2 or 3 arguments"} = substring_func.([], %{})
+
+      assert {:error, "substring() expects 2 or 3 arguments"} =
+               substring_func.(["a"], %{})
+    end
   end
 
   describe "date functions with DateTime objects" do

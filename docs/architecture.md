@@ -328,11 +328,15 @@ test/predicator/
 ### Function System (v2.0.0 - Architecture Overhaul)
 
 - **Built-in Functions**: System functions automatically available in all evaluations
-  - **String functions**: `len(string)`, `upper(string)`, `lower(string)`, `trim(string)`
+  - **String functions**: `len(string)`, `upper(string)`, `lower(string)`, `trim(string)`,
+    `starts_with(string, prefix)`, `ends_with(string, suffix)`, `substring(string, start[, len])`,
+    `index_of(string, sub)`
   - **Numeric functions**: `abs(number)`, `max(a, b)`, `min(a, b)`
   - **Date functions**: `year(date)`, `month(date)`, `day(date)`
 - **Custom Functions**: Provided per evaluation via `functions:` option in `evaluate/3`
-- **Function Format**: `%{name => {arity, function}}` where function takes `[args], context` and returns `{:ok, result}` or `{:error, message}`
+- **Function Format**: `%{name => {arity, function}}` where `arity` is an integer, or a list of
+  integers for a function with optional arguments (e.g. `substring/2` or `/3`); function takes
+  `[args], context` and returns `{:ok, result}` or `{:error, message}`
 - **Function Merging**: Custom functions merged with system functions, allowing overrides
 - **Thread Safety**: No global state - functions scoped to individual evaluation calls
 - **Examples**:
