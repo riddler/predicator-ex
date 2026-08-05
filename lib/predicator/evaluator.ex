@@ -40,7 +40,7 @@ defmodule Predicator.Evaluator do
           stack: [Types.value()],
           context: Types.context(),
           functions: %{binary() => {function_arity(), function()}},
-          positions: Types.position_table(),
+          positions: Types.position_table() | Types.span_table(),
           halted: boolean(),
           unbound_loads: [binary()],
           on_unbound: Predicator.Context.on_unbound(),
@@ -165,7 +165,9 @@ defmodule Predicator.Evaluator do
     - `:positions` - Side table mapping a 0-based instruction index to the
       `{line, column}` of the AST node that emitted it, as produced by
       `Predicator.Compiler.to_instructions_with_positions/2`. Runtime errors
-      raised by an instruction with a table entry carry it as `:position`.
+      raised by an instruction with a table entry carry it as `:position`. A
+      span table from `Predicator.compile_with_spans/1` works here too: such an
+      error carries the span as `:span` and the span's start as `:position`.
     - `:on_unbound` - `:undefined` (default) or `:error`. Under `:error`, a
       `["load", name]` whose `name` is not present in `context` returns
       `{:error, %Predicator.Errors.UndefinedVariableError{}}` instead of

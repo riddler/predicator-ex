@@ -61,7 +61,9 @@ defmodule Predicator.Compiler do
   compiled artifacts are unaffected (ADR-0001). The table maps each
   instruction's 0-based index to the `{line, column}` of the AST node that
   emitted it; nodes with no position contribute no entry, so a caller-supplied
-  position-free AST yields an empty table.
+  position-free AST yields an empty table. An AST parsed with `spans: true`
+  yields a `t:Predicator.Types.span_table/0` instead - see
+  `Predicator.compile_with_spans/1`.
 
   ## Examples
 
@@ -74,7 +76,7 @@ defmodule Predicator.Compiler do
       {[["lit", 42]], %{}}
   """
   @spec to_instructions_with_positions(Parser.ast() | Parser.bare_ast(), keyword()) ::
-          {[[binary() | term()]], Types.position_table()}
+          {[[binary() | term()]], Types.position_table() | Types.span_table()}
   def to_instructions_with_positions(ast, opts \\ []) do
     InstructionsVisitor.visit_with_positions(ast, opts)
   end

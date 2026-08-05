@@ -14,6 +14,9 @@ defmodule Predicator.Errors.TypeMismatchError do
   - `operation` - The operation that failed (e.g., `:add`, `:logical_and`)
   - `position` - `{line, column}` of the source token that produced the failing
     instruction, when a position table was available (optional)
+  - `span` - the source text the failing instruction's AST node covers, when the
+    program was compiled with spans (optional). `position` names the token to
+    blame; `span` is what to underline.
 
   ## Examples
 
@@ -35,7 +38,7 @@ defmodule Predicator.Errors.TypeMismatchError do
   """
 
   @enforce_keys [:message, :expected, :got, :operation]
-  defstruct [:message, :expected, :got, :values, :operation, :position]
+  defstruct [:message, :expected, :got, :values, :operation, :position, :span]
 
   @type t :: %__MODULE__{
           message: binary(),
@@ -43,7 +46,8 @@ defmodule Predicator.Errors.TypeMismatchError do
           got: atom() | {atom(), atom()},
           values: term(),
           operation: atom(),
-          position: Predicator.Types.position() | nil
+          position: Predicator.Types.position() | nil,
+          span: Predicator.Types.span() | nil
         }
 
   @doc """

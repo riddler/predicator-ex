@@ -321,6 +321,99 @@ at the `load` instruction itself, so `step/1` hands it the variable's own
 `nil`. The asymmetry is intentional: the policy has the right token in scope
 and the other two do not.
 
+### Source Spans (v3.9.0, unreleased)
+
+A point position tells an editor where to put a caret. A span tells it what to
+underline. `Predicator.Parser.parse/2` takes `spans: true`, and under it every
+AST node's **existing trailing slot** carries a `t:Predicator.Types.span/0`
+instead of a `{line, column}`. No node gained or lost an element, and point
+positions remain the default at every entry point.
+
+```elixir
+# default, unchanged
+{:arithmetic, :multiply, {:identifier, "a", {1, 1}}, {:literal, true, {1, 5}}, {1, 3}}
+
+# spans: true
+{:arithmetic, :multiply,
+  {:identifier, "a", {{1, 1}, {1, 2}}},
+  {:literal, true, {{1, 5}, {1, 9}}},
+  {{1, 1}, {1, 9}}}
+```
+
+One parse produces one kind throughout; the two are never mixed in a single
+tree. Every stage between the parser and the error decoration treats the slot as
+opaque, which is what makes the change small - only the parser knows the
+difference.
+
+**The end is exclusive.** A span names the position one past its last
+character, so on a single line `end_column - start_column` is the length and a
+zero-width range is representable. This matches LSP ranges, which is what an
+editor consuming this wants. `score` at line 1 column 1 spans `{{1, 1}, {1, 6}}`.
+
+**Which characters a node covers.** Where the defining-token table above says
+which token to *blame*, this one says which characters to *underline*. A new
+node type needs a row in both.
+
+| Node | Span start | Span end |
+|---|---|---|
+| `literal` | own token | own token end |
+| `string_literal` | own token, opening quote included | own token end, past the closing quote |
+| `identifier` | own token | own token end |
+| `object_key` | own token, opening quote included if quoted | own token end |
+| `comparison`, `membership` | left operand start | right operand end |
+| `arithmetic` | left operand start | right operand end |
+| `logical_and`, `logical_or` | left operand start | right operand end |
+| `unary`, `logical_not` | the operator token | operand end |
+| `list` | the `[` token | past the `]` token |
+| `object` | the `{` token | past the `}` token |
+| `function_call` | the name token | past the `)` token |
+| `bracket_access` | target expression start | past the `]` token |
+| `property_access` | target expression start | property-name token end |
+| `duration` | its first number token | past the last duration unit |
+| `relative_date` (`ago`) | duration start | past the `ago` token |
+| `relative_date` (`from now`) | duration start | past the `now` token |
+| `relative_date` (`next`, `last`) | the direction keyword token | duration end |
+
+Two consequences worth stating: a quoted string's and a `#`-fenced date's span
+include their delimiters, because the lexer's `length` is the full source
+extent; and an empty `[]`, `{}`, or `f()` still spans both delimiters, because
+the end comes from the closing token rather than from a child.
+
+**Parentheses are excluded, by design.** `(a + b)` gives the `arithmetic` node
+the span of `a + b`. Parentheses build no node - `parse_primary_token/2` returns
+the inner expression unchanged - so including them would mean attributing
+another node's characters to this one. This is a known limit, not an oversight.
+
+It has a knock-on effect worth knowing about: a parent inherits its child's
+start, so `(a + b) * c` gives the `multiply` node a span slicing to
+`a + b) * c` - the opening paren is outside it, the closing one inside. The
+span is still contained in the source and still ends at the right character;
+it just does not read as balanced. A consumer that wants to widen to the
+enclosing parentheses has to re-lex, which is why this is documented rather
+than worked around.
+
+**The side table.** `Predicator.compile_with_spans/1` is the span-mode sibling
+of `compile_with_positions/1`, returning a `t:Predicator.Types.span_table/0`.
+The instruction list it returns is byte-identical to `compile/1`'s. Like the
+position table, the span table is an **Elixir-side companion value**: no opcode
+is added, no instruction gains an element, and nothing is serialized, so
+ADR-0001's interchange guarantee and any stored compiled artifacts are
+untouched.
+
+**Runtime errors.** `EvaluationError`, `TypeMismatchError`, and
+`UndefinedVariableError` gained an optional `:span` alongside `:position`.
+Handed a span, `Errors.put_position/2` sets `:span` to the span *and*
+`:position` to the span's start, so a caret-only consumer keeps working under
+`spans: true` instead of seeing `position: nil`. The two fields answer different
+questions and both are available: for `a * true`, `position: {1, 3}` blames the
+`*` under the default, and `span: {{1,1},{1,9}}` with `position: {1, 1}`
+underlines the whole expression under `spans: true`. Rendered `message` strings
+are unchanged either way.
+
+`Predicator.evaluate/3` takes `spans: true` for string input. For
+instruction-list input it is a no-op - there is no source to span - and such a
+caller passes `positions:` from `compile_with_spans/1` instead.
+
 ### `Predicator.Context` Struct (v3.8.0, unreleased)
 
 - **Persistent bound context**: `Predicator.Context.new/2` merges the four
@@ -780,12 +873,15 @@ nothing is pushed, and no later instruction executes.
 6. Add string formatting to `string_visitor.ex`
 7. Point the new node at its operator token (see Source Positions) and widen
    `strip_positions/1` and `ensure_positions/1` to recurse into it
-8. Add comprehensive tests
+8. Give the new node a span rule too (see Source Spans): which characters it
+   covers, not just which token it blames
+9. Add comprehensive tests
 
 ### Adding New Data Types
 
 1. Update lexer tokenization (see date implementation)
-2. Update parser grammar and AST types, giving the node a source position
+2. Update parser grammar and AST types, giving the node a source position and a
+   span rule
 3. Update type specifications in `types.ex`
 4. Add evaluation support with type checking
 5. Add string visitor formatting support

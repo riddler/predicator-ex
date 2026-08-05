@@ -13,7 +13,9 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   the plain instruction list; `visit_with_positions/2` returns both. The
   instruction list is identical either way - positions never enter the
   instruction format itself, so cross-language interchange and stored compiled
-  artifacts are unaffected (ADR-0001).
+  artifacts are unaffected (ADR-0001). The paired value is whatever the node
+  carried in its trailing slot, so an AST parsed with `spans: true` yields a
+  span table rather than a position table.
 
   Both entry points accept either a positioned AST or the position-free shape
   Predicator 3.6 produced, normalizing with `Predicator.Parser.ensure_positions/1`
@@ -49,7 +51,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   @typedoc """
   One instruction paired with the source position of the node that emitted it.
   """
-  @type annotated :: {[binary() | term()], Types.position() | nil}
+  @type annotated :: {[binary() | term()], Types.position() | Types.span() | nil}
 
   @doc """
   Visits an AST node and returns stack machine instructions.
@@ -92,7 +94,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       {[["lit", 42]], %{}}
   """
   @spec visit_with_positions(Parser.ast() | Parser.bare_ast(), keyword()) ::
-          {[[binary() | term()]], Types.position_table()}
+          {[[binary() | term()]], Types.position_table() | Types.span_table()}
   def visit_with_positions(ast_node, opts \\ []) do
     annotated = annotate(ast_node, opts)
 

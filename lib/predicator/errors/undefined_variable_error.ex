@@ -10,6 +10,9 @@ defmodule Predicator.Errors.UndefinedVariableError do
   - `variable` - The name of the undefined variable
   - `position` - `{line, column}` of the source token that produced the failing
     instruction, when a position table was available (optional)
+  - `span` - the source text the failing instruction's AST node covers, when the
+    program was compiled with spans (optional). `position` names the token to
+    blame; `span` is what to underline.
 
   ## Examples
 
@@ -25,12 +28,13 @@ defmodule Predicator.Errors.UndefinedVariableError do
   """
 
   @enforce_keys [:message, :variable]
-  defstruct [:message, :variable, :position]
+  defstruct [:message, :variable, :position, :span]
 
   @type t :: %__MODULE__{
           message: binary(),
           variable: binary(),
-          position: Predicator.Types.position() | nil
+          position: Predicator.Types.position() | nil,
+          span: Predicator.Types.span() | nil
         }
 
   @doc """

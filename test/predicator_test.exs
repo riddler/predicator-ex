@@ -218,6 +218,86 @@ defmodule PredicatorTest do
     end
   end
 
+  describe "parse/2 with spans" do
+    test "puts a span in every node's trailing slot" do
+      assert Predicator.parse("score > 85", spans: true) ==
+               {:ok,
+                {:comparison, :gt, {:identifier, "score", {{1, 1}, {1, 6}}},
+                 {:literal, 85, {{1, 9}, {1, 11}}}, {{1, 1}, {1, 11}}}}
+    end
+
+    test "spans: false is the default and byte-identical to parse/1" do
+      assert Predicator.parse("score > 85", spans: false) == Predicator.parse("score > 85")
+    end
+
+    test "reports lexer errors the same way" do
+      assert Predicator.parse("score > @", spans: true) == Predicator.parse("score > @")
+    end
+  end
+
+  describe "compile_with_spans/1" do
+    test "returns the instruction list and a span table" do
+      assert {:ok, instructions, spans} = Predicator.compile_with_spans("score > 85")
+      assert instructions == [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      assert spans == %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
+    end
+
+    test "the instruction list is identical to compile/1's" do
+      for expression <- [
+            "score > 85",
+            "a and b or not c",
+            "len(name) + 1",
+            "[1, 2, 3] contains x",
+            "{a: 1, 'b': items[0]}",
+            "-x % 3 == 0"
+          ] do
+        assert {:ok, plain} = Predicator.compile(expression)
+        assert {:ok, spanned, _table} = Predicator.compile_with_spans(expression)
+        assert plain == spanned
+      end
+    end
+
+    test "reports parse errors the same way compile/1 does" do
+      assert Predicator.compile_with_spans("score >") == Predicator.compile("score >")
+    end
+  end
+
+  describe "runtime error spans" do
+    test "a string expression with spans: true populates :span and :position" do
+      assert {:error, error} = Predicator.evaluate("a * true", %{"a" => 1}, spans: true)
+      assert error.span == {{1, 1}, {1, 9}}
+      assert error.position == {1, 1}
+    end
+
+    test "without the option :span stays nil and :position names the operator" do
+      assert {:error, error} = Predicator.evaluate("a * true", %{"a" => 1})
+      assert error.span == nil
+      assert error.position == {1, 3}
+    end
+
+    test "the rendered message is identical with and without spans" do
+      assert {:error, spanned} = Predicator.evaluate("a * true", %{"a" => 1}, spans: true)
+      assert {:error, plain} = Predicator.evaluate("a * true", %{"a" => 1})
+
+      assert spanned.message == plain.message
+    end
+
+    test "spans: true is a no-op for instruction-list input" do
+      instructions = [["lit", 1], ["lit", true], ["multiply"]]
+
+      assert Predicator.evaluate(instructions, %{}, spans: true) ==
+               Predicator.evaluate(instructions, %{})
+    end
+
+    test "a caller-supplied span table decorates a pre-compiled program" do
+      {:ok, instructions, spans} = Predicator.compile_with_spans("a * true")
+
+      assert {:error, error} = Predicator.evaluate(instructions, %{"a" => 1}, positions: spans)
+      assert error.span == {{1, 1}, {1, 9}}
+      assert error.position == {1, 1}
+    end
+  end
+
   describe "runtime error positions" do
     test "a string expression populates :position" do
       assert {:error, error} = Predicator.evaluate("a * true", %{"a" => 1})
