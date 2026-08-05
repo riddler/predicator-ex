@@ -160,7 +160,7 @@ defmodule Predicator do
     }
 
     case Evaluator.run_prepared(evaluator) do
-      {:error, error_struct} when is_struct(error_struct) ->
+      {:error, error_struct, _final_evaluator} when is_struct(error_struct) ->
         {:error, error_struct}
 
       {:ok, :undefined, final_evaluator} ->
