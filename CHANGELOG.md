@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Context keys and `nil` values are now normalized eagerly and deeply.**
+  `Predicator.Context.new/2` and `bind/3` convert atom keys to string keys
+  (string key wins on collision) and `nil` values to `:undefined`, recursing
+  through nested maps and lists, before evaluation ever sees the data. This
+  is the one edge where atom keys and `nil` are accepted; the two
+  `String.to_existing_atom/1` read-time fallbacks that used to paper over
+  their absence - in `Predicator.Evaluator.load_from_context/2` (variable
+  load) and `access_value/2` (property/bracket access) - are deleted, since a
+  context reaching them through `Context.new/2`/`bind/3` never has atom keys
+  left to fall back to. Ordinary `Predicator.evaluate/3`/`evaluate!/3`
+  callers passing a bare map are unaffected - atom-keyed and `nil`-bearing
+  contexts keep working exactly as before, now via the edge instead of the
+  read-time fallback. The low-level `Predicator.Evaluator.evaluate/3`/
+  `evaluate!/3` and `Predicator.evaluator/2` APIs, which construct an
+  evaluator directly and bypass `Context.new/2`, no longer accept atom keys:
+  this is better-defined behavior for that narrow surface, not a removal - a
+  caller who wants atom-key or `nil` normalization goes through
+  `Predicator.Context` or `Predicator.evaluate/3` instead.
+
 ### Added
 
 - `Predicator.Errors.ParseError` gains a `:position` field - `{line, column}`,

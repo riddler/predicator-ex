@@ -313,8 +313,17 @@ recorded.
   against its `data`/`functions` directly, no per-call merge) or a bare map
   (unchanged behavior - a one-shot `Context.new/2` internally)
 - Foundation bead for the `px-8um` epic; `on_unbound` is stored and validated
-  but does not yet change evaluation behavior (`px-8um.3`), and context keys
-  are not yet normalized (`px-8um.2`)
+  but does not yet change evaluation behavior (`px-8um.3`)
+- **Context key normalization (`px-8um.2`)**: `new/2` and `bind/3` are the one
+  edge where atom keys and `nil` values are accepted. Both convert deeply and
+  eagerly - through nested maps and lists - before evaluation ever sees the
+  data: atom keys become string keys (string key wins on collision), and
+  `nil` becomes `:undefined`. A `Date`/`DateTime` (or any other struct) passes
+  through unchanged; only plain maps have their keys touched. The evaluator's
+  `load_from_context/2` and `access_value/2` consult string keys only - the
+  `String.to_existing_atom/1` read-time fallbacks they used to carry are gone,
+  since a context that reached them through `Context.new/2`/`bind/3` never has
+  atom keys left to fall back to.
 - Examples:
 
   ```elixir
@@ -335,8 +344,11 @@ recorded.
   site writing the literal atom. `Predicator.Types.undefined?/1` delegates
   to it.
 - **`Predicator.Context.bound?/2`**: answers whether a root name is present
-  in a context's `data` - string key or atom key, mirroring
-  `Evaluator.load_from_context/2`'s own resolution.
+  in a context's `data`. For `Context`-routed data this is always a string
+  key, since `new/2`/`bind/3` normalize atom keys away at construction
+  (`px-8um.2`); it still recognizes an atom key too, for the low-level
+  `Evaluator` API that bypasses `Context.new/2` entirely, via
+  `Evaluator.resolve_key/2`'s own resolution.
 - **Fixes the `[["load", _]]` heuristic**: `Predicator.evaluate_instructions/3`
   used to distinguish "unbound variable" from "bound to `:undefined`" by
   matching the compiled program against a single-instruction shape - correct
@@ -346,8 +358,9 @@ recorded.
   first unbound root the run reported; see `px-8um.8` below for how it
   identifies that root today.
 - Depends on `px-8um.1` (`Predicator.Context`); the `on_unbound` policy
-  itself (`px-8um.3`) and context key normalization (`px-8um.2`) are
-  separate beads that build on this one.
+  itself (`px-8um.3`) is a separate bead that builds on this one. Context key
+  normalization (`px-8um.2`) also builds on this one and has landed - see
+  above.
 - Example:
 
   ```elixir
