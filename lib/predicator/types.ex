@@ -104,6 +104,12 @@ defmodule Predicator.Types do
   - `["make_list", integer()]` - Pop n values, push them as a list
   - `["call", binary(), integer()]` - Call built-in function with arguments from stack
 
+  No instruction carries a source position. Positions travel in a separate
+  `t:position_table/0`, produced alongside the instruction list by
+  `Predicator.Compiler.to_instructions_with_positions/2`, so the instruction
+  format stays exactly what the Ruby and JavaScript siblings interchange
+  (ADR-0001).
+
   ## Examples
 
       ["lit", 42]           # Push literal 42 onto stack

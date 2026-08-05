@@ -212,6 +212,93 @@ test/predicator/
 
 ## Recent Additions (2025)
 
+### Source Positions (v3.7.0, unreleased)
+
+Every AST node carries a trailing `{line, column}` naming the token that
+defines it, the compiler emits a side table from instruction index to position,
+and runtime errors carry the position of the instruction that failed.
+
+**Node inventory.** `Parser.ast/0` is the authority; each arm below shows the
+trailing position:
+
+```elixir
+{:literal, value, pos}
+{:string_literal, binary, :double | :single, pos}
+{:identifier, name, pos}
+{:comparison, op, left, right, pos}
+{:arithmetic, op, left, right, pos}
+{:membership, op, left, right, pos}
+{:logical_and, left, right, pos}
+{:logical_or, left, right, pos}
+{:logical_not, operand, pos}
+{:unary, op, operand, pos}
+{:list, elements, pos}
+{:object, entries, pos}
+{:function_call, name, args, pos}
+{:bracket_access, target, key, pos}
+{:property_access, target, property, pos}
+{:duration, units, pos}
+{:relative_date, duration, direction, pos}
+```
+
+Object keys are positioned too: `{:identifier, name, pos}` and
+`{:string_literal, value, pos}`. The 3-vs-4 arity is what still distinguishes an
+object key's string literal from an expression's.
+
+**Which token a node points at.** Leaves point at their own token. Everything
+else points at the token that *names the operation*, so an error names the thing
+that failed rather than the start of the subexpression it failed on - `a * true`
+reports column 3, not column 1:
+
+| Node | Defining token |
+|---|---|
+| literals, identifiers, object keys | own token |
+| `comparison`, `arithmetic`, `membership`, `logical_and`, `logical_or` | the operator |
+| `unary`, `logical_not` | the operator |
+| `list`, `object`, `bracket_access` | the opening bracket or brace |
+| `function_call` | the name token |
+| `property_access` | the `.` |
+| `duration` | its first number |
+| `relative_date` | the direction keyword (`ago`, `from`, `next`, `last`) |
+
+A new node type follows this rule: point it at the token a reader would blame.
+
+**The side table.** `Compiler.to_instructions_with_positions/2` (and
+`Predicator.compile_with_positions/1`) returns `{instructions, table}` where the
+table maps a 0-based instruction index to the position of the node that emitted
+it. It is an **Elixir-side companion value**: no instruction gains an element,
+no opcode is added, and the table is never serialized into the instruction list.
+The cross-language interchange format specified by ADR-0001 is therefore
+unchanged, as are any compiled artifacts consumers have already stored. The Ruby
+and JavaScript siblings need no work, and may adopt an equivalent table
+independently.
+
+A node with a `nil` position contributes no table entry, so a position-free AST
+compiles to an empty table.
+
+**Boundary normalizers.** `Parser.strip_positions/1` removes positions,
+producing the 3.6 shape; `Parser.ensure_positions/1` appends `nil` to any node
+lacking one. Both are total, idempotent, and tolerant of a mixed tree, and both
+pass an unrecognized node through rather than raising. The visitors call
+`ensure_positions/1` at their public entry points, which is what lets
+`Predicator.decompile/2` and `Compiler.to_instructions/2` keep accepting a
+hand-built 3.6-shaped AST. Visitor clauses therefore have exactly one form each
+and their contract is "positioned AST in".
+
+**Runtime errors.** `EvaluationError`, `TypeMismatchError`, and
+`UndefinedVariableError` gained an optional `:position`. The evaluator carries
+the table in `positions:` and decorates at `step/1` - the single point where an
+error and the failing instruction pointer are both in scope - so every error
+site in the evaluator is covered by one call to `Errors.put_position/2`.
+`Predicator.evaluate/3` threads the table automatically for string input; an
+instruction-list caller sees `position: nil` unless they pass `positions:`.
+Rendered `message` strings are unchanged.
+
+Two errors keep `position: nil` by construction: the empty-stack error, which
+belongs to no instruction, and the `UndefinedVariableError` that
+`Predicator.evaluate/3` builds *after* the run from the loads the evaluator
+recorded.
+
 ### `Predicator.Context` Struct (v3.8.0, unreleased)
 
 - **Persistent bound context**: `Predicator.Context.new/2` merges the four
@@ -566,12 +653,14 @@ test/predicator/
 4. Add evaluation logic to `evaluator.ex`
 5. Add compilation logic to `compiler.ex`
 6. Add string formatting to `string_visitor.ex`
-7. Add comprehensive tests
+7. Point the new node at its operator token (see Source Positions) and widen
+   `strip_positions/1` and `ensure_positions/1` to recurse into it
+8. Add comprehensive tests
 
 ### Adding New Data Types
 
 1. Update lexer tokenization (see date implementation)
-2. Update parser grammar and AST types
+2. Update parser grammar and AST types, giving the node a source position
 3. Update type specifications in `types.ex`
 4. Add evaluation support with type checking
 5. Add string visitor formatting support
