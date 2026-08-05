@@ -245,6 +245,35 @@ defmodule Predicator.Functions.SystemFunctionsTest do
     end
   end
 
+  describe "concat/2" do
+    test "concatenates two lists" do
+      assert evaluate("concat([1, 2], [3])", %{}) == {:ok, [1, 2, 3]}
+    end
+
+    test "empty-list identities" do
+      assert evaluate("concat([], [1])", %{}) == {:ok, [1]}
+      assert evaluate("concat([1], [])", %{}) == {:ok, [1]}
+    end
+
+    test "concatenates a variable list with a list literal" do
+      assert evaluate("concat(Var1, [4])", %{"Var1" => [1, 2, 3]}) == {:ok, [1, 2, 3, 4]}
+    end
+
+    test "rejects string arguments even though + accepts them" do
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("concat('a', 'b')", %{})
+
+      assert msg =~ "concat() expects two list arguments"
+    end
+
+    test "rejects number arguments" do
+      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
+               evaluate("concat(1, 2)", %{})
+
+      assert msg =~ "concat() expects two list arguments"
+    end
+  end
+
   describe "date functions error cases" do
     test "year with invalid argument types" do
       assert {:error, %Predicator.Errors.EvaluationError{message: msg}} =
@@ -296,7 +325,8 @@ defmodule Predicator.Functions.SystemFunctionsTest do
         "starts_with",
         "ends_with",
         "substring",
-        "index_of"
+        "index_of",
+        "concat"
       ]
 
       for func_name <- expected_functions do
@@ -319,6 +349,7 @@ defmodule Predicator.Functions.SystemFunctionsTest do
       assert {2, _ends_with_func} = functions["ends_with"]
       assert {[2, 3], _substring_func} = functions["substring"]
       assert {2, _index_of_func} = functions["index_of"]
+      assert {2, _concat_func} = functions["concat"]
     end
   end
 end

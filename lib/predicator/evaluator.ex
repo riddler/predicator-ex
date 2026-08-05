@@ -759,6 +759,10 @@ defmodule Predicator.Evaluator do
     {:ok, to_string(left) <> right}
   end
 
+  defp apply_addition(left, right) when is_list(left) and is_list(right) do
+    {:ok, left ++ right}
+  end
+
   # Date + Duration = Date/DateTime
   defp apply_addition(%Date{} = date, duration) when is_map(duration) do
     if duration_map?(duration) do

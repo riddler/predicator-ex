@@ -164,6 +164,29 @@ defmodule Predicator.EvaluatorTest do
     end
   end
 
+  describe "list concatenation with add instruction" do
+    test "concatenates two lists, preserving order" do
+      instructions = [["lit", [1, 2]], ["lit", [3, 4]], ["add"]]
+      assert Evaluator.evaluate(instructions) == [1, 2, 3, 4]
+    end
+
+    test "left-empty list is an identity" do
+      instructions = [["lit", []], ["lit", [1]], ["add"]]
+      assert Evaluator.evaluate(instructions) == [1]
+    end
+
+    test "right-empty list is an identity" do
+      instructions = [["lit", [1]], ["lit", []], ["add"]]
+      assert Evaluator.evaluate(instructions) == [1]
+    end
+
+    test "list plus number is rejected" do
+      instructions = [["lit", [1]], ["lit", 2], ["add"]]
+      result = Evaluator.evaluate(instructions)
+      assert {:error, %Predicator.Errors.TypeMismatchError{operation: :add}} = result
+    end
+  end
+
   describe "evaluate/2 error cases" do
     test "returns error for empty instruction list" do
       result = Evaluator.evaluate([])

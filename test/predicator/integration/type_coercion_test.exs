@@ -36,6 +36,32 @@ defmodule Predicator.TypeCoercionTest do
     end
   end
 
+  describe "list concatenation with + operator" do
+    test "concatenates two list literals" do
+      assert {:ok, [1, 2, 3]} = Predicator.evaluate("[1, 2] + [3]", %{})
+    end
+
+    test "empty-list identities" do
+      assert {:ok, [1]} = Predicator.evaluate("[] + [1]", %{})
+      assert {:ok, [1]} = Predicator.evaluate("[1] + []", %{})
+    end
+
+    test "concatenates a variable list with a list literal" do
+      assert {:ok, [1, 2, 3, 4]} =
+               Predicator.evaluate("Var1 + [4]", %{"Var1" => [1, 2, 3]})
+    end
+
+    test "concatenates a non-literal list operand built via make_list" do
+      assert {:ok, [1, 2, 1]} =
+               Predicator.evaluate("[x, y] + [1]", %{"x" => 1, "y" => 2})
+    end
+
+    test "rejects list plus number" do
+      assert {:error, %Predicator.Errors.TypeMismatchError{}} =
+               Predicator.evaluate("[1] + 2", %{})
+    end
+  end
+
   describe "numeric addition with floats" do
     test "adds two floats" do
       assert {:ok, 5.5} = Predicator.evaluate("2.5 + 3.0", %{})

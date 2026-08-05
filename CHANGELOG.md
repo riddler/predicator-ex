@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a context's data, checking both string and atom keys.
 - `starts_with(s, prefix)`, `ends_with(s, suffix)`, `substring(s, start[, len])`,
   and `index_of(s, sub)` builtin string functions
+- `concat(list1, list2)` builtin function: concatenates two lists.
+- `+` now concatenates two lists (`[1, 2] + [3]` -> `[1, 2, 3]`), alongside
+  its existing numeric and string coercions.
 - `Predicator.Evaluator.run_prepared/1` (result plus final evaluator state),
   `Predicator.Evaluator.unbound_loads/1`, and
   `Predicator.Evaluator.resolve_key/2`.

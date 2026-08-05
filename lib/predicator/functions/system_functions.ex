@@ -18,6 +18,9 @@ defmodule Predicator.Functions.SystemFunctions do
   - `substring(string, start[, len])` - Extracts a substring from a start index
   - `index_of(string, sub)` - Finds the index of a substring, or -1
 
+  ### List Functions
+  - `concat(list1, list2)` - Concatenates two lists
+
   ## Examples
 
       iex> Predicator.evaluate("len('hello')", %{})
@@ -43,6 +46,9 @@ defmodule Predicator.Functions.SystemFunctions do
 
       iex> Predicator.evaluate("index_of('hello world', 'nope')", %{})
       {:ok, -1}
+
+      iex> Predicator.evaluate("concat([1, 2], [3])", %{})
+      {:ok, [1, 2, 3]}
   """
 
   alias Predicator.{Evaluator, Types}
@@ -76,7 +82,9 @@ defmodule Predicator.Functions.SystemFunctions do
       "starts_with" => {2, &call_starts_with/2},
       "ends_with" => {2, &call_ends_with/2},
       "substring" => {[2, 3], &call_substring/2},
-      "index_of" => {2, &call_index_of/2}
+      "index_of" => {2, &call_index_of/2},
+      # List functions
+      "concat" => {2, &call_concat/2}
     }
   end
 
@@ -213,5 +221,16 @@ defmodule Predicator.Functions.SystemFunctions do
 
   defp call_index_of(_args, _context) do
     {:error, "index_of() expects exactly 2 arguments"}
+  end
+
+  # List function implementations
+
+  @spec call_concat([Types.value()], Types.context()) :: function_result()
+  defp call_concat([a, b], _context) when is_list(a) and is_list(b) do
+    {:ok, a ++ b}
+  end
+
+  defp call_concat([_a, _b], _context) do
+    {:error, "concat() expects two list arguments"}
   end
 end
