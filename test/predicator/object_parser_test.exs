@@ -149,6 +149,23 @@ defmodule Predicator.ObjectParserTest do
     end
   end
 
+  describe "object key round trips" do
+    test "one key of each style survives parse -> decompile -> parse" do
+      source = ~s({a: 1, "b c": 2, 'd e': 3})
+      {:ok, ast} = Predicator.parse(source)
+
+      assert Predicator.decompile(ast) == source
+      assert Predicator.parse(Predicator.decompile(ast)) == {:ok, ast}
+    end
+
+    test "a hand-built 3.6-shaped object compiles like its parsed equivalent" do
+      {:ok, parsed} = Predicator.parse(~s({a: 1}))
+
+      assert Predicator.Compiler.to_instructions({:object, [{{:identifier, "a"}, {:literal, 1}}]}) ==
+               Predicator.Compiler.to_instructions(parsed)
+    end
+  end
+
   # Phase 1 of source positions: these assertions are about AST *shape*, so they
   # read the position-free form.
   defp parse_positionless(input) do

@@ -331,10 +331,8 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
   # Helper function to extract string from object key node
   @spec extract_key_string(Parser.object_key()) :: binary()
-  defp extract_key_string({:identifier, name, _position}), do: name
-  defp extract_key_string({:string_literal, value, _position}), do: value
+  defp extract_key_string({:object_key, value, _style, _position}), do: value
 
   @spec key_position(Parser.object_key()) :: Types.position() | nil
-  defp key_position({:identifier, _name, position}), do: position
-  defp key_position({:string_literal, _value, position}), do: position
+  defp key_position({:object_key, _value, _style, position}), do: position
 end

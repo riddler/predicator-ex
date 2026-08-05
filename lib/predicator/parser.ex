@@ -96,7 +96,7 @@ defmodule Predicator.Parser do
   - `{:logical_or, left, right, pos}` - A logical OR expression
   - `{:logical_not, operand, pos}` - A logical NOT expression
   - `{:list, elements, pos}` - A list literal
-  - `{:object, entries, pos}` - An object literal with key-value pairs
+  - `{:object, entries, pos}` - An object literal whose keys are `t:object_key/0`
   - `{:membership, operator, left, right, pos}` - A membership operation (in/contains)
   - `{:function_call, name, arguments, pos}` - A function call with arguments
   - `{:bracket_access, object, key, pos}` - A bracket access expression (obj[key])
@@ -166,10 +166,20 @@ defmodule Predicator.Parser do
   @type object_entry :: {object_key(), ast()}
 
   @typedoc """
-  A key in an object literal - either an identifier or string literal.
+  A key in an object literal.
+
+  Object keys have their own tag rather than reusing the expression node tags,
+  so no consumer has to tell a key from an expression by tuple arity. `style`
+  records how the key was written - bare, or quoted with which character - so
+  `Predicator.Visitors.StringVisitor` can render it back as the author wrote it.
   """
-  @type object_key ::
-          {:identifier, binary(), position()} | {:string_literal, binary(), position()}
+  @type object_key :: {:object_key, binary(), object_key_style(), position()}
+
+  @typedoc """
+  How an object key was written: bare (`{name: 1}`), double-quoted
+  (`{"name": 1}`), or single-quoted (`{'name': 1}`).
+  """
+  @type object_key_style :: :identifier | :double | :single
 
   @typedoc """
   Comparison operators in the AST.
@@ -282,9 +292,6 @@ defmodule Predicator.Parser do
   def strip_positions({:string_literal, value, quote_type, _pos}),
     do: {:string_literal, value, quote_type}
 
-  def strip_positions({:string_literal, value, pos}) when is_tuple(pos) or is_nil(pos),
-    do: {:string_literal, value}
-
   def strip_positions({:identifier, name, _pos}), do: {:identifier, name}
   def strip_positions({:duration, units, _pos}), do: {:duration, units}
 
@@ -359,7 +366,19 @@ defmodule Predicator.Parser do
   def strip_positions(node), do: node
 
   @spec strip_entry({term(), term()}) :: {term(), term()}
-  defp strip_entry({key, value}), do: {strip_positions(key), strip_positions(value)}
+  defp strip_entry({key, value}), do: {strip_object_key(key), strip_positions(value)}
+
+  # Object keys strip back to the 3.6 shape, which had no style on a key. An
+  # already-legacy key in a hand-built tree falls through to strip_positions/1
+  # so stripping stays idempotent.
+  @spec strip_object_key(term()) :: term()
+  defp strip_object_key({:object_key, value, :identifier, _pos}), do: {:identifier, value}
+  defp strip_object_key({:object_key, value, _style, _pos}), do: {:string_literal, value}
+
+  defp strip_object_key({:string_literal, value, pos}) when is_tuple(pos) or is_nil(pos),
+    do: {:string_literal, value}
+
+  defp strip_object_key(key), do: strip_positions(key)
 
   @doc """
   Appends a `nil` position to any node that lacks one, producing the shape
@@ -379,8 +398,6 @@ defmodule Predicator.Parser do
   """
   @spec ensure_positions(term()) :: term()
   def ensure_positions({:literal, value}), do: {:literal, value, nil}
-
-  def ensure_positions({:string_literal, value}), do: {:string_literal, value, nil}
 
   def ensure_positions({:string_literal, value, quote_type})
       when quote_type in [:double, :single],
@@ -467,7 +484,23 @@ defmodule Predicator.Parser do
   def ensure_positions(node), do: node
 
   @spec ensure_entry({term(), term()}) :: {term(), term()}
-  defp ensure_entry({key, value}), do: {ensure_positions(key), ensure_positions(value)}
+  defp ensure_entry({key, value}), do: {ensure_object_key(key), ensure_positions(value)}
+
+  # Accepts every pre-4.0 key shape: 3.6 bare and 3.7 positioned, identifier and
+  # string. A string key predating this change carries no quote type, so it
+  # normalizes to `:double` - the quote character StringVisitor always used for
+  # it. Retired wholesale in 4.0.0 (see px-tbv).
+  @spec ensure_object_key(term()) :: term()
+  defp ensure_object_key({:object_key, _value, _style, _pos} = key), do: key
+  defp ensure_object_key({:object_key, value, style}), do: {:object_key, value, style, nil}
+  defp ensure_object_key({:identifier, value}), do: {:object_key, value, :identifier, nil}
+  defp ensure_object_key({:identifier, value, pos}), do: {:object_key, value, :identifier, pos}
+  defp ensure_object_key({:string_literal, value}), do: {:object_key, value, :double, nil}
+
+  defp ensure_object_key({:string_literal, value, pos}) when is_tuple(pos) or is_nil(pos),
+    do: {:object_key, value, :double, pos}
+
+  defp ensure_object_key(key), do: key
 
   # Emits a single deprecation warning if the token stream uses `=` as an
   # equality operator. In 3.8 there is no assignment grammar, so every `:eq`
@@ -1274,10 +1307,10 @@ defmodule Predicator.Parser do
   defp parse_object_key(state) do
     case peek_token(state) do
       {:identifier, line, col, _len, value} ->
-        {:ok, {:identifier, value, {line, col}}, advance(state)}
+        {:ok, {:object_key, value, :identifier, {line, col}}, advance(state)}
 
-      {:string, line, col, _len, value, _quote_type} ->
-        {:ok, {:string_literal, value, {line, col}}, advance(state)}
+      {:string, line, col, _len, value, quote_type} ->
+        {:ok, {:object_key, value, quote_type, {line, col}}, advance(state)}
 
       {type, line, col, _len, value} ->
         {:error,

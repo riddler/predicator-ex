@@ -18,6 +18,7 @@ defmodule Predicator.ParserNormalizationTest do
     "[a, b, 3]",
     "[]",
     "{a: 1, \"b\": x}",
+    "{'c d': 1}",
     "{}",
     "len(upper(name))",
     "a[0][1]",
@@ -62,8 +63,24 @@ defmodule Predicator.ParserNormalizationTest do
     end
 
     test "recurses into both halves of an object entry" do
-      mixed = {:object, [{{:identifier, "k", {1, 2}}, {:literal, 1, {1, 5}}}]}
+      mixed = {:object, [{{:object_key, "k", :identifier, {1, 2}}, {:literal, 1, {1, 5}}}]}
       assert Parser.strip_positions(mixed) == {:object, [{{:identifier, "k"}, {:literal, 1}}]}
+    end
+
+    test "strips an object key back to the 3.6 shape, discarding its style" do
+      for style <- [:double, :single] do
+        assert Parser.strip_positions(
+                 {:object, [{{:object_key, "k", style, {1, 2}}, {:literal, 1}}]}
+               ) ==
+                 {:object, [{{:string_literal, "k"}, {:literal, 1}}]}
+      end
+    end
+
+    test "strips an already-legacy object key idempotently" do
+      legacy = {:object, [{{:string_literal, "k", {1, 2}}, {:literal, 1}}]}
+
+      assert Parser.strip_positions(legacy) ==
+               {:object, [{{:string_literal, "k"}, {:literal, 1}}]}
     end
 
     test "recurses into function-call arguments" do
@@ -103,11 +120,30 @@ defmodule Predicator.ParserNormalizationTest do
                {:comparison, :gt, {:identifier, "a", {1, 1}}, {:literal, 1, nil}, {1, 3}}
     end
 
-    test "distinguishes an object-key string literal from an expression one" do
-      assert Parser.ensure_positions({:string_literal, "a"}) == {:string_literal, "a", nil}
-
+    test "distinguishes an object-key string literal from an expression one by position" do
       assert Parser.ensure_positions({:string_literal, "a", :double}) ==
                {:string_literal, "a", :double, nil}
+
+      assert Parser.ensure_positions({:object, [{{:string_literal, "a"}, {:literal, 1}}]}) ==
+               {:object, [{{:object_key, "a", :double, nil}, {:literal, 1, nil}}], nil}
+    end
+
+    test "lifts every pre-4.0 object key shape" do
+      for {legacy, expected} <- [
+            {{:identifier, "k"}, {:object_key, "k", :identifier, nil}},
+            {{:identifier, "k", {1, 2}}, {:object_key, "k", :identifier, {1, 2}}},
+            {{:string_literal, "k"}, {:object_key, "k", :double, nil}},
+            {{:string_literal, "k", {1, 2}}, {:object_key, "k", :double, {1, 2}}},
+            {{:object_key, "k", :single}, {:object_key, "k", :single, nil}}
+          ] do
+        assert Parser.ensure_positions({:object, [{legacy, {:literal, 1}}]}) ==
+                 {:object, [{expected, {:literal, 1, nil}}], nil}
+      end
+    end
+
+    test "passes an unrecognized object key through unchanged" do
+      assert Parser.ensure_positions({:object, [{:not_a_key, {:literal, 1}}]}) ==
+               {:object, [{:not_a_key, {:literal, 1, nil}}], nil}
     end
 
     test "passes an unrecognized node through unchanged" do
@@ -120,7 +156,7 @@ defmodule Predicator.ParserNormalizationTest do
                {:list, [{:literal, 1, nil}], nil}
 
       assert Parser.ensure_positions({:object, [{{:identifier, "k"}, {:literal, 1}}]}) ==
-               {:object, [{{:identifier, "k", nil}, {:literal, 1, nil}}], nil}
+               {:object, [{{:object_key, "k", :identifier, nil}, {:literal, 1, nil}}], nil}
 
       assert Parser.ensure_positions({:function_call, "len", [{:identifier, "a"}]}) ==
                {:function_call, "len", [{:identifier, "a", nil}], nil}
