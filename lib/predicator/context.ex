@@ -104,10 +104,15 @@ defmodule Predicator.Context do
   end
 
   @doc """
-  Answers whether `name` is bound in `context`'s data - string key or atom key,
-  resolved by `Predicator.Evaluator.resolve_key/2`, the same lookup the
-  evaluator uses when a `load` instruction records an unbound read. Presence,
-  not definedness: a name bound to `:undefined` is bound.
+  Answers whether `name` is bound in `context`'s data, resolved by
+  `Predicator.Evaluator.resolve_key/2` - the same lookup the evaluator uses
+  when a `load` instruction records an unbound read, so the two cannot
+  disagree. Presence, not definedness: a name bound to `:undefined` is bound.
+
+  `resolve_key/2` also accepts an atom key, but a `Context`'s data never has
+  one: `new/2` and `bind/3` normalized them to string keys already. The
+  `%{score: 85}` example below is bound because of that normalization, not
+  because of an atom lookup here.
 
   ## Examples
 
