@@ -1160,9 +1160,10 @@ defmodule PredicatorTest do
     end
 
     test "handles mixed date and datetime comparisons" do
-      # Different types should not match
-      assert Predicator.evaluate("#2024-01-15# > #2024-01-15T10:00:00Z#", %{}) ==
-               {:ok, :undefined}
+      # The Date coerces to 00:00:00 UTC of that day
+      assert Predicator.evaluate("#2024-01-15# > #2024-01-15T10:00:00Z#", %{}) == {:ok, false}
+      assert Predicator.evaluate("#2024-01-15# < #2024-01-15T10:00:00Z#", %{}) == {:ok, true}
+      assert Predicator.evaluate("#2024-01-15# = #2024-01-15T00:00:00Z#", %{}) == {:ok, true}
     end
 
     test "combines with logical operators" do

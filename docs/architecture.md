@@ -478,6 +478,27 @@ recorded.
 - **Evaluator**: Date/datetime comparisons and membership operations
 - **StringVisitor**: Round-trip formatting `#date#` syntax
 
+### Temporal Comparison Semantics
+
+- **Same type**: `Date`/`Date` and `DateTime`/`DateTime` compare
+  chronologically via `Date.compare/2` and `DateTime.compare/2`, never by
+  Erlang's struct-key ordering.
+- **Mixed pair**: a `Date` compared against a `DateTime` is coerced to
+  `00:00:00` UTC of that day, then compared as two `DateTime`s. This applies
+  to ordering, `==`/`!=`, and `in`/`contains` membership. It matters in
+  practice because every relative date (`3d ago`, `2w from now`, `next 1mo`,
+  `last 1y`) evaluates to a `DateTime`, so without the coercion a `Date`
+  context value cannot be compared against one.
+- **Why coerce**: `apply_subtraction/2` already performs exactly this
+  coercion for the same pair, so refusing to order it was an inconsistency
+  inside one module; and the mismatch was silent - `:undefined` rather than a
+  type error - which gave rule authors no signal that anything was wrong.
+- **Strict equality is exempt**: `===` and `!==` are resolved before any type
+  dispatch, so a `Date` is never strictly equal to a `DateTime` regardless of
+  the instant either denotes.
+- **The anchor is fixed at UTC midnight**, matching subtraction. Making it
+  configurable would be a new feature, not part of this semantics.
+
 ### List Literals and Membership
 
 - **Syntax**: `[1, 2, 3]`, `["admin", "manager"]`

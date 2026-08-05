@@ -270,4 +270,44 @@ defmodule Predicator.IntegrationTest do
       assert {:ok, _tokens} = Lexer.tokenize(source)
     end
   end
+
+  describe "relative dates against Date context values" do
+    test "a Date compares against 'from now'" do
+      assert Predicator.evaluate("due_at < 2w from now", %{
+               "due_at" => Date.add(Date.utc_today(), 10)
+             }) == {:ok, true}
+
+      assert Predicator.evaluate("due_at < 2w from now", %{
+               "due_at" => Date.add(Date.utc_today(), 30)
+             }) == {:ok, false}
+    end
+
+    test "a Date compares against 'ago'" do
+      assert Predicator.evaluate("created_at > 3d ago", %{
+               "created_at" => Date.add(Date.utc_today(), -1)
+             }) == {:ok, true}
+
+      assert Predicator.evaluate("created_at > 3d ago", %{
+               "created_at" => Date.add(Date.utc_today(), -10)
+             }) == {:ok, false}
+    end
+
+    test "a Date compares against 'next' and 'last'" do
+      assert Predicator.evaluate("due_at < next 1mo", %{
+               "due_at" => Date.add(Date.utc_today(), 5)
+             }) == {:ok, true}
+
+      assert Predicator.evaluate("due_at < next 1mo", %{
+               "due_at" => Date.add(Date.utc_today(), 90)
+             }) == {:ok, false}
+
+      assert Predicator.evaluate("start_on > last 1y", %{
+               "start_on" => Date.add(Date.utc_today(), -30)
+             }) == {:ok, true}
+
+      assert Predicator.evaluate("start_on > last 1y", %{
+               "start_on" => Date.add(Date.utc_today(), -400)
+             }) == {:ok, false}
+    end
+  end
 end

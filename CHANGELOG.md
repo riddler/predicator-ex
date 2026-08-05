@@ -83,6 +83,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Duration units now parse in source order: `3d8h` produces
   `[{3, "d"}, {8, "h"}]` instead of the reversed `[{8, "h"}, {3, "d"}]`, and
   multi-unit durations round-trip through the string visitor unchanged
+- Comparing a `Date` against a `DateTime` now returns a boolean instead of
+  silently evaluating to `:undefined`. The `Date` is coerced to `00:00:00`
+  UTC of that day, matching the coercion mixed date subtraction already
+  performs. This covers ordering, `==`/`!=`, and `in`/`contains`, and it
+  makes every relative date (`3d ago`, `2w from now`, `next 1mo`, `last 1y`,
+  all of which produce a `DateTime`) usable against a `Date` context value.
+  Strict equality (`===`/`!==`) stays type-strict and never crosses the
+  boundary.
 - `Date` and `DateTime` ordering (`<`, `>`, `<=`, `>=`) is now chronological.
   The evaluator previously dispatched ordering comparisons to Erlang's `<`/`>`
   after confirming both sides were the same struct type, but Erlang orders
