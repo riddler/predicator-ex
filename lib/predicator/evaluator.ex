@@ -480,6 +480,15 @@ defmodule Predicator.Evaluator do
   defp compare_values(left, right, "STRICT_EQ"), do: left === right
   defp compare_values(left, right, "STRICT_NE"), do: left !== right
 
+  # Date/DateTime compare chronologically, not by Erlang term/struct-key order
+  defp compare_values(%Date{} = left, %Date{} = right, operator) do
+    compare_chronological(Date.compare(left, right), operator)
+  end
+
+  defp compare_values(%DateTime{} = left, %DateTime{} = right, operator) do
+    compare_chronological(DateTime.compare(left, right), operator)
+  end
+
   defp compare_values(left, right, operator) when types_match(left, right) do
     case operator do
       "GT" -> left > right
@@ -493,9 +502,26 @@ defmodule Predicator.Evaluator do
 
   defp compare_values(_left, _right, _operator), do: Undefined.value()
 
+  @spec compare_chronological(:lt | :eq | :gt, binary()) :: boolean()
+  defp compare_chronological(comparison, operator) do
+    case operator do
+      "GT" -> comparison == :gt
+      "LT" -> comparison == :lt
+      "EQ" -> comparison == :eq
+      "GTE" -> comparison in [:gt, :eq]
+      "LTE" -> comparison in [:lt, :eq]
+      "NE" -> comparison != :eq
+    end
+  end
+
   @spec values_equal?(Types.value(), Types.value()) :: boolean()
   defp values_equal?(:undefined, _value), do: false
   defp values_equal?(_value, :undefined), do: false
+  defp values_equal?(%Date{} = left, %Date{} = right), do: Date.compare(left, right) == :eq
+
+  defp values_equal?(%DateTime{} = left, %DateTime{} = right),
+    do: DateTime.compare(left, right) == :eq
+
   defp values_equal?(left, right) when types_match(left, right), do: left == right
   defp values_equal?(_left, _right), do: false
 

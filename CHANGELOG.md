@@ -33,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `Date` and `DateTime` ordering (`<`, `>`, `<=`, `>=`) is now chronological.
+  The evaluator previously dispatched ordering comparisons to Erlang's `<`/`>`
+  after confirming both sides were the same struct type, but Erlang orders
+  structs by sorted map key, not by field meaning - `Date`'s keys sort
+  `day, month, year`, so `#2026-08-14# < #2030-01-01#` compared day 14 against
+  day 1 and returned `false`. `DateTime` was worse, sorting `microsecond`
+  ahead of `month`. Ordering now goes through `Date.compare/2` and
+  `DateTime.compare/2`, and `EQ`/`NE`/list-membership on `DateTime` now agree
+  with `DateTime.compare/2` rather than structural equality, so two `DateTime`
+  values denoting the same instant in different time zones compare equal.
 - `Predicator.evaluate/3` now correctly reports `UndefinedVariableError` for
   any unbound root variable, not just a bare `variable_name` expression. The
   old check only matched a single-instruction `[["load", _]]` program, so an

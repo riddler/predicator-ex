@@ -1029,6 +1029,15 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("#2024-01-15# != #2024-01-10#", %{}) == {:ok, true}
     end
 
+    test "evaluates date comparisons chronologically across months and years" do
+      # Regression for px-ddc: Erlang's term order compares Date structs by
+      # map key (day, month, year), so day-first ordering used to win over
+      # chronological ordering whenever the days disagreed.
+      assert Predicator.evaluate("#2026-08-14# < #2030-01-01#", %{}) == {:ok, true}
+      assert Predicator.evaluate("#2024-01-10# < #2030-01-01#", %{}) == {:ok, true}
+      assert Predicator.evaluate("#2030-01-01# > #2026-08-14#", %{}) == {:ok, true}
+    end
+
     test "evaluates datetime comparisons with literals" do
       dt1 = "#2024-01-15T10:30:00Z#"
       dt2 = "#2024-01-15T09:30:00Z#"
@@ -1067,6 +1076,30 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("meeting_start < meeting_end", context) == {:ok, true}
       assert Predicator.evaluate("#2024-01-15T14:00:00Z# > meeting_start", context) == {:ok, true}
       assert Predicator.evaluate("#2024-01-15T14:00:00Z# < meeting_end", context) == {:ok, true}
+    end
+
+    test "evaluates datetime comparisons chronologically across months and years" do
+      # Regression for px-ddc: Erlang's term order compares DateTime structs
+      # by map key, putting day and microsecond ahead of month and year.
+      assert Predicator.evaluate("#2026-08-14T00:00:00Z# < #2030-01-01T00:00:00Z#", %{}) ==
+               {:ok, true}
+    end
+
+    test "evaluates DateTime equality and ordering across time zones" do
+      {:ok, utc, _offset} = DateTime.from_iso8601("2024-01-15T12:00:00Z")
+      {:ok, same_instant_offset, _offset} = DateTime.from_iso8601("2024-01-15T07:00:00-05:00")
+      later_offset = DateTime.add(same_instant_offset, 3600, :second)
+
+      context = %{
+        "utc" => utc,
+        "same_instant_offset" => same_instant_offset,
+        "later_offset" => later_offset
+      }
+
+      assert Predicator.evaluate("utc = same_instant_offset", context) == {:ok, true}
+      assert Predicator.evaluate("utc != same_instant_offset", context) == {:ok, false}
+      assert Predicator.evaluate("utc < later_offset", context) == {:ok, true}
+      assert Predicator.evaluate("later_offset > utc", context) == {:ok, true}
     end
 
     test "handles mixed date and datetime comparisons" do
