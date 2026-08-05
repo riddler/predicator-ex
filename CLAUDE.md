@@ -99,6 +99,7 @@ several agents can run in parallel without editing the same tree. The skills in
 | `/create-plan`, `/iterate-plan`, `/implement-plan` | plan in `docs/plans/`, then execute it |
 | `/commit` | gate, message, `Refs:` trailer, no attribution |
 | `/merge-request` | full gate, push, open the PR |
+| `/release` | bump `@version`, promote the changelog, bump the README pin - human-gated tag/push/publish stay separate |
 | `/cleanup-worktrees`, `/refresh-worktree` | land merged work, rebase the survivors |
 
 Worktrees live at `../predicator-ex-worktrees/<bead-id>-<slug>`, cut from
