@@ -2,7 +2,13 @@ defmodule Predicator.Errors.PositionTest do
   use ExUnit.Case, async: true
 
   alias Predicator.Errors
-  alias Predicator.Errors.{EvaluationError, ParseError, TypeMismatchError, UndefinedVariableError}
+
+  alias Predicator.Errors.{
+    EvaluationError,
+    LocationError,
+    TypeMismatchError,
+    UndefinedVariableError
+  }
 
   describe "put_position/2 on structs carrying :position" do
     test "attaches to an EvaluationError" do
@@ -47,7 +53,7 @@ defmodule Predicator.Errors.PositionTest do
     end
 
     test "a struct without a :position field is returned unchanged" do
-      error = ParseError.new("bad", 1, 1)
+      error = LocationError.not_assignable("literal value", 42)
 
       assert Errors.put_position(error, {1, 3}) == error
       refute Map.has_key?(error, :position)
