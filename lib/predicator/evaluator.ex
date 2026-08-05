@@ -35,13 +35,14 @@ defmodule Predicator.Evaluator do
 
   @typedoc "Internal evaluator state"
   @type t :: %__MODULE__{
-          instructions: Types.instruction_list(),
+          instructions: Types.instruction_list() | tuple(),
           instruction_pointer: non_neg_integer(),
           stack: [Types.value()],
           context: Types.context(),
           functions: %{binary() => {function_arity(), function()}},
           halted: boolean(),
-          unbound_loads: [binary()]
+          unbound_loads: [binary()],
+          size: non_neg_integer() | nil
         }
 
   @typedoc "A function's accepted argument count(s): a fixed arity, or a set of arities for optional/variadic-style args"
@@ -49,6 +50,7 @@ defmodule Predicator.Evaluator do
 
   defstruct [
     :instructions,
+    :size,
     instruction_pointer: 0,
     stack: [],
     context: %{},
@@ -233,6 +235,14 @@ defmodule Predicator.Evaluator do
   Returns the updated evaluator state or an error.
   """
   @spec step(t()) :: {:ok, t()} | {:error, term()}
+  def step(%__MODULE__{instructions: instructions} = evaluator) when is_list(instructions) do
+    step(%__MODULE__{
+      evaluator
+      | instructions: :erlang.list_to_tuple(instructions),
+        size: length(instructions)
+    })
+  end
+
   def step(%__MODULE__{} = evaluator) do
     if finished?(evaluator) do
       {:ok, halt(evaluator)}
@@ -252,8 +262,8 @@ defmodule Predicator.Evaluator do
   # Private functions
 
   @spec finished?(t()) :: boolean()
-  defp finished?(%__MODULE__{instruction_pointer: ip, instructions: instructions}) do
-    ip >= length(instructions)
+  defp finished?(%__MODULE__{instruction_pointer: ip, size: size}) do
+    ip >= size
   end
 
   @spec halt(t()) :: t()
@@ -262,19 +272,22 @@ defmodule Predicator.Evaluator do
   end
 
   @spec fetch_current_instruction(t()) :: {:ok, Types.instruction()} | {:error, term()}
-  defp fetch_current_instruction(%__MODULE__{instruction_pointer: ip, instructions: instructions}) do
-    case Enum.at(instructions, ip) do
-      nil ->
-        {:error,
-         EvaluationError.new(
-           "Invalid instruction pointer: #{ip}",
-           "invalid_instruction_pointer",
-           :evaluate
-         )}
+  defp fetch_current_instruction(%__MODULE__{
+         instruction_pointer: ip,
+         instructions: instructions,
+         size: size
+       })
+       when ip >= 0 and ip < size do
+    {:ok, :erlang.element(ip + 1, instructions)}
+  end
 
-      instruction ->
-        {:ok, instruction}
-    end
+  defp fetch_current_instruction(%__MODULE__{instruction_pointer: ip}) do
+    {:error,
+     EvaluationError.new(
+       "Invalid instruction pointer: #{ip}",
+       "invalid_instruction_pointer",
+       :evaluate
+     )}
   end
 
   @spec execute_instruction(t(), Types.instruction()) :: {:ok, t()} | {:error, term()}
