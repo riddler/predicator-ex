@@ -75,6 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `Predicator.decompile/2` and `Predicator.Compiler.to_string/2` no longer
+  raise `FunctionClauseError` on ASTs containing dotted property access
+  (`user.name`). `Predicator.Visitors.StringVisitor` was missing the
+  `:property_access` clause; it now renders `object.property`, including
+  chains (`user.profile.email`) and mixes with bracket access.
 - `Date` and `DateTime` ordering (`<`, `>`, `<=`, `>=`) is now chronological.
   The evaluator previously dispatched ordering comparisons to Erlang's `<`/`>`
   after confirming both sides were the same struct type, but Erlang orders

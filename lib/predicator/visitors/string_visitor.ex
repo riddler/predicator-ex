@@ -200,6 +200,13 @@ defmodule Predicator.Visitors.StringVisitor do
     "#{object_str}[#{key_str}]"
   end
 
+  defp do_visit({:property_access, object, property, _position}, opts) do
+    object_str = do_visit(object, opts)
+
+    # Property access format: object.property
+    "#{object_str}.#{property}"
+  end
+
   defp do_visit({:list, elements, _position}, opts) do
     element_strings = Enum.map(elements, fn element -> do_visit(element, opts) end)
     "[#{Enum.join(element_strings, ", ")}]"

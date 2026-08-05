@@ -316,6 +316,42 @@ defmodule Predicator.Visitors.StringVisitorTest do
       end
     end
 
+    test "round-trip with property access" do
+      alias Predicator.Lexer
+
+      original = "user.name"
+      {:ok, tokens} = Lexer.tokenize(original)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
+
+      result = StringVisitor.visit(ast, [])
+
+      assert result == original
+    end
+
+    test "round-trip with chained property access" do
+      alias Predicator.Lexer
+
+      original = ~s(user.profile.email = "test@example.com")
+      {:ok, tokens} = Lexer.tokenize(original)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
+
+      result = StringVisitor.visit(ast, [])
+
+      assert result == original
+    end
+
+    test "round-trip with mixed property and bracket access" do
+      alias Predicator.Lexer
+
+      original = ~s(user.settings["theme"].name)
+      {:ok, tokens} = Lexer.tokenize(original)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
+
+      result = StringVisitor.visit(ast, [])
+
+      assert result == original
+    end
+
     test "handles parenthesized expressions" do
       alias Predicator.Lexer
 
