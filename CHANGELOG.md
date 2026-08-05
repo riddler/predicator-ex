@@ -46,6 +46,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   0-based index to the `{line, column}` of the AST node that emitted it. The
   table is an Elixir-side companion value and never enters the instruction
   format itself.
+- `Predicator.compile_with_positions/1`: compiles a string expression to the
+  instruction list `compile/1` returns plus that side table.
+- An optional `:position` field on `Predicator.Errors.EvaluationError`,
+  `Predicator.Errors.TypeMismatchError`, and
+  `Predicator.Errors.UndefinedVariableError`, holding the `{line, column}` of
+  the source token behind the failing instruction, or `nil` when no side table
+  was available.
+- `Predicator.Errors.put_position/2`: attaches a position to any error value,
+  returning it unchanged when the position is `nil` or the value has no
+  `:position` field.
+- A `:positions` option on `Predicator.evaluate/3` and
+  `Predicator.Evaluator.evaluate/3`, seeding the side table used to populate
+  `:position` on runtime errors. Evaluating a string expression threads its own
+  table automatically; an instruction-list caller who omits the option sees
+  `position: nil` and no other change.
 
 ### Changed
 

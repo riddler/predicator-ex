@@ -8,6 +8,8 @@ defmodule Predicator.Errors.UndefinedVariableError do
 
   - `message` - Human-readable error description
   - `variable` - The name of the undefined variable
+  - `position` - `{line, column}` of the source token that produced the failing
+    instruction, when a position table was available (optional)
 
   ## Examples
 
@@ -23,11 +25,12 @@ defmodule Predicator.Errors.UndefinedVariableError do
   """
 
   @enforce_keys [:message, :variable]
-  defstruct [:message, :variable]
+  defstruct [:message, :variable, :position]
 
   @type t :: %__MODULE__{
           message: binary(),
-          variable: binary()
+          variable: binary(),
+          position: Predicator.Types.position() | nil
         }
 
   @doc """

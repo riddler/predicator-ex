@@ -6,6 +6,37 @@ defmodule Predicator.Errors do
   type names, and operation names consistently across all error types.
   """
 
+  alias Predicator.Types
+
+  @doc """
+  Attaches a source position to an error struct that has a `:position` field.
+
+  Returns the error unchanged when `position` is `nil` or when the value has no
+  `:position` field, so it is safe to call on any error value - including the
+  bare-string errors some evaluator paths return internally.
+
+  ## Examples
+
+      iex> error = Predicator.Errors.EvaluationError.new("boom", "boom")
+      iex> Predicator.Errors.put_position(error, {1, 3}).position
+      {1, 3}
+
+      iex> error = Predicator.Errors.EvaluationError.new("boom", "boom")
+      iex> Predicator.Errors.put_position(error, nil).position
+      nil
+
+      iex> Predicator.Errors.put_position("boom", {1, 3})
+      "boom"
+  """
+  @spec put_position(term(), Types.position() | nil) :: term()
+  def put_position(error, nil), do: error
+
+  def put_position(%_struct{} = error, position) do
+    if Map.has_key?(error, :position), do: %{error | position: position}, else: error
+  end
+
+  def put_position(error, _position), do: error
+
   @doc """
   Formats an expected type name for error messages with proper articles.
 

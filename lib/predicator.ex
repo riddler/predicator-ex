@@ -74,6 +74,10 @@ defmodule Predicator do
   - `context` - Optional context map with variable bindings (default: `%{}`)
   - `opts` - Optional keyword list of options:
     - `:functions` - Map of custom functions to make available during evaluation
+    - `:positions` - Source-position side table from
+      `compile_with_positions/1`, used to populate `:position` on runtime
+      errors. String input threads its own table automatically; an
+      instruction-list caller who omits this sees `position: nil`.
 
   ## Returns
 
@@ -130,8 +134,8 @@ defmodule Predicator do
       {:ok, tokens} ->
         case Parser.parse(tokens) do
           {:ok, ast} ->
-            instructions = Compiler.to_instructions(ast)
-            evaluate_instructions(instructions, context, opts)
+            {instructions, positions} = Compiler.to_instructions_with_positions(ast)
+            evaluate_instructions(instructions, context, Keyword.put(opts, :positions, positions))
 
           {:error, message, line, column} ->
             {:error, ParseError.new(message, line, column)}
@@ -147,11 +151,12 @@ defmodule Predicator do
   end
 
   # Helper function to evaluate instructions and convert errors to new format
-  defp evaluate_instructions(instructions, %Context{} = context, _opts) do
+  defp evaluate_instructions(instructions, %Context{} = context, opts) do
     evaluator = %Evaluator{
       instructions: instructions,
       context: context.data,
-      functions: context.functions
+      functions: context.functions,
+      positions: Keyword.get(opts, :positions, %{})
     }
 
     case Evaluator.run_prepared(evaluator) do
@@ -250,6 +255,36 @@ defmodule Predicator do
       {:ok, ast} ->
         instructions = Compiler.to_instructions(ast)
         {:ok, instructions}
+
+      {:error, message, line, column} ->
+        {:error, "#{message} at line #{line}, column #{column}"}
+    end
+  end
+
+  @doc """
+  Compiles a string expression to an instruction list plus a source-position
+  side table.
+
+  The instruction list is identical to `compile/1`'s; the table maps each
+  instruction's 0-based index to the `{line, column}` of the AST node that
+  emitted it. Pass it to `evaluate/3` as `positions:` to get positions on
+  runtime errors from a pre-compiled program.
+
+  ## Examples
+
+      iex> {:ok, instructions, positions} = Predicator.compile_with_positions("score > 85")
+      iex> instructions
+      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      iex> positions
+      %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
+  """
+  @spec compile_with_positions(binary()) ::
+          {:ok, Types.instruction_list(), Types.position_table()} | {:error, binary()}
+  def compile_with_positions(expression) when is_binary(expression) do
+    case parse(expression) do
+      {:ok, ast} ->
+        {instructions, positions} = Compiler.to_instructions_with_positions(ast)
+        {:ok, instructions, positions}
 
       {:error, message, line, column} ->
         {:error, "#{message} at line #{line}, column #{column}"}

@@ -191,6 +191,63 @@ defmodule PredicatorTest do
     end
   end
 
+  describe "compile_with_positions/1" do
+    test "returns the instruction list and a side table" do
+      assert {:ok, instructions, positions} = Predicator.compile_with_positions("score > 85")
+      assert instructions == [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      assert positions == %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
+    end
+
+    test "the instruction list is identical to compile/1's" do
+      for expression <- [
+            "score > 85",
+            "a and b or not c",
+            "len(name) + 1",
+            "[1, 2, 3] contains x",
+            "{a: 1, 'b': items[0]}",
+            "-x % 3 == 0"
+          ] do
+        assert {:ok, plain} = Predicator.compile(expression)
+        assert {:ok, positioned, _table} = Predicator.compile_with_positions(expression)
+        assert plain == positioned
+      end
+    end
+
+    test "reports parse errors the same way compile/1 does" do
+      assert Predicator.compile_with_positions("score >") == Predicator.compile("score >")
+    end
+  end
+
+  describe "runtime error positions" do
+    test "a string expression populates :position" do
+      assert {:error, error} = Predicator.evaluate("a * true", %{"a" => 1})
+      assert error.position == {1, 3}
+    end
+
+    test "an instruction list without a table leaves :position nil" do
+      assert {:error, error} =
+               Predicator.evaluate([["lit", 1], ["lit", true], ["multiply"]], %{})
+
+      assert error.position == nil
+    end
+
+    test "an instruction list with a caller-supplied table populates :position" do
+      {:ok, instructions, positions} = Predicator.compile_with_positions("a * true")
+
+      assert {:error, error} =
+               Predicator.evaluate(instructions, %{"a" => 1}, positions: positions)
+
+      assert error.position == {1, 3}
+    end
+
+    test "a %Context{} evaluation populates :position too" do
+      context = Predicator.Context.new(%{"a" => 1})
+
+      assert {:error, error} = Predicator.evaluate("a * true", context)
+      assert error.position == {1, 3}
+    end
+  end
+
   describe "compile!/1" do
     test "compiles successfully" do
       instructions = Predicator.compile!("score > 85")
@@ -1421,7 +1478,8 @@ defmodule PredicatorTest do
                 %Predicator.Errors.EvaluationError{
                   reason: "custom error",
                   message: "custom error",
-                  operation: :function_call
+                  operation: :function_call,
+                  position: {1, 1}
                 }}
 
       # Function raises exception
