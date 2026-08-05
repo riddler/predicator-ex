@@ -1119,12 +1119,28 @@ defmodule Predicator.Evaluator do
   Resolves `name` to the key it is bound under in `data`, or `:unbound`.
 
   A root variable may be stored under a string key or the equivalent atom key;
-  this answers which, in the same order a `load` instruction resolves a name.
-  `Predicator.Context.bound?/2` and the evaluator's own unbound-load recording
-  both go through here, so they cannot drift apart.
+  this answers which. `Predicator.Context.bound?/2` and the evaluator's own
+  unbound-load recording both go through here, so they cannot drift apart from
+  each other.
 
   Note this asks about *presence*, not value: a name bound to `:undefined` (or
   to `nil`) resolves to `{:ok, key}`, because it is bound.
+
+  > #### Atom keys resolve here but no longer load {: .info}
+  >
+  > This is deliberately *wider* than what a `load` instruction reads. Since
+  > `px-8um.2`, `load` does a plain string-key lookup: `Predicator.Context.new/2`
+  > and `bind/3` normalize atom keys away at the edge, so no `Context`-routed
+  > data can still carry one. The atom branch below survives only for a caller
+  > who bypasses that edge - `Predicator.Evaluator.evaluate/3` or
+  > `Predicator.evaluator/2` handed a hand-built atom-keyed map.
+  >
+  > For that caller the two answers are asymmetric: `%{score: 85}` *loads* as
+  > `:undefined` (no string key) while resolving as `{:ok, :score}` (present),
+  > so the load is not recorded in `unbound_loads`. Bound-but-undefined is a
+  > state this API already models, and treating a present atom key as unbound
+  > bookkeeping would be the worse answer. Nothing reachable through
+  > `Predicator.evaluate/3` can observe the asymmetry.
 
   ## Examples
 
@@ -1157,7 +1173,10 @@ defmodule Predicator.Evaluator do
   # Presence, not value, is the question: `%{"x" => nil}` and
   # `%{"x" => :undefined}` both load as :undefined but are bound, and
   # Context.bound?/2 must keep agreeing with what gets recorded here - which
-  # is why both go through resolve_key/2.
+  # is why both go through resolve_key/2. That agreement is between these two,
+  # not with load_from_context/2: resolve_key/2 still finds an atom key that a
+  # load no longer reads, which is visible only to a caller who bypassed
+  # Context.new/2 - see resolve_key/2's docs.
   @spec record_unbound_load(t(), binary(), Types.value()) :: t()
   defp record_unbound_load(%__MODULE__{} = evaluator, variable_name, value) do
     if Undefined.undefined?(value) and

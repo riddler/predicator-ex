@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   caller who wants atom-key or `nil` normalization goes through
   `Predicator.Context` or `Predicator.evaluate/3` instead.
 
+  One narrowing follows from "deep and total": a duration value
+  (`t:Predicator.Types.duration/0`) is a plain atom-keyed map, not a struct,
+  so a pre-built `Predicator.Duration.new/1` result *bound into a context*
+  now has its keys stringified like any other map and is no longer recognized
+  as a duration by date arithmetic. Durations built the documented way - by a
+  `duration(...)` or `3d8h` literal in the expression, during evaluation -
+  never pass through this normalization and are unaffected.
+
 ### Added
 
 - `Predicator.Errors.ParseError` gains a `:position` field - `{line, column}`,
