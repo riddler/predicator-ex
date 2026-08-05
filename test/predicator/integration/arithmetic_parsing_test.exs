@@ -3,6 +3,8 @@ defmodule ArithmeticOperatorParserTest do
 
   import Predicator
 
+  alias Predicator.Errors.UndefinedVariableError
+
   describe "arithmetic operators - fully implemented" do
     test "addition operator works correctly" do
       assert {:ok, result} = evaluate("2 + 3", %{})
@@ -50,11 +52,11 @@ defmodule ArithmeticOperatorParserTest do
     end
 
     test "bang operator works as logical NOT" do
-      # ! now works as logical NOT, but since 'active' is undefined, it gives an error
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} =
-               evaluate("!active", %{})
-
-      assert message =~ "Logical NOT requires a boolean, got :undefined (undefined)"
+      # ! works as logical NOT; `active` is unbound, and since px-8um.7 the
+      # rejected :undefined operand is reported as the unbound root itself
+      # rather than as a nameless type mismatch.
+      assert evaluate("!active", %{}) ==
+               {:error, UndefinedVariableError.new("active")}
     end
 
     test "complex arithmetic expression works correctly" do
@@ -110,14 +112,12 @@ defmodule ArithmeticOperatorParserTest do
       assert {:error, %Predicator.Errors.UndefinedVariableError{variable: "x"}} =
                evaluate("x == y", %{})
 
-      # Special case: !active fails due to type error, not unknown instruction
+      # Special case: !active fails on the unbound root, not unknown instruction
       assert {:ok, tokens} = Predicator.Lexer.tokenize("!active")
       assert length(tokens) >= 2
 
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} =
-               evaluate("!active", %{})
-
-      assert message =~ "Logical NOT requires a boolean"
+      assert evaluate("!active", %{}) ==
+               {:error, UndefinedVariableError.new("active")}
     end
   end
 

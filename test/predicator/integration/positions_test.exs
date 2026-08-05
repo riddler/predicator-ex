@@ -85,7 +85,9 @@ defmodule Predicator.Integration.PositionsTest do
   describe "positions name the token a reader would blame" do
     test "the reported column holds the expected token text" do
       cases = [
-        {"a * true", "*"},
+        # `name` is bound: an unbound root would be rewritten into a
+        # positionless UndefinedVariableError instead (px-8um.7).
+        {"name * true", "*"},
         {"10 / 0", "/"},
         {"10 % 0", "%"},
         {"-name", "-"},

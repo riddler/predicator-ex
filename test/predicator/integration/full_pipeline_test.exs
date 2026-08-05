@@ -2,6 +2,7 @@ defmodule Predicator.IntegrationTest do
   use ExUnit.Case, async: true
 
   alias Predicator.{Compiler, Evaluator, Lexer, Parser}
+  alias Predicator.Errors.UndefinedVariableError
 
   describe "full pipeline integration" do
     test "string -> tokens -> ast -> instructions -> evaluation" do
@@ -241,8 +242,8 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "unbound identifier inside a non-literal list returns an error tuple, not a raise" do
-      assert {:error, %Predicator.Errors.TypeMismatchError{}} =
-               Predicator.evaluate("[x + 1]", %{})
+      assert Predicator.evaluate("[x + 1]", %{}) ==
+               {:error, UndefinedVariableError.new("x")}
     end
 
     test "all-literal fast path still compiles to a single lit instruction" do
