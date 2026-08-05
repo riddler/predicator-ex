@@ -62,7 +62,7 @@ period.
 - **Main API** (`lib/predicator.ex`): Public interface with convenience functions
 - **Context** (`lib/predicator/context.ex`): A bound evaluation context - `data`,
   `functions` (builtins merged with `opts[:functions]` once, at construction),
-  and an `on_unbound` policy placeholder. `new/2` builds one, `bind/3` rebinds
+  and an `on_unbound` policy (`:undefined` | `:error`). `new/2` builds one, `bind/3` rebinds
   a key in O(1), `assign/3` writes through `ContextLocation.put/3`,
   `bound?/2` answers whether a root name is present in `data` (string or atom
   key). `evaluate/3` accepts a `%Context{}` directly (skipping the per-call
@@ -313,6 +313,14 @@ to the *rejecting operator* - `{1,1}` for the `not` in `"not unbound"`, `{1,9}`
 for the `+` in `"unbound + 1"` - not to the variable, so carrying it over would
 point a caller's editor at the wrong token.
 
+The third construction site is the one that *does* carry a position: the
+`on_unbound: :error` policy (`px-8um.3`) builds its `UndefinedVariableError`
+at the `load` instruction itself, so `step/1` hands it the variable's own
+`{line, column}`. `"not missing"` under `:error` reports `{1, 5}` - the
+`missing` - where the default policy's rewrite of the same expression reports
+`nil`. The asymmetry is intentional: the policy has the right token in scope
+and the other two do not.
+
 ### `Predicator.Context` Struct (v3.8.0, unreleased)
 
 - **Persistent bound context**: `Predicator.Context.new/2` merges the four
@@ -327,7 +335,7 @@ point a caller's editor at the wrong token.
   against its `data`/`functions` directly, no per-call merge) or a bare map
   (unchanged behavior - a one-shot `Context.new/2` internally)
 - Foundation bead for the `px-8um` epic; `on_unbound` is stored and validated
-  but does not yet change evaluation behavior (`px-8um.3`)
+  here and acted on by the evaluator (`px-8um.3`, below)
 - **Context key normalization (`px-8um.2`)**: `new/2` and `bind/3` are the one
   edge where atom keys and `nil` values are accepted. Both convert deeply and
   eagerly - through nested maps and lists - before evaluation ever sees the
@@ -372,7 +380,7 @@ point a caller's editor at the wrong token.
   first unbound root the run reported; see `px-8um.8` below for how it
   identifies that root today.
 - Depends on `px-8um.1` (`Predicator.Context`); the `on_unbound` policy
-  itself (`px-8um.3`) is a separate bead that builds on this one. Context key
+  itself (`px-8um.3`, below) is a separate bead that builds on this one. Context key
   normalization (`px-8um.2`) also builds on this one and has landed - see
   above.
 - Example:
@@ -409,6 +417,60 @@ point a caller's editor at the wrong token.
   missing nested paths (`user.nope`) keep their `TypeMismatchError` -
   `unbound_loads` records absent keys only. The low-level
   `Evaluator.evaluate/3` is unchanged; this is an API-layer rewrite.
+
+### The `on_unbound` policy (`px-8um.3`, v3.8.0, unreleased)
+
+`Predicator.Context`'s `on_unbound` field selects what a load of an unbound
+root does. `:undefined`, the default, pushes the `:undefined` sentinel and
+lets three-valued logic absorb it - today's behavior, unchanged. `:error`
+makes the load return
+`{:error, %Predicator.Errors.UndefinedVariableError{}}` and halts the run:
+nothing is pushed, and no later instruction executes.
+
+- **It fires at the `load` instruction**, through `unbound_load?/3` - the same
+  `Evaluator.resolve_key/2` presence test that `unbound_loads` and
+  `Context.bound?/2` use, so the policy, the recorder, and the public
+  predicate cannot drift. Presence, not definedness: `%{"x" => :undefined}`
+  and `%{"x" => nil}` are both bound and neither trips the policy.
+- **Roots only.** Only `["load", name]` reads a root; `["access", prop]` and
+  `["bracket_access"]` operate on a value already on the stack. So
+  `user.nope` on a bound `user`, `items[99]`, and a missing nested path all
+  stay `:undefined` under either policy, with no guard written for them. This
+  mirrors ECMAScript - a `ReferenceError` for an undeclared variable, a silent
+  `undefined` for a missing property - and keeps guards over sparse data
+  usable. An unbound root *under* an access (`nope.field`) still errors, at
+  the load of `nope`.
+- **Short-circuiting wins.** A load a branch skipped is never executed, so the
+  policy never sees it: `false AND missing` is `{:ok, false}` and
+  `true OR missing` is `{:ok, true}` under `:error`. That is what the W3C
+  SCXML tests expect, and it holds for free - the branch opcodes are
+  untouched.
+- **What actually changes** is narrower than it looks, because since
+  `px-8um.4`/`px-8um.7`/`px-8um.8` an unbound root already errors under the
+  default whenever its `:undefined` reaches the result or is rejected by an
+  operator. The policy's own cases are the ones where a defined result
+  *absorbs* the sentinel:
+
+  | Expression, empty context | Default | Under `:error` |
+  |---|---|---|
+  | `missing OR true` | `{:ok, true}` | `{:error, ...}` |
+  | `[missing]` | `{:ok, [:undefined]}` | `{:error, ...}` |
+  | `{'a': missing}` | `{:ok, %{"a" => :undefined}}` | `{:error, ...}` |
+  | `missing`, `missing == 5`, `not missing`, `missing + 1` | `{:error, ...}` | same, now with a position |
+  | `false AND missing`, `true OR missing` | `{:ok, false}` / `{:ok, true}` | unchanged - never loaded |
+
+- **Plumbing**: `%Evaluator{}` gained an `on_unbound` field;
+  `Predicator.evaluate/3` propagates it from a `%Context{}`, and from a bare
+  map plus `on_unbound: :error` in `opts` via `Context.new/2`.
+  `Evaluator.evaluate/3` accepts it as an option too, but does *not* validate
+  it - validation stays at the `Context.new/2` edge, and any other value
+  behaves as the default.
+- **Why it exists**: statifier sets `:error` and maps the returned struct onto
+  SCXML's `error.execution` event (W3C semantics for illegal expressions).
+  `variable` and `position` are structured fields, so no message string needs
+  parsing.
+- **ISA-neutral.** No instruction is added or re-encoded, so the Ruby and
+  JavaScript siblings need nothing to stay in sync (ADR-0001).
 
 ### Durations and Relative Dates (v3.4.0)
 
