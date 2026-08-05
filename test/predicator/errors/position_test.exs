@@ -6,6 +6,7 @@ defmodule Predicator.Errors.PositionTest do
   alias Predicator.Errors.{
     EvaluationError,
     LocationError,
+    ParseError,
     TypeMismatchError,
     UndefinedVariableError
   }
@@ -42,6 +43,63 @@ defmodule Predicator.Errors.PositionTest do
       error = TypeMismatchError.unary(:unary_minus, :integer, :string, "text")
 
       assert Errors.put_position(error, {1, 1}) == %{error | position: {1, 1}}
+    end
+  end
+
+  describe "put_position/2 with a span" do
+    test "sets :span and :position on an EvaluationError" do
+      error = EvaluationError.new("boom", "boom", :divide)
+      decorated = Errors.put_position(error, {{1, 1}, {1, 9}})
+
+      assert decorated.span == {{1, 1}, {1, 9}}
+      assert decorated.position == {1, 1}
+    end
+
+    test "sets :span and :position on a TypeMismatchError" do
+      error = TypeMismatchError.binary(:multiply, :integer, {:integer, :boolean}, {1, true})
+      decorated = Errors.put_position(error, {{2, 1}, {2, 9}})
+
+      assert decorated.span == {{2, 1}, {2, 9}}
+      assert decorated.position == {2, 1}
+    end
+
+    test "sets :span and :position on an UndefinedVariableError" do
+      error = UndefinedVariableError.new("score")
+      decorated = Errors.put_position(error, {{1, 4}, {1, 9}})
+
+      assert decorated.span == {{1, 4}, {1, 9}}
+      assert decorated.position == {1, 4}
+    end
+
+    test "a span crossing lines keeps both endpoints" do
+      error = EvaluationError.new("boom", "boom")
+
+      assert Errors.put_position(error, {{1, 1}, {3, 4}}).span == {{1, 1}, {3, 4}}
+    end
+
+    test "falls back to the span's start on a struct with :position but no :span" do
+      error = %ParseError{message: "boom", line: 1, column: 1, position: nil}
+      decorated = Errors.put_position(error, {{1, 1}, {1, 9}})
+
+      refute Map.has_key?(decorated, :span)
+      assert decorated.position == {1, 1}
+    end
+
+    test "a struct with neither field is returned unchanged" do
+      error = LocationError.not_assignable("literal value", 42)
+
+      assert Errors.put_position(error, {{1, 1}, {1, 9}}) == error
+    end
+
+    test "a bare string is returned unchanged" do
+      assert Errors.put_position("boom", {{1, 1}, {1, 9}}) == "boom"
+    end
+
+    test "leaves everything but :span and :position untouched" do
+      error = TypeMismatchError.unary(:unary_minus, :integer, :string, "text")
+
+      assert Errors.put_position(error, {{1, 1}, {1, 6}}) ==
+               %{error | span: {{1, 1}, {1, 6}}, position: {1, 1}}
     end
   end
 

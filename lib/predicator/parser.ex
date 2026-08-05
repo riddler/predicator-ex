@@ -48,6 +48,30 @@ defmodule Predicator.Parser do
   produced, and `ensure_positions/1` to bring a position-free AST up to the
   shape the visitors expect.
 
+  ## Source spans
+
+  Pass `spans: true` to `parse/2` and the same trailing slot carries a
+  `t:Predicator.Types.span/0` instead - the source text the node covers, which
+  is what a diagnostic underlines.
+
+      # default
+      {:arithmetic, :multiply, {:identifier, "a", {1, 1}}, {:literal, true, {1, 5}}, {1, 3}}
+
+      # spans: true
+      {:arithmetic, :multiply,
+        {:identifier, "a", {{1, 1}, {1, 2}}},
+        {:literal, true, {{1, 5}, {1, 9}}},
+        {{1, 1}, {1, 9}}}
+
+  A span's end is exclusive - one past the last character - so on a single line
+  `end_column - start_column` is the length, matching LSP ranges. One parse
+  produces one kind of metadata throughout; positions and spans are never mixed
+  in a single tree.
+
+  Parentheses are excluded: `(a + b)` gives the `arithmetic` node the span of
+  `a + b`. A parenthesized expression builds no node of its own, so there is
+  nothing the parentheses could belong to.
+
   ## Examples
 
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("score > 85")
@@ -124,10 +148,15 @@ defmodule Predicator.Parser do
           | {:relative_date, ast(), relative_direction(), position()}
 
   @typedoc """
-  A node's source position, or `nil` when the node was not produced by the
-  parser.
+  A node's trailing source metadata.
+
+  A `t:Predicator.Types.position/0` by default - the `{line, column}` of the
+  token that defines the node - or a `t:Predicator.Types.span/0` when the AST
+  was parsed with `spans: true`, or `nil` when the node was not produced by the
+  parser. One parse produces one kind throughout; the two are never mixed in a
+  single tree.
   """
-  @type position :: Predicator.Types.position() | nil
+  @type position :: Predicator.Types.position() | Predicator.Types.span() | nil
 
   @typedoc """
   The position-free AST shape Predicator 3.6 produced, as returned by
@@ -214,10 +243,14 @@ defmodule Predicator.Parser do
 
   @typedoc """
   Internal parser state for tracking position and tokens.
+
+  `spans?` records whether the caller asked for spans; it selects what `loc/3`
+  puts in each node's trailing slot.
   """
   @type parser_state :: %{
           tokens: [Lexer.token()],
-          position: non_neg_integer()
+          position: non_neg_integer(),
+          spans?: boolean()
         }
 
   @doc """
@@ -226,6 +259,11 @@ defmodule Predicator.Parser do
   ## Parameters
 
   - `tokens` - List of tokens from the lexer
+  - `opts` - Options:
+    - `:spans` - when `true`, each node's trailing slot carries a
+      `t:Predicator.Types.span/0` covering the source text the node spans,
+      instead of the `{line, column}` of the token that defines it. Defaults to
+      `false`.
 
   ## Returns
 
@@ -245,12 +283,16 @@ defmodule Predicator.Parser do
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("active = true")
       iex> Predicator.Parser.parse(tokens)
       {:ok, {:comparison, :eq, {:identifier, "active", {1, 1}}, {:literal, true, {1, 10}}, {1, 8}}}
+
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("a * true")
+      iex> Predicator.Parser.parse(tokens, spans: true)
+      {:ok, {:arithmetic, :multiply, {:identifier, "a", {{1, 1}, {1, 2}}}, {:literal, true, {{1, 5}, {1, 9}}}, {{1, 1}, {1, 9}}}}
   """
-  @spec parse([Lexer.token()]) :: result()
-  def parse(tokens) when is_list(tokens) do
+  @spec parse([Lexer.token()], keyword()) :: result()
+  def parse(tokens, opts \\ []) when is_list(tokens) do
     warn_deprecated_equals(tokens)
 
-    state = %{tokens: tokens, position: 0}
+    state = %{tokens: tokens, position: 0, spans?: Keyword.get(opts, :spans, false) == true}
 
     case parse_expression(state) do
       {:ok, ast, final_state} ->
@@ -564,7 +606,7 @@ defmodule Predicator.Parser do
 
     case parse_logical_and(or_state) do
       {:ok, right, final_state} ->
-        ast = {:logical_or, left, right, {line, col}}
+        ast = {:logical_or, left, right, binary_loc(state, {line, col}, left, right)}
         parse_logical_or_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -577,7 +619,7 @@ defmodule Predicator.Parser do
 
     case parse_logical_and(or_state) do
       {:ok, right, final_state} ->
-        ast = {:logical_or, left, right, {line, col}}
+        ast = {:logical_or, left, right, binary_loc(state, {line, col}, left, right)}
         parse_logical_or_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -616,7 +658,7 @@ defmodule Predicator.Parser do
 
     case parse_logical_not(and_state) do
       {:ok, right, final_state} ->
-        ast = {:logical_and, left, right, {line, col}}
+        ast = {:logical_and, left, right, binary_loc(state, {line, col}, left, right)}
         parse_logical_and_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -629,7 +671,7 @@ defmodule Predicator.Parser do
 
     case parse_logical_not(and_state) do
       {:ok, right, final_state} ->
-        ast = {:logical_and, left, right, {line, col}}
+        ast = {:logical_and, left, right, binary_loc(state, {line, col}, left, right)}
         parse_logical_and_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -657,7 +699,7 @@ defmodule Predicator.Parser do
 
     case parse_logical_not(not_state) do
       {:ok, operand, final_state} ->
-        ast = {:logical_not, operand, {line, col}}
+        ast = {:logical_not, operand, prefix_loc(state, {line, col}, operand)}
         {:ok, ast, final_state}
 
       {:error, message, line, col} ->
@@ -706,7 +748,10 @@ defmodule Predicator.Parser do
                     _other_op_type -> op_type
                   end
 
-                ast = {:comparison, normalized_op, left, right, {op_line, op_col}}
+                ast =
+                  {:comparison, normalized_op, left, right,
+                   binary_loc(state, {op_line, op_col}, left, right)}
+
                 {:ok, ast, final_state}
 
               {:error, message, line, col} ->
@@ -721,7 +766,10 @@ defmodule Predicator.Parser do
 
             case parse_addition(op_state) do
               {:ok, right, final_state} ->
-                ast = {:membership, operator, left, right, {op_line, op_col}}
+                ast =
+                  {:membership, operator, left, right,
+                   binary_loc(state, {op_line, op_col}, left, right)}
+
                 {:ok, ast, final_state}
 
               {:error, message, line, col} ->
@@ -764,7 +812,7 @@ defmodule Predicator.Parser do
 
     case parse_multiplication(add_state) do
       {:ok, right, final_state} ->
-        ast = {:arithmetic, :add, left, right, {line, col}}
+        ast = {:arithmetic, :add, left, right, binary_loc(state, {line, col}, left, right)}
         parse_addition_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -778,7 +826,9 @@ defmodule Predicator.Parser do
 
     case parse_multiplication(sub_state) do
       {:ok, right, final_state} ->
-        ast = {:arithmetic, :subtract, left, right, {line, col}}
+        ast =
+          {:arithmetic, :subtract, left, right, binary_loc(state, {line, col}, left, right)}
+
         parse_addition_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -817,7 +867,9 @@ defmodule Predicator.Parser do
 
     case parse_unary(mul_state) do
       {:ok, right, final_state} ->
-        ast = {:arithmetic, :multiply, left, right, {line, col}}
+        ast =
+          {:arithmetic, :multiply, left, right, binary_loc(state, {line, col}, left, right)}
+
         parse_multiplication_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -831,7 +883,9 @@ defmodule Predicator.Parser do
 
     case parse_unary(div_state) do
       {:ok, right, final_state} ->
-        ast = {:arithmetic, :divide, left, right, {line, col}}
+        ast =
+          {:arithmetic, :divide, left, right, binary_loc(state, {line, col}, left, right)}
+
         parse_multiplication_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -845,7 +899,9 @@ defmodule Predicator.Parser do
 
     case parse_unary(mod_state) do
       {:ok, right, final_state} ->
-        ast = {:arithmetic, :modulo, left, right, {line, col}}
+        ast =
+          {:arithmetic, :modulo, left, right, binary_loc(state, {line, col}, left, right)}
+
         parse_multiplication_rest(ast, final_state)
 
       {:error, message, line, col} ->
@@ -872,7 +928,7 @@ defmodule Predicator.Parser do
 
     case parse_unary(minus_state) do
       {:ok, operand, final_state} ->
-        ast = {:unary, :minus, operand, {line, col}}
+        ast = {:unary, :minus, operand, prefix_loc(state, {line, col}, operand)}
         {:ok, ast, final_state}
 
       {:error, message, line, col} ->
@@ -886,7 +942,7 @@ defmodule Predicator.Parser do
 
     case parse_unary(bang_state) do
       {:ok, operand, final_state} ->
-        ast = {:unary, :bang, operand, {line, col}}
+        ast = {:unary, :bang, operand, prefix_loc(state, {line, col}, operand)}
         {:ok, ast, final_state}
 
       {:error, message, line, col} ->
@@ -922,8 +978,11 @@ defmodule Predicator.Parser do
         case parse_expression(bracket_state) do
           {:ok, key_expr, key_state} ->
             case peek_token(key_state) do
-              {:rbracket, _line, _col, _len, _value} ->
-                bracket_access = {:bracket_access, expr, key_expr, {line, col}}
+              {:rbracket, _line, _col, _len, _value} = close ->
+                location =
+                  loc(state, {line, col}, fn -> {node_start(expr), token_end(close)} end)
+
+                bracket_access = {:bracket_access, expr, key_expr, location}
                 final_state = advance(key_state)
                 # Recursively parse more postfix operations
                 parse_postfix_operations(bracket_access, final_state)
@@ -945,9 +1004,14 @@ defmodule Predicator.Parser do
 
         case peek_token(dot_state) do
           # Duration operators are allowed as property names (like user.name.last)
-          {type, _line, _col, _len, property_name}
+          {type, _line, _col, _len, property_name} = name_token
           when type in [:identifier, :last_op, :next_op, :ago_op, :from_op, :now_op] ->
-            property_access = {:property_access, expr, property_name, {dot_line, dot_col}}
+            location =
+              loc(state, {dot_line, dot_col}, fn ->
+                {node_start(expr), token_end(name_token)}
+              end)
+
+            property_access = {:property_access, expr, property_name, location}
             final_state = advance(dot_state)
             # Recursively parse more postfix operations
             parse_postfix_operations(property_access, final_state)
@@ -976,7 +1040,7 @@ defmodule Predicator.Parser do
   end
 
   # Parse integer literal (may be start of duration)
-  defp parse_primary_token(state, {:integer, line, col, _len, value}) do
+  defp parse_primary_token(state, {:integer, line, col, _len, value} = token) do
     # Check if this integer is followed by duration units
     next_state = advance(state)
 
@@ -989,38 +1053,38 @@ defmodule Predicator.Parser do
 
       :not_duration ->
         # Regular integer literal
-        {:ok, {:literal, value, {line, col}}, next_state}
+        {:ok, {:literal, value, leaf_loc(state, token)}, next_state}
     end
   end
 
   # Parse float literal
-  defp parse_primary_token(state, {:float, line, col, _len, value}) do
-    {:ok, {:literal, value, {line, col}}, advance(state)}
+  defp parse_primary_token(state, {:float, _line, _col, _len, value} = token) do
+    {:ok, {:literal, value, leaf_loc(state, token)}, advance(state)}
   end
 
   # Parse string literal
-  defp parse_primary_token(state, {:string, line, col, _len, value, quote_type}) do
-    {:ok, {:string_literal, value, quote_type, {line, col}}, advance(state)}
+  defp parse_primary_token(state, {:string, _line, _col, _len, value, quote_type} = token) do
+    {:ok, {:string_literal, value, quote_type, leaf_loc(state, token)}, advance(state)}
   end
 
   # Parse boolean literal
-  defp parse_primary_token(state, {:boolean, line, col, _len, value}) do
-    {:ok, {:literal, value, {line, col}}, advance(state)}
+  defp parse_primary_token(state, {:boolean, _line, _col, _len, value} = token) do
+    {:ok, {:literal, value, leaf_loc(state, token)}, advance(state)}
   end
 
   # Parse date literal
-  defp parse_primary_token(state, {:date, line, col, _len, value}) do
-    {:ok, {:literal, value, {line, col}}, advance(state)}
+  defp parse_primary_token(state, {:date, _line, _col, _len, value} = token) do
+    {:ok, {:literal, value, leaf_loc(state, token)}, advance(state)}
   end
 
   # Parse datetime literal
-  defp parse_primary_token(state, {:datetime, line, col, _len, value}) do
-    {:ok, {:literal, value, {line, col}}, advance(state)}
+  defp parse_primary_token(state, {:datetime, _line, _col, _len, value} = token) do
+    {:ok, {:literal, value, leaf_loc(state, token)}, advance(state)}
   end
 
   # Parse identifier
-  defp parse_primary_token(state, {:identifier, line, col, _len, value}) do
-    {:ok, {:identifier, value, {line, col}}, advance(state)}
+  defp parse_primary_token(state, {:identifier, _line, _col, _len, value} = token) do
+    {:ok, {:identifier, value, leaf_loc(state, token)}, advance(state)}
   end
 
   # Parse function call
@@ -1099,6 +1163,71 @@ defmodule Predicator.Parser do
     %{state | position: pos + 1}
   end
 
+  # Selects a node's trailing metadata. The span is computed lazily so that
+  # position mode - the default - pays nothing for it, and so that the span
+  # closure may assume what is only true in span mode: that every child node's
+  # trailing slot already holds a span.
+  @spec loc(parser_state(), Predicator.Types.position(), (-> Predicator.Types.span())) ::
+          position()
+  defp loc(%{spans?: false}, point, _span_fun), do: point
+  defp loc(%{spans?: true}, _point, span_fun), do: span_fun.()
+
+  @spec previous_token(parser_state()) :: Lexer.token() | nil
+  defp previous_token(%{tokens: tokens, position: pos}), do: Enum.at(tokens, pos - 1)
+
+  @spec token_start(Lexer.token()) :: Predicator.Types.position()
+  defp token_start({_type, line, col, _len, _value}), do: {line, col}
+  defp token_start({_type, line, col, _len, _value, _quote_type}), do: {line, col}
+
+  # Exclusive: one past the token's last character. The lexer's length is the
+  # full source extent, quotes and date fences included.
+  @spec token_end(Lexer.token()) :: Predicator.Types.position()
+  defp token_end({_type, line, col, len, _value}), do: {line, col + len}
+  defp token_end({_type, line, col, len, _value, _quote_type}), do: {line, col + len}
+
+  # A delimited node runs from its opening token - already the point position -
+  # to past its closing token, which is not a descendant.
+  @spec delimited_loc(parser_state(), Predicator.Types.position(), Lexer.token()) :: position()
+  defp delimited_loc(state, start, close) do
+    loc(state, start, fn -> {start, token_end(close)} end)
+  end
+
+  # A duration's last `:duration_unit` token has already been consumed by the
+  # time the node is built, and both terminating branches leave the state
+  # positioned immediately after it.
+  @spec duration_loc(parser_state(), Predicator.Types.position()) :: position()
+  defp duration_loc(state, start) do
+    loc(state, start, fn -> {start, token_end(previous_token(state))} end)
+  end
+
+  # A leaf node covers exactly its own token.
+  @spec leaf_loc(parser_state(), Lexer.token()) :: position()
+  defp leaf_loc(state, token), do: loc(state, token_start(token), fn -> token_span(token) end)
+
+  @spec token_span(Lexer.token()) :: Predicator.Types.span()
+  defp token_span(token), do: {token_start(token), token_end(token)}
+
+  # Only correct in span mode, where a child's trailing slot is its span.
+  @spec node_start(ast()) :: Predicator.Types.position()
+  defp node_start(node), do: node |> elem(tuple_size(node) - 1) |> elem(0)
+
+  @spec node_end(ast()) :: Predicator.Types.position()
+  defp node_end(node), do: node |> elem(tuple_size(node) - 1) |> elem(1)
+
+  # An infix node spans from its left operand's start to its right operand's
+  # end; the operator token is the point position and is interior to that.
+  @spec binary_loc(parser_state(), Predicator.Types.position(), ast(), ast()) :: position()
+  defp binary_loc(state, point, left, right) do
+    loc(state, point, fn -> {node_start(left), node_end(right)} end)
+  end
+
+  # A prefix node spans from its operator token to its operand's end. The
+  # operator is not a descendant, so this cannot come from the children alone.
+  @spec prefix_loc(parser_state(), Predicator.Types.position(), ast()) :: position()
+  defp prefix_loc(state, point, operand) do
+    loc(state, point, fn -> {point, node_end(operand)} end)
+  end
+
   @spec map_membership_operator(atom()) :: membership_op()
   defp map_membership_operator(:in_op), do: :in
   defp map_membership_operator(:contains_op), do: :contains
@@ -1160,16 +1289,17 @@ defmodule Predicator.Parser do
 
     case peek_token(bracket_state) do
       # Empty list
-      {:rbracket, _line, _col, _len, _value} ->
-        {:ok, {:list, [], position}, advance(bracket_state)}
+      {:rbracket, _line, _col, _len, _value} = close ->
+        {:ok, {:list, [], delimited_loc(state, position, close)}, advance(bracket_state)}
 
       # Non-empty list
       _token ->
         case parse_list_elements(bracket_state, []) do
           {:ok, elements, final_state} ->
             case peek_token(final_state) do
-              {:rbracket, _line, _col, _len, _value} ->
-                {:ok, {:list, Enum.reverse(elements), position}, advance(final_state)}
+              {:rbracket, _line, _col, _len, _value} = close ->
+                {:ok, {:list, Enum.reverse(elements), delimited_loc(state, position, close)},
+                 advance(final_state)}
 
               {type, line, col, _len, value} ->
                 {:error, "Expected ']' but found #{format_token(type, value)}", line, col}
@@ -1217,16 +1347,17 @@ defmodule Predicator.Parser do
 
     case peek_token(brace_state) do
       # Empty object
-      {:rbrace, _line, _col, _len, _value} ->
-        {:ok, {:object, [], position}, advance(brace_state)}
+      {:rbrace, _line, _col, _len, _value} = close ->
+        {:ok, {:object, [], delimited_loc(state, position, close)}, advance(brace_state)}
 
       # Non-empty object
       _token ->
         case parse_object_entries(brace_state, []) do
           {:ok, entries, final_state} ->
             case peek_token(final_state) do
-              {:rbrace, _line, _col, _len, _value} ->
-                {:ok, {:object, Enum.reverse(entries), position}, advance(final_state)}
+              {:rbrace, _line, _col, _len, _value} = close ->
+                {:ok, {:object, Enum.reverse(entries), delimited_loc(state, position, close)},
+                 advance(final_state)}
 
               {type, line, col, _len, value} ->
                 {:error, "Expected '}' but found #{format_token(type, value)}", line, col}
@@ -1306,11 +1437,11 @@ defmodule Predicator.Parser do
           {:ok, object_key(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
   defp parse_object_key(state) do
     case peek_token(state) do
-      {:identifier, line, col, _len, value} ->
-        {:ok, {:object_key, value, :identifier, {line, col}}, advance(state)}
+      {:identifier, _line, _col, _len, value} = token ->
+        {:ok, {:object_key, value, :identifier, leaf_loc(state, token)}, advance(state)}
 
-      {:string, line, col, _len, value, quote_type} ->
-        {:ok, {:object_key, value, quote_type, {line, col}}, advance(state)}
+      {:string, _line, _col, _len, value, quote_type} = token ->
+        {:ok, {:object_key, value, quote_type, leaf_loc(state, token)}, advance(state)}
 
       {type, line, col, _len, value} ->
         {:error,
@@ -1336,17 +1467,19 @@ defmodule Predicator.Parser do
 
         case peek_token(paren_state) do
           # Empty argument list
-          {:rparen, _line, _col, _len, _value} ->
-            {:ok, {:function_call, function_name, [], position}, advance(paren_state)}
+          {:rparen, _line, _col, _len, _value} = close ->
+            {:ok, {:function_call, function_name, [], delimited_loc(state, position, close)},
+             advance(paren_state)}
 
           # Non-empty argument list
           _token ->
             case parse_function_arguments(paren_state, []) do
               {:ok, arguments, final_state} ->
                 case peek_token(final_state) do
-                  {:rparen, _line, _col, _len, _value} ->
-                    {:ok, {:function_call, function_name, Enum.reverse(arguments), position},
-                     advance(final_state)}
+                  {:rparen, _line, _col, _len, _value} = close ->
+                    {:ok,
+                     {:function_call, function_name, Enum.reverse(arguments),
+                      delimited_loc(state, position, close)}, advance(final_state)}
 
                   {type, line, col, _len, value} ->
                     {:error, "Expected ')' but found #{format_token(type, value)}", line, col}
@@ -1424,13 +1557,13 @@ defmodule Predicator.Parser do
 
           _token ->
             # End of duration sequence, check for direction operators
-            duration_ast = {:duration, Enum.reverse(units), position}
+            duration_ast = {:duration, Enum.reverse(units), duration_loc(state, position)}
             parse_duration_with_direction(duration_ast, state)
         end
 
       _token ->
         # End of duration sequence, check for direction operators
-        duration_ast = {:duration, Enum.reverse(units), position}
+        duration_ast = {:duration, Enum.reverse(units), duration_loc(state, position)}
         parse_duration_with_direction(duration_ast, state)
     end
   end
@@ -1439,16 +1572,22 @@ defmodule Predicator.Parser do
           {:ok, ast(), parser_state()} | {:error, binary(), integer(), integer()}
   defp parse_duration_with_direction(duration_ast, state) do
     case peek_token(state) do
-      {:ago_op, line, col, _len, _value} ->
-        {:ok, {:relative_date, duration_ast, :ago, {line, col}}, advance(state)}
+      {:ago_op, line, col, _len, _value} = ago ->
+        location =
+          loc(state, {line, col}, fn -> {node_start(duration_ast), token_end(ago)} end)
+
+        {:ok, {:relative_date, duration_ast, :ago, location}, advance(state)}
 
       {:from_op, line, col, _len, _value} ->
         # Expect 'now' after 'from'
         from_state = advance(state)
 
         case peek_token(from_state) do
-          {:now_op, _line, _col, _len, _value} ->
-            {:ok, {:relative_date, duration_ast, :future, {line, col}}, advance(from_state)}
+          {:now_op, _line, _col, _len, _value} = now ->
+            location =
+              loc(state, {line, col}, fn -> {node_start(duration_ast), token_end(now)} end)
+
+            {:ok, {:relative_date, duration_ast, :future, location}, advance(from_state)}
 
           {type, line, col, _len, value} ->
             {:error, "Expected 'now' after 'from' but found #{format_token(type, value)}", line,
@@ -1473,7 +1612,8 @@ defmodule Predicator.Parser do
     # Expect a duration expression
     case parse_primary(next_state) do
       {:ok, {:duration, _units, _duration_pos} = duration_ast, final_state} ->
-        {:ok, {:relative_date, duration_ast, direction, position}, final_state}
+        location = prefix_loc(state, position, duration_ast)
+        {:ok, {:relative_date, duration_ast, direction, location}, final_state}
 
       {:ok, _other_ast, _final_state} ->
         {type, line, col, _len, value} = peek_token(next_state)

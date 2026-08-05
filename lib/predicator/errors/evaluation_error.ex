@@ -12,6 +12,9 @@ defmodule Predicator.Errors.EvaluationError do
   - `operation` - The operation that failed (optional)
   - `position` - `{line, column}` of the source token that produced the failing
     instruction, when a position table was available (optional)
+  - `span` - the source text the failing instruction's AST node covers, when the
+    program was compiled with spans (optional). `position` names the token to
+    blame; `span` is what to underline.
 
   ## Examples
 
@@ -29,13 +32,14 @@ defmodule Predicator.Errors.EvaluationError do
   """
 
   @enforce_keys [:message, :reason]
-  defstruct [:message, :reason, :operation, :position]
+  defstruct [:message, :reason, :operation, :position, :span]
 
   @type t :: %__MODULE__{
           message: binary(),
           reason: binary(),
           operation: atom() | nil,
-          position: Predicator.Types.position() | nil
+          position: Predicator.Types.position() | nil,
+          span: Predicator.Types.span() | nil
         }
 
   @doc """

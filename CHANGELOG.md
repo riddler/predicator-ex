@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Source spans.** A point position tells an editor where to put a caret; a
+  span tells it what to underline. `Predicator.Parser.parse/2`,
+  `Predicator.parse/2`, and `Predicator.evaluate/3` (string input only) take
+  `spans: true`, under which every AST node's existing trailing slot carries a
+  `t:Predicator.Types.span/0` - `{{start_line, start_col}, {end_line, end_col}}`
+  with an **exclusive** end, matching LSP ranges - instead of a
+  `{line, column}`. For `a * true` the `arithmetic` node spans the whole
+  expression rather than naming column 3.
+
+- `t:Predicator.Types.span/0` and `t:Predicator.Types.span_table/0`.
+
+- `Predicator.compile_with_spans/1`, the span-mode sibling of
+  `compile_with_positions/1`. Its instruction list is byte-identical to
+  `compile/1`'s; the side table maps each instruction index to a span. Pass it
+  to `evaluate/3` as `positions:` to get spans on errors from a pre-compiled
+  program.
+
+- `:span` on `Predicator.Errors.EvaluationError`,
+  `Predicator.Errors.TypeMismatchError`, and
+  `Predicator.Errors.UndefinedVariableError`, defaulting to `nil`.
+
+- `Predicator.Errors.put_position/2` accepts a span: it sets `:span` to the span
+  and `:position` to the span's start, so a caller reading only `:position`
+  still gets a usable caret under `spans: true`.
+
+### Unchanged
+
+Stated explicitly, because this release adds a second location representation
+and nothing about the first one moves:
+
+- Point positions remain the default at every entry point. `Predicator.parse/1`,
+  `Predicator.compile/1`, `Predicator.compile_with_positions/1`, and
+  `Predicator.evaluate/3` without the option behave exactly as in 3.8.0.
+- `t:Predicator.Types.position/0` is untouched and still means a point.
+- No AST node gained or lost an element; spans reuse the trailing slot.
+- Every rendered error `message` string is identical with and without spans.
+- The instruction list produced by `compile/1` is byte-identical, so stored
+  compiled artifacts and cross-language interchange with the Ruby and
+  JavaScript siblings are unaffected (ADR-0001).
+- A parenthesized expression's span excludes its parentheses, which build no
+  AST node.
+
 ## [3.8.0] - 2026-08-05
 
 ### Changed

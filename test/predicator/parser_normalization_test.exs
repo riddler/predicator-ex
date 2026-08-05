@@ -163,6 +163,39 @@ defmodule Predicator.ParserNormalizationTest do
     end
   end
 
+  describe "spanned trees" do
+    test "strip_positions/1 yields the same bare AST as for a positioned tree" do
+      for source <- @corpus do
+        {:ok, tokens} = Predicator.Lexer.tokenize(source)
+        {:ok, positioned} = Parser.parse(tokens)
+        {:ok, spanned} = Parser.parse(tokens, spans: true)
+
+        assert Parser.strip_positions(spanned) == Parser.strip_positions(positioned)
+        refute has_position?(Parser.strip_positions(spanned))
+      end
+    end
+
+    test "ensure_positions/1 leaves a spanned tree unchanged" do
+      for source <- @corpus do
+        {:ok, tokens} = Predicator.Lexer.tokenize(source)
+        {:ok, spanned} = Parser.parse(tokens, spans: true)
+
+        assert Parser.ensure_positions(spanned) == spanned
+      end
+    end
+
+    test "a spanned object key round-trips through both normalizers" do
+      {:ok, tokens} = Predicator.Lexer.tokenize(~s({a: 1, "b": 2}))
+      {:ok, spanned} = Parser.parse(tokens, spans: true)
+
+      assert Parser.strip_positions(spanned) ==
+               {:object,
+                [{{:identifier, "a"}, {:literal, 1}}, {{:string_literal, "b"}, {:literal, 2}}]}
+
+      assert Parser.ensure_positions(spanned) == spanned
+    end
+  end
+
   # A `{line, column}` position is the only two-integer tuple the AST contains -
   # duration units are `{integer, binary}` and object entries are node pairs.
   defp has_position?({line, column}) when is_integer(line) and is_integer(column), do: true

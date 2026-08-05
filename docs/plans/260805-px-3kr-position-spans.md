@@ -552,20 +552,20 @@ spanned tree untouched, and a spanned object key round-trips.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `lib/predicator/parser.ex` coverage does not regress from its current
+- [x] Full quality gate passes: `mix quality`
+- [x] `lib/predicator/parser.ex` coverage does not regress from its current
       level, and total coverage stays above the 90% minimum in `coveralls.json`
-- [ ] No file outside `lib/predicator/parser.ex`, `lib/predicator/types.ex`, and
+- [x] No file outside `lib/predicator/parser.ex`, `lib/predicator/types.ex`, and
       the two parser test files changes in this phase
-- [ ] Dialyzer is clean on the widened `t:Predicator.Parser.position/0`
+- [x] Dialyzer is clean on the widened `t:Predicator.Parser.position/0`
 
 #### Manual Verification:
-- [ ] `Predicator.Parser.parse(tokens, spans: true)` on `"a * true"` gives the
+- [x] `Predicator.Parser.parse(tokens, spans: true)` on `"a * true"` gives the
       `arithmetic` node a span covering the whole expression, and the default
       parse still gives it position `{1, 3}`
-- [ ] `#2024-01-15# > x` gives the date literal a span whose slice includes both
+- [x] `#2024-01-15# > x` gives the date literal a span whose slice includes both
       `#` fences, and `'a'` a span whose slice includes both quotes
-- [ ] A two-line expression's top-level node spans from line 1 to line 2
+- [x] A two-line expression's top-level node spans from line 1 to line 2
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run the full `mix quality` as the phase gate. In interactive
@@ -816,22 +816,22 @@ caller-supplied span table.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `Errors` stays at 100% coverage; the three error struct modules and
+- [x] Full quality gate passes: `mix quality`
+- [x] `Errors` stays at 100% coverage; the three error struct modules and
       `Evaluator` do not regress; total coverage stays above the
       `coveralls.json` minimum
-- [ ] Dialyzer is clean on the widened error struct types and the widened
+- [x] Dialyzer is clean on the widened error struct types and the widened
       table unions
-- [ ] Every existing assertion on `:position` still passes unedited - the
+- [x] Every existing assertion on `:position` still passes unedited - the
       default path is untouched
 
 #### Manual Verification:
-- [ ] `Predicator.evaluate("a * true", %{"a" => 1}, spans: true)` reports
+- [x] `Predicator.evaluate("a * true", %{"a" => 1}, spans: true)` reports
       `span: {{1,1},{1,9}}` and `position: {1,1}`
-- [ ] The same call without `spans: true` reports `position: {1,3}` and
+- [x] The same call without `spans: true` reports `position: {1,3}` and
       `span: nil`
-- [ ] Every rendered `message` is byte-identical with and without the option
-- [ ] A multi-line expression's runtime error reports a span whose start and end
+- [x] Every rendered `message` is byte-identical with and without the option
+- [x] A multi-line expression's runtime error reports a span whose start and end
       lines are both correct
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
@@ -922,18 +922,18 @@ the instruction format is unaffected either way.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] Overall coverage stays above the 90% minimum in `coveralls.json`
-- [ ] `mix docs` builds with no *new* warnings (this repo carries a
+- [x] Full quality gate passes: `mix quality`
+- [x] Overall coverage stays above the 90% minimum in `coveralls.json`
+- [x] `mix docs` builds with no *new* warnings (this repo carries a
       pre-existing baseline of `CHANGELOG.md` references to removed functions -
       compare the count before and after, do not expect zero)
 
 #### Manual Verification:
-- [ ] The span rule table in `docs/architecture.md` has a row for every arm of
+- [x] The span rule table in `docs/architecture.md` has a row for every arm of
       `Parser.ast/0` plus `object_key/0`
-- [ ] A reader can tell from the docs alone what span a new node type should
+- [x] A reader can tell from the docs alone what span a new node type should
       carry, and that parentheses are excluded by design
-- [ ] The `CHANGELOG.md` entry makes clear that nothing changes for a caller who
+- [x] The `CHANGELOG.md` entry makes clear that nothing changes for a caller who
       does not pass `spans: true`
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while

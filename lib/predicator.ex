@@ -94,9 +94,14 @@ defmodule Predicator do
   - `opts` - Optional keyword list of options:
     - `:functions` - Map of custom functions to make available during evaluation
     - `:positions` - Source-position side table from
-      `compile_with_positions/1`, used to populate `:position` on runtime
-      errors. String input threads its own table automatically; an
+      `compile_with_positions/1`, or a source-span table from
+      `compile_with_spans/1`, used to populate `:position` (and `:span`) on
+      runtime errors. String input threads its own table automatically; an
       instruction-list caller who omits this sees `position: nil`.
+    - `:spans` - when `true`, string input compiles with spans instead of point
+      positions, so runtime errors carry `:span` and `:position` names the
+      span's start. Ignored for instruction-list input, which has no source;
+      such a caller passes `positions:` from `compile_with_spans/1` instead.
 
   ## Returns
 
@@ -151,7 +156,7 @@ defmodule Predicator do
   def evaluate(expression, context, opts) when is_binary(expression) and is_map(context) do
     case Lexer.tokenize(expression) do
       {:ok, tokens} ->
-        case Parser.parse(tokens) do
+        case Parser.parse(tokens, opts) do
           {:ok, ast} ->
             {instructions, positions} = Compiler.to_instructions_with_positions(ast)
             evaluate_instructions(instructions, context, Keyword.put(opts, :positions, positions))
@@ -345,9 +350,41 @@ defmodule Predicator do
   end
 
   @doc """
+  Compiles a string expression to an instruction list plus a source-span side
+  table.
+
+  The instruction list is identical to `compile/1`'s; the table maps each
+  instruction's 0-based index to the `t:Predicator.Types.span/0` of the AST node
+  that emitted it. Pass it to `evaluate/3` as `positions:` to get spans on
+  runtime errors from a pre-compiled program.
+
+  ## Examples
+
+      iex> {:ok, instructions, spans} = Predicator.compile_with_spans("score > 85")
+      iex> instructions
+      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      iex> spans
+      %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
+  """
+  @spec compile_with_spans(binary()) ::
+          {:ok, Types.instruction_list(), Types.span_table()} | {:error, binary()}
+  def compile_with_spans(expression) when is_binary(expression) do
+    case parse(expression, spans: true) do
+      {:ok, ast} ->
+        {instructions, spans} = Compiler.to_instructions_with_positions(ast)
+        {:ok, instructions, spans}
+
+      {:error, message, line, column} ->
+        {:error, "#{message} at line #{line}, column #{column}"}
+    end
+  end
+
+  @doc """
   Parses an expression string into an Abstract Syntax Tree.
 
-  Every node carries a trailing `{line, column}` source position. Use
+  Every node carries a trailing `{line, column}` source position. Pass
+  `spans: true` for a `t:Predicator.Types.span/0` in that slot instead - the
+  source text the node covers, which is what a diagnostic underlines. Use
   `Predicator.Parser.strip_positions/1` to recover the position-free shape
   Predicator 3.6 produced.
 
@@ -355,11 +392,15 @@ defmodule Predicator do
 
       iex> Predicator.parse("score > 85")
       {:ok, {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
+
+      iex> Predicator.parse("score > 85", spans: true)
+      {:ok, {:comparison, :gt, {:identifier, "score", {{1, 1}, {1, 6}}}, {:literal, 85, {{1, 9}, {1, 11}}}, {{1, 1}, {1, 11}}}}
   """
-  @spec parse(binary()) :: {:ok, Parser.ast()} | {:error, binary(), pos_integer(), pos_integer()}
-  def parse(expression) when is_binary(expression) do
+  @spec parse(binary(), keyword()) ::
+          {:ok, Parser.ast()} | {:error, binary(), pos_integer(), pos_integer()}
+  def parse(expression, opts \\ []) when is_binary(expression) do
     case Lexer.tokenize(expression) do
-      {:ok, tokens} -> Parser.parse(tokens)
+      {:ok, tokens} -> Parser.parse(tokens, opts)
       {:error, message, line, column} -> {:error, message, line, column}
     end
   end

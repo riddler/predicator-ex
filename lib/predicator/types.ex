@@ -108,7 +108,8 @@ defmodule Predicator.Types do
   `t:position_table/0`, produced alongside the instruction list by
   `Predicator.Compiler.to_instructions_with_positions/2`, so the instruction
   format stays exactly what the Ruby and JavaScript siblings interchange
-  (ADR-0001).
+  (ADR-0001). That side table holds `t:span/0` values instead when the AST was
+  parsed with `spans: true`; the instruction format is unaffected either way.
 
   ## Examples
 
@@ -155,6 +156,30 @@ defmodule Predicator.Types do
   artifacts are unaffected.
   """
   @type position_table :: %{non_neg_integer() => position()}
+
+  @typedoc """
+  A source span: the start and end of the source text an AST node covers.
+
+  The end is **exclusive** - it names the position one past the last character -
+  so on a single line `end_column - start_column` is the span's length, matching
+  LSP ranges. The identifier `score` at line 1 column 1 spans
+  `{{1, 1}, {1, 6}}`.
+
+  A span composes two `t:position/0` values; a point position and a span answer
+  different questions, and both are available. See
+  `Predicator.Parser.parse/2`'s `:spans` option.
+  """
+  @type span :: {start :: position(), end_exclusive :: position()}
+
+  @typedoc """
+  Maps a 0-based instruction index to the span of the AST node that emitted it.
+
+  The span-mode counterpart of `t:position_table/0`, produced by
+  `Predicator.Compiler.to_instructions_with_positions/2` from an AST parsed with
+  `spans: true`. Like the position table it is never part of the instruction
+  list, so interchange and stored compiled artifacts are unaffected.
+  """
+  @type span_table :: %{non_neg_integer() => span()}
 
   @typedoc """
   The result of evaluating a predicate from public API functions.

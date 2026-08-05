@@ -9,9 +9,14 @@ defmodule Predicator.Errors do
   alias Predicator.Types
 
   @doc """
-  Attaches a source position to an error struct that has a `:position` field.
+  Attaches a source position or span to an error struct.
 
-  Returns the error unchanged when `position` is `nil` or when the value has no
+  Given a `t:Predicator.Types.position/0`, sets `:position`. Given a
+  `t:Predicator.Types.span/0`, sets `:span` to the span and `:position` to its
+  start, so a caller reading only `:position` keeps getting a usable caret when
+  the program was compiled with spans.
+
+  Returns the error unchanged when the location is `nil` or when the value has no
   `:position` field, so it is safe to call on any error value - including the
   bare-string errors some evaluator paths return internally.
 
@@ -22,20 +27,33 @@ defmodule Predicator.Errors do
       {1, 3}
 
       iex> error = Predicator.Errors.EvaluationError.new("boom", "boom")
+      iex> decorated = Predicator.Errors.put_position(error, {{1, 1}, {1, 9}})
+      iex> {decorated.position, decorated.span}
+      {{1, 1}, {{1, 1}, {1, 9}}}
+
+      iex> error = Predicator.Errors.EvaluationError.new("boom", "boom")
       iex> Predicator.Errors.put_position(error, nil).position
       nil
 
       iex> Predicator.Errors.put_position("boom", {1, 3})
       "boom"
   """
-  @spec put_position(term(), Types.position() | nil) :: term()
+  @spec put_position(term(), Types.position() | Types.span() | nil) :: term()
   def put_position(error, nil), do: error
+
+  def put_position(%_struct{} = error, {{_sl, _sc} = start, {_el, _ec}} = span) do
+    if Map.has_key?(error, :span) do
+      %{error | span: span, position: start}
+    else
+      put_position(error, start)
+    end
+  end
 
   def put_position(%_struct{} = error, position) do
     if Map.has_key?(error, :position), do: %{error | position: position}, else: error
   end
 
-  def put_position(error, _position), do: error
+  def put_position(error, _location), do: error
 
   @doc """
   Formats an expected type name for error messages with proper articles.
