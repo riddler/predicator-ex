@@ -80,6 +80,13 @@ Predicator.evaluate("status = 'active'", context)
 Predicator.evaluate("status == 'active'", context)
 ```
 
+### Changed
+
+- Documentation restructured: the README is now a slim entry point, with the
+  language reference, nested data access, custom functions, and location
+  expressions moved to `docs/reference/` and `docs/guides/` and published to
+  hexdocs. All documentation examples are now executed by the test suite.
+
 ### Fixed
 
 - List literals with non-literal elements (`[x + 1, y]`) now compile and
