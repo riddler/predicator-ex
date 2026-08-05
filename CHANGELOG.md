@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The Hex package `files:` list named a bare `docs` entry, which swept the
+  whole `docs/` tree - including `docs/plans/*.md` and `docs/design/*.md`,
+  the agent workflow's internal per-bead planning documents. It now names the
+  published doc subtrees explicitly (`docs/reference`, `docs/guides`,
+  `docs/adr`, `docs/architecture.md`), matching what the `docs()` extras list
+  already publishes to hexdocs.
+
 ## [3.7.0] - 2026-08-05
 
 ### Changed
