@@ -59,7 +59,7 @@ defmodule Predicator do
   """
 
   alias Predicator.{Compiler, Context, ContextLocation, Evaluator, Lexer, Parser, Types}
-  alias Predicator.Errors.{ParseError, UndefinedVariableError}
+  alias Predicator.Errors.{ParseError, TypeMismatchError, UndefinedVariableError}
 
   @doc """
   Evaluates a predicate expression or instruction list.
@@ -160,8 +160,8 @@ defmodule Predicator do
     }
 
     case Evaluator.run_prepared(evaluator) do
-      {:error, error_struct, _final_evaluator} when is_struct(error_struct) ->
-        {:error, error_struct}
+      {:error, error_struct, final_evaluator} when is_struct(error_struct) ->
+        {:error, unbound_or_type_mismatch(error_struct, final_evaluator)}
 
       {:ok, :undefined, final_evaluator} ->
         undefined_result(final_evaluator)
@@ -224,6 +224,39 @@ defmodule Predicator do
       [variable_name | _rest] -> {:error, UndefinedVariableError.new(variable_name)}
     end
   end
+
+  # An opcode that *rejects* an :undefined operand - not, unary_minus,
+  # unary_bang, the five arithmetic opcodes, the legacy ["and"]/["or"] - errors
+  # before evaluation ever produces an :undefined result, so undefined_result/1
+  # never sees it and the caller gets a TypeMismatchError naming no variable at
+  # all. When that operand came from a root the run loaded and did not find
+  # bound, report the variable instead: the same answer "unbound > 5" already
+  # gives, for the same cause (px-8um.7).
+  #
+  # Gated on both halves. A TypeMismatchError with no :undefined operand is an
+  # ordinary type error ("name" * 5) and passes through; an :undefined operand
+  # with no unbound load came from bound data (%{"b" => :undefined}) or a
+  # missing nested path (user.nope), which is a genuine type mismatch on data
+  # the caller supplied, and also passes through.
+  @spec unbound_or_type_mismatch(struct(), Evaluator.t()) :: struct()
+  defp unbound_or_type_mismatch(%TypeMismatchError{got: got} = error, evaluator) do
+    with true <- undefined_operand?(got),
+         [variable_name | _rest] <- Evaluator.unbound_loads(evaluator) do
+      UndefinedVariableError.new(variable_name)
+    else
+      _no_rewrite -> error
+    end
+  end
+
+  defp unbound_or_type_mismatch(error, _evaluator), do: error
+
+  # `got` is a single type for a unary operation and a {left, right} tuple for
+  # a binary one; either position may be the rejected :undefined operand.
+  @spec undefined_operand?(term()) :: boolean()
+  defp undefined_operand?(:undefined), do: true
+  defp undefined_operand?({:undefined, _right}), do: true
+  defp undefined_operand?({_left, :undefined}), do: true
+  defp undefined_operand?(_got), do: false
 
   @doc """
   Compiles a string expression to instruction list.

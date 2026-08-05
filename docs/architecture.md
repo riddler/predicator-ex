@@ -297,7 +297,11 @@ Rendered `message` strings are unchanged.
 Two errors keep `position: nil` by construction: the empty-stack error, which
 belongs to no instruction, and the `UndefinedVariableError` that
 `Predicator.evaluate/3` builds *after* the run from the loads the evaluator
-recorded.
+recorded. The `UndefinedVariableError` that `px-8um.7` rewrites a
+`TypeMismatchError` into does too, deliberately: the position on hand belongs
+to the *rejecting operator* - `{1,1}` for the `not` in `"not unbound"`, `{1,9}`
+for the `+` in `"unbound + 1"` - not to the variable, so carrying it over would
+point a caller's editor at the wrong token.
 
 ### `Predicator.Context` Struct (v3.8.0, unreleased)
 
@@ -380,6 +384,21 @@ recorded.
   program and never executed, and the scan named skipped variables -
   `(false AND missing) OR unbound_b` reported `missing`. `Context.bound?/2`
   delegates to `resolve_key/2` too, so the two cannot drift.
+
+- **Unbound roots behind a rejected `:undefined` operand (`px-8um.7`,
+  v3.8.0)**: `undefined_result/1` only fires when the whole program evaluates
+  to `:undefined`. An opcode that *rejects* an `:undefined` operand - `not`,
+  `unary_minus`, `unary_bang`, the five arithmetic opcodes, the legacy
+  `["and"]`/`["or"]` - errors first, and its `TypeMismatchError` names no
+  variable. `Predicator.evaluate/3` now rewrites that error into
+  `UndefinedVariableError` when the error's `got` mentions `:undefined` **and**
+  the run recorded an unbound load, which is why `Evaluator.run_prepared/1`
+  returns its final state on the error path too. `in`/`contains` are not in the
+  class: they propagate `:undefined` rather than rejecting it, so they already
+  reported the root. Bound-to-`:undefined` data (`%{"b" => :undefined}`) and
+  missing nested paths (`user.nope`) keep their `TypeMismatchError` -
+  `unbound_loads` records absent keys only. The low-level
+  `Evaluator.evaluate/3` is unchanged; this is an API-layer rewrite.
 
 ### Durations and Relative Dates (v3.4.0)
 

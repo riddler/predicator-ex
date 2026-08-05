@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Predicator.Evaluator.run_prepared/1` returns `{:error, error, evaluator}`
+  instead of `{:error, error}`, so the final evaluator state - and with it
+  `unbound_loads/1` - is available on the error path as well as the success
+  path. `run/1`, `evaluate/3`, `evaluate!/3`, `evaluate_prepared/1`, and
+  `Predicator.run_evaluator/1` are unchanged.
+
 - **Context keys and `nil` values are now normalized eagerly and deeply.**
   `Predicator.Context.new/2` and `bind/3` convert atom keys to string keys
   (string key wins on collision) and `nil` values to `:undefined`, recursing
@@ -47,6 +53,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to change.
 
 ### Fixed
+
+- **An unbound variable is no longer hidden behind a nameless type mismatch.**
+  `Predicator.evaluate/3` reported `TypeMismatchError "Logical NOT requires a
+  boolean, got :undefined"` for `not unbound`, naming no variable, while
+  `unbound > 5` correctly returned `UndefinedVariableError`. Every opcode that
+  rejects an `:undefined` operand - `not`, `unary_minus`, `unary_bang`, `add`,
+  `subtract`, `multiply`, `divide`, `modulo`, and the legacy `["and"]`/`["or"]`
+  instructions - now reports the unbound root instead, when the operand came
+  from a variable the run loaded and did not find bound. A key *bound* to
+  `:undefined` (`%{"b" => :undefined}`) and a missing nested path on a bound
+  root (`user.nope`) still produce a `TypeMismatchError`: those are genuine
+  type mismatches on data the caller supplied. Evaluation semantics are
+  unchanged - `:undefined` still errors in these positions - and the low-level
+  `Predicator.Evaluator.evaluate/3` still returns the bare `TypeMismatchError`.
 
 - The Hex package `files:` list named a bare `docs` entry, which swept the
   whole `docs/` tree - including `docs/plans/*.md` and `docs/design/*.md`,
