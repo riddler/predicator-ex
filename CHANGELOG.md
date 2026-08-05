@@ -80,6 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`user.name`). `Predicator.Visitors.StringVisitor` was missing the
   `:property_access` clause; it now renders `object.property`, including
   chains (`user.profile.email`) and mixes with bracket access.
+- Duration units now parse in source order: `3d8h` produces
+  `[{3, "d"}, {8, "h"}]` instead of the reversed `[{8, "h"}, {3, "d"}]`, and
+  multi-unit durations round-trip through the string visitor unchanged
 - `Date` and `DateTime` ordering (`<`, `>`, `<=`, `>=`) is now chronological.
   The evaluator previously dispatched ordering comparisons to Erlang's `<`/`>`
   after confirming both sides were the same struct type, but Erlang orders

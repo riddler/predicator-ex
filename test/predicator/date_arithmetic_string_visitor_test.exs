@@ -20,10 +20,9 @@ defmodule Predicator.DateArithmeticStringVisitorTest do
     end
 
     test "complex duration literals" do
-      # Note: Parser stores units in reverse order, so these test the actual behavior
-      assert_decompiled_matches("1d8h", "8h1d")
-      assert_decompiled_matches("2w3d", "3d2w")
-      assert_decompiled_matches("1d8h30m", "30m8h1d")
+      assert_round_trip("1d8h")
+      assert_round_trip("2w3d")
+      assert_round_trip("1d8h30m")
     end
 
     test "duration in arithmetic expressions" do
@@ -93,23 +92,6 @@ defmodule Predicator.DateArithmeticStringVisitorTest do
 
       {:error, message, line, col} ->
         flunk("Failed to parse '#{expression}': #{message} at #{line}:#{col}")
-    end
-  end
-
-  # Helper function to test when decompilation produces a different but equivalent expression
-  defp assert_decompiled_matches(original, expected_decompiled) do
-    case Predicator.parse(original) do
-      {:ok, ast} ->
-        decompiled = Predicator.decompile(ast)
-
-        assert decompiled == expected_decompiled, """
-        Expected decompilation to match: #{original}
-        Expected: #{expected_decompiled}
-        Got: #{decompiled}
-        """
-
-      {:error, message, line, col} ->
-        flunk("Failed to parse '#{original}': #{message} at #{line}:#{col}")
     end
   end
 end
