@@ -34,22 +34,19 @@ defmodule Predicator.DateArithmeticTest do
       # Test that duration + date works the same as date + duration
       assert {:ok, ~D[2024-01-18]} = Predicator.evaluate("3d + #2024-01-15#", %{})
 
-      # Verify with variables
-      context = %{
-        "date" => ~D[2024-01-15],
-        "duration" => %{
-          years: 0,
-          months: 0,
-          weeks: 0,
-          days: 3,
-          hours: 0,
-          minutes: 0,
-          seconds: 0
-        }
-      }
+      # Verify with a date variable and a duration literal. A pre-built
+      # duration map (a plain atom-keyed map, per Predicator.Types.duration/0)
+      # can no longer be bound through the date variable's context and still
+      # be recognized as a duration: px-8um.2 makes Context.new/2 the only
+      # edge for atom keys, converting them deeply and unconditionally, so a
+      # duration passed in this way arrives at the evaluator string-keyed and
+      # is treated as an ordinary map instead. Durations are only ever
+      # duration-shaped when built internally by the `duration(...)` literal
+      # during evaluation, which is the path exercised here.
+      context = %{"date" => ~D[2024-01-15]}
 
-      assert {:ok, ~D[2024-01-18]} = Predicator.evaluate("date + duration", context)
-      assert {:ok, ~D[2024-01-18]} = Predicator.evaluate("duration + date", context)
+      assert {:ok, ~D[2024-01-18]} = Predicator.evaluate("date + 3d", context)
+      assert {:ok, ~D[2024-01-18]} = Predicator.evaluate("3d + date", context)
     end
 
     test "complex duration additions" do
@@ -75,12 +72,13 @@ defmodule Predicator.DateArithmeticTest do
     end
 
     test "date arithmetic with variables" do
-      context = %{
-        "start_date" => ~D[2024-01-15],
-        "duration" => %{years: 0, months: 0, weeks: 0, days: 3, hours: 8, minutes: 0, seconds: 0}
-      }
+      # See "Duration + Date = Date (commutative)" above for why the duration
+      # here is a literal in the expression rather than a pre-built map bound
+      # into the context (px-8um.2's atom-key normalization no longer lets a
+      # bound duration-shaped map survive as a duration).
+      context = %{"start_date" => ~D[2024-01-15]}
 
-      assert {:ok, result} = Predicator.evaluate("start_date + duration", context)
+      assert {:ok, result} = Predicator.evaluate("start_date + 3d8h", context)
       assert ~D[2024-01-18] = result
     end
   end

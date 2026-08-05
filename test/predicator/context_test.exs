@@ -55,6 +55,44 @@ defmodule Predicator.ContextTest do
         Context.new(%{}, on_unbound: :nope)
       end
     end
+
+    test "deeply converts atom keys to string keys in nested maps" do
+      context = Context.new(%{user: %{name: "Jane"}})
+
+      assert context.data == %{"user" => %{"name" => "Jane"}}
+    end
+
+    test "deeply converts nil to :undefined in nested maps" do
+      context = Context.new(%{user: %{name: nil}})
+
+      assert context.data == %{"user" => %{"name" => :undefined}}
+    end
+
+    test "prefers a string key over a same-named atom key at a nested level" do
+      context = Context.new(%{user: %{"name" => "Ada", name: "Ignored"}})
+
+      assert context.data == %{"user" => %{"name" => "Ada"}}
+    end
+
+    test "converts atom keys and nil inside a list of maps" do
+      context = Context.new(%{items: [%{label: "a"}, %{label: nil}]})
+
+      assert context.data == %{"items" => [%{"label" => "a"}, %{"label" => :undefined}]}
+    end
+
+    test "passes a Date value through unchanged" do
+      date = ~D[2024-01-01]
+      context = Context.new(%{"d" => date})
+
+      assert context.data == %{"d" => date}
+    end
+
+    test "passes a DateTime value through unchanged" do
+      datetime = ~U[2024-01-01 12:00:00Z]
+      context = Context.new(%{"d" => datetime})
+
+      assert context.data == %{"d" => datetime}
+    end
   end
 
   describe "bind/3" do
@@ -76,6 +114,13 @@ defmodule Predicator.ContextTest do
 
       assert bound.functions === context.functions
       assert bound.on_unbound == :error
+    end
+
+    test "normalizes the bound value's atom keys and nil" do
+      context = Context.new(%{})
+      bound = Context.bind(context, "user", %{role: nil})
+
+      assert bound.data == %{"user" => %{"role" => :undefined}}
     end
   end
 
@@ -105,11 +150,12 @@ defmodule Predicator.ContextTest do
       assert Context.bound?(context, "score")
     end
 
-    test "true for a string key bound to nil, which load resolves to :undefined" do
-      # Presence, not definedness. px-8um.2 owns nil normalization; until then
-      # this asymmetry is deliberate and pinned so px-8um.8's runtime tracking
-      # cannot silently start reporting `x` as unbound.
+    test "true for a string key bound to nil, eagerly normalized to :undefined" do
+      # Presence, not definedness. px-8um.2 normalizes nil -> :undefined
+      # eagerly at Context.new/2, so `data` already holds :undefined by the
+      # time bound?/2 or evaluate/3 ever sees it.
       context = Context.new(%{"x" => nil})
+      assert context.data == %{"x" => :undefined}
       assert Context.bound?(context, "x")
       assert Predicator.evaluate("x > 5", context) == {:ok, :undefined}
     end

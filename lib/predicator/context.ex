@@ -18,7 +18,7 @@ defmodule Predicator.Context do
       {:ok, 90}
   """
 
-  alias Predicator.{ContextLocation, Evaluator, Types}
+  alias Predicator.{ContextLocation, Evaluator, Types, Undefined}
 
   @typedoc "Policy for a load of an unbound root variable. See `px-8um.3`."
   @type on_unbound :: :undefined | :error
@@ -43,10 +43,18 @@ defmodule Predicator.Context do
     (`:undefined` (default) | `:error` - stored for `px-8um.3`; this
     struct does not yet act on it)
 
+  `data` is normalized deeply before it is stored: atom keys become string
+  keys (a string key wins if both are present at the same level) and `nil`
+  values become the `:undefined` sentinel, recursing through nested maps and
+  lists. `Date`, `DateTime`, and any other struct pass through unchanged.
+
   ## Examples
 
       iex> Predicator.Context.new(%{"x" => 1}).data
       %{"x" => 1}
+
+      iex> Predicator.Context.new(%{user: %{name: nil}}).data
+      %{"user" => %{"name" => :undefined}}
 
       iex> Predicator.Context.new().on_unbound
       :undefined
@@ -54,7 +62,7 @@ defmodule Predicator.Context do
   @spec new(Types.context(), keyword()) :: t()
   def new(data \\ %{}, opts \\ []) when is_map(data) do
     %__MODULE__{
-      data: data,
+      data: normalize_value(data),
       functions: Evaluator.merge_functions(opts),
       on_unbound: validate_on_unbound!(Keyword.get(opts, :on_unbound, :undefined))
     }
@@ -69,7 +77,14 @@ defmodule Predicator.Context do
   end
 
   @doc """
-  Binds `name` to `value` in `data`. O(1): a single `Map.put/3`.
+  Binds `name` to `value` in `data`. O(1): a single `Map.put/3`, plus
+  normalizing `value` itself (O(size of `value`), not O(size of `data`) -
+  `data` is already normalized from construction or a prior `bind/3`).
+
+  `value` is normalized the same way `new/2` normalizes `data`: atom keys
+  become string keys (string keys win on collision) and `nil` becomes
+  `:undefined`, recursing through nested maps and lists; structs pass through
+  unchanged.
 
   `functions` and `on_unbound` are carried over unchanged.
 
@@ -78,10 +93,14 @@ defmodule Predicator.Context do
       iex> context = Predicator.Context.new(%{"a" => 1})
       iex> Predicator.Context.bind(context, "b", 2).data
       %{"a" => 1, "b" => 2}
+
+      iex> context = Predicator.Context.new(%{})
+      iex> Predicator.Context.bind(context, "user", %{name: nil}).data
+      %{"user" => %{"name" => :undefined}}
   """
   @spec bind(t(), binary(), Types.value()) :: t()
   def bind(%__MODULE__{data: data} = context, name, value) when is_binary(name) do
-    %{context | data: Map.put(data, name, value)}
+    %{context | data: Map.put(data, name, normalize_value(value))}
   end
 
   @doc """
@@ -144,5 +163,54 @@ defmodule Predicator.Context do
 
   defp resolve_path(data, expression) when is_binary(expression) do
     ContextLocation.resolve_expression(expression, data)
+  end
+
+  # Deeply converts `nil` to `Undefined.value()` and, for plain maps, atom
+  # keys to string keys (string keys win on collision), recursing through
+  # nested maps and lists. Structs (`Date`, `DateTime`, and any other) pass
+  # through unchanged - `is_map/1` is true for structs too, which is why the
+  # struct clause must come before the plain-map clause below.
+  @spec normalize_value(term()) :: term()
+  defp normalize_value(nil), do: Undefined.value()
+
+  defp normalize_value(list) when is_list(list) do
+    Enum.map(list, &normalize_value/1)
+  end
+
+  defp normalize_value(%_struct{} = struct), do: struct
+
+  defp normalize_value(map) when is_map(map), do: normalize_map(map)
+
+  defp normalize_value(other), do: other
+
+  # Splits `map`'s entries into non-atom-keyed and atom-keyed, builds the
+  # base map from the non-atom entries first (normalizing their values along
+  # the way), then folds in the atom entries - converting each key with
+  # `Atom.to_string/1` and skipping it if a same-named string key already
+  # won a slot in the base. This mirrors the current evaluator's "prefers
+  # string key over atom key" precedence.
+  #
+  # `true`/`false` are atoms in Elixir but are boolean *data* keys here, not
+  # variable-name-shaped atom keys - `config[true]` compiles to a literal
+  # atom key lookup (`access_value/2`'s `is_atom(key)` clause), so stringifying
+  # a `true`/`false` map key would silently break that lookup. They are left
+  # as-is.
+  @spec normalize_map(map()) :: map()
+  defp normalize_map(map) do
+    {atom_entries, base_entries} =
+      Enum.split_with(map, fn {key, _value} -> is_atom(key) and not is_boolean(key) end)
+
+    base =
+      Map.new(base_entries, fn {key, value} -> {key, normalize_value(value)} end)
+
+    Enum.reduce(atom_entries, base, fn {key, value}, acc ->
+      string_key = Atom.to_string(key)
+
+      if Map.has_key?(acc, string_key) do
+        acc
+      else
+        Map.put(acc, string_key, normalize_value(value))
+      end
+    end)
   end
 end
