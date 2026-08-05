@@ -525,6 +525,16 @@ defmodule Predicator.Evaluator do
     compare_chronological(DateTime.compare(left, right), operator)
   end
 
+  # Mixed Date/DateTime coerces the Date to midnight UTC, matching the
+  # coercion apply_subtraction/2 already performs for the same pair
+  defp compare_values(%Date{} = left, %DateTime{} = right, operator) do
+    compare_chronological(DateTime.compare(date_to_datetime(left), right), operator)
+  end
+
+  defp compare_values(%DateTime{} = left, %Date{} = right, operator) do
+    compare_chronological(DateTime.compare(left, date_to_datetime(right)), operator)
+  end
+
   defp compare_values(left, right, operator) when types_match(left, right) do
     case operator do
       "GT" -> left > right
@@ -557,6 +567,12 @@ defmodule Predicator.Evaluator do
 
   defp values_equal?(%DateTime{} = left, %DateTime{} = right),
     do: DateTime.compare(left, right) == :eq
+
+  defp values_equal?(%Date{} = left, %DateTime{} = right),
+    do: DateTime.compare(date_to_datetime(left), right) == :eq
+
+  defp values_equal?(%DateTime{} = left, %Date{} = right),
+    do: DateTime.compare(left, date_to_datetime(right)) == :eq
 
   defp values_equal?(left, right) when types_match(left, right), do: left == right
   defp values_equal?(_left, _right), do: false
@@ -829,6 +845,12 @@ defmodule Predicator.Evaluator do
      )}
   end
 
+  @spec date_to_datetime(Date.t()) :: DateTime.t()
+  defp date_to_datetime(%Date{} = date) do
+    {:ok, datetime} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
+    datetime
+  end
+
   # Subtraction operations with date arithmetic
   @spec apply_subtraction(Types.value(), Types.value()) :: {:ok, Types.value()} | {:error, term()}
   defp apply_subtraction(left, right) when is_number(left) and is_number(right) do
@@ -851,13 +873,11 @@ defmodule Predicator.Evaluator do
 
   # Mixed Date/DateTime subtraction (convert Date to start of day UTC)
   defp apply_subtraction(%Date{} = date, %DateTime{} = datetime) do
-    {:ok, date_as_datetime} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
-    apply_subtraction(date_as_datetime, datetime)
+    apply_subtraction(date_to_datetime(date), datetime)
   end
 
   defp apply_subtraction(%DateTime{} = datetime, %Date{} = date) do
-    {:ok, date_as_datetime} = DateTime.new(date, ~T[00:00:00], "Etc/UTC")
-    apply_subtraction(datetime, date_as_datetime)
+    apply_subtraction(datetime, date_to_datetime(date))
   end
 
   # Date - Duration = Date/DateTime

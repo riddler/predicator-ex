@@ -599,6 +599,64 @@ defmodule Predicator.EvaluatorTest do
     end
   end
 
+  describe "mixed date/datetime comparison" do
+    test "orders a Date against a later DateTime in both operand orders" do
+      date = ~D[2024-01-15]
+      later = ~U[2024-01-20 10:00:00Z]
+
+      assert Evaluator.evaluate([["lit", date], ["lit", later], ["compare", "LT"]]) == true
+      assert Evaluator.evaluate([["lit", date], ["lit", later], ["compare", "LTE"]]) == true
+      assert Evaluator.evaluate([["lit", date], ["lit", later], ["compare", "GT"]]) == false
+
+      assert Evaluator.evaluate([["lit", later], ["lit", date], ["compare", "GT"]]) == true
+      assert Evaluator.evaluate([["lit", later], ["lit", date], ["compare", "GTE"]]) == true
+      assert Evaluator.evaluate([["lit", later], ["lit", date], ["compare", "LT"]]) == false
+    end
+
+    test "a Date equals the midnight-UTC DateTime of the same day" do
+      date = ~D[2024-01-15]
+      midnight = ~U[2024-01-15 00:00:00Z]
+      one_second_later = ~U[2024-01-15 00:00:01Z]
+
+      assert Evaluator.evaluate([["lit", date], ["lit", midnight], ["compare", "EQ"]]) == true
+      assert Evaluator.evaluate([["lit", midnight], ["lit", date], ["compare", "EQ"]]) == true
+      assert Evaluator.evaluate([["lit", date], ["lit", midnight], ["compare", "GTE"]]) == true
+      assert Evaluator.evaluate([["lit", date], ["lit", midnight], ["compare", "LTE"]]) == true
+
+      assert Evaluator.evaluate([["lit", date], ["lit", one_second_later], ["compare", "EQ"]]) ==
+               false
+
+      assert Evaluator.evaluate([["lit", date], ["lit", one_second_later], ["compare", "NE"]]) ==
+               true
+    end
+
+    test "strict equality never crosses the Date/DateTime boundary" do
+      date = ~D[2024-01-15]
+      midnight = ~U[2024-01-15 00:00:00Z]
+
+      assert Evaluator.evaluate([["lit", date], ["lit", midnight], ["compare", "STRICT_EQ"]]) ==
+               false
+
+      assert Evaluator.evaluate([["lit", date], ["lit", midnight], ["compare", "STRICT_NE"]]) ==
+               true
+    end
+
+    test "membership coerces the same way" do
+      date = ~D[2024-01-15]
+      datetimes = [~U[2024-01-15 00:00:00Z], ~U[2024-01-16 12:00:00Z]]
+      dates = [~D[2024-01-15], ~D[2024-01-16]]
+
+      assert Evaluator.evaluate([["lit", date], ["lit", datetimes], ["in"]]) == true
+      assert Evaluator.evaluate([["lit", ~D[2024-01-17]], ["lit", datetimes], ["in"]]) == false
+
+      assert Evaluator.evaluate([["lit", dates], ["lit", ~U[2024-01-15 00:00:00Z]], ["contains"]]) ==
+               true
+
+      assert Evaluator.evaluate([["lit", dates], ["lit", ~U[2024-01-15 09:00:00Z]], ["contains"]]) ==
+               false
+    end
+  end
+
   describe "error handling edge cases" do
     test "handles unknown instruction gracefully" do
       instructions = [["unknown_instruction", "arg"]]
