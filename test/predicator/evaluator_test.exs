@@ -1340,5 +1340,17 @@ defmodule Predicator.EvaluatorTest do
       {:ok, 42, final} = Evaluator.run_prepared(%Evaluator{instructions: [["lit", 42]]})
       assert Evaluator.unbound_loads(final) == []
     end
+
+    test "survives a failing run - run_prepared/1 returns the state on the error path" do
+      evaluator = %Evaluator{
+        instructions: [["load", "a"], ["load", "b"], ["not"]],
+        context: %{"a" => 1}
+      }
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{}, final} =
+               Evaluator.run_prepared(evaluator)
+
+      assert Evaluator.unbound_loads(final) == ["b"]
+    end
   end
 end

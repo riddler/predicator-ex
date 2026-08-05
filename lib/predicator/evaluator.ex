@@ -79,28 +79,29 @@ defmodule Predicator.Evaluator do
 
   @doc """
   Runs an already-built evaluator to completion, returning its result **and**
-  its final state.
+  its final state - on the error path too.
 
   Same as `evaluate_prepared/1` except that the caller keeps the state the run
   produced - `unbound_loads/1` in particular, which `Predicator.evaluate/3`
-  reads to name the variable behind an `:undefined` result.
+  reads to name the variable behind an `:undefined` result *and* behind a
+  `TypeMismatchError` that rejected an `:undefined` operand (`px-8um.7`).
   """
-  @spec run_prepared(t()) :: {:ok, Types.value(), t()} | {:error, struct()}
+  @spec run_prepared(t()) :: {:ok, Types.value(), t()} | {:error, struct(), t()}
   def run_prepared(%__MODULE__{} = evaluator) do
-    case run(evaluator) do
+    case run_state(evaluator) do
       {:ok, %__MODULE__{stack: [result | _rest]} = final} ->
         {:ok, result, final}
 
-      {:ok, %__MODULE__{stack: []}} ->
+      {:ok, %__MODULE__{stack: []} = final} ->
         {:error,
          EvaluationError.new(
            "Evaluation completed with empty stack",
            "empty_stack",
            :evaluate
-         )}
+         ), final}
 
-      {:error, error_struct} when is_struct(error_struct) ->
-        {:error, error_struct}
+      {:error, error_struct, final} when is_struct(error_struct) ->
+        {:error, error_struct, final}
     end
   end
 
@@ -115,7 +116,7 @@ defmodule Predicator.Evaluator do
   def evaluate_prepared(%__MODULE__{} = evaluator) do
     case run_prepared(evaluator) do
       {:ok, result, _final} -> result
-      {:error, error_struct} -> {:error, error_struct}
+      {:error, error_struct, _final} -> {:error, error_struct}
     end
   end
 
@@ -227,12 +228,24 @@ defmodule Predicator.Evaluator do
   Returns `{:ok, final_state}` on success or `{:error, reason}` on failure.
   """
   @spec run(t()) :: {:ok, t()} | {:error, struct()}
-  def run(%__MODULE__{halted: true} = evaluator), do: {:ok, evaluator}
-
   def run(%__MODULE__{} = evaluator) do
+    case run_state(evaluator) do
+      {:ok, _final} = ok -> ok
+      {:error, error_struct, _final} -> {:error, error_struct}
+    end
+  end
+
+  # The same loop as run/1, keeping the state a failing step would otherwise
+  # discard. `evaluator` is the pre-step state, so it holds every unbound load
+  # recorded before the failing instruction - which is all of them, since a
+  # ["load", _] instruction never errors.
+  @spec run_state(t()) :: {:ok, t()} | {:error, struct(), t()}
+  defp run_state(%__MODULE__{halted: true} = evaluator), do: {:ok, evaluator}
+
+  defp run_state(%__MODULE__{} = evaluator) do
     case step(evaluator) do
-      {:ok, new_evaluator} -> run(new_evaluator)
-      {:error, error_struct} when is_struct(error_struct) -> {:error, error_struct}
+      {:ok, new_evaluator} -> run_state(new_evaluator)
+      {:error, error_struct} when is_struct(error_struct) -> {:error, error_struct, evaluator}
     end
   end
 
