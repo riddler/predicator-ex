@@ -1241,4 +1241,45 @@ defmodule Predicator.EvaluatorTest do
       assert result == true
     end
   end
+
+  describe "unbound_loads/1" do
+    test "records executed unbound loads in execution order" do
+      evaluator = %Evaluator{
+        instructions: [["load", "a"], ["load", "b"], ["load", "c"]],
+        context: %{"b" => 1}
+      }
+
+      {:ok, _result, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads(final) == ["a", "c"]
+    end
+
+    test "does not record a name bound to :undefined" do
+      evaluator = %Evaluator{
+        instructions: [["load", "a"]],
+        context: %{"a" => :undefined}
+      }
+
+      {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads(final) == []
+    end
+
+    test "does not record a name bound under an atom key" do
+      evaluator = %Evaluator{instructions: [["load", "score"]], context: %{score: 85}}
+
+      {:ok, 85, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads(final) == []
+    end
+
+    test "records a repeated unbound load once" do
+      evaluator = %Evaluator{instructions: [["load", "a"], ["load", "a"]], context: %{}}
+
+      {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads(final) == ["a"]
+    end
+
+    test "is empty for a program with no loads" do
+      {:ok, 42, final} = Evaluator.run_prepared(%Evaluator{instructions: [["lit", 42]]})
+      assert Evaluator.unbound_loads(final) == []
+    end
+  end
 end

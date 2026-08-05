@@ -154,17 +154,14 @@ defmodule Predicator do
       functions: context.functions
     }
 
-    case Evaluator.evaluate_prepared(evaluator) do
+    case Evaluator.run_prepared(evaluator) do
       {:error, error_struct} when is_struct(error_struct) ->
         {:error, error_struct}
 
-      :undefined ->
-        case first_unbound_load(instructions, context) do
-          nil -> {:ok, :undefined}
-          variable_name -> {:error, UndefinedVariableError.new(variable_name)}
-        end
+      {:ok, :undefined, final_evaluator} ->
+        undefined_result(final_evaluator)
 
-      result ->
+      {:ok, result, _final_evaluator} ->
         {:ok, result}
     end
   end
@@ -210,19 +207,17 @@ defmodule Predicator do
   # An :undefined result is ambiguous on its own: it's either a genuinely
   # unbound root variable or a value that legitimately evaluates to
   # :undefined (a missing nested path, an out-of-bounds index, a type
-  # mismatch). Context.bound?/2 answers exactly, so scan every `load` in the
-  # program - not just a single top-level one, which is what the old
-  # [["load", _]] heuristic did and was silently wrong for anything longer -
-  # for the first name the context doesn't have.
-  @spec first_unbound_load(Types.instruction_list(), Context.t()) :: binary() | nil
-  defp first_unbound_load(instructions, context) do
-    Enum.find_value(instructions, fn
-      ["load", variable_name] when is_binary(variable_name) ->
-        unless Context.bound?(context, variable_name), do: variable_name
-
-      _instruction ->
-        nil
-    end)
+  # mismatch). The evaluator records the unbound loads it actually executed,
+  # so ask it rather than scanning the program - a load the short-circuit
+  # jumps skipped is present in the instruction list but was never read, and
+  # naming it would report a variable the author was entitled to leave
+  # unbound (px-8um.8).
+  @spec undefined_result(Evaluator.t()) :: {:ok, :undefined} | {:error, struct()}
+  defp undefined_result(evaluator) do
+    case Evaluator.unbound_loads(evaluator) do
+      [] -> {:ok, :undefined}
+      [variable_name | _rest] -> {:error, UndefinedVariableError.new(variable_name)}
+    end
   end
 
   @doc """

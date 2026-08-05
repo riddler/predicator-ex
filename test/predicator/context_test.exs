@@ -104,6 +104,15 @@ defmodule Predicator.ContextTest do
       context = Context.new(%{"score" => :undefined})
       assert Context.bound?(context, "score")
     end
+
+    test "true for a string key bound to nil, which load resolves to :undefined" do
+      # Presence, not definedness. px-8um.2 owns nil normalization; until then
+      # this asymmetry is deliberate and pinned so px-8um.8's runtime tracking
+      # cannot silently start reporting `x` as unbound.
+      context = Context.new(%{"x" => nil})
+      assert Context.bound?(context, "x")
+      assert Predicator.evaluate("x > 5", context) == {:ok, :undefined}
+    end
   end
 
   describe "assign/3 with a string expression" do

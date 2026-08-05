@@ -255,10 +255,9 @@ test/predicator/
   matching the compiled program against a single-instruction shape - correct
   only for a bare `variable_name` expression, and silently wrong for
   anything longer (`"missing > 5"` compiles to three instructions and fell
-  through to an unconditional `{:ok, :undefined}`). The fixed check scans
-  every `["load", name]` instruction in the program and asks
-  `Context.bound?/2` about each one, returning `UndefinedVariableError` for
-  the first unbound name.
+  through to an unconditional `{:ok, :undefined}`). The fixed check named the
+  first unbound root the run reported; see `px-8um.8` below for how it
+  identifies that root today.
 - Depends on `px-8um.1` (`Predicator.Context`); the `on_unbound` policy
   itself (`px-8um.3`) and context key normalization (`px-8um.2`) are
   separate beads that build on this one.
@@ -271,6 +270,16 @@ test/predicator/
   Predicator.evaluate("user.name.middle = \"X\"", %{"user" => %{"name" => %{}}})
   # {:ok, :undefined} - "user" is bound, only the nested path is missing
   ```
+
+- **Runtime unbound tracking (`px-8um.8`, v3.8.0)**: the evaluator records
+  each `["load", name]` it executes whose `name` `Evaluator.resolve_key/2`
+  finds absent, and `Predicator.evaluate_instructions/3` reads that list off
+  the final evaluator state. The full-list scan `px-8um.4` shipped was exact
+  only while ISA v1 had no branches; once `jump_if_falsy_or_pop` /
+  `jump_if_true_or_pop` landed (`px-e3g.1`), a load could be present in the
+  program and never executed, and the scan named skipped variables -
+  `(false AND missing) OR unbound_b` reported `missing`. `Context.bound?/2`
+  delegates to `resolve_key/2` too, so the two cannot drift.
 
 ### Durations and Relative Dates (v3.4.0)
 

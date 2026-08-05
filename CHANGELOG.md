@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a context's data, checking both string and atom keys.
 - `starts_with(s, prefix)`, `ends_with(s, suffix)`, `substring(s, start[, len])`,
   and `index_of(s, sub)` builtin string functions
+- `Predicator.Evaluator.run_prepared/1` (result plus final evaluator state),
+  `Predicator.Evaluator.unbound_loads/1`, and
+  `Predicator.Evaluator.resolve_key/2`.
 
 ### Fixed
 
@@ -35,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   old check only matched a single-instruction `[["load", _]]` program, so an
   unbound variable inside a larger expression (`"missing > 5"`) silently
   returned `{:ok, :undefined}` instead of an error.
+- Unbound-variable reporting now reflects the loads a run actually executed
+  rather than the loads the compiled program contains. With short-circuiting
+  `AND`/`OR`, a load inside a skipped branch is never read, but the previous
+  check scanned the whole instruction list and could name it -
+  `(false AND missing) OR unbound_b` reported `missing` instead of
+  `unbound_b`.
 - **`AND` and `OR` now short-circuit.** Previously the compiler evaluated both
   sides of every `AND`/`OR` unconditionally, so an unbound variable or a
   runtime error on the side that should have been skipped surfaced as an
