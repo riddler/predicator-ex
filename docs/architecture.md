@@ -345,6 +345,7 @@ test/predicator/
     `index_of(string, sub)`
   - **Numeric functions**: `abs(number)`, `max(a, b)`, `min(a, b)`
   - **Date functions**: `year(date)`, `month(date)`, `day(date)`
+  - **List functions**: `concat(list1, list2)`
 - **Custom Functions**: Provided per evaluation via `functions:` option in `evaluate/3`
 - **Function Format**: `%{name => {arity, function}}` where `arity` is an integer, or a list of
   integers for a function with optional arguments (e.g. `substring/2` or `/3`); function takes
@@ -403,6 +404,10 @@ test/predicator/
 - **Cross-language**: `make_list` is an ISA v2 addition. The Ruby and
   JavaScript siblings do not implement it yet, so an instruction list
   containing it will not run there. All-literal lists remain portable.
+- **Concatenation**: `+` concatenates two lists (`[1, 2] + [3]` ->
+  `[1, 2, 3]`); `concat(a, b)` does the same as an explicit function call.
+  Both are list-only - `+` still coerces string/number as before, and
+  `concat` does not accept strings or numbers.
 
 ### Object Literals (v3.1.0 - JavaScript-Style Objects)
 
