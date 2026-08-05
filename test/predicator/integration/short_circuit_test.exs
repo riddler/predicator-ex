@@ -1,6 +1,7 @@
 defmodule Predicator.Integration.ShortCircuitTest do
   use ExUnit.Case, async: true
 
+  alias Predicator.Errors.UndefinedVariableError
   alias Predicator.Evaluator
 
   describe "the three verified 3.5.0 failures now evaluate" do
@@ -93,6 +94,40 @@ defmodule Predicator.Integration.ShortCircuitTest do
     test "compile/1 emits jump opcodes instead of and/or" do
       {:ok, instructions} = Predicator.compile("a AND b OR c")
       refute Enum.any?(instructions, &(&1 in [["and"], ["or"]]))
+    end
+  end
+
+  describe "unbound-root reporting reflects the loads the run executed (px-8um.8)" do
+    test "a load skipped by AND's jump is not reported" do
+      # The static scan px-8um.4 shipped hit `missing` first and named it,
+      # even though jump_if_falsy_or_pop skips that load entirely.
+      assert Predicator.evaluate("(false AND missing) OR unbound_b", %{}) ==
+               {:error, UndefinedVariableError.new("unbound_b")}
+    end
+
+    test "a load skipped by OR's jump is not reported" do
+      assert Predicator.evaluate("(true OR missing) AND unbound_b", %{}) ==
+               {:error, UndefinedVariableError.new("unbound_b")}
+    end
+
+    test "a nested guard reports the executed load, not the earlier skipped one" do
+      # Compiles to load a, jump, load missing, jump, load b, jump,
+      # load unbound_b - `missing` precedes `unbound_b` in the instruction
+      # list and is skipped, which is the shape the static scan cannot get
+      # right.
+      context = %{"a" => false, "b" => true}
+
+      assert Predicator.evaluate("(a AND missing) OR (b AND unbound_b)", context) ==
+               {:error, UndefinedVariableError.new("unbound_b")}
+    end
+
+    test "an executed unbound load is still reported when nothing is skipped" do
+      assert Predicator.evaluate("missing > 5", %{}) ==
+               {:error, UndefinedVariableError.new("missing")}
+    end
+
+    test "a fully short-circuited program with no executed unbound load is not an error" do
+      assert Predicator.evaluate("false AND missing", %{}) == {:ok, false}
     end
   end
 end

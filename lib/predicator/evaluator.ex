@@ -40,7 +40,8 @@ defmodule Predicator.Evaluator do
           stack: [Types.value()],
           context: Types.context(),
           functions: %{binary() => {function_arity(), function()}},
-          halted: boolean()
+          halted: boolean(),
+          unbound_loads: [binary()]
         }
 
   @typedoc "A function's accepted argument count(s): a fixed arity, or a set of arities for optional/variadic-style args"
@@ -52,7 +53,8 @@ defmodule Predicator.Evaluator do
     stack: [],
     context: %{},
     functions: %{},
-    halted: false
+    halted: false,
+    unbound_loads: []
   ]
 
   @doc """
@@ -72,17 +74,18 @@ defmodule Predicator.Evaluator do
   end
 
   @doc """
-  Runs an already-built evaluator to completion and extracts its result.
+  Runs an already-built evaluator to completion, returning its result **and**
+  its final state.
 
-  Unlike `evaluate/3`, this does no function merging - `evaluator.functions`
-  is used as given. This is what `evaluate/3` uses internally, and what
-  `Predicator.Context`-based evaluation uses to skip the per-call merge.
+  Same as `evaluate_prepared/1` except that the caller keeps the state the run
+  produced - `unbound_loads/1` in particular, which `Predicator.evaluate/3`
+  reads to name the variable behind an `:undefined` result.
   """
-  @spec evaluate_prepared(t()) :: Types.internal_result()
-  def evaluate_prepared(%__MODULE__{} = evaluator) do
+  @spec run_prepared(t()) :: {:ok, Types.value(), t()} | {:error, struct()}
+  def run_prepared(%__MODULE__{} = evaluator) do
     case run(evaluator) do
-      {:ok, %__MODULE__{stack: [result | _rest]}} ->
-        result
+      {:ok, %__MODULE__{stack: [result | _rest]} = final} ->
+        {:ok, result, final}
 
       {:ok, %__MODULE__{stack: []}} ->
         {:error,
@@ -96,6 +99,49 @@ defmodule Predicator.Evaluator do
         {:error, error_struct}
     end
   end
+
+  @doc """
+  Runs an already-built evaluator to completion and extracts its result.
+
+  Unlike `evaluate/3`, this does no function merging - `evaluator.functions`
+  is used as given. This is what `evaluate/3` uses internally, and what
+  `Predicator.Context`-based evaluation uses to skip the per-call merge.
+  """
+  @spec evaluate_prepared(t()) :: Types.internal_result()
+  def evaluate_prepared(%__MODULE__{} = evaluator) do
+    case run_prepared(evaluator) do
+      {:ok, result, _final} -> result
+      {:error, error_struct} -> {:error, error_struct}
+    end
+  end
+
+  @doc """
+  The root variables this run loaded and did not find bound, in execution
+  order, without repeats.
+
+  This is what the run *actually read*, not what the program contains: a load
+  inside a branch `jump_if_falsy_or_pop`/`jump_if_true_or_pop` skipped never
+  executes and never appears here. `Predicator.evaluate/3` uses it to name the
+  variable behind an `:undefined` result.
+
+  It records executed loads, not provenance - a run that executes two unbound
+  loads lists both, even if only the second one's `:undefined` reached the
+  result. Deciding that would require tracking which stack value descends from
+  which load.
+
+  ## Examples
+
+      iex> instructions = [["load", "a"], ["load", "b"]]
+      iex> {:ok, _result, evaluator} =
+      ...>   Predicator.Evaluator.run_prepared(%Predicator.Evaluator{
+      ...>     instructions: instructions,
+      ...>     context: %{"a" => 1}
+      ...>   })
+      iex> Predicator.Evaluator.unbound_loads(evaluator)
+      ["b"]
+  """
+  @spec unbound_loads(t()) :: [binary()]
+  def unbound_loads(%__MODULE__{unbound_loads: names}), do: Enum.reverse(names)
 
   @doc """
   Evaluates a list of instructions with the given context and options.
@@ -241,7 +287,11 @@ defmodule Predicator.Evaluator do
   defp execute_instruction(%__MODULE__{} = evaluator, ["load", variable_name])
        when is_binary(variable_name) do
     value = load_from_context(evaluator.context, variable_name)
-    {:ok, push_stack(evaluator, value)}
+
+    {:ok,
+     evaluator
+     |> record_unbound_load(variable_name, value)
+     |> push_stack(value)}
   end
 
   # Property access instruction
@@ -999,6 +1049,60 @@ defmodule Predicator.Evaluator do
 
       value ->
         value
+    end
+  end
+
+  @doc """
+  Resolves `name` to the key it is bound under in `data`, or `:unbound`.
+
+  A root variable may be stored under a string key or the equivalent atom key;
+  this answers which, in the same order a `load` instruction resolves a name.
+  `Predicator.Context.bound?/2` and the evaluator's own unbound-load recording
+  both go through here, so they cannot drift apart.
+
+  Note this asks about *presence*, not value: a name bound to `:undefined` (or
+  to `nil`) resolves to `{:ok, key}`, because it is bound.
+
+  ## Examples
+
+      iex> Predicator.Evaluator.resolve_key(%{"score" => 85}, "score")
+      {:ok, "score"}
+
+      iex> Predicator.Evaluator.resolve_key(%{score: 85}, "score")
+      {:ok, :score}
+
+      iex> Predicator.Evaluator.resolve_key(%{"score" => 85}, "missing")
+      :unbound
+  """
+  @spec resolve_key(Types.context(), binary()) :: {:ok, binary() | atom()} | :unbound
+  def resolve_key(data, name) when is_map(data) and is_binary(name) do
+    if Map.has_key?(data, name), do: {:ok, name}, else: resolve_atom_key(data, name)
+  end
+
+  @spec resolve_atom_key(Types.context(), binary()) :: {:ok, atom()} | :unbound
+  defp resolve_atom_key(data, name) do
+    atom_key = String.to_existing_atom(name)
+    if Map.has_key?(data, atom_key), do: {:ok, atom_key}, else: :unbound
+  rescue
+    ArgumentError -> :unbound
+  end
+
+  # The one hook every executed load passes through. px-8um.3's
+  # `on_unbound: :error` policy belongs here too - it is the same event,
+  # decided differently.
+  #
+  # Presence, not value, is the question: `%{"x" => nil}` and
+  # `%{"x" => :undefined}` both load as :undefined but are bound, and
+  # Context.bound?/2 must keep agreeing with what gets recorded here - which
+  # is why both go through resolve_key/2.
+  @spec record_unbound_load(t(), binary(), Types.value()) :: t()
+  defp record_unbound_load(%__MODULE__{} = evaluator, variable_name, value) do
+    if Undefined.undefined?(value) and
+         resolve_key(evaluator.context, variable_name) == :unbound and
+         variable_name not in evaluator.unbound_loads do
+      %__MODULE__{evaluator | unbound_loads: [variable_name | evaluator.unbound_loads]}
+    else
+      evaluator
     end
   end
 
