@@ -259,10 +259,14 @@ defmodule Predicator do
   @doc """
   Parses an expression string into an Abstract Syntax Tree.
 
+  Every node carries a trailing `{line, column}` source position. Use
+  `Predicator.Parser.strip_positions/1` to recover the position-free shape
+  Predicator 3.6 produced.
+
   ## Examples
 
       iex> Predicator.parse("score > 85")
-      {:ok, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}}
+      {:ok, {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
   """
   @spec parse(binary()) :: {:ok, Parser.ast()} | {:error, binary(), pos_integer(), pos_integer()}
   def parse(expression) when is_binary(expression) do

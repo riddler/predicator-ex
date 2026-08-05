@@ -124,7 +124,7 @@ defmodule Predicator.ContextLocation do
   """
   @spec resolve(term(), Types.context()) :: location_result()
   def resolve(ast_node, context) when is_map(context) do
-    case do_resolve_base(ast_node, context) do
+    case ast_node |> Parser.strip_positions() |> do_resolve_base(context) do
       {:ok, path} -> {:ok, path}
       {:error, _error} = error -> error
     end

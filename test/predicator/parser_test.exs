@@ -1,49 +1,49 @@
 defmodule Predicator.ParserTest do
   use ExUnit.Case, async: true
 
-  alias Predicator.{Lexer, Parser}
+  alias Predicator.Lexer
 
   doctest Predicator.Parser
 
   describe "parse/1 - primary expressions" do
     test "parses integer literal" do
       {:ok, tokens} = Lexer.tokenize("42")
-      assert Parser.parse(tokens) == {:ok, {:literal, 42}}
+      assert parse_positionless(tokens) == {:ok, {:literal, 42}}
     end
 
     test "parses string literal" do
       {:ok, tokens} = Lexer.tokenize("\"hello\"")
-      assert Parser.parse(tokens) == {:ok, {:string_literal, "hello", :double}}
+      assert parse_positionless(tokens) == {:ok, {:string_literal, "hello", :double}}
     end
 
     test "parses single quoted string literal" do
       {:ok, tokens} = Lexer.tokenize("'hello'")
-      assert Parser.parse(tokens) == {:ok, {:string_literal, "hello", :single}}
+      assert parse_positionless(tokens) == {:ok, {:string_literal, "hello", :single}}
     end
 
     test "parses boolean literal true" do
       {:ok, tokens} = Lexer.tokenize("true")
-      assert Parser.parse(tokens) == {:ok, {:literal, true}}
+      assert parse_positionless(tokens) == {:ok, {:literal, true}}
     end
 
     test "parses boolean literal false" do
       {:ok, tokens} = Lexer.tokenize("false")
-      assert Parser.parse(tokens) == {:ok, {:literal, false}}
+      assert parse_positionless(tokens) == {:ok, {:literal, false}}
     end
 
     test "parses identifier" do
       {:ok, tokens} = Lexer.tokenize("score")
-      assert Parser.parse(tokens) == {:ok, {:identifier, "score"}}
+      assert parse_positionless(tokens) == {:ok, {:identifier, "score"}}
     end
 
     test "parses parenthesized expression" do
       {:ok, tokens} = Lexer.tokenize("(42)")
-      assert Parser.parse(tokens) == {:ok, {:literal, 42}}
+      assert parse_positionless(tokens) == {:ok, {:literal, 42}}
     end
 
     test "parses nested parentheses" do
       {:ok, tokens} = Lexer.tokenize("((score))")
-      assert Parser.parse(tokens) == {:ok, {:identifier, "score"}}
+      assert parse_positionless(tokens) == {:ok, {:identifier, "score"}}
     end
   end
 
@@ -52,42 +52,42 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize("score > 85")
 
       expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses less than comparison" do
       {:ok, tokens} = Lexer.tokenize("age < 18")
 
       expected = {:comparison, :lt, {:identifier, "age"}, {:literal, 18}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses greater than or equal comparison" do
       {:ok, tokens} = Lexer.tokenize("score >= 85")
 
       expected = {:comparison, :gte, {:identifier, "score"}, {:literal, 85}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses less than or equal comparison" do
       {:ok, tokens} = Lexer.tokenize("age <= 65")
 
       expected = {:comparison, :lte, {:identifier, "age"}, {:literal, 65}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses equality comparison" do
       {:ok, tokens} = Lexer.tokenize("name = \"John\"")
 
       expected = {:comparison, :eq, {:identifier, "name"}, {:string_literal, "John", :double}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses equality comparison with single quotes" do
       {:ok, tokens} = Lexer.tokenize("name = 'John'")
 
       expected = {:comparison, :eq, {:identifier, "name"}, {:string_literal, "John", :single}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses not equal comparison" do
@@ -96,21 +96,21 @@ defmodule Predicator.ParserTest do
       expected =
         {:comparison, :ne, {:identifier, "status"}, {:string_literal, "inactive", :double}}
 
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses number to number comparison" do
       {:ok, tokens} = Lexer.tokenize("10 > 5")
 
       expected = {:comparison, :gt, {:literal, 10}, {:literal, 5}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses boolean comparison" do
       {:ok, tokens} = Lexer.tokenize("active = true")
 
       expected = {:comparison, :eq, {:identifier, "active"}, {:literal, true}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
   end
 
@@ -119,28 +119,28 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize("(score > 85)")
 
       expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses parenthesized left operand" do
       {:ok, tokens} = Lexer.tokenize("(score) > 85")
 
       expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses parenthesized right operand" do
       {:ok, tokens} = Lexer.tokenize("score > (85)")
 
       expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses both operands parenthesized" do
       {:ok, tokens} = Lexer.tokenize("(score) > (85)")
 
       expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
   end
 
@@ -149,7 +149,7 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize("  score   >    85  ")
 
       expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "handles mixed types" do
@@ -159,19 +159,19 @@ defmodule Predicator.ParserTest do
         {:comparison, :gt, {:string_literal, "apple", :double},
          {:string_literal, "banana", :double}}
 
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
   end
 
   describe "parse/1 - error cases" do
     test "returns error for empty token list" do
-      result = Parser.parse([])
+      result = parse_positionless([])
       assert {:error, "Unexpected end of input", 1, 1} = result
     end
 
     test "returns error for only EOF token" do
       tokens = [{:eof, 1, 1, 0, nil}]
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -181,7 +181,7 @@ defmodule Predicator.ParserTest do
     test "returns error for incomplete comparison" do
       {:ok, tokens} = Lexer.tokenize("score >")
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -191,7 +191,7 @@ defmodule Predicator.ParserTest do
     test "returns error for invalid left operand" do
       # This would be caught by the lexer, but let's test with a constructed token
       tokens = [{:gt, 1, 1, 1, ">"}, {:integer, 1, 3, 2, 85}, {:eof, 1, 5, 0, nil}]
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
@@ -203,7 +203,7 @@ defmodule Predicator.ParserTest do
     test "returns error for missing right operand" do
       {:ok, tokens} = Lexer.tokenize("score > >")
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
@@ -215,7 +215,7 @@ defmodule Predicator.ParserTest do
     test "returns error for unterminated parentheses" do
       {:ok, tokens} = Lexer.tokenize("(score")
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected ')' but found end of input", 1, 7} = result
     end
 
@@ -229,21 +229,21 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 8, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected ')' but found identifier ']'", 1, 7} = result
     end
 
     test "returns error for extra tokens after expression" do
       {:ok, tokens} = Lexer.tokenize("score > 85 extra")
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Unexpected token identifier 'extra' after expression", 1, 12} = result
     end
 
     test "returns error for multiple operators" do
       {:ok, tokens} = Lexer.tokenize("score > > 85")
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
@@ -260,7 +260,7 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize(input)
 
       expected = {:comparison, :gte, {:identifier, "user_age"}, {:literal, 21}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "handles complex parenthesized expressions" do
@@ -268,7 +268,7 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize(input)
 
       expected = {:comparison, :gte, {:identifier, "score"}, {:identifier, "threshold"}}
-      assert Parser.parse(tokens) == {:ok, expected}
+      assert parse_positionless(tokens) == {:ok, expected}
     end
   end
 
@@ -281,7 +281,7 @@ defmodule Predicator.ParserTest do
         # Note: no closing paren and no EOF token to test nil case
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected ')' but reached end of input", 1, 1} = result
     end
 
@@ -289,7 +289,7 @@ defmodule Predicator.ParserTest do
       # Test error propagation through parentheses
       {:ok, tokens} = Lexer.tokenize("(score > )")
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, message, 1, 10} = result
 
       assert message =~
@@ -303,7 +303,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 8, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -331,7 +331,7 @@ defmodule Predicator.ParserTest do
         [token_type] = token_types
         tokens = [{token_type, 1, 1, 1, to_string(token_type)}, {:eof, 1, 2, 0, nil}]
 
-        result = Parser.parse(tokens)
+        result = parse_positionless(tokens)
         assert {:error, ^expected_message, 1, 1} = result
       end
     end
@@ -351,7 +351,7 @@ defmodule Predicator.ParserTest do
 
       for token <- operator_tokens do
         tokens = [token, {:eof, 1, 3, 0, nil}]
-        result = Parser.parse(tokens)
+        result = parse_positionless(tokens)
         assert {:error, _message, 1, 1} = result
       end
 
@@ -363,7 +363,7 @@ defmodule Predicator.ParserTest do
 
       for token <- other_tokens do
         tokens = [token, {:eof, 1, 3, 0, nil}]
-        result = Parser.parse(tokens)
+        result = parse_positionless(tokens)
         assert {:error, _message, 1, 1} = result
       end
     end
@@ -374,7 +374,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 2, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found ')'",
@@ -390,7 +390,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 3, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found ')'",
@@ -413,7 +413,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 25, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
@@ -432,7 +432,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 36, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_or,
@@ -450,7 +450,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 19, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok, {:logical_not, {:comparison, :eq, {:identifier, "expired"}, {:literal, true}}}} =
                result
@@ -464,7 +464,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 13, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok, {:logical_not, {:logical_not, {:literal, true}}}} = result
     end
@@ -480,7 +480,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 23, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_or, {:literal, true}, {:logical_and, {:literal, false}, {:literal, true}}}} =
@@ -497,7 +497,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 19, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok, {:logical_and, {:logical_not, {:literal, false}}, {:literal, true}}} = result
     end
@@ -514,7 +514,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 28, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_or, {:logical_not, {:literal, false}},
@@ -532,7 +532,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 24, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_and, {:logical_and, {:literal, true}, {:literal, false}},
@@ -550,7 +550,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 22, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_or, {:logical_or, {:literal, true}, {:literal, false}}, {:literal, true}}} =
@@ -570,7 +570,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 25, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_and, {:logical_or, {:literal, true}, {:literal, false}}, {:literal, true}}} =
@@ -584,7 +584,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 9, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -598,7 +598,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 8, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -611,7 +611,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 4, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -635,7 +635,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 41, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_or,
@@ -652,7 +652,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 13, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:literal, ~D[2024-01-15]}} = result
     end
 
@@ -664,7 +664,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 22, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:literal, ^datetime}} = result
     end
 
@@ -676,7 +676,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 28, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok, {:comparison, :gt, {:literal, ~D[2024-01-15]}, {:literal, ~D[2024-01-10]}}} =
                result
@@ -694,7 +694,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 7, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:literal, 42}} = result
     end
 
@@ -714,7 +714,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 34, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:list,
@@ -734,7 +734,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 5, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected ']' but found number '2'", 1, 4} = result
     end
 
@@ -745,7 +745,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 7, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found 'AND'",
@@ -761,7 +761,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 8, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:membership, :in, {:literal, 1}, {:list, []}}} = result
     end
   end
@@ -769,25 +769,25 @@ defmodule Predicator.ParserTest do
   describe "parse/1 - function call expressions" do
     test "parses function call with no arguments" do
       {:ok, tokens} = Lexer.tokenize("len()")
-      assert Parser.parse(tokens) == {:ok, {:function_call, "len", []}}
+      assert parse_positionless(tokens) == {:ok, {:function_call, "len", []}}
     end
 
     test "parses function call with one argument" do
       {:ok, tokens} = Lexer.tokenize("len(name)")
-      assert Parser.parse(tokens) == {:ok, {:function_call, "len", [{:identifier, "name"}]}}
+      assert parse_positionless(tokens) == {:ok, {:function_call, "len", [{:identifier, "name"}]}}
     end
 
     test "parses function call with multiple arguments" do
       {:ok, tokens} = Lexer.tokenize("max(score1, score2)")
 
-      assert Parser.parse(tokens) ==
+      assert parse_positionless(tokens) ==
                {:ok, {:function_call, "max", [{:identifier, "score1"}, {:identifier, "score2"}]}}
     end
 
     test "parses function call with complex arguments" do
       {:ok, tokens} = Lexer.tokenize("max(score + bonus, 100)")
 
-      assert Parser.parse(tokens) ==
+      assert parse_positionless(tokens) ==
                {:ok,
                 {:function_call, "max",
                  [
@@ -799,7 +799,7 @@ defmodule Predicator.ParserTest do
     test "parses nested function calls" do
       {:ok, tokens} = Lexer.tokenize("upper(trim(name))")
 
-      assert Parser.parse(tokens) ==
+      assert parse_positionless(tokens) ==
                {:ok,
                 {:function_call, "upper",
                  [
@@ -814,7 +814,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 5, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected '(' after function name but found number '42'", 1, 4} = result
     end
 
@@ -824,7 +824,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 4, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected '(' after function name but found end of input", 1, 4} = result
     end
 
@@ -836,7 +836,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 9, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected ')' but found end of input", 1, 9} = result
     end
 
@@ -849,7 +849,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 10, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected ')' but found ']'", 1, 9} = result
     end
   end
@@ -857,7 +857,7 @@ defmodule Predicator.ParserTest do
   describe "parse/1 - complex nested expressions" do
     test "parses deeply nested arithmetic expressions" do
       {:ok, tokens} = Lexer.tokenize("((((a + b) * c) - d) / e)")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:arithmetic, :divide,
@@ -870,7 +870,7 @@ defmodule Predicator.ParserTest do
 
     test "parses complex logical expressions with mixed operators" do
       {:ok, tokens} = Lexer.tokenize("a && b || c && d")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:logical_or, {:logical_and, {:identifier, "a"}, {:identifier, "b"}},
@@ -881,7 +881,7 @@ defmodule Predicator.ParserTest do
 
     test "parses mixed arithmetic and logical with proper precedence" do
       {:ok, tokens} = Lexer.tokenize("a + b > c && d - e < f")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:logical_and,
@@ -895,7 +895,7 @@ defmodule Predicator.ParserTest do
 
     test "parses expressions with multiple unary operators" do
       {:ok, tokens} = Lexer.tokenize("!!active")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:logical_not, {:logical_not, {:identifier, "active"}}}
 
@@ -904,7 +904,7 @@ defmodule Predicator.ParserTest do
 
     test "parses multiple nested unary minus operators" do
       {:ok, tokens} = Lexer.tokenize("---value")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:unary, :minus, {:unary, :minus, {:unary, :minus, {:identifier, "value"}}}}
 
@@ -920,7 +920,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 4, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -933,7 +933,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 2, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -948,7 +948,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 4, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
@@ -967,7 +967,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 5, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected ']' but found number '2'", 1, 3} = result
     end
 
@@ -980,7 +980,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 5, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '*'",
@@ -1000,7 +1000,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 13, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, message, 1, 13} = result
 
       assert message =~
@@ -1012,7 +1012,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 22, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, message, 1, 22} = result
 
       assert message =~
@@ -1026,7 +1026,7 @@ defmodule Predicator.ParserTest do
         {:eof, 1, 5, 0, nil}
       ]
 
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, "Expected '(' after function name but found '+'", 1, 4} = result
     end
   end
@@ -1035,7 +1035,7 @@ defmodule Predicator.ParserTest do
     test "verifies complex precedence with all operators" do
       # Test expression: a + b * c / d - e % f > g && h || i
       {:ok, tokens} = Lexer.tokenize("a + b * c / d - e % f > g && h || i")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       # Expected precedence:
       # 1. *, /, % (left-to-right)
@@ -1062,7 +1062,7 @@ defmodule Predicator.ParserTest do
 
     test "verifies equality operator precedence" do
       {:ok, tokens} = Lexer.tokenize("a + b == c * d")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:comparison, :equal_equal, {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
@@ -1073,7 +1073,7 @@ defmodule Predicator.ParserTest do
 
     test "verifies unary operator precedence with arithmetic" do
       {:ok, tokens} = Lexer.tokenize("-a + b")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:arithmetic, :add, {:unary, :minus, {:identifier, "a"}}, {:identifier, "b"}}
 
@@ -1084,7 +1084,7 @@ defmodule Predicator.ParserTest do
   describe "parse/1 - bracket access expressions" do
     test "parses simple bracket access" do
       {:ok, tokens} = Lexer.tokenize("user['name']")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:bracket_access, {:identifier, "user"}, {:string_literal, "name", :single}}
       assert {:ok, ^expected_ast} = result
@@ -1092,7 +1092,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with double quotes" do
       {:ok, tokens} = Lexer.tokenize("user[\"name\"]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:bracket_access, {:identifier, "user"}, {:string_literal, "name", :double}}
       assert {:ok, ^expected_ast} = result
@@ -1100,7 +1100,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with numeric index" do
       {:ok, tokens} = Lexer.tokenize("items[0]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:bracket_access, {:identifier, "items"}, {:literal, 0}}
       assert {:ok, ^expected_ast} = result
@@ -1108,7 +1108,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with variable index" do
       {:ok, tokens} = Lexer.tokenize("items[index]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:bracket_access, {:identifier, "items"}, {:identifier, "index"}}
       assert {:ok, ^expected_ast} = result
@@ -1116,7 +1116,7 @@ defmodule Predicator.ParserTest do
 
     test "parses chained bracket access" do
       {:ok, tokens} = Lexer.tokenize("data['users'][0]['name']")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {
         :bracket_access,
@@ -1131,7 +1131,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with arithmetic expression as key" do
       {:ok, tokens} = Lexer.tokenize("items[i + 1]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "items"},
@@ -1143,7 +1143,7 @@ defmodule Predicator.ParserTest do
     test "parses mixed dot and bracket access" do
       # Test the new property access parsing
       {:ok, tokens} = Lexer.tokenize("user.settings")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:property_access, {:identifier, "user"}, "settings"}
       assert {:ok, ^expected_ast} = result
@@ -1151,7 +1151,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access in comparison" do
       {:ok, tokens} = Lexer.tokenize("user['age'] > 18")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:comparison, :gt,
@@ -1163,7 +1163,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access in arithmetic" do
       {:ok, tokens} = Lexer.tokenize("scores[0] + scores[1]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:arithmetic, :add, {:bracket_access, {:identifier, "scores"}, {:literal, 0}},
@@ -1174,14 +1174,14 @@ defmodule Predicator.ParserTest do
 
     test "returns error for unclosed bracket" do
       {:ok, tokens} = Lexer.tokenize("user['name'")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error, "Expected ']' but found end of input", 1, 12} = result
     end
 
     test "returns error for empty bracket access" do
       {:ok, tokens} = Lexer.tokenize("user[]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found ']'",
@@ -1190,14 +1190,14 @@ defmodule Predicator.ParserTest do
 
     test "returns error for missing closing bracket" do
       {:ok, tokens} = Lexer.tokenize("user['name' + 'suffix'")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error, "Expected ']' but found end of input", 1, 23} = result
     end
 
     test "parses bracket access with boolean key" do
       {:ok, tokens} = Lexer.tokenize("config[true]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:bracket_access, {:identifier, "config"}, {:literal, true}}
       assert {:ok, ^expected_ast} = result
@@ -1205,7 +1205,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with false key" do
       {:ok, tokens} = Lexer.tokenize("settings[false]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast = {:bracket_access, {:identifier, "settings"}, {:literal, false}}
       assert {:ok, ^expected_ast} = result
@@ -1213,7 +1213,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with function call key" do
       {:ok, tokens} = Lexer.tokenize("data[len('key')]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "data"},
@@ -1224,7 +1224,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with nested brackets in key" do
       {:ok, tokens} = Lexer.tokenize("matrix[users[0]]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "matrix"},
@@ -1235,7 +1235,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with comparison expression key" do
       {:ok, tokens} = Lexer.tokenize("data[i > 5]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "data"},
@@ -1246,7 +1246,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with logical AND key" do
       {:ok, tokens} = Lexer.tokenize("cache[active AND valid]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "cache"},
@@ -1257,7 +1257,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with logical OR key" do
       {:ok, tokens} = Lexer.tokenize("flags[debug OR test]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "flags"},
@@ -1268,7 +1268,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with logical NOT key" do
       {:ok, tokens} = Lexer.tokenize("options[NOT disabled]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "options"}, {:logical_not, {:identifier, "disabled"}}}
@@ -1278,7 +1278,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with list key" do
       {:ok, tokens} = Lexer.tokenize("lookup[[1, 2, 3]]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "lookup"},
@@ -1289,7 +1289,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with parenthesized key" do
       {:ok, tokens} = Lexer.tokenize("data[(index + 1)]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "data"},
@@ -1300,7 +1300,7 @@ defmodule Predicator.ParserTest do
 
     test "parses deeply chained bracket access" do
       {:ok, tokens} = Lexer.tokenize("a[0][1][2][3]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access,
@@ -1313,7 +1313,7 @@ defmodule Predicator.ParserTest do
 
     test "parses bracket access with mixed operators in complex expressions" do
       {:ok, tokens} = Lexer.tokenize("data[key] + values[index * 2] > threshold['max']")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:comparison, :gt,
@@ -1327,7 +1327,7 @@ defmodule Predicator.ParserTest do
 
     test "returns error for bracket access with invalid token after bracket" do
       {:ok, tokens} = Lexer.tokenize("user[>]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
@@ -1336,21 +1336,21 @@ defmodule Predicator.ParserTest do
 
     test "returns error for unmatched left bracket" do
       {:ok, tokens} = Lexer.tokenize("user[key")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error, "Expected ']' but found end of input", 1, 9} = result
     end
 
     test "returns error for nested unmatched brackets" do
       {:ok, tokens} = Lexer.tokenize("data[users[index")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:error, "Expected ']' but found end of input", 1, 17} = result
     end
 
     test "parses bracket access with complex nested expression" do
       {:ok, tokens} = Lexer.tokenize("cache[users[active AND valid]['name']]")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:bracket_access, {:identifier, "cache"},
@@ -1366,19 +1366,19 @@ defmodule Predicator.ParserTest do
   describe "parse/1 - duration expressions" do
     test "parses simple duration with single unit" do
       {:ok, tokens} = Lexer.tokenize("5d")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:duration, [{5, "d"}]}} = result
     end
 
     test "parses duration with multiple units" do
       {:ok, tokens} = Lexer.tokenize("1d8h30m")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:duration, [{30, "m"}, {8, "h"}, {1, "d"}]}} = result
     end
 
     test "parses duration with all unit types" do
       {:ok, tokens} = Lexer.tokenize("2y3mo4w5d6h7m8s")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:duration, [{8, "s"}, {7, "m"}, {6, "h"}, {5, "d"}, {4, "w"}, {3, "mo"}, {2, "y"}]}} =
@@ -1387,7 +1387,7 @@ defmodule Predicator.ParserTest do
 
     test "parses duration with single character units" do
       {:ok, tokens} = Lexer.tokenize("1y2mo3w4d5h6m7s")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok,
               {:duration, [{7, "s"}, {6, "m"}, {5, "h"}, {4, "d"}, {3, "w"}, {2, "mo"}, {1, "y"}]}} =
@@ -1396,31 +1396,31 @@ defmodule Predicator.ParserTest do
 
     test "parses relative date with 'ago'" do
       {:ok, tokens} = Lexer.tokenize("1d8h ago")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:relative_date, {:duration, [{8, "h"}, {1, "d"}]}, :ago}} = result
     end
 
     test "parses relative date with 'from now'" do
       {:ok, tokens} = Lexer.tokenize("2h30m from now")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:relative_date, {:duration, [{30, "m"}, {2, "h"}]}, :future}} = result
     end
 
     test "parses relative date with 'next'" do
       {:ok, tokens} = Lexer.tokenize("next 1w")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:relative_date, {:duration, [{1, "w"}]}, :next}} = result
     end
 
     test "parses relative date with 'last'" do
       {:ok, tokens} = Lexer.tokenize("last 6mo")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:relative_date, {:duration, [{6, "mo"}]}, :last}} = result
     end
 
     test "duration in comparison expression" do
       {:ok, tokens} = Lexer.tokenize("created_at > 1d ago")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:comparison, :gt, {:identifier, "created_at"},
@@ -1431,7 +1431,7 @@ defmodule Predicator.ParserTest do
 
     test "duration in complex expression" do
       {:ok, tokens} = Lexer.tokenize("created_at > 1d ago AND updated_at < 1h from now")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       expected_ast =
         {:logical_and,
@@ -1445,52 +1445,66 @@ defmodule Predicator.ParserTest do
 
     test "returns error for invalid duration sequence" do
       {:ok, tokens} = Lexer.tokenize("1d8x")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, _message, _line, _col} = result
     end
 
     test "returns error for missing 'now' after 'from'" do
       {:ok, tokens} = Lexer.tokenize("1d from yesterday")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, _message, _line, _col} = result
     end
 
     test "returns error for 'from' without duration" do
       {:ok, tokens} = Lexer.tokenize("from now")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, _message, _line, _col} = result
     end
 
     test "returns error for 'ago' without duration" do
       {:ok, tokens} = Lexer.tokenize("ago")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, _message, _line, _col} = result
     end
 
     test "returns error for 'next' without duration" do
       {:ok, tokens} = Lexer.tokenize("next")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, _message, _line, _col} = result
     end
 
     test "returns error for 'last' without duration" do
       {:ok, tokens} = Lexer.tokenize("last")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:error, _message, _line, _col} = result
     end
 
     test "parses zero duration" do
       {:ok, tokens} = Lexer.tokenize("0d")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
       assert {:ok, {:duration, [{0, "d"}]}} = result
     end
 
     test "parses large duration numbers" do
       {:ok, tokens} = Lexer.tokenize("999y365d24h60m60s")
-      result = Parser.parse(tokens)
+      result = parse_positionless(tokens)
 
       assert {:ok, {:duration, [{60, "s"}, {60, "m"}, {24, "h"}, {365, "d"}, {999, "y"}]}} =
                result
+    end
+  end
+
+  # Phase 1 of source positions: these assertions are about AST *shape*, so they
+  # read the position-free form.
+  defp parse_positionless(input) do
+    result =
+      if is_binary(input),
+        do: Predicator.parse(input),
+        else: Predicator.Parser.parse(input)
+
+    case result do
+      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      other -> other
     end
   end
 end

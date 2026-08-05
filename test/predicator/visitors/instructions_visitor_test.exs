@@ -269,10 +269,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - integration with full pipeline" do
     test "works with lexer and parser output" do
-      alias Predicator.{Lexer, Parser}
+      alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize("score > 85")
-      {:ok, ast} = Parser.parse(tokens)
+      {:ok, ast} = parse_positionless(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -284,10 +284,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "works with complex parenthesized expression" do
-      alias Predicator.{Lexer, Parser}
+      alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize("(age >= 18)")
-      {:ok, ast} = Parser.parse(tokens)
+      {:ok, ast} = parse_positionless(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -299,10 +299,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "works with logical AND expression" do
-      alias Predicator.{Lexer, Parser}
+      alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize("score > 85 AND age >= 18")
-      {:ok, ast} = Parser.parse(tokens)
+      {:ok, ast} = parse_positionless(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -318,10 +318,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "works with logical OR expression" do
-      alias Predicator.{Lexer, Parser}
+      alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize(~s(role = "admin" OR role = "manager"))
-      {:ok, ast} = Parser.parse(tokens)
+      {:ok, ast} = parse_positionless(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -337,10 +337,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "works with logical NOT expression" do
-      alias Predicator.{Lexer, Parser}
+      alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize("NOT expired = true")
-      {:ok, ast} = Parser.parse(tokens)
+      {:ok, ast} = parse_positionless(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -832,6 +832,20 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["lit", 3],
                ["make_list", 2]
              ]
+    end
+  end
+
+  # Phase 1 of source positions: these assertions are about AST *shape*, so they
+  # read the position-free form.
+  defp parse_positionless(input) do
+    result =
+      if is_binary(input),
+        do: Predicator.parse(input),
+        else: Predicator.Parser.parse(input)
+
+    case result do
+      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      other -> other
     end
   end
 end

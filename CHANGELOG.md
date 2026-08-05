@@ -33,6 +33,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Predicator.Evaluator.run_prepared/1` (result plus final evaluator state),
   `Predicator.Evaluator.unbound_loads/1`, and
   `Predicator.Evaluator.resolve_key/2`.
+- Source positions on every AST node: each node carries a trailing
+  `{line, column}` naming the token that defines it (the operator token for
+  binary and unary operators, the opening bracket for lists and objects, the
+  name token for function calls).
+- `Predicator.Parser.strip_positions/1` and
+  `Predicator.Parser.ensure_positions/1`: total, idempotent normalizers between
+  the positioned AST and the position-free shape Predicator 3.6 produced.
+
+### Changed
+
+- `Predicator.parse/1` now returns positioned AST nodes, so every node has one
+  more trailing element than it did in 3.6. Callers that pattern-match on node
+  shape either wrap the result in `Predicator.Parser.strip_positions/1` to get
+  the old shape back, or add a trailing `_position` to their patterns.
+  `Predicator.decompile/2` and `Predicator.Compiler.to_instructions/2` still
+  accept a hand-built 3.6-shaped AST unchanged, and the instruction list
+  `Predicator.compile/1` produces is byte-identical, so stored compiled
+  artifacts and cross-language interchange are unaffected.
 
 ### Fixed
 

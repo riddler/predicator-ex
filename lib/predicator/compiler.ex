@@ -49,7 +49,9 @@ defmodule Predicator.Compiler do
   """
   @spec to_instructions(Parser.ast(), keyword()) :: [[binary() | term()]]
   def to_instructions(ast, opts \\ []) do
-    Visitor.accept(ast, InstructionsVisitor, opts)
+    ast
+    |> Parser.strip_positions()
+    |> Visitor.accept(InstructionsVisitor, opts)
   end
 
   @doc """
@@ -86,6 +88,8 @@ defmodule Predicator.Compiler do
   """
   @spec to_string(Parser.ast(), keyword()) :: binary()
   def to_string(ast, opts \\ []) do
-    Visitor.accept(ast, StringVisitor, opts)
+    ast
+    |> Parser.strip_positions()
+    |> Visitor.accept(StringVisitor, opts)
   end
 end

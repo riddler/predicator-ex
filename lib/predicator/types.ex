@@ -137,6 +137,20 @@ defmodule Predicator.Types do
   @type instruction_list :: [instruction()]
 
   @typedoc """
+  A source position: 1-based line and column of the token that defines an AST
+  node.
+  """
+  @type position :: {line :: pos_integer(), column :: pos_integer()}
+
+  @typedoc """
+  Maps a 0-based instruction index to the source position of the AST node that
+  emitted it. Produced by `Predicator.Compiler.to_instructions_with_positions/2`;
+  never part of the instruction list itself, so interchange and stored compiled
+  artifacts are unaffected.
+  """
+  @type position_table :: %{non_neg_integer() => position()}
+
+  @typedoc """
   The result of evaluating a predicate from public API functions.
 
   Returns:
