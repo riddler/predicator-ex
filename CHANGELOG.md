@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Predicator.Errors.ParseError` gains a `:position` field - `{line, column}`,
+  derived from the existing `:line` and `:column` fields, which stay
+  populated unchanged. Generic error-reporting code can now read `:position`
+  uniformly across `ParseError`, `EvaluationError`, `TypeMismatchError`, and
+  `UndefinedVariableError` instead of special-casing `ParseError`. Additive
+  and non-breaking - no existing caller matching on `:line`/`:column` needs
+  to change.
+
 ### Fixed
 
 - The Hex package `files:` list named a bare `docs` entry, which swept the
