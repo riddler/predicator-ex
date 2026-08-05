@@ -212,7 +212,7 @@ test/predicator/
 
 ## Recent Additions (2025)
 
-### Source Positions (v3.7.0, unreleased)
+### Source Positions (v3.7.0)
 
 Every AST node carries a trailing `{line, column}` naming the token that
 defines it, the compiler emits a side table from instruction index to position,
@@ -239,11 +239,13 @@ trailing position:
 {:property_access, target, property, pos}
 {:duration, units, pos}
 {:relative_date, duration, direction, pos}
+{:object_key, value, style, pos}
 ```
 
-Object keys are positioned too: `{:identifier, name, pos}` and
-`{:string_literal, value, pos}`. The 3-vs-4 arity is what still distinguishes an
-object key's string literal from an expression's.
+Object keys have their own node - `{:object_key, value, style, pos}`, where
+`style` is `:identifier`, `:double`, or `:single`. They do not reuse the
+expression tags, so nothing tells a key from an expression by tuple arity, and
+the style records how the key was written so it decompiles back the same way.
 
 **Which token a node points at.** Leaves point at their own token. Everything
 else points at the token that *names the operation*, so an error names the thing
@@ -284,6 +286,14 @@ pass an unrecognized node through rather than raising. The visitors call
 `Predicator.decompile/2` and `Compiler.to_instructions/2` keep accepting a
 hand-built 3.6-shaped AST. Visitor clauses therefore have exactly one form each
 and their contract is "positioned AST in".
+
+Object keys go through the same edge by their own pair of helpers:
+`ensure_positions/1` lifts every pre-4.0 key shape - the 3.6 bare
+`{:identifier, name}` / `{:string_literal, value}` and the 3.7 positioned
+`{:identifier, name, pos}` / `{:string_literal, value, pos}` - to an
+`{:object_key, ...}` node, and `strip_positions/1` still emits the 3.6 shape,
+which had no style on a key. That acceptance is scheduled for removal in 4.0.0
+(see px-tbv), when the whole pre-4.0 shape layer is cut in one piece.
 
 **Runtime errors.** `EvaluationError`, `TypeMismatchError`, and
 `UndefinedVariableError` gained an optional `:position`. The evaluator carries

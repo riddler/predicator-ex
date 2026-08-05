@@ -468,17 +468,17 @@ bd update px-0y9 --label area:docs
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality` (the docs are compiled into
+- [x] Full quality gate passes: `mix quality` (the docs are compiled into
       `ex_doc`, so a malformed link or code fence fails here)
-- [ ] `bd show px-tbv` lists the new child bead
-- [ ] `bd show px-0y9` shows `area:docs`
+- [x] `bd show px-tbv` lists the new child bead
+- [x] `bd show px-0y9` shows `area:docs`
 
 #### Manual Verification:
-- [ ] The architecture doc's node inventory matches `Parser.ast/0` and
+- [x] The architecture doc's node inventory matches `Parser.ast/0` and
       `Parser.object_key/0` exactly, with no arity claim left in the prose
-- [ ] The changelog entry tells a caller what to change in their code, not just
+- [x] The changelog entry tells a caller what to change in their code, not just
       what moved
-- [ ] The follow-up bead is specific enough to act on without rereading this
+- [x] The follow-up bead is specific enough to act on without rereading this
       plan
 
 ---
