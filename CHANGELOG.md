@@ -5,15 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.7.0] - 2026-08-05
+
+### Changed
+
+- **`AND` and `OR` now short-circuit.** Previously the compiler evaluated both
+  sides of every `AND`/`OR` unconditionally, so an unbound variable or a
+  runtime error on the side that should have been skipped surfaced as an
+  error - `false AND score > 5` with `score` unbound raised
+  `TypeMismatchError`, and `true OR (1 / 0) > 1` raised a division-by-zero
+  error. Both now evaluate to `false` and `true` respectively, matching every
+  mainstream language's `AND`/`OR` semantics and this library's own graceful
+  undefined-handling documentation. **This is an observable behavior change**:
+  expressions that previously returned `{:error, _}` now return `{:ok, _}`. A
+  consumer relying on the error was relying on the bug. `:undefined`
+  propagation is ECMAScript-aligned rather than symmetric - see
+  `docs/architecture.md`'s "Short-Circuit Evaluation" section for the exact
+  rule. Old compiled artifacts using `["and"]`/`["or"]` directly are
+  unaffected; the evaluator still accepts both opcodes.
+- `Predicator.parse/1` now returns positioned AST nodes, so every node has one
+  more trailing element than it did in 3.6. Callers that pattern-match on node
+  shape either wrap the result in `Predicator.Parser.strip_positions/1` to get
+  the old shape back, or add a trailing `_position` to their patterns.
+  `Predicator.decompile/2` and `Predicator.Compiler.to_instructions/2` still
+  accept a hand-built 3.6-shaped AST unchanged, and the instruction list
+  `Predicator.compile/1` produces is byte-identical, so stored compiled
+  artifacts and cross-language interchange are unaffected.
+- Documentation restructured: the README is now a slim entry point, with the
+  language reference, nested data access, custom functions, and location
+  expressions moved to `docs/reference/` and `docs/guides/` and published to
+  hexdocs. All documentation examples are now executed by the test suite.
 
 ### Added
 
-- `["make_list", n]` instruction: pops n values from the stack and pushes them
-  as a list, in source order (ADR-0001, ISA v2).
-- `["jump_if_falsy_or_pop", offset]` and `["jump_if_true_or_pop", offset]`
-  instructions: relative, forward-only conditional jumps used to short-circuit
-  `AND`/`OR` (ADR-0001, ISA v2).
+- **ISA v2** (ADR-0001): the instruction set is Predicator's cross-language
+  interchange format, and both entries below are new opcodes the Ruby and
+  JavaScript siblings need to add for parity with this release.
+  - `["make_list", n]` instruction: pops n values from the stack and pushes
+    them as a list, in source order.
+  - `["jump_if_falsy_or_pop", offset]` and `["jump_if_true_or_pop", offset]`
+    instructions: relative, forward-only conditional jumps used to
+    short-circuit `AND`/`OR`.
 - `Predicator.Context`: a bound evaluation context built once with `new/2`
   (merging builtin and custom functions a single time), rebound cheaply with
   `bind/3` and `assign/3`, and evaluated against many times via
@@ -62,17 +94,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   table automatically; an instruction-list caller who omits the option sees
   `position: nil` and no other change.
 
-### Changed
-
-- `Predicator.parse/1` now returns positioned AST nodes, so every node has one
-  more trailing element than it did in 3.6. Callers that pattern-match on node
-  shape either wrap the result in `Predicator.Parser.strip_positions/1` to get
-  the old shape back, or add a trailing `_position` to their patterns.
-  `Predicator.decompile/2` and `Predicator.Compiler.to_instructions/2` still
-  accept a hand-built 3.6-shaped AST unchanged, and the instruction list
-  `Predicator.compile/1` produces is byte-identical, so stored compiled
-  artifacts and cross-language interchange are unaffected.
-
 ### Fixed
 
 - `Predicator.decompile/2` and `Predicator.Compiler.to_string/2` no longer
@@ -112,20 +133,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   check scanned the whole instruction list and could name it -
   `(false AND missing) OR unbound_b` reported `missing` instead of
   `unbound_b`.
-- **`AND` and `OR` now short-circuit.** Previously the compiler evaluated both
-  sides of every `AND`/`OR` unconditionally, so an unbound variable or a
-  runtime error on the side that should have been skipped surfaced as an
-  error - `false AND score > 5` with `score` unbound raised
-  `TypeMismatchError`, and `true OR (1 / 0) > 1` raised a division-by-zero
-  error. Both now evaluate to `false` and `true` respectively, matching every
-  mainstream language's `AND`/`OR` semantics and this library's own graceful
-  undefined-handling documentation. **This is an observable behavior change**:
-  expressions that previously returned `{:error, _}` now return `{:ok, _}`. A
-  consumer relying on the error was relying on the bug. `:undefined`
-  propagation is ECMAScript-aligned rather than symmetric - see
-  `docs/architecture.md`'s "Short-Circuit Evaluation" section for the exact
-  rule. Old compiled artifacts using `["and"]`/`["or"]` directly are
-  unaffected; the evaluator still accepts both opcodes.
+- List literals with non-literal elements (`[x + 1, y]`) now compile and
+  evaluate. Previously the compiler raised
+  `"Non-literal list elements are not yet supported"`, the one place the
+  errors-are-values convention was broken; errors from such expressions are now
+  returned as `{:error, _}` values like every other failure.
 
 ### Deprecated
 
@@ -147,21 +159,6 @@ Predicator.evaluate("status = 'active'", context)
 # Preferred
 Predicator.evaluate("status == 'active'", context)
 ```
-
-### Changed
-
-- Documentation restructured: the README is now a slim entry point, with the
-  language reference, nested data access, custom functions, and location
-  expressions moved to `docs/reference/` and `docs/guides/` and published to
-  hexdocs. All documentation examples are now executed by the test suite.
-
-### Fixed
-
-- List literals with non-literal elements (`[x + 1, y]`) now compile and
-  evaluate. Previously the compiler raised
-  `"Non-literal list elements are not yet supported"`, the one place the
-  errors-are-values convention was broken; errors from such expressions are now
-  returned as `{:error, _}` values like every other failure.
 
 ## [3.6.0] - 2026-08-04
 
