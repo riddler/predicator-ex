@@ -53,13 +53,6 @@ defmodule Predicator.EvaluatorTest do
       assert Evaluator.evaluate(instructions, context) == 85
     end
 
-    test "loads existing atom key from context" do
-      instructions = [["load", "score"]]
-      context = %{score: 85}
-
-      assert Evaluator.evaluate(instructions, context) == 85
-    end
-
     test "returns :undefined for missing key" do
       instructions = [["load", "missing"]]
       context = %{"score" => 85}
@@ -72,20 +65,6 @@ defmodule Predicator.EvaluatorTest do
       context = %{}
 
       assert Evaluator.evaluate(instructions, context) == :undefined
-    end
-
-    test "prefers string key over atom key" do
-      instructions = [["load", "key"]]
-      context = %{"key" => "string_value", key: "atom_value"}
-
-      assert Evaluator.evaluate(instructions, context) == "string_value"
-    end
-
-    test "falls back to atom key if string key doesn't exist" do
-      instructions = [["load", "key"]]
-      context = %{key: "atom_value"}
-
-      assert Evaluator.evaluate(instructions, context) == "atom_value"
     end
   end
 
@@ -740,24 +719,6 @@ defmodule Predicator.EvaluatorTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
       assert message =~ "requires a list"
     end
-
-    test "handles atom key lookup in context" do
-      # Test loading from context with atom keys
-      instructions = [["load", "score"]]
-      # atom key
-      context = %{score: 85}
-      assert Evaluator.evaluate(instructions, context) == 85
-
-      # Test when both string and atom keys exist (string takes precedence)
-      instructions = [["load", "name"]]
-      context = %{"name" => "string_key", name: "atom_key"}
-      assert Evaluator.evaluate(instructions, context) == "string_key"
-
-      # Test loading non-existent key that can't be converted to atom
-      instructions = [["load", "very_long_key_that_does_not_exist_anywhere"]]
-      context = %{}
-      assert Evaluator.evaluate(instructions, context) == :undefined
-    end
   end
 
   describe "evaluate/2 with bracket_access instructions" do
@@ -857,20 +818,25 @@ defmodule Predicator.EvaluatorTest do
       assert Evaluator.evaluate(instructions, context) == :undefined
     end
 
-    test "handles string key fallback to atom key" do
+    test "returns :undefined for an atom-keyed property reached via the raw Evaluator API" do
       instructions = [
         ["load", "user"],
         ["lit", "role"],
         ["bracket_access"]
       ]
 
-      # atom key only
+      # atom key only, and this context reaches Evaluator.evaluate/3 directly,
+      # bypassing Predicator.Context.new/2 - so nothing normalizes the atom
+      # key to a string first. access_value/2 no longer falls back to
+      # String.to_existing_atom/1 (px-8um.2), so the property is :undefined.
+      # Atom-keyed nested data works when the context is built through
+      # Predicator.Context.new/2 instead; see context_test.exs.
       context = %{"user" => %{role: "admin"}}
 
-      assert Evaluator.evaluate(instructions, context) == "admin"
+      assert Evaluator.evaluate(instructions, context) == :undefined
     end
 
-    test "handles atom key fallback gracefully" do
+    test "returns :undefined for a bracket-access key with no matching entry" do
       instructions = [
         ["load", "user"],
         ["lit", "missing_key_that_cannot_be_atom"],
@@ -1345,9 +1311,21 @@ defmodule Predicator.EvaluatorTest do
     end
 
     test "does not record a name bound under an atom key" do
+      # Intentional asymmetry for this Context-bypassing, low-level API
+      # (px-8um.2): load_from_context/2 no longer falls back to an atom key,
+      # so the *value* comes back :undefined - the string key "score" is
+      # genuinely absent from this hand-built context. But resolve_key/2
+      # (deliberately out of scope for px-8um.2 - it powers Context.bound?/2
+      # and unbound-load bookkeeping, a presence check, not a value read)
+      # still finds the atom key :score present, so unbound_loads stays []
+      # rather than recording "score". This asymmetry is only reachable by
+      # bypassing Predicator.Context.new/2; Predicator.evaluate/3's
+      # unbound_loads reporting only ever sees Context.new/2-normalized data,
+      # where the atom key would already be a string key and both checks
+      # would agree.
       evaluator = %Evaluator{instructions: [["load", "score"]], context: %{score: 85}}
 
-      {:ok, 85, final} = Evaluator.run_prepared(evaluator)
+      {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
       assert Evaluator.unbound_loads(final) == []
     end
 

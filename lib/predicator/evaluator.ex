@@ -984,21 +984,10 @@ defmodule Predicator.Evaluator do
   # Access a value from an object or array using a key or index
   @spec access_value(Types.value(), Types.value()) :: {:ok, Types.value()} | {:error, term()}
   defp access_value(object, key) when is_map(object) and is_binary(key) do
-    # Map access with string key
-    case Map.get(object, key) do
-      nil ->
-        # Try as atom key if string key doesn't exist
-        try do
-          atom_key = String.to_existing_atom(key)
-          {:ok, Map.get(object, atom_key, Undefined.value())}
-        rescue
-          ArgumentError ->
-            {:ok, Undefined.value()}
-        end
-
-      value ->
-        {:ok, value}
-    end
+    # Map access with string key. Atom keys never reach here: Context.new/2
+    # and bind/3 normalize them away at the edge (px-8um.2), so a plain
+    # string lookup - defaulting to :undefined when absent - is complete.
+    {:ok, Map.get(object, key, Undefined.value())}
   end
 
   defp access_value(object, key) when is_map(object) and is_atom(key) do
@@ -1120,22 +1109,10 @@ defmodule Predicator.Evaluator do
   @spec load_from_context(Types.context(), binary()) :: Types.value()
   defp load_from_context(context, variable_name)
        when is_map(context) and is_binary(variable_name) do
-    # Try string key first, then atom key
-    case Map.get(context, variable_name) do
-      nil ->
-        # Try as atom key if string key doesn't exist
-        try do
-          atom_key = String.to_existing_atom(variable_name)
-          Map.get(context, atom_key, Undefined.value())
-        rescue
-          ArgumentError ->
-            # String.to_existing_atom failed, variable doesn't exist
-            Undefined.value()
-        end
-
-      value ->
-        value
-    end
+    # String-key lookup only. Atom keys never reach here: Context.new/2 and
+    # bind/3 normalize them away at the edge (px-8um.2), so a missing string
+    # key means the variable is genuinely unbound.
+    Map.get(context, variable_name, Undefined.value())
   end
 
   @doc """

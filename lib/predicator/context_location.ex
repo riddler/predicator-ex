@@ -173,7 +173,11 @@ defmodule Predicator.ContextLocation do
   >
   > `put/3` consults string and integer keys, never atom keys. Writing
   > `["user", "name"]` into a context holding `%{user: %{}}` vivifies a new
-  > `"user"` map beside the atom key rather than descending into it.
+  > `"user"` map beside the atom key rather than descending into it. A caller
+  > reaching `put/3` via `Predicator.Context.assign/3` never has atom keys to
+  > worry about in the first place, since `Context.new/2`/`bind/3` already
+  > normalize them away deeply and eagerly. This note matters only for a
+  > caller invoking `put/3` directly on a hand-built map.
 
   ## Parameters
 

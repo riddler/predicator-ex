@@ -128,4 +128,9 @@ Two rules worth knowing:
   a map or a list.
 - **Only string and integer keys are consulted**, never atom keys. Assigning
   `user.name` into a context holding `%{user: %{}}` creates a new `"user"`
-  map beside the atom key rather than descending into it.
+  map beside the atom key rather than descending into it. A caller reaching
+  this through `Predicator.Context.assign/3` never hits this case in
+  practice: `Context.new/2`/`bind/3` already convert atom keys to strings
+  deeply and eagerly, so `data` has no atom keys left by the time `assign/3`
+  calls in. It matters only for a caller invoking `ContextLocation.put/3`
+  directly on a hand-built, unnormalized map.
