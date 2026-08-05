@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Hex package tarball no longer bundles the markdown doc sources under
+  `docs/`. Every guide, the language and architecture references, and the
+  ADRs are still published in full at
+  [hexdocs.pm/predicator](https://hexdocs.pm/predicator) and still live in
+  the GitHub repository; only the copy that `mix deps.get` unpacked into
+  `deps/predicator/docs/` is gone. Read them online or from a repo checkout
+  instead.
+
 - `Predicator.Evaluator.run_prepared/1` returns `{:error, error, evaluator}`
   instead of `{:error, error}`, so the final evaluator state - and with it
   `unbound_loads/1` - is available on the error path as well as the success

@@ -56,10 +56,10 @@ defmodule Predicator.MixProject do
   defp package do
     [
       name: @app,
-      # Keep in sync with docs()'s extras: list below - every extras path must
-      # still resolve under one of these subtrees.
-      files: ~w(lib/predicator* docs/reference docs/guides docs/adr docs/architecture.md
-           mix.exs README.md LICENSE CHANGELOG.md),
+      # Deliberately excludes docs/ - hexdocs is built from docs()'s extras:
+      # paths read off the publisher's disk, not from this tarball, so the
+      # markdown sources only bloat what mix deps.get downloads.
+      files: ~w(lib/predicator* mix.exs README.md LICENSE CHANGELOG.md),
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
       maintainers: ["Predicator Team"]
@@ -73,9 +73,9 @@ defmodule Predicator.MixProject do
       canonical: "https://hexdocs.pm/predicator",
       source_url: @source_url,
       main: "readme",
-      # Keep in sync with package()'s files: list above - a page added here
-      # must resolve under one of the packaged doc subtrees, or hexdocs links
-      # to it 404.
+      # These paths are read off disk at publish time and need no entry in
+      # package()'s files: list - the docs tarball hexdocs hosts is built by
+      # mix docs, separately from the package tarball mix deps.get fetches.
       extras: [
         "README.md",
         "docs/reference/language.md",
