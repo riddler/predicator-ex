@@ -60,6 +60,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `on_unbound: :error` on `Predicator.Context.new/2` (and as an option to
+  `Predicator.evaluate/3` and `Predicator.Evaluator.evaluate/3`): a load of an
+  unbound root variable returns
+  `{:error, %Predicator.Errors.UndefinedVariableError{}}` instead of the
+  `:undefined` sentinel. Roots only - a missing key on a bound map stays
+  `:undefined` under either policy - and a load a short-circuit skipped never
+  fires it. The default, `:undefined`, is unchanged behavior.
+
 - `Predicator.Errors.ParseError` gains a `:position` field - `{line, column}`,
   derived from the existing `:line` and `:column` fields, which stay
   populated unchanged. Generic error-reporting code can now read `:position`

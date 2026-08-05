@@ -20,7 +20,19 @@ defmodule Predicator.Context do
 
   alias Predicator.{ContextLocation, Evaluator, Types, Undefined}
 
-  @typedoc "Policy for a load of an unbound root variable. See `px-8um.3`."
+  @typedoc """
+  Policy for a load of an unbound root variable.
+
+  `:undefined` (the default) pushes the `:undefined` sentinel and lets
+  three-valued logic absorb it. `:error` makes the load fail with
+  `Predicator.Errors.UndefinedVariableError`, halting the run.
+
+  Roots only, under either policy: a missing key on a bound map
+  (`user.nope`), a missing nested path, and an out-of-range index all stay
+  `:undefined`. This mirrors ECMAScript - a `ReferenceError` for an
+  undeclared variable, a silent `undefined` for a missing property - and
+  keeps guards over sparse data usable.
+  """
   @type on_unbound :: :undefined | :error
 
   @typedoc "A bound evaluation context."
@@ -40,8 +52,8 @@ defmodule Predicator.Context do
   - `data` - the bound-variable map (default `%{}`)
   - `opts` - `:functions` (custom functions merged over the builtins,
     same as `Predicator.evaluate/3`'s `:functions` option) and `:on_unbound`
-    (`:undefined` (default) | `:error` - stored for `px-8um.3`; this
-    struct does not yet act on it)
+    (`:undefined` (default) | `:error` - see `t:on_unbound/0`; any other
+    value raises `ArgumentError`)
 
   `data` is normalized deeply before it is stored: atom keys become string
   keys (a string key wins if both are present at the same level) and `nil`
@@ -58,6 +70,11 @@ defmodule Predicator.Context do
 
       iex> Predicator.Context.new().on_unbound
       :undefined
+
+      iex> context = Predicator.Context.new(%{}, on_unbound: :error)
+      iex> {:error, error} = Predicator.evaluate("missing OR true", context)
+      iex> {error.variable, error.position}
+      {"missing", {1, 1}}
   """
   @spec new(Types.context(), keyword()) :: t()
   def new(data \\ %{}, opts \\ []) when is_map(data) do

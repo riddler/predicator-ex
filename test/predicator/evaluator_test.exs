@@ -1,6 +1,7 @@
 defmodule Predicator.EvaluatorTest do
   use ExUnit.Case, async: true
 
+  alias Predicator.Errors.UndefinedVariableError
   alias Predicator.Evaluator
 
   doctest Predicator.Evaluator
@@ -1351,6 +1352,40 @@ defmodule Predicator.EvaluatorTest do
                Evaluator.run_prepared(evaluator)
 
       assert Evaluator.unbound_loads(final) == ["b"]
+    end
+  end
+
+  describe "evaluate/3 with on_unbound: :error" do
+    test "an unbound root errors instead of loading :undefined" do
+      assert Evaluator.evaluate([["load", "x"]], %{}, on_unbound: :error) ==
+               {:error, UndefinedVariableError.new("x")}
+    end
+
+    test "the same call without the option keeps today's :undefined" do
+      assert Evaluator.evaluate([["load", "x"]], %{}) == :undefined
+    end
+
+    test "bound to :undefined is bound - presence, not value" do
+      assert Evaluator.evaluate([["load", "x"]], %{"x" => :undefined}, on_unbound: :error) ==
+               :undefined
+    end
+
+    test "bound to nil is bound too - only Context.new/2 normalizes nil" do
+      assert Evaluator.evaluate([["load", "x"]], %{"x" => nil}, on_unbound: :error) == nil
+    end
+
+    test "a hand-built atom key resolves as bound, so the policy does not fire" do
+      assert Evaluator.evaluate([["load", "x"]], %{x: 1}, on_unbound: :error) == :undefined
+    end
+
+    test "an unrecognized policy value behaves as the default - no validation here" do
+      assert Evaluator.evaluate([["load", "x"]], %{}, on_unbound: :bogus) == :undefined
+    end
+
+    test "evaluate!/3 raises where it returned :undefined before" do
+      assert_raise RuntimeError, fn ->
+        Evaluator.evaluate!([["load", "x"]], %{}, on_unbound: :error)
+      end
     end
   end
 end

@@ -31,7 +31,7 @@ defmodule Predicator.Evaluator do
 
   alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
   alias Predicator.{Duration, Types, Undefined}
-  alias Predicator.Errors.{EvaluationError, TypeMismatchError}
+  alias Predicator.Errors.{EvaluationError, TypeMismatchError, UndefinedVariableError}
 
   @typedoc "Internal evaluator state"
   @type t :: %__MODULE__{
@@ -43,6 +43,7 @@ defmodule Predicator.Evaluator do
           positions: Types.position_table(),
           halted: boolean(),
           unbound_loads: [binary()],
+          on_unbound: Predicator.Context.on_unbound(),
           size: non_neg_integer() | nil
         }
 
@@ -58,7 +59,8 @@ defmodule Predicator.Evaluator do
     functions: %{},
     positions: %{},
     halted: false,
-    unbound_loads: []
+    unbound_loads: [],
+    on_unbound: :undefined
   ]
 
   @doc """
@@ -164,6 +166,12 @@ defmodule Predicator.Evaluator do
       `{line, column}` of the AST node that emitted it, as produced by
       `Predicator.Compiler.to_instructions_with_positions/2`. Runtime errors
       raised by an instruction with a table entry carry it as `:position`.
+    - `:on_unbound` - `:undefined` (default) or `:error`. Under `:error`, a
+      `["load", name]` whose `name` is not present in `context` returns
+      `{:error, %Predicator.Errors.UndefinedVariableError{}}` instead of
+      pushing `:undefined`. Unlike `Predicator.Context.new/2`, this option is
+      not validated here: any value other than `:error` behaves as
+      `:undefined`.
 
   ## Examples
 
@@ -186,7 +194,8 @@ defmodule Predicator.Evaluator do
       instructions: instructions,
       context: context,
       functions: merge_functions(opts),
-      positions: Keyword.get(opts, :positions, %{})
+      positions: Keyword.get(opts, :positions, %{}),
+      on_unbound: Keyword.get(opts, :on_unbound, :undefined)
     })
   end
 
@@ -337,10 +346,14 @@ defmodule Predicator.Evaluator do
        when is_binary(variable_name) do
     value = load_from_context(evaluator.context, variable_name)
 
-    {:ok,
-     evaluator
-     |> record_unbound_load(variable_name, value)
-     |> push_stack(value)}
+    if evaluator.on_unbound == :error and unbound_load?(evaluator, variable_name, value) do
+      {:error, UndefinedVariableError.new(variable_name)}
+    else
+      {:ok,
+       evaluator
+       |> record_unbound_load(variable_name, value)
+       |> push_stack(value)}
+    end
   end
 
   # Property access instruction
@@ -1179,21 +1192,30 @@ defmodule Predicator.Evaluator do
     ArgumentError -> :unbound
   end
 
-  # The one hook every executed load passes through. px-8um.3's
-  # `on_unbound: :error` policy belongs here too - it is the same event,
-  # decided differently.
+  # The one question both halves of the unbound-load hook ask: did this load
+  # read a root that is not present in the context at all? Its two callers are
+  # the recorder below and the `on_unbound: :error` policy in the `load`
+  # clause - the same event, decided differently.
   #
   # Presence, not value, is the question: `%{"x" => nil}` and
-  # `%{"x" => :undefined}` both load as :undefined but are bound, and
-  # Context.bound?/2 must keep agreeing with what gets recorded here - which
-  # is why both go through resolve_key/2. That agreement is between these two,
-  # not with load_from_context/2: resolve_key/2 still finds an atom key that a
-  # load no longer reads, which is visible only to a caller who bypassed
-  # Context.new/2 - see resolve_key/2's docs.
+  # `%{"x" => :undefined}` both load as :undefined but are bound, so neither is
+  # recorded and neither trips the policy. Context.bound?/2 must keep agreeing
+  # with what gets recorded here - which is why both go through resolve_key/2.
+  # That agreement is between these two, not with load_from_context/2:
+  # resolve_key/2 still finds an atom key that a load no longer reads, which is
+  # visible only to a caller who bypassed Context.new/2 - see resolve_key/2's
+  # docs.
+  @spec unbound_load?(t(), binary(), Types.value()) :: boolean()
+  defp unbound_load?(%__MODULE__{} = evaluator, variable_name, value) do
+    Undefined.undefined?(value) and
+      resolve_key(evaluator.context, variable_name) == :unbound
+  end
+
+  # The dedup check stays here rather than in unbound_load?/3: the policy fires
+  # on the first unbound load and halts, so it never needs it.
   @spec record_unbound_load(t(), binary(), Types.value()) :: t()
   defp record_unbound_load(%__MODULE__{} = evaluator, variable_name, value) do
-    if Undefined.undefined?(value) and
-         resolve_key(evaluator.context, variable_name) == :unbound and
+    if unbound_load?(evaluator, variable_name, value) and
          variable_name not in evaluator.unbound_loads do
       %__MODULE__{evaluator | unbound_loads: [variable_name | evaluator.unbound_loads]}
     else

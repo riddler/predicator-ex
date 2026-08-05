@@ -50,6 +50,25 @@ defmodule Predicator do
       iex> Predicator.evaluate("score > 80", context)
       {:ok, true}
 
+  A context also carries the unbound-variable policy. By default a load of an
+  unbound root pushes the `:undefined` sentinel, which three-valued logic can
+  absorb into a defined result; under `on_unbound: :error` the load fails
+  instead, naming the variable:
+
+      iex> context = Predicator.Context.new(%{}, on_unbound: :error)
+      iex> {:error, error} = Predicator.evaluate("missing OR true", context)
+      iex> error.variable
+      "missing"
+
+  The same option works on a bare map, which `evaluate/3` routes through
+  `Predicator.Context.new/2`:
+
+      iex> Predicator.evaluate("missing OR true", %{})
+      {:ok, true}
+      iex> {:error, error} = Predicator.evaluate("missing OR true", %{}, on_unbound: :error)
+      iex> error.variable
+      "missing"
+
   ## Architecture
 
   Predicator uses a stack-based evaluation model:
@@ -156,7 +175,8 @@ defmodule Predicator do
       instructions: instructions,
       context: context.data,
       functions: context.functions,
-      positions: Keyword.get(opts, :positions, %{})
+      positions: Keyword.get(opts, :positions, %{}),
+      on_unbound: context.on_unbound
     }
 
     case Evaluator.run_prepared(evaluator) do
