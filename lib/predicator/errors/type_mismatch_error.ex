@@ -12,6 +12,8 @@ defmodule Predicator.Errors.TypeMismatchError do
   - `got` - The actual type(s) received (single type or tuple for binary operations)
   - `values` - The actual value(s) that caused the error (optional, for debugging)
   - `operation` - The operation that failed (e.g., `:add`, `:logical_and`)
+  - `position` - `{line, column}` of the source token that produced the failing
+    instruction, when a position table was available (optional)
 
   ## Examples
 
@@ -33,14 +35,15 @@ defmodule Predicator.Errors.TypeMismatchError do
   """
 
   @enforce_keys [:message, :expected, :got, :operation]
-  defstruct [:message, :expected, :got, :values, :operation]
+  defstruct [:message, :expected, :got, :values, :operation, :position]
 
   @type t :: %__MODULE__{
           message: binary(),
           expected: atom(),
           got: atom() | {atom(), atom()},
           values: term(),
-          operation: atom()
+          operation: atom(),
+          position: Predicator.Types.position() | nil
         }
 
   @doc """

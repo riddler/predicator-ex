@@ -40,6 +40,7 @@ defmodule Predicator.Evaluator do
           stack: [Types.value()],
           context: Types.context(),
           functions: %{binary() => {function_arity(), function()}},
+          positions: Types.position_table(),
           halted: boolean(),
           unbound_loads: [binary()],
           size: non_neg_integer() | nil
@@ -55,6 +56,7 @@ defmodule Predicator.Evaluator do
     stack: [],
     context: %{},
     functions: %{},
+    positions: %{},
     halted: false,
     unbound_loads: []
   ]
@@ -157,6 +159,10 @@ defmodule Predicator.Evaluator do
   - `context` - Context map with variable bindings (default: `%{}`)
   - `opts` - Options keyword list:
     - `:functions` - Map of custom functions `%{name => {arity, function}}`
+    - `:positions` - Side table mapping a 0-based instruction index to the
+      `{line, column}` of the AST node that emitted it, as produced by
+      `Predicator.Compiler.to_instructions_with_positions/2`. Runtime errors
+      raised by an instruction with a table entry carry it as `:position`.
 
   ## Examples
 
@@ -178,7 +184,8 @@ defmodule Predicator.Evaluator do
     evaluate_prepared(%__MODULE__{
       instructions: instructions,
       context: context,
-      functions: merge_functions(opts)
+      functions: merge_functions(opts),
+      positions: Keyword.get(opts, :positions, %{})
     })
   end
 
@@ -252,14 +259,30 @@ defmodule Predicator.Evaluator do
           evaluator
           |> execute_instruction(instruction)
           |> advance_instruction_pointer()
+          |> attach_position(evaluator)
 
         {:error, reason} ->
-          {:error, reason}
+          {:error, attach_error_position(reason, evaluator)}
       end
     end
   end
 
   # Private functions
+
+  # `before` is the pre-step state, whose instruction_pointer is still the
+  # failing instruction's index; advance_instruction_pointer/1 passes errors
+  # through untouched, so either state would do, but the pre-step one says why.
+  @spec attach_position({:ok, t()} | {:error, term()}, t()) :: {:ok, t()} | {:error, term()}
+  defp attach_position({:ok, _evaluator} = ok, _before), do: ok
+
+  defp attach_position({:error, reason}, %__MODULE__{} = before) do
+    {:error, attach_error_position(reason, before)}
+  end
+
+  @spec attach_error_position(term(), t()) :: term()
+  defp attach_error_position(reason, %__MODULE__{positions: positions, instruction_pointer: ip}) do
+    Predicator.Errors.put_position(reason, Map.get(positions, ip))
+  end
 
   @spec finished?(t()) :: boolean()
   defp finished?(%__MODULE__{instruction_pointer: ip, size: size}) do

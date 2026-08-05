@@ -10,6 +10,8 @@ defmodule Predicator.Errors.EvaluationError do
   - `message` - Human-readable error description
   - `reason` - Structured reason code for the error
   - `operation` - The operation that failed (optional)
+  - `position` - `{line, column}` of the source token that produced the failing
+    instruction, when a position table was available (optional)
 
   ## Examples
 
@@ -27,12 +29,13 @@ defmodule Predicator.Errors.EvaluationError do
   """
 
   @enforce_keys [:message, :reason]
-  defstruct [:message, :reason, :operation]
+  defstruct [:message, :reason, :operation, :position]
 
   @type t :: %__MODULE__{
           message: binary(),
           reason: binary(),
-          operation: atom() | nil
+          operation: atom() | nil,
+          position: Predicator.Types.position() | nil
         }
 
   @doc """
