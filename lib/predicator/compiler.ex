@@ -19,7 +19,7 @@ defmodule Predicator.Compiler do
       # "digraph {...}"
   """
 
-  alias Predicator.{Parser, Visitor}
+  alias Predicator.{Parser, Types, Visitor}
   alias Predicator.Visitors.{InstructionsVisitor, StringVisitor}
 
   @doc """
@@ -47,11 +47,36 @@ defmodule Predicator.Compiler do
       iex> Predicator.Compiler.to_instructions(ast)
       [["load", "name"], ["lit", "John"], ["compare", "EQ"]]
   """
-  @spec to_instructions(Parser.ast(), keyword()) :: [[binary() | term()]]
+  @spec to_instructions(Parser.ast() | Parser.bare_ast(), keyword()) :: [[binary() | term()]]
   def to_instructions(ast, opts \\ []) do
-    ast
-    |> Parser.strip_positions()
-    |> Visitor.accept(InstructionsVisitor, opts)
+    Visitor.accept(ast, InstructionsVisitor, opts)
+  end
+
+  @doc """
+  Converts an AST to stack machine instructions plus a source-position side
+  table.
+
+  The instruction list is identical to `to_instructions/2`'s - the side table is
+  a separate Elixir-side value, so the interchange format and any stored
+  compiled artifacts are unaffected (ADR-0001). The table maps each
+  instruction's 0-based index to the `{line, column}` of the AST node that
+  emitted it; nodes with no position contribute no entry, so a caller-supplied
+  position-free AST yields an empty table.
+
+  ## Examples
+
+      iex> ast = {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}
+      iex> Predicator.Compiler.to_instructions_with_positions(ast)
+      {[["load", "score"], ["lit", 85], ["compare", "GT"]],
+       %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
+
+      iex> Predicator.Compiler.to_instructions_with_positions({:literal, 42})
+      {[["lit", 42]], %{}}
+  """
+  @spec to_instructions_with_positions(Parser.ast() | Parser.bare_ast(), keyword()) ::
+          {[[binary() | term()]], Types.position_table()}
+  def to_instructions_with_positions(ast, opts \\ []) do
+    InstructionsVisitor.visit_with_positions(ast, opts)
   end
 
   @doc """
@@ -86,10 +111,8 @@ defmodule Predicator.Compiler do
       iex> Predicator.Compiler.to_string(ast, parentheses: :explicit)
       "(age > 21)"
   """
-  @spec to_string(Parser.ast(), keyword()) :: binary()
+  @spec to_string(Parser.ast() | Parser.bare_ast(), keyword()) :: binary()
   def to_string(ast, opts \\ []) do
-    ast
-    |> Parser.strip_positions()
-    |> Visitor.accept(StringVisitor, opts)
+    Visitor.accept(ast, StringVisitor, opts)
   end
 end

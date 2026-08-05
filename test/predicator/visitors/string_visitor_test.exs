@@ -264,7 +264,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       original = "score > 85"
       {:ok, tokens} = Lexer.tokenize(original)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = StringVisitor.visit(ast, [])
 
@@ -276,7 +276,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       original = ~s(name = "John")
       {:ok, tokens} = Lexer.tokenize(original)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = StringVisitor.visit(ast, [])
 
@@ -288,7 +288,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       original = "active = true"
       {:ok, tokens} = Lexer.tokenize(original)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = StringVisitor.visit(ast, [])
 
@@ -309,7 +309,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       for original <- expressions do
         {:ok, tokens} = Lexer.tokenize(original)
-        {:ok, ast} = parse_positionless(tokens)
+        {:ok, ast} = Predicator.Parser.parse(tokens)
         result = StringVisitor.visit(ast, [])
 
         assert result == original, "Failed round-trip for: #{original}"
@@ -322,7 +322,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
       # Note: Parser removes unnecessary parentheses from AST
       original = "(score > 85)"
       {:ok, tokens} = Lexer.tokenize(original)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = StringVisitor.visit(ast, [])
       # Parentheses are removed by parser since they're not needed
@@ -338,7 +338,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       original_with_extra_spaces = "  score   >    85  "
       {:ok, tokens} = Lexer.tokenize(original_with_extra_spaces)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = StringVisitor.visit(ast, [])
 
@@ -522,7 +522,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       expression = "score > 85 AND age >= 18"
       {:ok, tokens} = Lexer.tokenize(expression)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])
 
       assert result == expression
@@ -533,7 +533,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       expression = ~s(role = "admin" OR role = "manager")
       {:ok, tokens} = Lexer.tokenize(expression)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])
 
       assert result == expression
@@ -544,7 +544,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       expression = "NOT expired = true"
       {:ok, tokens} = Lexer.tokenize(expression)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])
 
       assert result == expression
@@ -555,7 +555,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       expression = "score > 85 AND age >= 18 OR admin = true"
       {:ok, tokens} = Lexer.tokenize(expression)
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])
 
       assert result == expression
@@ -735,20 +735,6 @@ defmodule Predicator.Visitors.StringVisitorTest do
       result = StringVisitor.visit(ast, [])
 
       assert result == "!x + y = 10"
-    end
-  end
-
-  # Phase 1 of source positions: these assertions are about AST *shape*, so they
-  # read the position-free form.
-  defp parse_positionless(input) do
-    result =
-      if is_binary(input),
-        do: Predicator.parse(input),
-        else: Predicator.Parser.parse(input)
-
-    case result do
-      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
-      other -> other
     end
   end
 end

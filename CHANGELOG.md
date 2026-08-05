@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Predicator.Parser.strip_positions/1` and
   `Predicator.Parser.ensure_positions/1`: total, idempotent normalizers between
   the positioned AST and the position-free shape Predicator 3.6 produced.
+- `Predicator.Compiler.to_instructions_with_positions/2` and
+  `Predicator.Visitors.InstructionsVisitor.visit_with_positions/2`: compile to
+  the usual instruction list plus a side table mapping each instruction's
+  0-based index to the `{line, column}` of the AST node that emitted it. The
+  table is an Elixir-side companion value and never enters the instruction
+  format itself.
 
 ### Changed
 

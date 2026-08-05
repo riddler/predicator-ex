@@ -42,8 +42,14 @@ defmodule Predicator.Visitor do
   ## Returns
 
   The transformed representation (type depends on visitor implementation)
+
+  ## Source positions
+
+  Implementations accept either a positioned AST or the position-free shape
+  Predicator 3.6 produced, normalizing with
+  `Predicator.Parser.ensure_positions/1` on the way in.
   """
-  @callback visit(ast_node :: Parser.bare_ast(), opts :: keyword()) :: term()
+  @callback visit(ast_node :: Parser.ast() | Parser.bare_ast(), opts :: keyword()) :: term()
 
   @doc """
   Utility function to accept a visitor and process an AST.
@@ -56,7 +62,7 @@ defmodule Predicator.Visitor do
       iex> Predicator.Visitor.accept(ast, MyVisitor)
       42
   """
-  @spec accept(Parser.bare_ast(), module(), keyword()) :: term()
+  @spec accept(Parser.ast() | Parser.bare_ast(), module(), keyword()) :: term()
   def accept(ast_node, visitor_module, opts \\ []) do
     visitor_module.visit(ast_node, opts)
   end
