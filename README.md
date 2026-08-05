@@ -3,28 +3,18 @@
 [![CI](https://github.com/riddler/predicator-ex/actions/workflows/ci.yml/badge.svg)](https://github.com/riddler/predicator-ex/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/riddler/predicator-ex/branch/main/graph/badge.svg)](https://codecov.io/gh/riddler/predicator-ex)
 [![Hex.pm Version](https://img.shields.io/hexpm/v/predicator.svg)](https://hex.pm/packages/predicator)
+[![Hex Downloads](https://img.shields.io/hexpm/dt/predicator.svg)](https://hex.pm/packages/predicator)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/predicator/)
 
-A secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir.
-Predicator allows you to safely evaluate user-defined expressions without the security risks of dynamic code execution.
+Predicator is a secure, non-evaluative condition engine for end-user boolean
+predicates. A user-authored expression like `score > 85 AND active` compiles
+to a flat instruction list run by a small stack VM - there is no `eval`, no
+`Code.eval_string`, and no dynamic code execution anywhere in the pipeline, so
+untrusted input can never become code.
 
-## Features
-
-- 🔒 **Secure**: No `eval()` or dynamic code execution - safe for end-user input
-- 🎯 **Simple**: Clean, intuitive expression syntax (`score > 85`, `name == 'John'`)
-- 🚀 **Fast**: Compiled expressions execute efficiently with minimal overhead
-- 🛡️ **Type Safe**: Built with comprehensive specs and rigorous testing
-- 🎨 **Flexible**: Support for literals, identifiers, comparisons, and parentheses
-- 📊 **Observable**: Detailed error reporting with line/column information
-- 🔄 **Reversible**: Convert AST back to string expressions with formatting options
-- 🧮 **Arithmetic**: Full arithmetic operations (`+`, `-`, `*`, `/`, `%`) with proper precedence
-- 📅 **Date Support**: Native date and datetime literals with ISO 8601 format
-- ⏳ **Durations & Relative Dates**: Natural-language durations and relative time expressions with date arithmetic
-- 📋 **Lists**: List literals with membership operations (`in`, `contains`)
-- 🧠 **Smart Logic**: Logical operators with proper precedence (`AND`, `OR`, `NOT`)
-- 🔧 **Functions**: Built-in functions for string, numeric, and date operations
-- 🌳 **Nested Access**: Dot notation and bracket access for deep data structures (`user.profile.name`, `user['profile']['name']`, `items[0]`)
-- 📦 **Object Literals**: JavaScript-style object notation with `{key: value}` syntax for complex data structures
+The language covers comparisons, arithmetic, logical operators, dates and
+durations, lists and objects, [nested data access](docs/guides/nested-data-access.md),
+and both [builtin and custom functions](docs/reference/language.md).
 
 ## Installation
 
@@ -41,620 +31,54 @@ end
 ## Quick Start
 
 ```elixir
-# Basic evaluation
-iex> Predicator.evaluate!("score > 85", %{"score" => 92})
+iex> Predicator.evaluate!("score > 85 AND active", %{"score" => 92, "active" => true})
 true
 
-# String comparisons (double or single quotes)
-iex> Predicator.evaluate!("name == 'Alice'", %{"name" => "Alice"})
+iex> {:ok, instructions} = Predicator.compile("score > threshold")
+iex> Predicator.evaluate!(instructions, %{"score" => 95, "threshold" => 80})
 true
 
-iex> Predicator.evaluate!("name == \"Alice\"", %{"name" => "Alice"})
-true
-
-# Date and datetime literals
-iex> Predicator.evaluate!("#2024-01-15# > #2024-01-10#", %{})
-true
-
-iex> Predicator.evaluate!("created_at < #2024-01-15T10:30:00Z#", %{"created_at" => ~U[2024-01-10 09:00:00Z]})
-true
-
-# Durations, relative dates, and date arithmetic
-iex> Predicator.evaluate!("created_at > 3d ago", %{"created_at" => ~U[2024-01-20 00:00:00Z]})
-true
-
-iex> Predicator.evaluate!("due_at < 2w from now", %{"due_at" => Date.add(Date.utc_today(), 10)})
-true
-
-iex> Predicator.evaluate!("#2024-01-10# + 5d == #2024-01-15#", %{})
-true
-
-iex> Predicator.evaluate!("#2024-01-15T10:30:00Z# - 2h < #2024-01-15T10:30:00Z#", %{})
-true
-
-# List literals and membership
-iex> Predicator.evaluate!("role in ['admin', 'manager']", %{"role" => "admin"})
-true
-
-iex> Predicator.evaluate!("[1, 2, 3] contains 2", %{})
-true
-
-# Arithmetic operations with proper precedence
-iex> Predicator.evaluate!("2 + 3 * 4", %{})
-14
-
-iex> Predicator.evaluate!("(10 - 5) * 2", %{})
-10
-
-iex> Predicator.evaluate!("score + bonus > 100", %{"score" => 85, "bonus" => 20})
-true
-
-iex> Predicator.evaluate!("-amount > -50", %{"amount" => 30})
-true
-
-# Float support and type coercion
-iex> Predicator.evaluate!("3.14 * 2", %{})
-6.28
-
-iex> Predicator.evaluate!("'Hello' + ' World'", %{})
-"Hello World"
-
-iex> Predicator.evaluate!("'Count: ' + 42", %{})
-"Count: 42"
-
-iex> Predicator.evaluate!("score + ' points'", %{"score" => 100})
-"100 points"
-
-# Logical operators with proper precedence
-iex> Predicator.evaluate!("score > 85 AND age >= 18", %{"score" => 92, "age" => 25})
-true
-
-iex> Predicator.evaluate!("role == 'admin' OR role == 'manager'", %{"role" => "admin"})  
-true
-
-iex> Predicator.evaluate!("NOT expired AND active", %{"expired" => false, "active" => true})
-true
-
-# Complex expressions with parentheses
-iex> Predicator.evaluate!("(score > 85 OR admin) AND active", %{"score" => 80, "admin" => true, "active" => true})
-true
-
-# Built-in functions
-iex> Predicator.evaluate!("len(name) > 3", %{"name" => "Alice"})
-true
-
-iex> Predicator.evaluate!("upper(role) == 'ADMIN'", %{"role" => "admin"})
-true
-
-iex> Predicator.evaluate!("year(created_at) == 2024", %{"created_at" => ~D[2024-03-15]})
-true
-
-# Compile once, evaluate many times for performance
-iex> {:ok, instructions} = Predicator.compile("score > threshold AND active")
-iex> Predicator.evaluate!(instructions, %{"score" => 95, "threshold" => 80, "active" => true})
-true
-
-# Using evaluate/2 (returns {:ok, result} or {:error, message})
 iex> Predicator.evaluate("score > 85", %{"score" => 92})
 {:ok, true}
-
-iex> Predicator.evaluate("invalid >> syntax", %{})
-{:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>' at line 1, column 10"}
-
-# Using evaluate/1 for expressions without context (strings or instruction lists)
-iex> Predicator.evaluate("#2024-01-15# > #2024-01-10#")
-{:ok, true}
-
-iex> Predicator.evaluate([["lit", 42]])
-{:ok, 42}
-
-# Round-trip: parse and decompile expressions (preserves quote style)
-iex> {:ok, ast} = Predicator.parse("name == 'John'")
-iex> Predicator.decompile(ast)
-"name == 'John'"
-
-iex> {:ok, ast} = Predicator.parse("score > 85 AND #2024-01-15# in dates")
-iex> Predicator.decompile(ast)
-"score > 85 AND #2024-01-15# IN dates"
-
-# Object literals - JavaScript-style object notation
-iex> Predicator.evaluate!("{}", %{})
-%{}
-
-iex> Predicator.evaluate!("{name: \"John\", age: 30}", %{})
-%{"name" => "John", "age" => 30}
-
-# Objects with variable references and expressions
-iex> Predicator.evaluate!("{user: name, total: price + tax}", %{"name" => "Alice", "price" => 100, "tax" => 10})
-%{"user" => "Alice", "total" => 110}
-
-# Nested objects for complex data structures
-iex> Predicator.evaluate!("{user: {name: \"Bob\", role: \"admin\"}, active: true}", %{})
-%{"user" => %{"name" => "Bob", "role" => "admin"}, "active" => true}
-
-# String keys for complex property names
-iex> Predicator.evaluate!("{\"first name\": \"John\", \"user-id\": 42}", %{})
-%{"first name" => "John", "user-id" => 42}
-
-# Object comparisons
-iex> Predicator.evaluate!("{score: 85} == user_data", %{"user_data" => %{"score" => 85}})
-true
-
-# Objects work with functions and all operators
-iex> Predicator.evaluate!("{username: upper(name), active: score > 80}", %{"name" => "alice", "score" => 95})
-%{"username" => "ALICE", "active" => true}
-```
-
-## Nested Data Access
-
-Predicator supports nested data structure access using both dot notation and bracket notation, allowing you to reference deeply nested values in your context:
-
-```elixir
-# Context with nested data structures
-context = %{
-  "user" => %{
-    "age" => 47,
-    "name" => %{"first" => "John", "last" => "Doe"},
-    "profile" => %{"role" => "admin"},
-    "settings" => %{"theme" => "dark", "notifications" => true}
-  },
-  "config" => %{
-    "database" => %{"host" => "localhost", "port" => 5432}
-  },
-  "items" => ["apple", "banana", "cherry"],
-  "scores" => [85, 92, 78, 96]
-}
-
-# Access nested values with dot notation
-iex> Predicator.evaluate("user.name.first == 'John'", context)
-{:ok, true}
-
-iex> Predicator.evaluate("user.age > 18", context)
-{:ok, true}
-
-iex> Predicator.evaluate("config.database.port == 5432", context)
-{:ok, true}
-
-# Access with bracket notation
-iex> Predicator.evaluate("user['name']['first'] == 'John'", context)
-{:ok, true}
-
-iex> Predicator.evaluate("user['settings']['theme'] == 'dark'", context)
-{:ok, true}
-
-# Array access with bracket notation
-iex> Predicator.evaluate("items[0] == 'apple'", context)
-{:ok, true}
-
-iex> Predicator.evaluate("scores[1] > 90", context)
-{:ok, true}
-
-# Mixed notation styles
-iex> Predicator.evaluate("user.settings['theme'] == 'dark'", context)
-{:ok, true}
-
-iex> Predicator.evaluate("user['profile'].role == 'admin'", context)
-{:ok, true}
-
-# Dynamic array access
-iex> Predicator.evaluate("scores[index] > 80", Map.put(context, "index", 2))
-{:ok, false}
-
-# Chained bracket access
-iex> Predicator.evaluate("user['name']['first'] + ' ' + user['name']['last']", context)
-{:ok, "John Doe"}
-
-# Use in complex expressions
-iex> Predicator.evaluate("user.profile.role == 'admin' AND user.settings.notifications", context)
-{:ok, true}
-
-# Missing paths return :undefined
-iex> Predicator.evaluate("user.profile.email == 'test'", context)
-{:ok, :undefined}
-
-# Works with both string and atom keys
-atom_context = %{user: %{name: %{first: "Jane"}}}
-iex> Predicator.evaluate("user.name.first == 'Jane'", atom_context)
-{:ok, true}
-
-# Access nested lists
-list_context = %{"user" => %{"hobbies" => ["reading", "coding"]}}
-iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
-{:ok, true}
-```
-
-### Key Features
-
-- **Dot notation**: `user.profile.name` for nested object access
-- **Bracket notation**: `user['profile']['name']` for dynamic key access  
-- **Array indexing**: `items[0]`, `scores[index]` for list access
-- **Mixed styles**: `user.settings['theme']` combining both notations
-- **Unlimited nesting depth**: `app.database.config.settings.ssl`
-- **Mixed key types**: Works with string keys, atom keys, or both
-- **Graceful fallback**: Returns `:undefined` for missing paths or out-of-bounds access
-- **Type preservation**: Maintains original data types (strings, numbers, booleans, lists)
-- **Backwards compatible**: Simple variable names work exactly as before
-
-## Supported Operations
-
-### Arithmetic Operators
-
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `+`      | Addition | `score + bonus`, `2 + 3 * 4` |
-| `-`      | Subtraction | `total - discount`, `100 - 25` |
-| `*`      | Multiplication | `price * quantity`, `3 * 4` |
-| `/`      | Division (integer) | `total / count`, `10 / 3` |
-| `%`      | Modulo | `id % 2`, `17 % 5` |
-| `-`      | Unary minus | `-amount`, `-(x + y)` |
-
-### Comparison Operators
-
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `>`      | Greater than | `score > 85`, `#2024-01-15# > #2024-01-10#` |
-| `<`      | Less than | `age < 30`, `created_at < #2024-01-15T10:00:00Z#` |
-| `>=`     | Greater than or equal | `points >= 100` |
-| `<=`     | Less than or equal | `count <= 5` |
-| `==`     | Equal | `status == 'active'`, `date == #2024-01-15#` |
-| `!=`     | Not equal | `role != 'guest'` |
-| `===`    | Strict equal (no type coercion) | `count === 5` |
-| `!==`    | Strict not equal (no type coercion) | `count !== "5"` |
-| `=`      | Equal - **deprecated**, use `==` | `status = 'active'` |
-
-> **Deprecated: `=` as equality.** Using `=` for equality still works and still
-> compiles to `["compare", "EQ"]`, but parsing one emits a deprecation warning.
-> **Predicator 4.0 makes expression-position `=` a parse error** - `=` is being
-> reserved for assignment in the forthcoming statement grammar. Migrate to `==`
-> before upgrading. Silence the warning with
-> `config :predicator, deprecation_warnings: false`.
-
-### Logical Operators
-
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `AND`    | Logical AND (case-insensitive) | `score > 85 AND age >= 18` |
-| `OR`     | Logical OR (case-insensitive) | `role == 'admin' OR role == 'manager'` |
-| `NOT`    | Logical NOT (case-insensitive) | `NOT expired` |
-
-### Membership Operators
-
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `in`     | Element in collection | `role in ['admin', 'manager']` |
-| `contains` | Collection contains element | `[1, 2, 3] contains 2` |
-
-### Built-in Functions
-
-#### String Functions
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `len(string)` | String length | `len(name) > 3` |
-| `upper(string)` | Convert to uppercase | `upper(role) == 'ADMIN'` |
-| `lower(string)` | Convert to lowercase | `lower(name) == 'alice'` |
-| `trim(string)` | Remove whitespace | `len(trim(input)) > 0` |
-
-#### Numeric Functions  
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `abs(number)` | Absolute value | `abs(balance) < 100` |
-| `max(a, b)` | Maximum of two numbers | `max(score1, score2) > 85` |
-| `min(a, b)` | Minimum of two numbers | `min(age, 65) >= 18` |
-
-#### Date Functions
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `year(date)` | Extract year | `year(created_at) == 2024` |
-| `month(date)` | Extract month | `month(birthday) == 12` |
-| `day(date)` | Extract day | `day(deadline) <= 15` |
-
-## Data Types
-
-- **Numbers**: `42`, `-17` (integers), `3.14`, `-2.5` (floats)
-- **Strings**: `'hello'`, `'world'` (single-quoted) or `"hello"`, `"world"` (double-quoted, with escape sequences)
-- **Booleans**: `true`, `false` (or plain identifiers like `active`, `expired`)
-- **Dates**: `#2024-01-15#` (ISO 8601 date format)
-- **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with timezone)
-- **Durations**: Natural units for time spans (e.g., `3d`, `2h`, `15m`)
-  - In relative expressions: `3d ago`, `2w from now`, `next 1mo`, `last 1y`
-  - In arithmetic: `#2024-01-10# + 5d`, `#2024-01-15T10:30:00Z# - 2h`
-- **Lists**: `[1, 2, 3]`, `['admin', 'manager']` (homogeneous collections)
-- **Objects**: `{}`, `{name: "John", age: 30}`, `{user: {role: "admin"}}` (JavaScript-style object literals)
-- **Identifiers**: `score`, `user_name`, `is_active`, `user.profile.name`, `user['key']`, `items[0]` (variable references with dot notation and bracket notation for nested data)
-
-## Architecture
-
-Predicator uses a multi-stage compilation pipeline:
-
-```text
-  Expression String  →  Lexer → Parser → Compiler → Evaluator
-         ↓                ↓       ↓         ↓           ↓
-'score > 85 OR admin' → Tokens → AST → Instructions → Result
-```
-
-### Grammar
-
-```ebnf
-expression   → logical_or
-logical_or   → logical_and ( ("OR" | "or") logical_and )*
-logical_and  → logical_not ( ("AND" | "and") logical_not )*
-logical_not  → ("NOT" | "not") logical_not | comparison
-comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
-addition     → multiplication ( ( "+" | "-" ) multiplication )*
-multiplication → unary ( ( "*" | "/" | "%" ) unary )*
-unary        → ( "-" | "!" ) unary | postfix
-postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
-primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | duration | relative_date | function_call | list | object | "(" expression ")"
-function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
-list         → "[" ( expression ( "," expression )* )? "]"
-object       → "{" ( object_entry ( "," object_entry )* )? "}"
-object_entry → object_key ":" expression
-object_key   → IDENTIFIER | STRING
-duration     → NUMBER UNIT+
-relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
-```
-
-### Core Components
-
-- **Lexer** (`Predicator.Lexer`): Tokenizes input with position tracking
-- **Parser** (`Predicator.Parser`): Builds Abstract Syntax Tree with error reporting  
-- **Compiler** (`Predicator.Compiler`): Converts AST to executable instructions
-- **Evaluator** (`Predicator.Evaluator`): Executes instructions against data
-- **Visitors**: AST transformation modules
-  - **StringVisitor** (`Predicator.Visitors.StringVisitor`): Converts AST back to expressions
-  - **InstructionsVisitor** (`Predicator.Visitors.InstructionsVisitor`): Converts AST to instructions
-- **Functions**: Function system components
-  - **SystemFunctions** (`Predicator.Functions.SystemFunctions`): Built-in system functions
-  - **Registry** (`Predicator.Functions.Registry`): Function registration and dispatch
-
-## Error Handling
-
-Predicator provides detailed error information with exact positioning:
-
-```elixir
-iex> Predicator.evaluate("score >> 85", %{})
-{:error, "Unexpected character '>' at line 1, column 8"}
-
-iex> Predicator.evaluate("score AND", %{})
-{:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found end of input at line 1, column 1"}
-```
-
-## Advanced Usage
-
-### Custom Functions
-
-You can provide custom functions when evaluating expressions using the `functions:` option:
-
-```elixir
-# Define custom functions in a map
-custom_functions = %{
-  "double" => {1, fn [n], _context -> {:ok, n * 2} end},
-  "user_role" => {0, fn [], context -> 
-    {:ok, Map.get(context, "current_user_role", "guest")} 
-  end},
-  "divide" => {2, fn [a, b], _context ->
-    if b == 0 do
-      {:error, "Division by zero"}
-    else
-      {:ok, a / b}
-    end
-  end}
-}
-
-# Use custom functions in expressions
-iex> Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: custom_functions)
-{:ok, true}
-
-iex> Predicator.evaluate("user_role() == 'admin'", %{"current_user_role" => "admin"}, functions: custom_functions)
-{:ok, true}
-
-iex> Predicator.evaluate("divide(10, 2) == 5", %{}, functions: custom_functions)
-{:ok, true}
-
-iex> Predicator.evaluate("divide(10, 0)", %{}, functions: custom_functions)
-{:error, "Division by zero"}
-
-# Custom functions can override built-in functions
-override_functions = %{
-  "len" => {1, fn [_], _context -> {:ok, "custom_result"} end}
-}
-
-iex> Predicator.evaluate("len('anything')", %{}, functions: override_functions)
-{:ok, "custom_result"}
-
-# Without custom functions, built-ins work as expected
-iex> Predicator.evaluate("len('hello')", %{})
-{:ok, 5}
-```
-
-#### Function Format
-
-Custom functions must follow this format:
-
-- **Map Key**: Function name (string)
-- **Map Value**: `{arity, function}` tuple where:
-  - `arity`: Number of arguments the function expects (integer)
-  - `function`: Anonymous function that takes `[args], context` and returns `{:ok, result}` or `{:error, message}`
-
-### String Formatting Options
-
-The StringVisitor supports multiple formatting modes:
-
-```elixir
-# Compact formatting (no spaces)
-iex> Predicator.decompile(ast, spacing: :compact)
-"score>85"
-
-# Verbose formatting (extra spaces)  
-iex> Predicator.decompile(ast, spacing: :verbose)
-"score  >  85"
-
-# Explicit parentheses
-iex> Predicator.decompile(ast, parentheses: :explicit)
-"(score > 85)"
-```
-
-## SCXML Location Expressions
-
-Predicator provides specialized support for SCXML datamodel location expressions, which determine valid assignment targets (l-values) for `<assign>` operations:
-
-```elixir
-# Resolve location paths for assignment operations
-iex> Predicator.context_location("user.profile.name", %{})
-{:ok, ["user", "profile", "name"]}
-
-iex> Predicator.context_location("items[0]", %{})
-{:ok, ["items", 0]}
-
-iex> Predicator.context_location("data['users'][index]['profile']", %{"index" => 2})
-{:ok, ["data", "users", 2, "profile"]}
-
-# Detect invalid assignment targets
-iex> Predicator.context_location("len(name)", %{})
-{:error, %Predicator.Errors.LocationError{type: :not_assignable, message: "Cannot assign to function call"}}
-
-iex> Predicator.context_location("42", %{})
-{:error, %Predicator.Errors.LocationError{type: :not_assignable, message: "Cannot assign to literal value"}}
-
-# Variable keys must exist in context
-iex> Predicator.context_location("items[missing_var]", %{})
-{:error, %Predicator.Errors.LocationError{type: :undefined_variable, message: "Bracket key variable not found"}}
-```
-
-### Assignable vs Non-Assignable Expressions
-
-**✅ Valid Assignment Targets:**
-
-- Simple identifiers: `user`, `score`, `config`
-- Property access: `user.name`, `config.database.host`
-- Bracket access: `items[0]`, `user['profile']`, `data["key"]`
-- Mixed notation: `user.settings['theme']`, `data['users'][0].profile`
-
-**❌ Invalid Assignment Targets:**
-
-- Literals: `42`, `"hello"`, `true`, `#2024-01-15#`
-- Function calls: `len(name)`, `upper(role)`, `max(a, b)`
-- Arithmetic expressions: `score + 1`, `items[i + 1]`
-- Comparison results: `score > 85`, `name == "John"`
-- Any computed expressions that cannot serve as memory locations
-
-### Location Path Format
-
-Location paths are returned as lists representing the navigation path to a specific location:
-
-```elixir
-# Examples of location paths
-["user"]                           # user
-["user", "name"]                   # user.name
-["items", 0]                       # items[0]
-["user", "profile", "settings", "theme"]  # user.profile.settings['theme']
-["data", "users", 2, "name"]       # data['users'][2]['name']
-```
-
-This feature enables safe assignment operations in SCXML processors while preventing assignment to computed values or literals.
-
-### Assignment
-
-Resolving a location tells you *where* to write. `Predicator.context_assign/4` performs the write, and `Predicator.ContextLocation.put/3` does the same given an already-resolved path:
-
-```elixir
-# Missing intermediate containers are created (auto-vivification)
-iex> Predicator.context_assign(%{}, "user.profile.name", "Ada")
-{:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}}
-
-# A string segment vivifies a map, an integer segment vivifies a list
-iex> Predicator.context_assign(%{}, "data['users'][0].name", "Ada")
-{:ok, %{"data" => %{"users" => [%{"name" => "Ada"}]}}}
-
-# Existing siblings are preserved
-iex> Predicator.context_assign(%{"user" => %{"id" => 1}}, "user.name", "Ada")
-{:ok, %{"user" => %{"id" => 1, "name" => "Ada"}}}
-
-# Indices past the end of a list pad the gap with :undefined
-iex> Predicator.context_assign(%{"items" => [1]}, "items[2]", "x")
-{:ok, %{"items" => [1, :undefined, "x"]}}
-
-# With an already-resolved path
-iex> Predicator.ContextLocation.put(%{}, ["user", "profile", "name"], "Ada")
-{:ok, %{"user" => %{"profile" => %{"name" => "Ada"}}}}
-```
-
-Auto-vivification never destroys existing data. Assigning through a value that is neither a map nor a list is an error, as is a negative list index:
-
-```elixir
-iex> Predicator.context_assign(%{"user" => 5}, "user.profile.name", "Ada")
-{:error, %Predicator.Errors.LocationError{type: :not_a_container}}
-
-iex> Predicator.context_assign(%{"items" => [1, 2]}, "items[-1]", "x")
-{:error, %Predicator.Errors.LocationError{type: :invalid_index}}
-```
-
-Two rules worth knowing:
-
-- **The leaf is always overwritten**, whatever it currently holds - including a map or a list.
-- **Only string and integer keys are consulted**, never atom keys. Assigning `user.name` into a context holding `%{user: %{}}` creates a new `"user"` map beside the atom key rather than descending into it.
-
-Note that `context_assign/4` takes the context first, unlike `context_location/3`: it transforms a context and returns a new one, so it composes in a pipeline.
-
-## Cross-Language Siblings
-
-Predicator has sibling implementations in Ruby and JavaScript, in the
-[riddler/predicator](https://github.com/riddler/predicator) monorepo
-(`impl/rb`, `impl/ts`). The instruction list - not the expression string - is
-the interchange format between them.
-
-### `=` diverges from 4.0 onward
-
-Predicator-ex 4.0 makes `=` **assignment-only**, valid only in statement
-position. `==` and `===` become the only equality operators, and a `=` in
-expression position is a parse error. The Ruby and JavaScript parsers still
-accept `=` as equality, and will until they adopt the same rule.
-
-What that does and does not affect:
-
-- **Surface syntax diverges.** A stored rule string like `status = 'active'`
-  parses in Ruby and JavaScript and fails to parse in Elixir on 4.0. Write
-  `status == 'active'` for a string that must parse everywhere.
-- **The instruction set does not change.** Both spellings compile to
-  `["compare", "EQ"]`. Compiled artifacts still interchange across all three
-  implementations, and nothing already compiled is invalidated.
-
-So the break is a source-level one: share instruction lists across languages
-freely, and treat any expression string shared across languages as needing
-`==`.
-
-The reasoning behind the change is in
-[ADR-0001](docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md); the
-siblings' wider instruction-set parity gap is described there too.
-
-## Development
-
-### Setup
-
-```bash
-mix deps.get
-mix test
-```
-
-### Quality Checks
-
-```bash
-# Run all quality checks
-mix quality
-
-# Inner loop while iterating - not a substitute for the full run
-mix quality --profile loop
-
-# Individual checks  
-mix format              # Format code
-mix credo --strict     # Linting
-mix coveralls          # Test coverage  
-mix dialyzer           # Type checking
 ```
 
 ## Documentation
 
-Full documentation is available at [HexDocs](https://hexdocs.pm/predicator).
+- [Language reference](docs/reference/language.md) - operators, builtin
+  functions, data types, and error shapes
+- [Nested data access](docs/guides/nested-data-access.md) - dot and bracket
+  notation over deep contexts
+- [Custom functions](docs/guides/custom-functions.md) - extending the function
+  set per evaluation
+- [Location expressions](docs/guides/location-expressions.md) - SCXML
+  assignment targets and writing into a context
+- [Architecture and language reference](docs/architecture.md) - the grammar
+  with precedence, the compilation pipeline, and the component map
+- [Architecture decision records](docs/adr/README.md) - the reasoning behind
+  the design
+
+## Migrating from `=`
+
+Using `=` for equality still works but is deprecated: parsing one now emits a
+warning, and **Predicator 4.0 makes expression-position `=` a parse error** -
+`=` is reserved for assignment in the forthcoming statement grammar. Migrate to
+`==` before upgrading, or silence the warning with
+`config :predicator, deprecation_warnings: false`. See
+[ADR-0002](docs/adr/0002-the-equals-grammar-break.md) for the reasoning.
+
+## Cross-Language Siblings
+
+Predicator has sibling implementations in Ruby and JavaScript, in the
+[riddler/predicator](https://github.com/riddler/predicator) monorepo. The
+instruction list, not the expression string, is the interchange format
+between them; the divergences (including the `=` break above) are described
+in [docs/architecture.md](docs/architecture.md).
+
+## Development
+
+See `CLAUDE.md` for the contributor workflow and
+[docs/architecture.md](docs/architecture.md) for the quality-check commands.
+
+## License
+
+MIT - see [LICENSE](LICENSE).

@@ -324,24 +324,24 @@ blocks stay illustrative.
 
 #### Automated Verification
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `test/docs_examples_test.exs` runs a non-zero number of doctests -
+- [x] Full quality gate passes: `mix quality`
+- [x] `test/docs_examples_test.exs` runs a non-zero number of doctests -
       confirm with `mix test test/docs_examples_test.exs` and read the count,
       since a file whose examples all failed to parse passes vacuously
-- [ ] Coverage stays above the 90% minimum in `coveralls.json`
-- [ ] `docs/reference/language.md`, `docs/guides/nested-data-access.md`,
+- [x] Coverage stays above the 90% minimum in `coveralls.json`
+- [x] `docs/reference/language.md`, `docs/guides/nested-data-access.md`,
       `docs/guides/custom-functions.md`, and
       `docs/guides/location-expressions.md` all exist
 
 #### Manual Verification
 
-- [ ] Every README section listed in the table above has a destination; nothing
+- [x] Every README section listed in the table above has a destination; nothing
       was dropped in transit
-- [ ] The builtin function catalog covers all four string functions the README
+- [x] The builtin function catalog covers all four string functions the README
       omitted, with signatures matching `lib/predicator/functions/`
-- [ ] The reference page defers to `../architecture.md` for the grammar rather
+- [x] The reference page defers to `../architecture.md` for the grammar rather
       than restating the EBNF
-- [ ] No emoji in any new page
+- [x] No emoji in any new page
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run the full `mix quality` as the phase gate. In interactive
@@ -418,17 +418,17 @@ subdirectories that then drift as new ones are added.
 
 #### Automated Verification
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `mix docs` builds with no warnings about missing or unresolved extras
-- [ ] `mix hex.build` succeeds and `mix hex.build --unpack` (into a scratch
+- [x] Full quality gate passes: `mix quality`
+- [x] `mix docs` builds with no warnings about missing or unresolved extras
+- [x] `mix hex.build` succeeds and `mix hex.build --unpack` (into a scratch
       directory) shows the `docs/` tree present in the package contents
 
 #### Manual Verification
 
-- [ ] The generated `doc/index.html` sidebar shows Reference, Guides, and
+- [x] The generated `doc/index.html` sidebar shows Reference, Guides, and
       Architecture groups with the expected pages under each
-- [ ] The ADR index page has a distinct title from the root README page
-- [ ] A relative link between two extras (e.g. reference -> architecture)
+- [x] The ADR index page has a distinct title from the root README page
+- [x] A relative link between two extras (e.g. reference -> architecture)
       resolves in the generated output, not just on GitHub
 
 **Implementation Note**: `mix hex.build` is a local packaging check and is
@@ -544,25 +544,25 @@ Add the `### Changed` heading if `Unreleased` does not have one yet.
 
 #### Automated Verification
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `wc -l README.md` reports fewer than 200 lines
-- [ ] `grep -nP '[^\x00-\x7F]' README.md` returns nothing - no emoji and no
+- [x] Full quality gate passes: `mix quality`
+- [x] `wc -l README.md` reports fewer than 200 lines
+- [x] `grep -nP '[^\x00-\x7F]' README.md` returns nothing - no emoji and no
       non-ASCII typography
-- [ ] `mix test test/docs_examples_test.exs` runs the README's doctests and
+- [x] `mix test test/docs_examples_test.exs` runs the README's doctests and
       the count went up relative to Phase 1
-- [ ] `mix docs` builds with no warnings
+- [x] `mix docs` builds with no warnings
 
 #### Manual Verification
 
-- [ ] Every link in the README resolves on GitHub (click each one on the
+- [x] Every link in the README resolves on GitHub (click each one on the
       pushed branch) and in the locally generated `doc/` output
-- [ ] The Hex downloads badge renders a number, not "invalid"
-- [ ] The README reads as orientation: someone who has never seen Predicator
+- [x] The Hex downloads badge renders a number, not "invalid"
+- [x] The README reads as orientation: someone who has never seen Predicator
       learns what it is, why the no-`eval` property matters, and how to get one
       expression evaluating, without scrolling past a reference table
-- [ ] Nothing cut from the README is unreachable - walk the Current State
+- [x] Nothing cut from the README is unreachable - walk the Current State
       Analysis table and confirm each row's destination is linked
-- [ ] The `=` deprecation notice is still prominent enough to be seen by
+- [x] The `=` deprecation notice is still prominent enough to be seen by
       someone skimming
 
 **Implementation Note**: The link check is the one criterion no automated step

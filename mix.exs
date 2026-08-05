@@ -56,7 +56,7 @@ defmodule Predicator.MixProject do
   defp package do
     [
       name: @app,
-      files: ~w(lib/predicator* mix.exs README.md LICENSE CHANGELOG.md),
+      files: ~w(lib/predicator* docs mix.exs README.md LICENSE CHANGELOG.md),
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
       maintainers: ["Predicator Team"]
@@ -69,8 +69,26 @@ defmodule Predicator.MixProject do
       source_ref: "v#{@version}",
       canonical: "https://hexdocs.pm/predicator",
       source_url: @source_url,
-      extras: ["README.md", "LICENSE", "CHANGELOG.md"],
-      main: "readme"
+      main: "readme",
+      extras: [
+        "README.md",
+        "docs/reference/language.md",
+        "docs/guides/nested-data-access.md",
+        "docs/guides/custom-functions.md",
+        "docs/guides/location-expressions.md",
+        "docs/architecture.md",
+        {"docs/adr/README.md",
+         [title: "Architecture Decision Records", filename: "architecture-decision-records"]},
+        "docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md",
+        "docs/adr/0002-the-equals-grammar-break.md",
+        "CHANGELOG.md",
+        "LICENSE"
+      ],
+      groups_for_extras: [
+        Reference: ~r{docs/reference/},
+        Guides: ~r{docs/guides/},
+        Architecture: ~r{docs/(architecture|adr/)}
+      ]
     ]
   end
 
