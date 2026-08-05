@@ -56,7 +56,10 @@ defmodule Predicator.MixProject do
   defp package do
     [
       name: @app,
-      files: ~w(lib/predicator* docs mix.exs README.md LICENSE CHANGELOG.md),
+      # Keep in sync with docs()'s extras: list below - every extras path must
+      # still resolve under one of these subtrees.
+      files: ~w(lib/predicator* docs/reference docs/guides docs/adr docs/architecture.md
+           mix.exs README.md LICENSE CHANGELOG.md),
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
       maintainers: ["Predicator Team"]
@@ -70,6 +73,9 @@ defmodule Predicator.MixProject do
       canonical: "https://hexdocs.pm/predicator",
       source_url: @source_url,
       main: "readme",
+      # Keep in sync with package()'s files: list above - a page added here
+      # must resolve under one of the packaged doc subtrees, or hexdocs links
+      # to it 404.
       extras: [
         "README.md",
         "docs/reference/language.md",
