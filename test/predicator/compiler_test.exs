@@ -229,4 +229,47 @@ defmodule Predicator.CompilerTest do
       assert string_repr == "score > 85"
     end
   end
+
+  describe "to_instructions_with_positions/2" do
+    test "returns the same instruction list to_instructions/2 does" do
+      {:ok, ast} = Predicator.parse("score > 85 AND name = 'John'")
+
+      {instructions, _positions} = Compiler.to_instructions_with_positions(ast)
+
+      assert instructions == Compiler.to_instructions(ast)
+    end
+
+    test "maps each instruction index to its node's position" do
+      {:ok, ast} = Predicator.parse("score > 85")
+
+      assert Compiler.to_instructions_with_positions(ast) ==
+               {[["load", "score"], ["lit", 85], ["compare", "GT"]],
+                %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
+    end
+
+    test "a caller-supplied 3.6-shaped AST compiles to an empty table" do
+      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+
+      assert Compiler.to_instructions_with_positions(ast) ==
+               {[["load", "score"], ["lit", 85], ["compare", "GT"]], %{}}
+    end
+
+    test "passes visitor options through" do
+      {:ok, ast} = Predicator.parse("42")
+
+      assert Compiler.to_instructions_with_positions(ast, []) ==
+               {[["lit", 42]], %{0 => {1, 1}}}
+    end
+  end
+
+  describe "to_instructions/2 and to_string/2 accept either AST shape" do
+    test "a positioned AST compiles and renders the same as a bare one" do
+      {:ok, positioned} = Predicator.parse("score > 85")
+      bare = Predicator.Parser.strip_positions(positioned)
+
+      assert Compiler.to_instructions(positioned) == Compiler.to_instructions(bare)
+      assert Compiler.to_string(positioned) == Compiler.to_string(bare)
+      assert Compiler.to_string(positioned) == "score > 85"
+    end
+  end
 end

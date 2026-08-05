@@ -124,7 +124,7 @@ defmodule Predicator.ContextLocation do
   """
   @spec resolve(term(), Types.context()) :: location_result()
   def resolve(ast_node, context) when is_map(context) do
-    case ast_node |> Parser.strip_positions() |> do_resolve_base(context) do
+    case ast_node |> Parser.ensure_positions() |> do_resolve_base(context) do
       {:ok, path} -> {:ok, path}
       {:error, _error} = error -> error
     end
@@ -213,12 +213,12 @@ defmodule Predicator.ContextLocation do
   # Private implementation functions
 
   # Simple identifier - base case
-  defp do_resolve_base({:identifier, name}, _context) when is_binary(name) do
+  defp do_resolve_base({:identifier, name, _position}, _context) when is_binary(name) do
     {:ok, [name]}
   end
 
   # Property access: obj.prop - collect path components from left to right
-  defp do_resolve_base({:property_access, left_node, property}, context)
+  defp do_resolve_base({:property_access, left_node, property, _position}, context)
        when is_binary(property) do
     case do_resolve_base(left_node, context) do
       {:ok, base_path} -> {:ok, base_path ++ [property]}
@@ -227,7 +227,7 @@ defmodule Predicator.ContextLocation do
   end
 
   # Bracket access: obj[key] - collect path components from left to right
-  defp do_resolve_base({:bracket_access, left_node, key_node}, context) do
+  defp do_resolve_base({:bracket_access, left_node, key_node, _position}, context) do
     case resolve_bracket_key(key_node, context) do
       {:ok, key} ->
         case do_resolve_base(left_node, context) do
@@ -243,40 +243,40 @@ defmodule Predicator.ContextLocation do
   # Invalid cases - not assignable
 
   # Literals are not assignable
-  defp do_resolve_base({:literal, value}, _context) do
+  defp do_resolve_base({:literal, value, _position}, _context) do
     {:error, LocationError.not_assignable("literal value", value)}
   end
 
   # String literals are not assignable
-  defp do_resolve_base({:string_literal, value, _quote_type}, _context) do
+  defp do_resolve_base({:string_literal, value, _quote_type, _position}, _context) do
     {:error, LocationError.not_assignable("string literal", value)}
   end
 
   # Function calls are not assignable
-  defp do_resolve_base({:function_call, name, _args}, _context) do
+  defp do_resolve_base({:function_call, name, _args, _position}, _context) do
     {:error, LocationError.not_assignable("function call", name)}
   end
 
   # Arithmetic operations are not assignable
-  defp do_resolve_base({:arithmetic, op, _left, _right}, _context) do
+  defp do_resolve_base({:arithmetic, op, _left, _right, _position}, _context) do
     {:error, LocationError.not_assignable("arithmetic expression", to_string(op))}
   end
 
   # Comparison operations are not assignable
-  defp do_resolve_base({:comparison, op, _left, _right}, _context) do
+  defp do_resolve_base({:comparison, op, _left, _right, _position}, _context) do
     {:error, LocationError.not_assignable("comparison expression", to_string(op))}
   end
 
   # Logical operations are not assignable
-  defp do_resolve_base({:logical_and, _left, _right}, _context) do
+  defp do_resolve_base({:logical_and, _left, _right, _position}, _context) do
     {:error, LocationError.not_assignable("logical expression", "AND")}
   end
 
-  defp do_resolve_base({:logical_or, _left, _right}, _context) do
+  defp do_resolve_base({:logical_or, _left, _right, _position}, _context) do
     {:error, LocationError.not_assignable("logical expression", "OR")}
   end
 
-  defp do_resolve_base({:logical_not, _operand}, _context) do
+  defp do_resolve_base({:logical_not, _operand, _position}, _context) do
     {:error, LocationError.not_assignable("logical expression", "NOT")}
   end
 
@@ -290,12 +290,12 @@ defmodule Predicator.ContextLocation do
   end
 
   # General unary operations (covers {:unary, :minus, _} and {:unary, :bang, _})
-  defp do_resolve_base({:unary, op, _operand}, _context) do
+  defp do_resolve_base({:unary, op, _operand, _position}, _context) do
     {:error, LocationError.not_assignable("unary expression", to_string(op))}
   end
 
   # Lists are not assignable
-  defp do_resolve_base({:list, _elements}, _context) do
+  defp do_resolve_base({:list, _elements, _position}, _context) do
     {:error, LocationError.not_assignable("list literal", "list")}
   end
 
@@ -309,23 +309,27 @@ defmodule Predicator.ContextLocation do
           {:ok, binary() | integer()} | {:error, LocationError.t()}
 
   # String literals as keys (for object property access)
-  defp resolve_bracket_key({:string_literal, key, _quote_type}, _context) when is_binary(key) do
+  defp resolve_bracket_key({:string_literal, key, _quote_type, _position}, _context)
+       when is_binary(key) do
     {:ok, key}
   end
 
   # Integer literals as keys (for array access)
-  defp resolve_bracket_key({:literal, index}, _context) when is_integer(index) do
+  defp resolve_bracket_key({:literal, index, _position}, _context) when is_integer(index) do
     {:ok, index}
   end
 
   # Handle unary minus for negative integers
-  defp resolve_bracket_key({:unary, :minus, {:literal, value}}, _context)
+  defp resolve_bracket_key(
+         {:unary, :minus, {:literal, value, _inner_position}, _position},
+         _context
+       )
        when is_integer(value) do
     {:ok, -value}
   end
 
   # Variable references as keys - resolve to their values
-  defp resolve_bracket_key({:identifier, var_name}, context) do
+  defp resolve_bracket_key({:identifier, var_name, _position}, context) do
     case Map.get(context, var_name) do
       key when is_binary(key) or is_integer(key) ->
         {:ok, key}

@@ -272,7 +272,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize("score > 85")
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -287,7 +287,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize("(age >= 18)")
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -302,7 +302,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize("score > 85 AND age >= 18")
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -321,7 +321,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize(~s(role = "admin" OR role = "manager"))
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -340,7 +340,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       alias Predicator.Lexer
 
       {:ok, tokens} = Lexer.tokenize("NOT expired = true")
-      {:ok, ast} = parse_positionless(tokens)
+      {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -832,20 +832,6 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
                ["lit", 3],
                ["make_list", 2]
              ]
-    end
-  end
-
-  # Phase 1 of source positions: these assertions are about AST *shape*, so they
-  # read the position-free form.
-  defp parse_positionless(input) do
-    result =
-      if is_binary(input),
-        do: Predicator.parse(input),
-        else: Predicator.Parser.parse(input)
-
-    case result do
-      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
-      other -> other
     end
   end
 end

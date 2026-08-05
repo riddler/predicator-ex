@@ -6,6 +6,11 @@ defmodule Predicator.Visitors.StringVisitor do
   and generates a readable string representation. This is useful for debugging,
   documentation, and round-trip testing.
 
+  Source positions are ignored: rendering a positioned AST and rendering the
+  same AST with `Predicator.Parser.strip_positions/1` applied produce identical
+  strings. `visit/2` accepts either shape, normalizing with
+  `Predicator.Parser.ensure_positions/1` on the way in.
+
   ## Examples
 
       iex> ast = {:literal, 42}
@@ -80,25 +85,32 @@ defmodule Predicator.Visitors.StringVisitor do
     - `:verbose` - extra spacing: "score  >  85"
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.bare_ast(), keyword()) :: binary()
-  def visit(ast_node, opts \\ [])
+  @spec visit(Parser.ast() | Parser.bare_ast(), keyword()) :: binary()
+  def visit(ast_node, opts \\ []) do
+    ast_node
+    |> Parser.ensure_positions()
+    |> do_visit(opts)
+  end
 
-  def visit({:literal, value}, _opts) when is_integer(value) do
+  @spec do_visit(Parser.ast(), keyword()) :: binary()
+  defp do_visit(ast_node, opts)
+
+  defp do_visit({:literal, value, _position}, _opts) when is_integer(value) do
     Integer.to_string(value)
   end
 
-  def visit({:literal, value}, _opts) when is_boolean(value) do
+  defp do_visit({:literal, value, _position}, _opts) when is_boolean(value) do
     Atom.to_string(value)
   end
 
-  def visit({:literal, value}, _opts) when is_binary(value) do
+  defp do_visit({:literal, value, _position}, _opts) when is_binary(value) do
     # For backwards compatibility with older AST nodes that still use {:literal, string}
     # Default to double quotes
     escaped = String.replace(value, "\"", "\\\"")
     "\"#{escaped}\""
   end
 
-  def visit({:string_literal, value, quote_type}, _opts) when is_binary(value) do
+  defp do_visit({:string_literal, value, quote_type, _position}, _opts) when is_binary(value) do
     # Use the original quote type to preserve round-trip accuracy
     case quote_type do
       :double ->
@@ -113,31 +125,31 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
-  def visit({:literal, value}, opts) when is_list(value) do
+  defp do_visit({:literal, value, position}, opts) when is_list(value) do
     # Handle list literals (future extension)
-    items = Enum.map(value, fn item -> visit({:literal, item}, opts) end)
+    items = Enum.map(value, fn item -> do_visit({:literal, item, position}, opts) end)
     "[#{Enum.join(items, ", ")}]"
   end
 
-  def visit({:literal, %Date{} = value}, _opts) do
+  defp do_visit({:literal, %Date{} = value, _position}, _opts) do
     "##{Date.to_iso8601(value)}#"
   end
 
-  def visit({:literal, %DateTime{} = value}, _opts) do
+  defp do_visit({:literal, %DateTime{} = value, _position}, _opts) do
     "##{DateTime.to_iso8601(value)}#"
   end
 
-  def visit({:identifier, name}, _opts) when is_binary(name) do
+  defp do_visit({:identifier, name, _position}, _opts) when is_binary(name) do
     name
   end
 
-  def visit({:comparison, op, left, right}, opts) do
+  defp do_visit({:comparison, op, left, right, _position}, opts) do
     format_binary_operator(op, left, right, opts)
   end
 
-  def visit({:logical_and, left, right}, opts) do
-    left_str = visit(left, opts)
-    right_str = visit(right, opts)
+  defp do_visit({:logical_and, left, right, _position}, opts) do
+    left_str = do_visit(left, opts)
+    right_str = do_visit(right, opts)
     spacing = get_spacing(opts)
 
     case get_parentheses_mode(opts) do
@@ -146,9 +158,9 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
-  def visit({:logical_or, left, right}, opts) do
-    left_str = visit(left, opts)
-    right_str = visit(right, opts)
+  defp do_visit({:logical_or, left, right, _position}, opts) do
+    left_str = do_visit(left, opts)
+    right_str = do_visit(right, opts)
     spacing = get_spacing(opts)
 
     case get_parentheses_mode(opts) do
@@ -157,8 +169,8 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
-  def visit({:logical_not, operand}, opts) do
-    operand_str = visit(operand, opts)
+  defp do_visit({:logical_not, operand, _position}, opts) do
+    operand_str = do_visit(operand, opts)
     spacing = get_spacing(opts)
 
     case get_parentheses_mode(opts) do
@@ -168,34 +180,34 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
-  def visit({:arithmetic, op, left, right}, opts) do
+  defp do_visit({:arithmetic, op, left, right, _position}, opts) do
     format_binary_operator(op, left, right, opts)
   end
 
-  def visit({:unary, op, operand}, opts) do
-    operand_str = visit(operand, opts)
+  defp do_visit({:unary, op, operand, _position}, opts) do
+    operand_str = do_visit(operand, opts)
     op_str = format_operator(op)
 
     # Unary operators typically don't use spacing
     "#{op_str}#{operand_str}"
   end
 
-  def visit({:bracket_access, object, key}, opts) do
-    object_str = visit(object, opts)
-    key_str = visit(key, opts)
+  defp do_visit({:bracket_access, object, key, _position}, opts) do
+    object_str = do_visit(object, opts)
+    key_str = do_visit(key, opts)
 
     # Bracket access format: object[key]
     "#{object_str}[#{key_str}]"
   end
 
-  def visit({:list, elements}, opts) do
-    element_strings = Enum.map(elements, fn element -> visit(element, opts) end)
+  defp do_visit({:list, elements, _position}, opts) do
+    element_strings = Enum.map(elements, fn element -> do_visit(element, opts) end)
     "[#{Enum.join(element_strings, ", ")}]"
   end
 
-  def visit({:membership, op, left, right}, opts) do
-    left_str = visit(left, opts)
-    right_str = visit(right, opts)
+  defp do_visit({:membership, op, left, right, _position}, opts) do
+    left_str = do_visit(left, opts)
+    right_str = do_visit(right, opts)
     op_str = format_membership_operator(op)
     spacing = get_spacing(opts)
 
@@ -205,13 +217,13 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
-  def visit({:function_call, function_name, arguments}, opts) do
-    arg_strings = Enum.map(arguments, fn arg -> visit(arg, opts) end)
+  defp do_visit({:function_call, function_name, arguments, _position}, opts) do
+    arg_strings = Enum.map(arguments, fn arg -> do_visit(arg, opts) end)
     args_str = Enum.join(arg_strings, ", ")
     "#{function_name}(#{args_str})"
   end
 
-  def visit({:object, entries}, opts) do
+  defp do_visit({:object, entries, _position}, opts) do
     case entries do
       [] ->
         "{}"
@@ -220,7 +232,7 @@ defmodule Predicator.Visitors.StringVisitor do
         entry_strings =
           Enum.map(entries, fn {key, value} ->
             key_str = format_object_key(key)
-            value_str = visit(value, opts)
+            value_str = do_visit(value, opts)
             "#{key_str}: #{value_str}"
           end)
 
@@ -229,13 +241,13 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
-  def visit({:duration, units}, _opts) do
+  defp do_visit({:duration, units, _position}, _opts) do
     unit_strings = Enum.map(units, fn {value, unit} -> "#{value}#{unit}" end)
     Enum.join(unit_strings, "")
   end
 
-  def visit({:relative_date, duration_ast, direction}, opts) do
-    duration_str = visit(duration_ast, opts)
+  defp do_visit({:relative_date, duration_ast, direction, _position}, opts) do
+    duration_str = do_visit(duration_ast, opts)
 
     case direction do
       :ago -> "#{duration_str} ago"
@@ -277,13 +289,13 @@ defmodule Predicator.Visitors.StringVisitor do
   @spec format_binary_operator(
           Parser.comparison_op()
           | Parser.arithmetic_op(),
-          Parser.bare_ast(),
-          Parser.bare_ast(),
+          Parser.ast(),
+          Parser.ast(),
           keyword()
         ) :: binary()
   defp format_binary_operator(op, left, right, opts) do
-    left_str = visit(left, opts)
-    right_str = visit(right, opts)
+    left_str = do_visit(left, opts)
+    right_str = do_visit(right, opts)
     op_str = format_operator(op)
 
     spacing = get_spacing(opts)
@@ -309,7 +321,7 @@ defmodule Predicator.Visitors.StringVisitor do
     Keyword.get(opts, :parentheses, :minimal)
   end
 
-  @spec format_object_key(Parser.bare_object_key()) :: binary()
-  defp format_object_key({:identifier, name}), do: name
-  defp format_object_key({:string_literal, value}), do: ~s("#{value}")
+  @spec format_object_key(Parser.object_key()) :: binary()
+  defp format_object_key({:identifier, name, _position}), do: name
+  defp format_object_key({:string_literal, value, _position}), do: ~s("#{value}")
 end
