@@ -298,9 +298,9 @@ defmodule PredicatorTest do
       {:ok, _instructions} = Predicator.compile(original)
 
       # We can't directly get AST from instructions, but we can test with parser
-      alias Predicator.{Lexer, Parser}
+      alias Predicator.Lexer
       {:ok, tokens} = Lexer.tokenize(original)
-      {:ok, ast} = Parser.parse(tokens)
+      {:ok, ast} = parse_positionless(tokens)
 
       decompiled = Predicator.decompile(ast)
       assert decompiled == original
@@ -469,7 +469,7 @@ defmodule PredicatorTest do
       ]
 
       for expression <- original_expressions do
-        {:ok, ast} = Predicator.parse(expression)
+        {:ok, ast} = parse_positionless(expression)
         decompiled = Predicator.decompile(ast)
         assert decompiled == expression
 
@@ -481,13 +481,13 @@ defmodule PredicatorTest do
     end
 
     test "parse function returns correct AST for logical operators" do
-      {:ok, ast} = Predicator.parse("score > 85 AND age >= 18")
+      {:ok, ast} = parse_positionless("score > 85 AND age >= 18")
       assert match?({:logical_and, _, _}, ast)
 
-      {:ok, ast} = Predicator.parse(~s(role = "admin" OR role = "manager"))
+      {:ok, ast} = parse_positionless(~s(role = "admin" OR role = "manager"))
       assert match?({:logical_or, _, _}, ast)
 
-      {:ok, ast} = Predicator.parse("NOT expired = true")
+      {:ok, ast} = parse_positionless("NOT expired = true")
       assert match?({:logical_not, _}, ast)
     end
 
@@ -602,15 +602,15 @@ defmodule PredicatorTest do
     end
 
     test "parses and decompiles plain boolean expressions" do
-      {:ok, ast} = Predicator.parse("true")
+      {:ok, ast} = parse_positionless("true")
       assert ast == {:literal, true}
       assert Predicator.decompile(ast) == "true"
 
-      {:ok, ast} = Predicator.parse("active")
+      {:ok, ast} = parse_positionless("active")
       assert ast == {:identifier, "active"}
       assert Predicator.decompile(ast) == "active"
 
-      {:ok, ast} = Predicator.parse("active AND expired")
+      {:ok, ast} = parse_positionless("active AND expired")
       assert match?({:logical_and, {:identifier, "active"}, {:identifier, "expired"}}, ast)
       assert Predicator.decompile(ast) == "active AND expired"
     end
@@ -705,20 +705,20 @@ defmodule PredicatorTest do
     end
 
     test "parses lowercase operators correctly" do
-      {:ok, ast} = Predicator.parse("true and false")
+      {:ok, ast} = parse_positionless("true and false")
       assert match?({:logical_and, {:literal, true}, {:literal, false}}, ast)
 
-      {:ok, ast} = Predicator.parse("true or false")
+      {:ok, ast} = parse_positionless("true or false")
       assert match?({:logical_or, {:literal, true}, {:literal, false}}, ast)
 
-      {:ok, ast} = Predicator.parse("not true")
+      {:ok, ast} = parse_positionless("not true")
       assert match?({:logical_not, {:literal, true}}, ast)
     end
 
     test "decompiles to preserve original case" do
       # Note: Decompilation uses StringVisitor which formats based on AST
       # The original case is preserved in the token value
-      {:ok, ast} = Predicator.parse("active and expired")
+      {:ok, ast} = parse_positionless("active and expired")
       decompiled = Predicator.decompile(ast)
       # StringVisitor uses uppercase in output
       assert decompiled == "active AND expired"
@@ -824,13 +824,13 @@ defmodule PredicatorTest do
     end
 
     test "parses list expressions correctly" do
-      {:ok, ast} = Predicator.parse("[1, 2, 3]")
+      {:ok, ast} = parse_positionless("[1, 2, 3]")
       assert match?({:list, [_literal1, _literal2, _literal3]}, ast)
 
-      {:ok, ast} = Predicator.parse("1 in [1, 2, 3]")
+      {:ok, ast} = parse_positionless("1 in [1, 2, 3]")
       assert match?({:membership, :in, {:literal, 1}, {:list, _elements}}, ast)
 
-      {:ok, ast} = Predicator.parse("[1, 2] contains 1")
+      {:ok, ast} = parse_positionless("[1, 2] contains 1")
       assert match?({:membership, :contains, {:list, _elements}, {:literal, 1}}, ast)
     end
 
@@ -846,13 +846,13 @@ defmodule PredicatorTest do
     end
 
     test "decompiles list expressions" do
-      {:ok, ast} = Predicator.parse("[1, 2, 3]")
+      {:ok, ast} = parse_positionless("[1, 2, 3]")
       assert Predicator.decompile(ast) == "[1, 2, 3]"
 
-      {:ok, ast} = Predicator.parse("1 in [1, 2, 3]")
+      {:ok, ast} = parse_positionless("1 in [1, 2, 3]")
       assert Predicator.decompile(ast) == "1 IN [1, 2, 3]"
 
-      {:ok, ast} = Predicator.parse("[1, 2] contains 1")
+      {:ok, ast} = parse_positionless("[1, 2] contains 1")
       assert Predicator.decompile(ast) == "[1, 2] CONTAINS 1"
     end
 
@@ -945,10 +945,10 @@ defmodule PredicatorTest do
     end
 
     test "parses object expressions correctly" do
-      {:ok, ast} = Predicator.parse("{name: \"John\"}")
+      {:ok, ast} = parse_positionless("{name: \"John\"}")
       assert match?({:object, [{{:identifier, "name"}, {:string_literal, "John", :double}}]}, ast)
 
-      {:ok, ast} = Predicator.parse("{}")
+      {:ok, ast} = parse_positionless("{}")
       assert match?({:object, []}, ast)
     end
 
@@ -975,16 +975,16 @@ defmodule PredicatorTest do
     end
 
     test "decompiles object expressions" do
-      {:ok, ast} = Predicator.parse("{}")
+      {:ok, ast} = parse_positionless("{}")
       assert Predicator.decompile(ast) == "{}"
 
-      {:ok, ast} = Predicator.parse("{name: \"John\"}")
+      {:ok, ast} = parse_positionless("{name: \"John\"}")
       assert Predicator.decompile(ast) == ~s({name: "John"})
 
-      {:ok, ast} = Predicator.parse(~s|{"first name": "John", "last name": "Doe"}|)
+      {:ok, ast} = parse_positionless(~s|{"first name": "John", "last name": "Doe"}|)
       assert Predicator.decompile(ast) == ~s({"first name": "John", "last name": "Doe"})
 
-      {:ok, ast} = Predicator.parse("{age: 30, active: true}")
+      {:ok, ast} = parse_positionless("{age: 30, active: true}")
       assert Predicator.decompile(ast) == "{age: 30, active: true}"
     end
 
@@ -999,9 +999,9 @@ defmodule PredicatorTest do
       ]
 
       for expr <- expressions do
-        {:ok, ast} = Predicator.parse(expr)
+        {:ok, ast} = parse_positionless(expr)
         decompiled = Predicator.decompile(ast)
-        {:ok, ast2} = Predicator.parse(decompiled)
+        {:ok, ast2} = parse_positionless(decompiled)
 
         # ASTs should be equivalent after round-trip
         assert ast == ast2, "Round-trip failed for: #{expr}"
@@ -1139,13 +1139,13 @@ defmodule PredicatorTest do
     end
 
     test "parses date expressions correctly" do
-      {:ok, ast} = Predicator.parse("#2024-01-15#")
+      {:ok, ast} = parse_positionless("#2024-01-15#")
       assert match?({:literal, %Date{}}, ast)
 
-      {:ok, ast} = Predicator.parse("#2024-01-15T10:30:00Z#")
+      {:ok, ast} = parse_positionless("#2024-01-15T10:30:00Z#")
       assert match?({:literal, %DateTime{}}, ast)
 
-      {:ok, ast} = Predicator.parse("#2024-01-15# > #2024-01-10#")
+      {:ok, ast} = parse_positionless("#2024-01-15# > #2024-01-10#")
       assert match?({:comparison, :gt, {:literal, %Date{}}, {:literal, %Date{}}}, ast)
     end
 
@@ -1158,15 +1158,15 @@ defmodule PredicatorTest do
     end
 
     test "decompiles date expressions" do
-      {:ok, ast} = Predicator.parse("#2024-01-15#")
+      {:ok, ast} = parse_positionless("#2024-01-15#")
       assert Predicator.decompile(ast) == "#2024-01-15#"
 
-      {:ok, ast} = Predicator.parse("#2024-01-15T10:30:00Z#")
+      {:ok, ast} = parse_positionless("#2024-01-15T10:30:00Z#")
       decompiled = Predicator.decompile(ast)
       assert String.starts_with?(decompiled, "#2024-01-15T10:30:00")
       assert String.ends_with?(decompiled, "#")
 
-      {:ok, ast} = Predicator.parse("#2024-01-15# > #2024-01-10#")
+      {:ok, ast} = parse_positionless("#2024-01-15# > #2024-01-10#")
       assert Predicator.decompile(ast) == "#2024-01-15# > #2024-01-10#"
     end
 
@@ -1330,8 +1330,8 @@ defmodule PredicatorTest do
       single_quoted = "name = 'John'"
       double_quoted = "name = \"John\""
 
-      {:ok, single_ast} = Predicator.parse(single_quoted)
-      {:ok, double_ast} = Predicator.parse(double_quoted)
+      {:ok, single_ast} = parse_positionless(single_quoted)
+      {:ok, double_ast} = parse_positionless(double_quoted)
 
       single_decompiled = Predicator.decompile(single_ast)
       double_decompiled = Predicator.decompile(double_ast)
@@ -1704,7 +1704,7 @@ defmodule PredicatorTest do
     end
 
     test "round-trip conversion with bracket access" do
-      alias Predicator.{Lexer, Parser}
+      alias Predicator.Lexer
       alias Predicator.Visitors.StringVisitor
 
       expressions = [
@@ -1717,13 +1717,27 @@ defmodule PredicatorTest do
 
       for expr <- expressions do
         {:ok, tokens} = Lexer.tokenize(expr)
-        {:ok, ast} = Parser.parse(tokens)
+        {:ok, ast} = parse_positionless(tokens)
         regenerated = StringVisitor.visit(ast)
 
         # Parse the regenerated expression to ensure it's valid
         {:ok, tokens2} = Lexer.tokenize(regenerated)
-        assert {:ok, _ast2} = Parser.parse(tokens2)
+        assert {:ok, _ast2} = parse_positionless(tokens2)
       end
+    end
+  end
+
+  # Phase 1 of source positions: these assertions are about AST *shape*, so they
+  # read the position-free form.
+  defp parse_positionless(input) do
+    result =
+      if is_binary(input),
+        do: Predicator.parse(input),
+        else: Predicator.Parser.parse(input)
+
+    case result do
+      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      other -> other
     end
   end
 end

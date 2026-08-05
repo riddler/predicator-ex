@@ -43,7 +43,7 @@ defmodule Predicator.Visitor do
 
   The transformed representation (type depends on visitor implementation)
   """
-  @callback visit(ast_node :: Parser.ast(), opts :: keyword()) :: term()
+  @callback visit(ast_node :: Parser.bare_ast(), opts :: keyword()) :: term()
 
   @doc """
   Utility function to accept a visitor and process an AST.
@@ -56,7 +56,7 @@ defmodule Predicator.Visitor do
       iex> Predicator.Visitor.accept(ast, MyVisitor)
       42
   """
-  @spec accept(Parser.ast(), module(), keyword()) :: term()
+  @spec accept(Parser.bare_ast(), module(), keyword()) :: term()
   def accept(ast_node, visitor_module, opts \\ []) do
     visitor_module.visit(ast_node, opts)
   end

@@ -66,13 +66,13 @@ defmodule Predicator.StrictEqualityTest do
 
   describe "parser AST generation" do
     test "parses === as strict_eq comparison" do
-      {:ok, ast} = Predicator.parse("value === 42")
+      {:ok, ast} = parse_positionless("value === 42")
 
       assert ast == {:comparison, :strict_eq, {:identifier, "value"}, {:literal, 42}}
     end
 
     test "parses !== as strict_ne comparison" do
-      {:ok, ast} = Predicator.parse("name !== 'John'")
+      {:ok, ast} = parse_positionless("name !== 'John'")
 
       assert ast ==
                {:comparison, :strict_ne, {:identifier, "name"},
@@ -81,7 +81,7 @@ defmodule Predicator.StrictEqualityTest do
 
     test "handles mixed equality operators with correct precedence" do
       # Test that different operators can be used in separate comparisons with logical operators
-      {:ok, ast} = Predicator.parse("(a === b) AND (c != d)")
+      {:ok, ast} = parse_positionless("(a === b) AND (c != d)")
 
       assert match?(
                {:logical_and, {:comparison, :strict_eq, _, _}, {:comparison, :ne, _, _}},
@@ -90,7 +90,7 @@ defmodule Predicator.StrictEqualityTest do
     end
 
     test "parses complex expressions with strict operators" do
-      {:ok, ast} = Predicator.parse("(x === 1) AND (y !== 'test')")
+      {:ok, ast} = parse_positionless("(x === 1) AND (y !== 'test')")
 
       assert match?(
                {:logical_and, {:comparison, :strict_eq, _, _}, {:comparison, :strict_ne, _, _}},
@@ -215,7 +215,7 @@ defmodule Predicator.StrictEqualityTest do
       ]
 
       for expr <- expressions do
-        {:ok, ast} = Predicator.parse(expr)
+        {:ok, ast} = parse_positionless(expr)
         decompiled = Predicator.decompile(ast)
 
         # The original operator should be preserved
@@ -224,7 +224,7 @@ defmodule Predicator.StrictEqualityTest do
     end
 
     test "formats complex expressions correctly" do
-      {:ok, ast} = Predicator.parse("(a === 1) AND (b !== 'test')")
+      {:ok, ast} = parse_positionless("(a === 1) AND (b !== 'test')")
       result = Predicator.decompile(ast)
 
       assert result == "a === 1 AND b !== 'test'"
@@ -234,13 +234,27 @@ defmodule Predicator.StrictEqualityTest do
   describe "error handling" do
     test "provides meaningful error messages for invalid syntax" do
       # Test parsing error includes operator info
-      assert {:error, _message, _line, _col} = Predicator.parse("x === ===")
+      assert {:error, _message, _line, _col} = parse_positionless("x === ===")
     end
 
     test "handles undefined values consistently" do
       # Both strict and loose should handle :undefined the same way
       assert {:ok, false} = Predicator.evaluate("undefined_var === 5", %{})
       assert {:ok, true} = Predicator.evaluate("undefined_var !== 5", %{})
+    end
+  end
+
+  # Phase 1 of source positions: these assertions are about AST *shape*, so they
+  # read the position-free form.
+  defp parse_positionless(input) do
+    result =
+      if is_binary(input),
+        do: Predicator.parse(input),
+        else: Predicator.Parser.parse(input)
+
+    case result do
+      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      other -> other
     end
   end
 end

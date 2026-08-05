@@ -80,7 +80,7 @@ defmodule Predicator.Visitors.StringVisitor do
     - `:verbose` - extra spacing: "score  >  85"
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.ast(), keyword()) :: binary()
+  @spec visit(Parser.bare_ast(), keyword()) :: binary()
   def visit(ast_node, opts \\ [])
 
   def visit({:literal, value}, _opts) when is_integer(value) do
@@ -277,8 +277,8 @@ defmodule Predicator.Visitors.StringVisitor do
   @spec format_binary_operator(
           Parser.comparison_op()
           | Parser.arithmetic_op(),
-          Parser.ast(),
-          Parser.ast(),
+          Parser.bare_ast(),
+          Parser.bare_ast(),
           keyword()
         ) :: binary()
   defp format_binary_operator(op, left, right, opts) do
@@ -309,7 +309,7 @@ defmodule Predicator.Visitors.StringVisitor do
     Keyword.get(opts, :parentheses, :minimal)
   end
 
-  @spec format_object_key(Parser.object_key()) :: binary()
+  @spec format_object_key(Parser.bare_object_key()) :: binary()
   defp format_object_key({:identifier, name}), do: name
   defp format_object_key({:string_literal, value}), do: ~s("#{value}")
 end

@@ -65,13 +65,13 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
 
   describe "parser qualified functions" do
     test "parses qualified function call" do
-      {:ok, ast} = Predicator.parse("JSON.stringify(value)")
+      {:ok, ast} = parse_positionless("JSON.stringify(value)")
 
       assert ast == {:function_call, "JSON.stringify", [{:identifier, "value"}]}
     end
 
     test "parses qualified function in complex expression" do
-      {:ok, ast} = Predicator.parse("Math.pow(2, 3) + JSON.stringify(user)")
+      {:ok, ast} = parse_positionless("Math.pow(2, 3) + JSON.stringify(user)")
 
       assert ast == {
                :arithmetic,
@@ -82,7 +82,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
     end
 
     test "parses nested qualified function calls" do
-      {:ok, ast} = Predicator.parse("Math.max(Math.abs(a), Math.abs(b))")
+      {:ok, ast} = parse_positionless("Math.max(Math.abs(a), Math.abs(b))")
 
       assert ast == {
                :function_call,
@@ -302,6 +302,20 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate("Unknown.function()", %{}, functions: %{})
 
       assert String.contains?(message, "Unknown function: Unknown.function")
+    end
+  end
+
+  # Phase 1 of source positions: these assertions are about AST *shape*, so they
+  # read the position-free form.
+  defp parse_positionless(input) do
+    result =
+      if is_binary(input),
+        do: Predicator.parse(input),
+        else: Predicator.Parser.parse(input)
+
+    case result do
+      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      other -> other
     end
   end
 end

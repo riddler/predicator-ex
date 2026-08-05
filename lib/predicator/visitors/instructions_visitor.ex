@@ -49,7 +49,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   List of instructions in the format `[["operation", ...args]]`
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.ast(), keyword()) :: [[binary() | term()]]
+  @spec visit(Parser.bare_ast(), keyword()) :: [[binary() | term()]]
   def visit(ast_node, _opts \\ [])
 
   def visit({:literal, value}, _opts) do
@@ -253,7 +253,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   end
 
   # Helper function to extract string from object key node
-  @spec extract_key_string(Parser.object_key()) :: binary()
+  @spec extract_key_string(Parser.bare_object_key()) :: binary()
   defp extract_key_string({:identifier, name}), do: name
   defp extract_key_string({:string_literal, value}), do: value
 end
