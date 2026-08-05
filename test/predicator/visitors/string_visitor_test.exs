@@ -773,4 +773,28 @@ defmodule Predicator.Visitors.StringVisitorTest do
       assert result == "!x + y = 10"
     end
   end
+
+  describe "visit/2 - object keys" do
+    test "renders each key style as it was written" do
+      for source <- ["{a: 1}", ~s({"a b": 1}), "{'a b': 1}"] do
+        {:ok, ast} = Predicator.parse(source)
+        assert StringVisitor.visit(ast, []) == source
+      end
+    end
+
+    test "escapes a quote character inside a key" do
+      {:ok, ast} = Predicator.parse(~s({"say \\"hi\\"": 1}))
+      decompiled = StringVisitor.visit(ast, [])
+
+      assert decompiled == ~s({"say \\"hi\\"": 1})
+      assert Predicator.parse(decompiled) == {:ok, ast}
+    end
+
+    test "renders a 3.6-shaped key through the normalizer" do
+      assert StringVisitor.visit({:object, [{{:identifier, "a"}, {:literal, 1}}]}, []) == "{a: 1}"
+
+      assert StringVisitor.visit({:object, [{{:string_literal, "a b"}, {:literal, 1}}]}, []) ==
+               ~s({"a b": 1})
+    end
+  end
 end

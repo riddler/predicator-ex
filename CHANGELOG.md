@@ -36,6 +36,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `duration(...)` or `3d8h` literal in the expression, during evaluation -
   never pass through this normalization and are unaffected.
 
+- **Object keys are now `{:object_key, value, style, pos}`** rather than
+  `{:identifier, name, pos}` / `{:string_literal, value, pos}`, where `style`
+  is `:identifier`, `:double`, or `:single` and records how the key was
+  written. Keys no longer reuse the expression node tags, so nothing tells a
+  key from an expression by tuple arity. Callers pattern-matching a parsed
+  object entry's key update their patterns to the new tag;
+  `Predicator.Parser.strip_positions/1` still returns the 3.6 shape and
+  `Predicator.Parser.ensure_positions/1` still accepts every earlier key
+  shape, so a hand-built AST passed to `Predicator.decompile/2` or
+  `Predicator.Compiler.to_instructions/2` is unaffected, and the instruction
+  list is byte-identical.
+- `Predicator.decompile/2` now renders a single-quoted object key with single
+  quotes instead of rewriting it to double quotes, and escapes a quote
+  character inside a key. A key containing the quote character previously
+  decompiled to syntactically invalid source.
+
 ### Added
 
 - `Predicator.Errors.ParseError` gains a `:position` field - `{line, column}`,

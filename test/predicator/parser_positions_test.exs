@@ -110,13 +110,27 @@ defmodule Predicator.ParserPositionsTest do
     end
 
     test "object points at its opening brace and keys carry their own positions" do
-      assert {:ok, {:object, [{{:identifier, "a", {1, 2}}, {:literal, 1, {1, 5}}}], {1, 1}}} =
+      assert {:ok,
+              {:object, [{{:object_key, "a", :identifier, {1, 2}}, {:literal, 1, {1, 5}}}],
+               {1, 1}}} =
                Predicator.parse("{a: 1}")
     end
 
     test "string object keys carry positions" do
-      assert {:ok, {:object, [{{:string_literal, "a", {1, 2}}, {:literal, 1, {1, 7}}}], {1, 1}}} =
+      assert {:ok,
+              {:object, [{{:object_key, "a", :double, {1, 2}}, {:literal, 1, {1, 7}}}], {1, 1}}} =
                Predicator.parse(~s({"a": 1}))
+    end
+
+    test "an object key carries its quote style" do
+      assert {:ok, {:object, [{{:object_key, "a b", :single, {1, 2}}, _v}], {1, 1}}} =
+               Predicator.parse("{'a b': 1}")
+
+      assert {:ok, {:object, [{{:object_key, "a b", :double, {1, 2}}, _v}], {1, 1}}} =
+               Predicator.parse(~s({"a b": 1}))
+
+      assert {:ok, {:object, [{{:object_key, "a", :identifier, {1, 2}}, _v}], {1, 1}}} =
+               Predicator.parse("{a: 1}")
     end
 
     test "empty object has a position and no children" do

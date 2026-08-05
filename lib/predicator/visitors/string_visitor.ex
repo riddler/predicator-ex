@@ -329,6 +329,11 @@ defmodule Predicator.Visitors.StringVisitor do
   end
 
   @spec format_object_key(Parser.object_key()) :: binary()
-  defp format_object_key({:identifier, name, _position}), do: name
-  defp format_object_key({:string_literal, value, _position}), do: ~s("#{value}")
+  defp format_object_key({:object_key, value, :identifier, _position}), do: value
+
+  defp format_object_key({:object_key, value, :double, _position}),
+    do: ~s("#{String.replace(value, "\"", "\\\"")}")
+
+  defp format_object_key({:object_key, value, :single, _position}),
+    do: ~s('#{String.replace(value, "'", "\\'")}')
 end
