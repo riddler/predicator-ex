@@ -156,7 +156,7 @@ defmodule Predicator.ParserPositionsTest do
 
   describe "durations and relative dates" do
     test "duration points at its first number" do
-      assert {:ok, {:duration, [{8, "h"}, {3, "d"}], {1, 1}}} = Predicator.parse("3d8h")
+      assert {:ok, {:duration, [{3, "d"}, {8, "h"}], {1, 1}}} = Predicator.parse("3d8h")
     end
 
     test "each relative-date direction points at its direction keyword" do

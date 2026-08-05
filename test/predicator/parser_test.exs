@@ -1373,7 +1373,7 @@ defmodule Predicator.ParserTest do
     test "parses duration with multiple units" do
       {:ok, tokens} = Lexer.tokenize("1d8h30m")
       result = parse_positionless(tokens)
-      assert {:ok, {:duration, [{30, "m"}, {8, "h"}, {1, "d"}]}} = result
+      assert {:ok, {:duration, [{1, "d"}, {8, "h"}, {30, "m"}]}} = result
     end
 
     test "parses duration with all unit types" do
@@ -1381,7 +1381,7 @@ defmodule Predicator.ParserTest do
       result = parse_positionless(tokens)
 
       assert {:ok,
-              {:duration, [{8, "s"}, {7, "m"}, {6, "h"}, {5, "d"}, {4, "w"}, {3, "mo"}, {2, "y"}]}} =
+              {:duration, [{2, "y"}, {3, "mo"}, {4, "w"}, {5, "d"}, {6, "h"}, {7, "m"}, {8, "s"}]}} =
                result
     end
 
@@ -1390,20 +1390,20 @@ defmodule Predicator.ParserTest do
       result = parse_positionless(tokens)
 
       assert {:ok,
-              {:duration, [{7, "s"}, {6, "m"}, {5, "h"}, {4, "d"}, {3, "w"}, {2, "mo"}, {1, "y"}]}} =
+              {:duration, [{1, "y"}, {2, "mo"}, {3, "w"}, {4, "d"}, {5, "h"}, {6, "m"}, {7, "s"}]}} =
                result
     end
 
     test "parses relative date with 'ago'" do
       {:ok, tokens} = Lexer.tokenize("1d8h ago")
       result = parse_positionless(tokens)
-      assert {:ok, {:relative_date, {:duration, [{8, "h"}, {1, "d"}]}, :ago}} = result
+      assert {:ok, {:relative_date, {:duration, [{1, "d"}, {8, "h"}]}, :ago}} = result
     end
 
     test "parses relative date with 'from now'" do
       {:ok, tokens} = Lexer.tokenize("2h30m from now")
       result = parse_positionless(tokens)
-      assert {:ok, {:relative_date, {:duration, [{30, "m"}, {2, "h"}]}, :future}} = result
+      assert {:ok, {:relative_date, {:duration, [{2, "h"}, {30, "m"}]}, :future}} = result
     end
 
     test "parses relative date with 'next'" do
@@ -1489,7 +1489,7 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize("999y365d24h60m60s")
       result = parse_positionless(tokens)
 
-      assert {:ok, {:duration, [{60, "s"}, {60, "m"}, {24, "h"}, {365, "d"}, {999, "y"}]}} =
+      assert {:ok, {:duration, [{999, "y"}, {365, "d"}, {24, "h"}, {60, "m"}, {60, "s"}]}} =
                result
     end
   end

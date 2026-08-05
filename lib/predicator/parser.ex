@@ -1386,9 +1386,8 @@ defmodule Predicator.Parser do
 
         case peek_token(next_state) do
           {:duration_unit, _line, _col, _len, unit} ->
-            # Continue building duration sequence
-            new_units = units ++ [{number, unit}]
-            parse_duration_sequence(new_units, advance(next_state), position)
+            # Continue building duration sequence (prepended; reversed once at the end)
+            parse_duration_sequence([{number, unit} | units], advance(next_state), position)
 
           _token ->
             # End of duration sequence, check for direction operators

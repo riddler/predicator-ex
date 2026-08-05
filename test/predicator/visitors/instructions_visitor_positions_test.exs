@@ -59,12 +59,7 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
     end
 
     test "a duration takes its first number's position" do
-      # The unit order inside the instruction is wrong today - see px-bxz - so
-      # this pins the position and the shape, not the ordering.
-      {[["duration", units]], positions} = table("3d8h")
-
-      assert Enum.sort(units) == [[3, "d"], [8, "h"]]
-      assert positions == %{0 => {1, 1}}
+      assert table("3d8h") == {[["duration", [[3, "d"], [8, "h"]]]], %{0 => {1, 1}}}
     end
   end
 
