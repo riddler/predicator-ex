@@ -384,9 +384,7 @@ defmodule Predicator do
 
   Every node carries a trailing `{line, column}` source position. Pass
   `spans: true` for a `t:Predicator.Types.span/0` in that slot instead - the
-  source text the node covers, which is what a diagnostic underlines. Use
-  `Predicator.Parser.strip_positions/1` to recover the position-free shape
-  Predicator 3.6 produced.
+  source text the node covers, which is what a diagnostic underlines.
 
   ## Examples
 
@@ -425,15 +423,15 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.decompile(ast)
       "score > 85"
 
-      iex> ast = {:literal, 42}
+      iex> ast = {:literal, 42, nil}
       iex> Predicator.decompile(ast)
       "42"
 
-      iex> ast = {:comparison, :eq, {:identifier, "active"}, {:literal, true}}
+      iex> ast = {:comparison, :eq, {:identifier, "active", nil}, {:literal, true, nil}, nil}
       iex> Predicator.decompile(ast, parentheses: :explicit, spacing: :verbose)
       "(active  =  true)"
   """

@@ -7,7 +7,7 @@ defmodule Predicator.Compiler do
 
   ## Examples
 
-      iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.Compiler.to_instructions(ast)
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
@@ -39,15 +39,15 @@ defmodule Predicator.Compiler do
 
   ## Examples
 
-      iex> ast = {:literal, 42}
+      iex> ast = {:literal, 42, nil}
       iex> Predicator.Compiler.to_instructions(ast)
       [["lit", 42]]
 
-      iex> ast = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
+      iex> ast = {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil}
       iex> Predicator.Compiler.to_instructions(ast)
       [["load", "name"], ["lit", "John"], ["compare", "EQ"]]
   """
-  @spec to_instructions(Parser.ast() | Parser.bare_ast(), keyword()) :: [[binary() | term()]]
+  @spec to_instructions(Parser.ast(), keyword()) :: [[binary() | term()]]
   def to_instructions(ast, opts \\ []) do
     Visitor.accept(ast, InstructionsVisitor, opts)
   end
@@ -72,10 +72,10 @@ defmodule Predicator.Compiler do
       {[["load", "score"], ["lit", 85], ["compare", "GT"]],
        %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
 
-      iex> Predicator.Compiler.to_instructions_with_positions({:literal, 42})
+      iex> Predicator.Compiler.to_instructions_with_positions({:literal, 42, nil})
       {[["lit", 42]], %{}}
   """
-  @spec to_instructions_with_positions(Parser.ast() | Parser.bare_ast(), keyword()) ::
+  @spec to_instructions_with_positions(Parser.ast(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}
   def to_instructions_with_positions(ast, opts \\ []) do
     InstructionsVisitor.visit_with_positions(ast, opts)
@@ -101,19 +101,19 @@ defmodule Predicator.Compiler do
 
   ## Examples
 
-      iex> ast = {:literal, 42}
+      iex> ast = {:literal, 42, nil}
       iex> Predicator.Compiler.to_string(ast)
       "42"
 
-      iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.Compiler.to_string(ast)
       "score > 85"
 
-      iex> ast = {:comparison, :gt, {:identifier, "age"}, {:literal, 21}}
+      iex> ast = {:comparison, :gt, {:identifier, "age", nil}, {:literal, 21, nil}, nil}
       iex> Predicator.Compiler.to_string(ast, parentheses: :explicit)
       "(age > 21)"
   """
-  @spec to_string(Parser.ast() | Parser.bare_ast(), keyword()) :: binary()
+  @spec to_string(Parser.ast(), keyword()) :: binary()
   def to_string(ast, opts \\ []) do
     Visitor.accept(ast, StringVisitor, opts)
   end

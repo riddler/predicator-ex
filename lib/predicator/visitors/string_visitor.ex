@@ -6,50 +6,50 @@ defmodule Predicator.Visitors.StringVisitor do
   and generates a readable string representation. This is useful for debugging,
   documentation, and round-trip testing.
 
-  Source positions are ignored: rendering a positioned AST and rendering the
-  same AST with `Predicator.Parser.strip_positions/1` applied produce identical
-  strings. `visit/2` accepts either shape, normalizing with
-  `Predicator.Parser.ensure_positions/1` on the way in.
+  A node's trailing slot is ignored: rendering a parsed AST and rendering the
+  same tree with `nil` in every slot produce identical strings. A caller
+  hand-building an AST supplies `nil` there - the slot is part of the node
+  shape, not an add-on.
 
   ## Examples
 
-      iex> ast = {:literal, 42}
+      iex> ast = {:literal, 42, nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "42"
 
-      iex> ast = {:identifier, "score"}
+      iex> ast = {:identifier, "score", nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "score"
 
-      iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "score > 85"
 
-      iex> ast = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
+      iex> {:ok, ast} = Predicator.parse(~s(name = "John"))
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       ~s(name = "John")
 
-      iex> ast = {:logical_and, {:literal, true}, {:literal, false}}
+      iex> ast = {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "true AND false"
 
-      iex> ast = {:logical_not, {:literal, true}}
+      iex> ast = {:logical_not, {:literal, true, nil}, nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "NOT true"
 
-      iex> ast = {:function_call, "len", [{:identifier, "name"}]}
+      iex> ast = {:function_call, "len", [{:identifier, "name", nil}], nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "len(name)"
 
-      iex> ast = {:object, []}
+      iex> ast = {:object, [], nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "{}"
 
-      iex> ast = {:object, [{{:identifier, "name"}, {:literal, "John"}}]}
+      iex> {:ok, ast} = Predicator.parse(~s({name: "John"}))
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       ~s({name: "John"})
 
-      iex> ast = {:object, [{{:string_literal, "first name"}, {:literal, "John"}}]}
+      iex> {:ok, ast} = Predicator.parse(~s({"first name": "John"}))
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       ~s({"first name": "John"})
   """
@@ -85,11 +85,9 @@ defmodule Predicator.Visitors.StringVisitor do
     - `:verbose` - extra spacing: "score  >  85"
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.ast() | Parser.bare_ast(), keyword()) :: binary()
+  @spec visit(Parser.ast(), keyword()) :: binary()
   def visit(ast_node, opts \\ []) do
-    ast_node
-    |> Parser.ensure_positions()
-    |> do_visit(opts)
+    do_visit(ast_node, opts)
   end
 
   @spec do_visit(Parser.ast(), keyword()) :: binary()

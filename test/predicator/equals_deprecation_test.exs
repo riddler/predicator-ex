@@ -154,7 +154,9 @@ defmodule Predicator.EqualsDeprecationTest do
     end
 
     test "StringVisitor still renders an `:eq` node as `=`" do
-      assert StringVisitor.visit({:comparison, :eq, {:identifier, "a"}, {:literal, 1}}) == "a = 1"
+      assert StringVisitor.visit(
+               {:comparison, :eq, {:identifier, "a", nil}, {:literal, 1, nil}, nil}
+             ) == "a = 1"
     end
   end
 end

@@ -1,8 +1,6 @@
 defmodule Predicator.ParserPositionsTest do
   use ExUnit.Case, async: true
 
-  doctest Predicator.Parser, only: [strip_positions: 1, ensure_positions: 1]
-
   describe "leaf positions" do
     test "integer literal points at its own token" do
       assert {:ok, {:literal, 42, {1, 1}}} = Predicator.parse("42")

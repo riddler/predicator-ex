@@ -139,14 +139,17 @@ defmodule Predicator.ParserEdgeCasesTest do
     test "parses object with identifier key" do
       {:ok, tokens} = Lexer.tokenize("{name: 'John'}")
       {:ok, ast} = parse_positionless(tokens)
-      expected = {:object, [{{:identifier, "name"}, {:string_literal, "John", :single}}]}
+
+      expected =
+        {:object, [{{:object_key, "name", :identifier}, {:string_literal, "John", :single}}]}
+
       assert ast == expected
     end
 
     test "parses object with string key" do
       {:ok, tokens} = Lexer.tokenize("{\"key\": 'value'}")
       {:ok, ast} = parse_positionless(tokens)
-      expected = {:object, [{{:string_literal, "key"}, {:string_literal, "value", :single}}]}
+      expected = {:object, [{{:object_key, "key", :double}, {:string_literal, "value", :single}}]}
       assert ast == expected
     end
 
@@ -157,8 +160,8 @@ defmodule Predicator.ParserEdgeCasesTest do
       expected =
         {:object,
          [
-           {{:identifier, "user"},
-            {:object, [{{:identifier, "name"}, {:string_literal, "John", :single}}]}}
+           {{:object_key, "user", :identifier},
+            {:object, [{{:object_key, "name", :identifier}, {:string_literal, "John", :single}}]}}
          ]}
 
       assert ast == expected
@@ -305,8 +308,8 @@ defmodule Predicator.ParserEdgeCasesTest do
     end
   end
 
-  # Phase 1 of source positions: these assertions are about AST *shape*, so they
-  # read the position-free form.
+  # These assertions are about AST *shape*, so they read the slot-free form;
+  # positions and spans have their own suites.
   defp parse_positionless(input) do
     result =
       if is_binary(input),
@@ -314,7 +317,7 @@ defmodule Predicator.ParserEdgeCasesTest do
         else: Predicator.Parser.parse(input)
 
     case result do
-      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      {:ok, ast} -> {:ok, Predicator.ASTShape.strip(ast)}
       other -> other
     end
   end

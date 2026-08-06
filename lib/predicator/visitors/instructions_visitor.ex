@@ -17,29 +17,28 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   carried in its trailing slot, so an AST parsed with `spans: true` yields a
   span table rather than a position table.
 
-  Both entry points accept either a positioned AST or the position-free shape
-  Predicator 3.6 produced, normalizing with `Predicator.Parser.ensure_positions/1`
-  on the way in.
+  Both entry points require a node with a trailing slot. A caller hand-building
+  an AST supplies `nil` there, which produces no entry in the position table.
 
   ## Examples
 
-      iex> ast = {:literal, 42}
+      iex> ast = {:literal, 42, nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["lit", 42]]
 
-      iex> ast = {:identifier, "score"}
+      iex> ast = {:identifier, "score", nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["load", "score"]]
 
-      iex> ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
-      iex> ast = {:logical_and, {:literal, true}, {:literal, false}}
+      iex> ast = {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["lit", true], ["jump_if_falsy_or_pop", 2], ["lit", false]]
 
-      iex> ast = {:function_call, "len", [{:identifier, "name"}]}
+      iex> ast = {:function_call, "len", [{:identifier, "name", nil}], nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["load", "name"], ["call", "len", 1]]
   """
@@ -69,10 +68,10 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   List of instructions in the format `[["operation", ...args]]`
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.ast() | Parser.bare_ast(), keyword()) :: [[binary() | term()]]
+  @spec visit(Parser.ast(), keyword()) :: [[binary() | term()]]
   def visit(ast_node, opts \\ []) do
     ast_node
-    |> annotate(opts)
+    |> visit_annotated(opts)
     |> Enum.map(fn {instruction, _position} -> instruction end)
   end
 
@@ -90,13 +89,13 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       {[["load", "score"], ["lit", 85], ["compare", "GT"]],
        %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
 
-      iex> Predicator.Visitors.InstructionsVisitor.visit_with_positions({:literal, 42})
+      iex> Predicator.Visitors.InstructionsVisitor.visit_with_positions({:literal, 42, nil})
       {[["lit", 42]], %{}}
   """
-  @spec visit_with_positions(Parser.ast() | Parser.bare_ast(), keyword()) ::
+  @spec visit_with_positions(Parser.ast(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}
   def visit_with_positions(ast_node, opts \\ []) do
-    annotated = annotate(ast_node, opts)
+    annotated = visit_annotated(ast_node, opts)
 
     positions =
       annotated
@@ -108,13 +107,6 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       |> Map.new()
 
     {Enum.map(annotated, fn {instruction, _position} -> instruction end), positions}
-  end
-
-  @spec annotate(Parser.ast() | Parser.bare_ast(), keyword()) :: [annotated()]
-  defp annotate(ast_node, opts) do
-    ast_node
-    |> Parser.ensure_positions()
-    |> visit_annotated(opts)
   end
 
   # Each clause pairs the instructions the node emits *itself* with that node's

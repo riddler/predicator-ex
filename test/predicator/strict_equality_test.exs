@@ -192,14 +192,17 @@ defmodule Predicator.StrictEqualityTest do
 
   describe "string visitor decompilation" do
     test "decompiles === correctly" do
-      ast = {:comparison, :strict_eq, {:identifier, "x"}, {:literal, 42}}
+      ast = {:comparison, :strict_eq, {:identifier, "x", nil}, {:literal, 42, nil}, nil}
       result = Predicator.decompile(ast)
 
       assert result == "x === 42"
     end
 
     test "decompiles !== correctly" do
-      ast = {:comparison, :strict_ne, {:identifier, "name"}, {:string_literal, "test", :double}}
+      ast =
+        {:comparison, :strict_ne, {:identifier, "name", nil},
+         {:string_literal, "test", :double, nil}, nil}
+
       result = Predicator.decompile(ast)
 
       assert result == "name !== \"test\""
@@ -215,7 +218,7 @@ defmodule Predicator.StrictEqualityTest do
       ]
 
       for expr <- expressions do
-        {:ok, ast} = parse_positionless(expr)
+        {:ok, ast} = Predicator.parse(expr)
         decompiled = Predicator.decompile(ast)
 
         # The original operator should be preserved
@@ -224,7 +227,7 @@ defmodule Predicator.StrictEqualityTest do
     end
 
     test "formats complex expressions correctly" do
-      {:ok, ast} = parse_positionless("(a === 1) AND (b !== 'test')")
+      {:ok, ast} = Predicator.parse("(a === 1) AND (b !== 'test')")
       result = Predicator.decompile(ast)
 
       assert result == "a === 1 AND b !== 'test'"
@@ -244,8 +247,8 @@ defmodule Predicator.StrictEqualityTest do
     end
   end
 
-  # Phase 1 of source positions: these assertions are about AST *shape*, so they
-  # read the position-free form.
+  # These assertions are about AST *shape*, so they read the slot-free form;
+  # positions and spans have their own suites.
   defp parse_positionless(input) do
     result =
       if is_binary(input),
@@ -253,7 +256,7 @@ defmodule Predicator.StrictEqualityTest do
         else: Predicator.Parser.parse(input)
 
     case result do
-      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      {:ok, ast} -> {:ok, Predicator.ASTShape.strip(ast)}
       other -> other
     end
   end

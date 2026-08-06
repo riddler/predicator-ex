@@ -106,25 +106,25 @@ defmodule Predicator.ContextLocation do
   ## Examples
 
       # Simple identifier
-      resolve({:identifier, "user"}, %{})
+      resolve({:identifier, "user", nil}, %{})
       #=> {:ok, ["user"]}
 
       # Property access
-      resolve({:property_access, {:identifier, "user"}, "name"}, %{})
+      resolve({:property_access, {:identifier, "user", nil}, "name", nil}, %{})
       #=> {:ok, ["user", "name"]}
 
       # Bracket access
-      resolve({:bracket_access, {:identifier, "items"}, {:literal, 0}}, %{})
+      resolve({:bracket_access, {:identifier, "items", nil}, {:literal, 0, nil}, nil}, %{})
       #=> {:ok, ["items", 0]}
 
       # Invalid: literal value
-      resolve({:literal, 42}, %{})
+      resolve({:literal, 42, nil}, %{})
       #=> {:error, %LocationError{type: :not_assignable, message: "Cannot assign to literal value"}}
 
   """
   @spec resolve(term(), Types.context()) :: location_result()
   def resolve(ast_node, context) when is_map(context) do
-    case ast_node |> Parser.ensure_positions() |> do_resolve_base(context) do
+    case do_resolve_base(ast_node, context) do
       {:ok, path} -> {:ok, path}
       {:error, _error} = error -> error
     end

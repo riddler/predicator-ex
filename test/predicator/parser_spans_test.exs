@@ -282,7 +282,7 @@ defmodule Predicator.ParserSpansTest do
         {:ok, positioned} = Parser.parse(tokens)
         {:ok, spanned} = Parser.parse(tokens, spans: true)
 
-        assert Parser.strip_positions(spanned) == Parser.strip_positions(positioned)
+        assert Predicator.ASTShape.strip(spanned) == Predicator.ASTShape.strip(positioned)
       end
     end
   end
