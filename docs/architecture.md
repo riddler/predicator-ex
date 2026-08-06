@@ -925,7 +925,7 @@ nothing is pushed, and no later instruction executes.
 
 ### Development Environment
 
-- Elixir ~> 1.11 required
+- Elixir ~> 1.18 required
 - All dependencies in development/test only
 - No runtime dependencies for core functionality
 

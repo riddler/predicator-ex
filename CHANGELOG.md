@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `:position` to the span's start, so a caller reading only `:position`
   still gets a usable caret under `spans: true`.
 
+### Changed
+
+- **BREAKING: the minimum Elixir version is now 1.18.** `mix.exs` previously
+  declared `~> 1.11`, but CI has tested only 1.17 and 1.18 for a long time, so
+  the declaration promised support that was neither verified nor known to work.
+  1.18 is required for the built-in `JSON` module; consumers on 1.17 or earlier
+  must stay on 3.x.
+
 ### Removed
 
 - **Breaking:** `:line` and `:column` on `Predicator.Errors.ParseError`. The
@@ -64,6 +72,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   The instruction set is unchanged, so stored compiled artifacts and the
   cross-language interchange format are unaffected (ADR-0001).
+
+- **Breaking: the `jason` runtime dependency.**
+  `Predicator.Functions.JSONFunctions` now uses Elixir 1.18's built-in `JSON`
+  module, so **predicator has no runtime dependencies at all**. The error text
+  from `JSON.parse` on malformed input changes wording - it now reads e.g.
+  `Invalid JSON: unexpected byte 0x6F at position 1` - because the built-in
+  decoder reports failures differently. `JSON.stringify` behavior, including
+  the `inspect/1` fallback for values that cannot be encoded, is unchanged.
 
 ### Unchanged
 

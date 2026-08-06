@@ -6,8 +6,6 @@ defmodule Predicator.MixProject do
   @description "A secure, non-evaling condition (boolean predicate) engine for end users"
   @source_url "https://github.com/riddler/predicator-ex"
   @deps [
-    {:jason, "~> 1.4"},
-
     # Development and testing
     {:castore, "~> 1.0", only: [:dev, :test]},
     {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
@@ -21,7 +19,7 @@ defmodule Predicator.MixProject do
     [
       app: @app,
       version: @version,
-      elixir: "~> 1.11",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: @deps,
       docs: docs(),
