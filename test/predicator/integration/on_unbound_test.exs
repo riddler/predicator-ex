@@ -101,16 +101,16 @@ defmodule Predicator.Integration.OnUnboundTest do
   end
 
   describe "the error's position" do
-    test "points at the variable, not at the operator that rejected it", %{
+    test "points at the variable under either policy", %{
       error_context: error_context,
       default: default
     } do
       assert {:error, %UndefinedVariableError{position: {1, 5}}} =
                Predicator.evaluate("not missing", error_context)
 
-      # The default policy rewrites a TypeMismatchError after the run, with no
-      # instruction in scope, so it has no position to offer.
-      assert {:error, %UndefinedVariableError{position: nil}} =
+      # px-1e1: the default policy's after-the-run rewrite now uses the location
+      # recorded at the load, so it agrees with the :error policy's load site.
+      assert {:error, %UndefinedVariableError{position: {1, 5}}} =
                Predicator.evaluate("not missing", default)
     end
   end

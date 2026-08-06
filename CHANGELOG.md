@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `:position` to the span's start, so a caller reading only `:position`
   still gets a usable caret under `spans: true`.
 
+- `Predicator.Evaluator.unbound_loads_with_locations/1`, returning each unbound
+  load paired with the source location of the instruction that read it.
+  `unbound_loads/1` is unchanged.
+
 ### Documentation
 
 - **ADR-0003: the Elixir implementation leads the ISA.** Amends ADR-0001's
@@ -53,6 +57,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   does not change the instruction set - no opcode is added, removed, or
   resemanticized. `README.md`'s "Cross-Language Siblings" section and the
   equivalent section in `docs/architecture.md` are reworded to match.
+
+### Fixed
+
+- `Predicator.Errors.UndefinedVariableError` now carries a `:position` (and a
+  `:span` under `spans: true`) on every path. The evaluator records each unbound
+  load's source location alongside its name, so the error `Predicator.evaluate/3`
+  builds after the run - for a bare unbound root, and for the `px-8um.7` rewrite
+  of a `TypeMismatchError` that rejected an unbound root's `:undefined` - points
+  at the variable's own token. It was the one runtime error type whose
+  `:position` was always `nil`. An instruction-list caller who passes no
+  `positions:` still sees `nil`.
 
 ### Changed
 

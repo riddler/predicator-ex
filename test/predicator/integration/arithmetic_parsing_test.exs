@@ -55,8 +55,9 @@ defmodule ArithmeticOperatorParserTest do
       # ! works as logical NOT; `active` is unbound, and since px-8um.7 the
       # rejected :undefined operand is reported as the unbound root itself
       # rather than as a nameless type mismatch.
-      assert evaluate("!active", %{}) ==
-               {:error, UndefinedVariableError.new("active")}
+      assert {:error, error} = evaluate("!active", %{})
+      # px-1e1: the rewrite is positioned at the variable's own load.
+      assert error == Predicator.Errors.put_position(UndefinedVariableError.new("active"), {1, 2})
     end
 
     test "complex arithmetic expression works correctly" do
@@ -116,8 +117,8 @@ defmodule ArithmeticOperatorParserTest do
       assert {:ok, tokens} = Predicator.Lexer.tokenize("!active")
       assert length(tokens) >= 2
 
-      assert evaluate("!active", %{}) ==
-               {:error, UndefinedVariableError.new("active")}
+      assert {:error, error} = evaluate("!active", %{})
+      assert error == Predicator.Errors.put_position(UndefinedVariableError.new("active"), {1, 2})
     end
   end
 

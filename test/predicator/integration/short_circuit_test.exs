@@ -101,13 +101,16 @@ defmodule Predicator.Integration.ShortCircuitTest do
     test "a load skipped by AND's jump is not reported" do
       # The static scan px-8um.4 shipped hit `missing` first and named it,
       # even though jump_if_falsy_or_pop skips that load entirely.
+      # px-1e1: positioned at unbound_b's own load.
       assert Predicator.evaluate("(false AND missing) OR unbound_b", %{}) ==
-               {:error, UndefinedVariableError.new("unbound_b")}
+               {:error,
+                Predicator.Errors.put_position(UndefinedVariableError.new("unbound_b"), {1, 24})}
     end
 
     test "a load skipped by OR's jump is not reported" do
       assert Predicator.evaluate("(true OR missing) AND unbound_b", %{}) ==
-               {:error, UndefinedVariableError.new("unbound_b")}
+               {:error,
+                Predicator.Errors.put_position(UndefinedVariableError.new("unbound_b"), {1, 23})}
     end
 
     test "a nested guard reports the executed load, not the earlier skipped one" do
@@ -118,12 +121,14 @@ defmodule Predicator.Integration.ShortCircuitTest do
       context = %{"a" => false, "b" => true}
 
       assert Predicator.evaluate("(a AND missing) OR (b AND unbound_b)", context) ==
-               {:error, UndefinedVariableError.new("unbound_b")}
+               {:error,
+                Predicator.Errors.put_position(UndefinedVariableError.new("unbound_b"), {1, 27})}
     end
 
     test "an executed unbound load is still reported when nothing is skipped" do
       assert Predicator.evaluate("missing > 5", %{}) ==
-               {:error, UndefinedVariableError.new("missing")}
+               {:error,
+                Predicator.Errors.put_position(UndefinedVariableError.new("missing"), {1, 1})}
     end
 
     test "a fully short-circuited program with no executed unbound load is not an error" do
