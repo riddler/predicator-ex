@@ -44,6 +44,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **`docs/isa.md`: the ISA reference.** The single specification of
+  predicator's instruction set - one table row per opcode naming its arity,
+  operand types, stack effect, error semantics, ISA version, and conformance-
+  corpus tier, plus the cross-cutting rules that previously existed only as
+  prose in ADR-0001: what "falsy" means at a jump (`false` or `:undefined`),
+  that jumps are relative and forward-only, that opcodes validate rather than
+  coerce, and that a malformed operand is an unknown instruction rather than a
+  bad one. It also records ADR-0003's versioning scheme (integer ISA versions
+  independent of this library's semver) rather than re-arguing it. The
+  `Predicator.Evaluator` moduledoc and `t:Predicator.Types.instruction/0` no
+  longer carry their own opcode lists - both now point at `docs/isa.md`
+  instead. **No instruction-set behavior changed**: this is a documentation
+  addition that consolidates specification already true of the evaluator, not
+  a change to what any opcode does.
+
 - **ADR-0003: the Elixir implementation leads the ISA.** Amends ADR-0001's
   consequences (not its decision): sibling parity in Ruby and JavaScript is a
   downstream obligation, not a gate on ISA changes made here, and the ISA is

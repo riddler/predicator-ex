@@ -48,6 +48,8 @@ iex> Predicator.evaluate("score > 85", %{"score" => 92})
 
 - [Language reference](docs/reference/language.md) - operators, builtin
   functions, data types, and error shapes
+- [ISA reference](docs/isa.md) - the instruction set specification: opcodes,
+  stack effects, error semantics, and versioning
 - [Nested data access](docs/guides/nested-data-access.md) - dot and bracket
   notation over deep contexts
 - [Custom functions](docs/guides/custom-functions.md) - extending the function
@@ -77,7 +79,8 @@ adopt each ISA version on their own schedule; a sibling running behind the
 current version is an expected, documented state, not a defect. See
 [ADR-0003](docs/adr/0003-the-elixir-implementation-leads-the-isa.md) for the
 reasoning and [docs/architecture.md](docs/architecture.md) for what each
-sibling currently supports.
+sibling currently supports. [docs/isa.md](docs/isa.md) is the specification a
+sibling implements against.
 
 ## Development
 
