@@ -67,9 +67,11 @@ defmodule Predicator.Parser do
   produces one kind of metadata throughout; positions and spans are never mixed
   in a single tree.
 
-  Parentheses are excluded: `(a + b)` gives the `arithmetic` node the span of
-  `a + b`. A parenthesized expression builds no node of its own, so there is
-  nothing the parentheses could belong to.
+  A parenthesized expression's span widens to include its parentheses: `(a + b)`
+  gives the `arithmetic` node the span of `(a + b)`, not just `a + b`, so the
+  span always reads as balanced. Nesting composes to the outermost pair -
+  `((a))` gives the `identifier` node the span of `((a))` - and a parenthesized
+  leaf widens the same way a parenthesized compound expression does.
 
   ## Examples
 
@@ -837,14 +839,14 @@ defmodule Predicator.Parser do
   end
 
   # Parse parenthesized expression
-  defp parse_primary_token(state, {:lparen, _line, _col, _len, _value}) do
+  defp parse_primary_token(state, {:lparen, _line, _col, _len, _value} = open) do
     paren_state = advance(state)
 
     case parse_expression(paren_state) do
       {:ok, expr, expr_state} ->
         case peek_token(expr_state) do
-          {:rparen, _line, _col, _len, _value} ->
-            {:ok, expr, advance(expr_state)}
+          {:rparen, _line, _col, _len, _value} = close ->
+            {:ok, paren_loc(state, expr, open, close), advance(expr_state)}
 
           {type, line, col, _len, value} ->
             {:error, "Expected ')' but found #{format_token(type, value)}", line, col}
@@ -965,6 +967,21 @@ defmodule Predicator.Parser do
   @spec prefix_loc(parser_state(), Predicator.Types.position(), ast()) :: position()
   defp prefix_loc(state, point, operand) do
     loc(state, point, fn -> {point, node_end(operand)} end)
+  end
+
+  # In span mode, rewrites the parenthesized expression's trailing slot to the
+  # span of the enclosing parentheses - the `(` token's start to past the `)`
+  # token - so the span reads as balanced instead of stopping at the inner
+  # expression. This cannot be loc/3 itself: loc/3 yields a position for a node
+  # under construction, and this rewrites a slot on a node that already exists.
+  # The two-clause shape mirrors loc/3's spans? dispatch instead, which keeps
+  # the same laziness guarantee - position mode returns the node unchanged and
+  # builds no span tuple.
+  @spec paren_loc(parser_state(), ast(), Lexer.token(), Lexer.token()) :: ast()
+  defp paren_loc(%{spans?: false}, node, _open, _close), do: node
+
+  defp paren_loc(%{spans?: true}, node, open, close) do
+    put_elem(node, tuple_size(node) - 1, {token_start(open), token_end(close)})
   end
 
   @spec map_membership_operator(atom()) :: membership_op()

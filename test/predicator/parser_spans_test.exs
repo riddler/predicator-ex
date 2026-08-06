@@ -224,8 +224,16 @@ defmodule Predicator.ParserSpansTest do
   end
 
   describe "spans that are not a single token" do
-    test "a parenthesized expression's span excludes its parentheses" do
-      assert_span("(a + b)", "a + b")
+    test "a parenthesized expression's span widens to include its parentheses" do
+      assert_span("(a + b)", "(a + b)")
+    end
+
+    test "a nested parenthesized expression's span widens to the outermost pair" do
+      assert_span("((a))", "((a))")
+    end
+
+    test "a parenthesized leaf's span widens too" do
+      assert_span("(a)", "(a)")
     end
 
     test "a span crosses a line boundary" do

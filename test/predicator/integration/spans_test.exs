@@ -57,15 +57,30 @@ defmodule Predicator.Integration.SpansTest do
       end
     end
 
-    # Parentheses build no AST node, so no node can claim them without
-    # attributing another node's characters to itself. Documented limit.
-    test "a span stops at the inner expression, not at the parentheses" do
+    # Parentheses build no AST node, so the :lparen clause widens the inner
+    # expression's own span to include them instead of attributing another
+    # node's characters to itself.
+    test "a span widens to include its enclosing parentheses" do
       source = "(a + b) * c"
       {:ok, {:arithmetic, :multiply, left, _right, outer}} = Predicator.parse(source, spans: true)
 
-      assert slice(source, span_of(left)) == "a + b"
-      # The outer span inherits that start, so its slice is unbalanced.
-      assert slice(source, outer) == "a + b) * c"
+      assert slice(source, span_of(left)) == "(a + b)"
+      # The outer span inherits that widened start, so it reaches the whole source.
+      assert slice(source, outer) == "(a + b) * c"
+    end
+
+    test "nested parentheses widen to the outermost pair" do
+      source = "((a))"
+      {:ok, {:identifier, "a", span}} = Predicator.parse(source, spans: true)
+
+      assert slice(source, span) == "((a))"
+    end
+
+    test "a parenthesized leaf widens too" do
+      source = "(a)"
+      {:ok, {:identifier, "a", span}} = Predicator.parse(source, spans: true)
+
+      assert slice(source, span) == "(a)"
     end
 
     test "an inner call's span does not leak past its caller's" do
