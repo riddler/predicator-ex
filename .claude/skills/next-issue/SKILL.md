@@ -1,6 +1,6 @@
 ---
 name: next-issue
-description: Pick the next ready bead (choices by default, --auto lets an agent take the top item), claim it, stand up its worktree via /new-worktree, then triage to plan-first or implement directly
+description: Pick the next ready bead (choices by default, --auto lets an agent take the top item), claim it, and stand up its worktree via /new-worktree, seeded with /work to size and drive the job there
 model: sonnet
 argument-hint: ["optional: --auto, and/or bd ready filters (e.g. -l area:evaluator, -p 1)"]
 ---
@@ -53,6 +53,14 @@ whichever call runs, so both modes scope identically. Re-verify against
    unauthenticated or offline, `/cleanup-worktrees` stops on its own and reports;
    carry on picking work regardless.
 
+   **Run this every invocation, even if `/cleanup-worktrees` already ran earlier
+   in the session.** "Already ran this session" is not the same claim as "ran
+   immediately before this pickup" - a branch can land on `origin/main` in
+   between. This skill has no live-worktree survey downstream to go stale from
+   a skipped 0.5 (`/next-issues` does; see its step 0.5/2 for that hardening),
+   but re-running here is still cheap and keeps a dead worktree from sitting
+   alongside the one this step is about to create.
+
 1. **Pick and claim.**
 
    **Manual mode:**
@@ -75,8 +83,8 @@ whichever call runs, so both modes scope identically. Re-verify against
 
    **Empty (`[]`)** in either mode -> nothing ready and unclaimed. Do not
    auto-file. Report it, show `bd blocked` so it is clear what is waiting on
-   what, and stop (skip every step below). In manual mode, offer to file
-   something new with `bd create`.
+   what, and stop (skip every step below). In manual mode, offer
+   `/create-issue` as the way to file something new.
 
 1.5. **Publish the claim (best-effort).** The claim is the lock, but it only
    locks what other machines can see - push it right after claiming:
@@ -92,55 +100,31 @@ whichever call runs, so both modes scope identically. Re-verify against
    name). Manual mode: present it for confirmation.
 
 3. **Read the bead.** `bd show <id>` - description, acceptance, dependencies,
-   notes. This is the input to the triage decision in step 4, so it has to
-   happen before the worktree is stood up, not after.
+   notes. This still has to happen before the worktree is stood up: the branch
+   slug in step 2 comes from the title, and an epic or a malformed bead is
+   something to catch while the only cost is a claim to reverse, not after a
+   worktree and a tmux window exist for it. Sizing the work is **not** what this
+   read is for - that happens in the worktree, in `/work`.
 
-4. **Triage.** Judge what the issue needs from what is already in hand (type,
-   description, priority, which module it touches), then pick exactly one
-   bucket.
-
-   | Bucket | Seed command | When |
-   |---|---|---|
-   | **Plan-first** | `/create-plan <id>` | Touches the lexer/parser/compiler chain, changes the instruction set, or is otherwise multi-step or cross-cutting enough to deserve a plan in `docs/plans/`. Anything crossing more than one `area:` label starts here. Runs on Opus per its frontmatter. |
-   | **Just-do-it** | *(no seed command - omit `--`)* | Bounded doc / chore / config / single-module change with low blast radius. Skip the plan and start implementing immediately, keeping `mix quality --profile loop` green. |
-
-   Just-do-it has no skill to invoke, so it omits the `--` and lets
-   `/new-worktree` use its generic seed ("Work bead `<id>` ... start with
-   `bd show`"). That is the one bucket where the seeded session legitimately
-   reads the bead and starts working, because that is the whole instruction.
-
-   There is deliberately no separate research bucket here. Predicator is small
-   enough that a plan-first session can do its own reading; a change to the
-   instruction set is the case where that reading is genuinely expensive,
-   because it is cross-language interchange (ADR-0001) and the Ruby and
-   JavaScript siblings are part of the blast radius. Say so in the rationale
-   when it applies, so the seeded session knows to look outward.
-
-   - When genuinely uncertain between the two, pick plan-first - skipped
-     diligence costs more than an unnecessary plan.
-   - **Manual mode:** state the chosen bucket and a one-line rationale, and let
-     the user override before the worktree is created.
-   - **Agent-auto mode:** announce bucket + rationale, then proceed.
-
-5. **Stand up the worktree, seeded with the routing.** Invoke
-   **`/new-worktree <id>-<slug> -- <seed command>`** - it cuts the branch off
+4. **Stand up the worktree, seeded with `/work`.** Invoke
+   **`/new-worktree <id>-<slug> -- /work <id> --auto`** - it cuts the branch off
    `origin/main`, creates `../predicator-ex-worktrees/<id>-<slug>`, warms
    `deps/`, `_build/`, and the dialyzer PLT, verifies the loop profile is green,
-   and opens a tmux window running a Claude session on the seed command.
+   and opens a tmux window running a Claude session on that seed.
 
-   **Pass the bucket's command through.** The triage decision was made here,
-   with the bead in hand; the session that acts on it is a different process
-   with none of that context. Dropping the command means it re-derives the
-   bucket from scratch, usually differently, and the diligence this step just
-   paid for is spent twice.
+   **Sizing deliberately does not happen here.** Choosing between research,
+   plan-first and just-do-it needs the files the bead names to be readable, and
+   this session is in the main checkout looking at a description. `/work` makes
+   that call in the worktree, with the codebase in reach. All this skill hands
+   over is the bead id.
 
-6. **Hand off - do not do the work here.** The seeded session in the tmux
+5. **Hand off - do not do the work here.** The seeded session in the tmux
    window owns the issue from this point. Doing it in this session as well is
    two sessions editing one worktree.
 
    **Report**: the chosen bead, that it was claimed, the branch and worktree
-   created, the quality-check result from `/new-worktree`, the bucket and its
-   one-line rationale, and the tmux window to jump to.
+   created, the quality-check result from `/new-worktree`, and the tmux window
+   to jump to.
 
 ## Guidelines
 
@@ -152,13 +136,14 @@ whichever call runs, so both modes scope identically. Re-verify against
   failure.
 - Manual mode confirms the pick and the branch name before anything mutates the
   repo; the claim itself is cheap to reverse (`bd update <id> --status open`).
-- Discovered work found while triaging is filed with `bd q` and linked
+- Discovered work found while picking is filed with `bd q` and linked
   `discovered-from`, not chased now.
-- Compose with `/new-worktree` rather than duplicating its logic.
-- **This skill dispatches, it does not implement.** Triage happens here because
-  the bead is in hand; the work happens in the seeded session because that is
-  where the worktree is. Splitting it the other way - deciding there, working
-  here - is how one issue gets worked twice.
+- Compose with `/new-worktree` and `/work` rather than duplicating their logic.
+  The only thing that lives here is selection.
+- **This skill dispatches, it does not implement or size.** Selection happens
+  here because the ready list is here; sizing and the work both happen in the
+  seeded session because that is where the worktree is. Moving sizing back up
+  here is the change that undoes `/work`.
 - Re-verify exact `bd` flags against `bd ready --help` if this drifts -
   `bd ready --claim --json` and `bd update --claim` are confirmed current as of
   the bd version in use (2026-08).

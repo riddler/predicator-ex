@@ -78,10 +78,22 @@ assumptions:
 
 1. **Create a research todo list** to track the tasks
 
-2. **Spawn parallel sub-agents for research**. `Explore` is the default -
-   read-only, breadth-first, good at "where does X live and what touches it".
-   Use `general-purpose` when the answer needs execution (`iex`, `mix run`),
-   web lookups, or reading a sibling implementation outside this repo.
+2. **Spawn parallel sub-agents for research**. Pick by what the question needs:
+
+   **For code investigation:**
+   - **codebase-locator** - to find relevant files
+   - **codebase-analyzer** - to understand implementation details
+   - **codebase-pattern-finder** - to find similar patterns
+
+   **For historical context:**
+   - **thoughts-locator** - to find related research, plans, ADRs, or the
+     relevant section of `docs/architecture.md`
+   - **thoughts-analyzer** - to extract insights from a specific document
+
+   **When no specialized agent fits:** `Explore` for a read-only,
+   breadth-first "where does X live and what touches it" sweep;
+   `general-purpose` when the answer needs execution (`iex`, `mix run`), web
+   lookups, or reading a sibling implementation outside this repo.
 
    **Be EXTREMELY specific about directories**: include full path context in
    prompts, and say explicitly when a task should look outside

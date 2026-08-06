@@ -2,7 +2,7 @@
 name: merge-request
 description: Run the full gate, push the worktree branch, open a PR against main, and record it on the bead
 model: sonnet
-argument-hint: ["optional: beads issue ID; omit to detect from the branch name"]
+argument-hint: ["optional: beads issue ID; omit to detect from the commits' Refs: trailers"]
 ---
 
 # Merge Request
@@ -22,8 +22,9 @@ into `origin/main`. A PR is a request, not an outcome.
 
 ## Input
 
-`$ARGUMENTS` = optional beads issue ID. Omitted, it comes from the branch name,
-which `/new-worktree` shapes as `<beads-id>-<slug>`.
+`$ARGUMENTS` = optional beads issue ID. Omitted, the beads come from the `Refs:`
+trailers on the branch's own commits, falling back to the branch prefix
+(step 2).
 
 ## Steps
 
@@ -43,14 +44,78 @@ which `/new-worktree` shapes as `<beads-id>-<slug>`.
    ```
    Empty means nothing to open a PR for. Say so and stop.
 
-2. **Resolve the bead.** From `$ARGUMENTS` or the branch prefix, then validate:
+2. **Resolve the beads.** From `$ARGUMENTS` if given. Otherwise read the
+   trailers the branch's own commits carry - the same anchored match
+   `/cleanup-worktrees` closes on, so the PR body and the eventual closes agree:
    ```bash
-   bd show <id>
+   git log origin/main..HEAD --pretty=%B \
+     | grep -E '^Refs:' \
+     | grep -oE 'px-[a-z0-9]+(\.[0-9]+)?' | sort -u
    ```
-   STOP if it does not resolve. A PR that cannot be traced to a bead is work
-   nobody can find later, and the `bd note` in step 7 has nowhere to go.
+   Fall back to the branch prefix only when that finds nothing (a branch whose
+   commits predate the `Refs:` convention). The prefix is a creation-time label
+   and names at most one bead, so a branch carrying several would otherwise
+   reach the PR body naming only the first.
 
-3. **Run the full gate.**
+   Validate each with `bd show <id>`. STOP if none resolves. A PR that cannot be
+   traced to a bead is work nobody can find later, and the `bd note` in step 8
+   has nowhere to go.
+
+3. **Fetch and rebase onto `origin/main`.** The gate in step 4 only means
+   something if it attests to the tree that will actually merge, not to branch
+   + stale main. Rebase has to happen here, before the gate - rebasing between
+   the confirmation in step 6 and the push in step 7 would invalidate the very
+   attestation the gate exists to produce.
+   ```bash
+   git fetch origin
+   ```
+   Check whether there is anything to replay before touching the build:
+   ```bash
+   git rev-list --count HEAD..origin/main
+   ```
+   Zero means `origin/main` has not moved since the branch was cut - nothing to
+   rebase and no reason to invalidate warm build caches. Say so and go straight
+   to step 4.
+
+   Otherwise, rebase:
+   ```bash
+   git rebase origin/main
+   ```
+   **On conflict: abort and report, do not resolve unasked** - CLAUDE.md's
+   authority table is explicit that a conflict during this rebase is still
+   unauthorized. Capture the conflicting files before aborting, the same order
+   `/refresh-worktree` step 3d uses, since the abort clears the conflict state
+   a report assembled afterward would otherwise have nothing left to name:
+   ```bash
+   git diff --name-only --diff-filter=U   # capture, then
+   git rebase --abort                     # abort
+   ```
+   Report the conflicting files and stop. Do not fall through to the gate or
+   the push with the branch left un-rebased - an aborted rebase ends this run.
+
+   If the rebase moved `mix.lock`, repair the build before step 4 runs, the
+   same way `/refresh-worktree` step 3e does: `mix deps.get`, then clone the
+   dialyzer PLT from the main checkout if it has already been rebuilt for the
+   new dep set, or note that the next full gate run will rebuild it. Reuse that
+   logic rather than reimplementing it here, and do not re-clone `deps/` or
+   `_build/` wholesale - a live worktree has its own incremental state and a
+   wholesale clone forces a full recompile. A lockfile that did not move is the
+   common case and needs none of this.
+
+   Record what moved, for step 6's confirmation: the pre-rebase tip, the
+   `origin/main` commit rebased onto, and whether any commits were replayed.
+
+   **On the no-op case:** even when there is nothing to replay, step 4's gate
+   still runs. The fast path above skips the rebase and the build repair, not
+   the gate - it is the expensive parts that are wasted on an unmoved main, not
+   the cheap one. The gate attests to *this* tree, and the simplest way to know
+   the tree has not drifted since `/commit` last ran it is to ask again rather
+   than track how long ago it was green and whether anything else touched the
+   tree since. That bookkeeping would cost more reasoning than the redundant
+   gate run costs seconds. One code path - the gate always runs at step 4 -
+   beats two.
+
+4. **Run the full gate.**
    ```bash
    mix quality
    ```
@@ -68,7 +133,7 @@ which `/new-worktree` shapes as `<beads-id>-<slug>`.
    gate to run. Skip it and say so in the PR body and the final report, so a
    skipped gate is never mistaken for a green one.
 
-4. **Check for a changelog entry.** Only when the diff changes observable
+5. **Check for a changelog entry.** Only when the diff changes observable
    behavior - the public API under `lib/`, or what a predicate source string
    does:
    ```bash
@@ -92,12 +157,15 @@ which `/new-worktree` shapes as `<beads-id>-<slug>`.
    Never promote `## [Unreleased]` to a version header here. That is release
    work and needs the user to ask for a release and name the version.
 
-5. **Confirm before pushing.** Show the user what is about to become public:
+6. **Confirm before pushing.** Show the user what is about to become public,
+   including what step 3 found on `origin/main`:
 
    ```
    Ready to open a PR for px-xxx - "<issue title>"
 
    Branch:    px-xxx-slug -> main
+   Rebased:   origin/main was already current, no commits replayed
+              (or: onto <sha>, N commits replayed)
    Commits:   3
    Gate:      full mix quality green   (or: docs only, no gate applicable)
    Changelog: CHANGELOG.md [Unreleased] updated   (or: not needed - internal tooling)
@@ -110,17 +178,23 @@ which `/new-worktree` shapes as `<beads-id>-<slug>`.
    Wait for an answer. This is the one confirmation this skill does not skip,
    and there is no `--auto` for it.
 
-6. **Push, then open the PR.**
+7. **Push, then open the PR.**
    ```bash
    git push -u origin <branch>
    ```
-   If the branch was rebased after a previous push (`/refresh-worktree` rewrites
-   commits), the remote counterpart has diverged and the push needs
+   If the branch had already been pushed before step 3 ran - the common case,
+   since a worktree usually gets at least one push before its PR is ready - the
+   rebase in step 3 rewrote commits the remote already has, and the remote
+   counterpart has diverged. Same if `/refresh-worktree` rebased it
+   independently between pushes. Either way the push needs
    `--force-with-lease` - never a bare `--force`, which discards commits pushed
    from elsewhere without telling you:
    ```bash
    git push --force-with-lease
    ```
+   A branch that was rebased in step 3 but never pushed before (the first push
+   for this branch) needs neither flag - there is nothing on the remote yet to
+   diverge from.
 
    Then:
    ```bash
@@ -137,16 +211,20 @@ which `/new-worktree` shapes as `<beads-id>-<slug>`.
      say so explicitly: it is the cross-language interchange format shared with
      the Ruby and JavaScript implementations (ADR-0001), so it is not a local
      decision.
-   - The bead reference: `Closes px-xxx` (and the epic, if it has one)
+   - The bead references: `Closes px-xxx` for **every** bead the branch's
+     trailers name, one per line (and the epic, if they share one)
 
    No AI attribution in the title or the body, same rule as commit messages
    (CLAUDE.md, and the override in `/commit`).
 
-7. **Sync beads, then record the PR.**
+8. **Sync beads, then record the PR.**
    ```bash
    bd dolt push
    bd note <id> "PR: <url>"
    ```
+   Run the `bd note` once per bead step 2 resolved - a bead whose PR URL was
+   never recorded is one nobody can follow from the issue to the review.
+
    `bd dolt push` is not optional and not a nicety. Issue state travels over
    `refs/dolt/data` on the same remote as the code; a PR whose bead was never
    pushed is invisible to every other machine, so a reviewer pulling the branch
@@ -155,7 +233,7 @@ which `/new-worktree` shapes as `<beads-id>-<slug>`.
 
    Leave the bead `in_progress`. Do not close it.
 
-8. **Report.**
+9. **Report.**
    ```
    PR opened: <url>
    Branch:    px-xxx-slug -> main (3 commits)

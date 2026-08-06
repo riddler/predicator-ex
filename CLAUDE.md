@@ -94,17 +94,37 @@ several agents can run in parallel without editing the same tree. The skills in
 
 | Skill | What it does |
 |---|---|
+| `/create-issue` | file a bead with type, priority, `area:` label, and dependency links |
 | `/next-issue`, `/next-issues` | pick ready beads, claim them, dispatch to worktrees |
 | `/new-worktree` | one issue, one branch, one worktree, one tmux window |
-| `/create-plan`, `/iterate-plan`, `/implement-plan` | plan in `docs/plans/`, then execute it |
+| `/work` | the single entry point inside a worktree: size the bead, then drive research/plan/implement as subagents |
+| `/research-codebase`, `/create-plan`, `/iterate-plan`, `/implement-plan` | the stages `/work` dispatches: document, plan in `docs/plans/`, then execute |
 | `/commit` | gate, message, `Refs:` trailer, no attribution |
-| `/merge-request` | full gate, push, open the PR |
+| `/merge-request` | rebase onto `origin/main`, full gate, push, open the PR |
 | `/release` | bump `@version`, promote the changelog, bump the README pin - human-gated tag/push/publish stay separate |
 | `/cleanup-worktrees`, `/refresh-worktree` | land merged work, rebase the survivors |
 
 Worktrees live at `../predicator-ex-worktrees/<bead-id>-<slug>`, cut from
 `origin/main`. The claim is the lock: `bd update <id> --claim` happens before the
 worktree exists, never after.
+
+**Sizing happens in the worktree, not before it.** `/next-issue` and
+`/next-issues` select and claim; they hand the bead to `/work`, which reads the
+files the bead names before choosing between research-first, plan-first, and
+just-do-it. A description-only guess at blast radius made in the main checkout is
+what that split exists to replace, so do not move a triage decision back
+upstream of the worktree.
+
+### Research agents
+
+`.claude/agents/` carries read-only research agents the planning and research
+skills dispatch to: `codebase-locator` (where things live), `codebase-analyzer`
+(how they work), `codebase-pattern-finder` (existing patterns to model after),
+`thoughts-locator` and `thoughts-analyzer` (prior research, plans, ADRs, and
+`docs/architecture.md`), and `web-search-researcher`. They are **documentarians,
+not critics**: they describe what exists and do not propose changes, which is
+what keeps a research pass from quietly becoming a design pass. `code-quality-
+enforcer` is separate and is not one of them.
 
 ### Area labels
 
