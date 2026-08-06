@@ -75,16 +75,32 @@ period.
 
 ## Cross-Language Siblings
 
-Predicator has Ruby and JavaScript implementations in the
+Predicator's Elixir implementation is the reference implementation of the
+instruction set (the ISA). Ruby and JavaScript implementations live in the
 [riddler/predicator](https://github.com/riddler/predicator) monorepo
-(`impl/rb`, `impl/ts`). The instruction list is the interchange format; the
-expression string is not. Parity is already partial - objects, durations, and
-strict equality postdate the siblings - and ADR-0001 adds four more opcodes
-(`jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`, `store`) that they
-do not yet implement. The Elixir side ships the first two as of 3.7.0: `AND`
-and `OR` now short-circuit, and a compiled instruction list containing
-`jump_if_falsy_or_pop` or `jump_if_true_or_pop` will not run on a sibling that
-hasn't added them.
+(`impl/rb`, `impl/ts`); the instruction list is the interchange format between
+all three, and the expression string is not.
+
+The ISA is versioned, and each sibling declares the version it supports and
+adopts a newer one on its own schedule. **A sibling running behind the current
+ISA version is an expected, documented state - not a defect.** ADR-0001 added
+four opcodes (`jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`,
+`store`) that the siblings do not yet implement; the Elixir side ships the
+first two as of 3.7.0, so `AND` and `OR` short-circuit here, and a compiled
+instruction list containing `jump_if_falsy_or_pop` or `jump_if_true_or_pop`
+will not run on a sibling that hasn't adopted them. See
+[ADR-0003](adr/0003-the-elixir-implementation-leads-the-isa.md) for why
+sibling parity is a downstream obligation rather than a gate on changes made
+here, and [ADR-0001](adr/0001-keep-the-stack-vm-revise-the-instruction-set.md)
+for the opcodes themselves.
+
+ISA versions are integers and do not track this library's version: v2 has been
+landing across 3.7.0 and 3.8.0. An additive ISA version ships in a minor
+release; retiring an opcode invalidates stored artifacts and takes a major one.
+
+As of 2026-08-06 both siblings are ISA v1 implementations. That is a snapshot,
+not a tracked matrix - each sibling publishes the version it supports in the
+monorepo, and that is the authority.
 
 ### The `=` grammar break (4.0)
 

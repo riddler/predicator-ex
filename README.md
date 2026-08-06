@@ -70,11 +70,14 @@ warning, and **Predicator 4.0 makes expression-position `=` a parse error** -
 
 ## Cross-Language Siblings
 
-Predicator has sibling implementations in Ruby and JavaScript, in the
-[riddler/predicator](https://github.com/riddler/predicator) monorepo. The
-instruction list, not the expression string, is the interchange format
-between them; the divergences (including the `=` break above) are described
-in [docs/architecture.md](docs/architecture.md).
+Predicator's Elixir implementation is the reference implementation of the
+instruction set (the ISA), which is versioned. Ruby and JavaScript siblings,
+in the [riddler/predicator](https://github.com/riddler/predicator) monorepo,
+adopt each ISA version on their own schedule; a sibling running behind the
+current version is an expected, documented state, not a defect. See
+[ADR-0003](docs/adr/0003-the-elixir-implementation-leads-the-isa.md) for the
+reasoning and [docs/architecture.md](docs/architecture.md) for what each
+sibling currently supports.
 
 ## Development
 
