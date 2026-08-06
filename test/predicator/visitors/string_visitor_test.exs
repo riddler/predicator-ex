@@ -5,86 +5,123 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   doctest Predicator.Visitors.StringVisitor
 
+  @corpus [
+    "42",
+    ~s("hello"),
+    "'hello'",
+    "score",
+    "a > 1",
+    "a + 1 * 2",
+    "-a",
+    "a in [1, 2]",
+    "a > 1 AND b < 2",
+    "a > 1 OR b < 2",
+    "NOT a",
+    "[a, b, 3]",
+    "[]",
+    "{a: 1, \"b\": x}",
+    "{'c d': 1}",
+    "{}",
+    "len(upper(name))",
+    "a[0][1]",
+    "user.name.first",
+    "3d8h",
+    "3d ago",
+    "next 2w"
+  ]
+
+  describe "raw parser output" do
+    test "every corpus expression round-trips from raw parser output" do
+      for source <- @corpus do
+        {:ok, ast} = Predicator.parse(source)
+
+        # No normalization step: the visitors take parser output as it comes.
+        assert {:ok, reparsed} = Predicator.parse(Predicator.decompile(ast))
+        assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast)
+      end
+    end
+  end
+
   describe "visit/2 - literal nodes" do
     test "converts integer literal to string" do
-      ast = {:literal, 42}
+      ast = {:literal, 42, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "42"
     end
 
     test "converts negative integer literal to string" do
-      ast = {:literal, -15}
+      ast = {:literal, -15, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "-15"
     end
 
     test "converts zero to string" do
-      ast = {:literal, 0}
+      ast = {:literal, 0, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "0"
     end
 
     test "converts boolean true literal to string" do
-      ast = {:literal, true}
+      ast = {:literal, true, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "true"
     end
 
     test "converts boolean false literal to string" do
-      ast = {:literal, false}
+      ast = {:literal, false, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "false"
     end
 
     test "converts string literal with quotes" do
-      ast = {:literal, "hello"}
+      ast = {:literal, "hello", nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s("hello")
     end
 
     test "converts empty string literal" do
-      ast = {:literal, ""}
+      ast = {:literal, "", nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s("")
     end
 
     test "converts string with escaped quotes" do
-      ast = {:literal, "hello \"world\""}
+      ast = {:literal, "hello \"world\"", nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s("hello \\"world\\"")
     end
 
     test "converts string with special characters" do
-      ast = {:literal, "line1\nline2\ttab"}
+      ast = {:literal, "line1\nline2\ttab", nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "\"line1\nline2\ttab\""
     end
 
     test "converts list literal" do
-      ast = {:literal, [1, 2, 3]}
+      ast = {:literal, [1, 2, 3], nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "[1, 2, 3]"
     end
 
     test "converts mixed type list literal" do
-      ast = {:literal, [1, "hello", true]}
+      ast = {:literal, [1, "hello", true], nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s([1, "hello", true])
     end
 
     test "converts empty list literal" do
-      ast = {:literal, []}
+      ast = {:literal, [], nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "[]"
@@ -93,21 +130,21 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - identifier nodes" do
     test "converts simple identifier" do
-      ast = {:identifier, "score"}
+      ast = {:identifier, "score", nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "score"
     end
 
     test "converts identifier with underscores" do
-      ast = {:identifier, "user_age"}
+      ast = {:identifier, "user_age", nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "user_age"
     end
 
     test "converts identifier with numbers" do
-      ast = {:identifier, "var123"}
+      ast = {:identifier, "var123", nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "var123"
@@ -116,63 +153,63 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - comparison nodes" do
     test "converts greater than comparison" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "score > 85"
     end
 
     test "converts less than comparison" do
-      ast = {:comparison, :lt, {:identifier, "age"}, {:literal, 18}}
+      ast = {:comparison, :lt, {:identifier, "age", nil}, {:literal, 18, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "age < 18"
     end
 
     test "converts greater than or equal comparison" do
-      ast = {:comparison, :gte, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gte, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "score >= 85"
     end
 
     test "converts less than or equal comparison" do
-      ast = {:comparison, :lte, {:identifier, "age"}, {:literal, 65}}
+      ast = {:comparison, :lte, {:identifier, "age", nil}, {:literal, 65, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "age <= 65"
     end
 
     test "converts equality comparison" do
-      ast = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
+      ast = {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s(name = "John")
     end
 
     test "converts not equal comparison" do
-      ast = {:comparison, :ne, {:identifier, "status"}, {:literal, "inactive"}}
+      ast = {:comparison, :ne, {:identifier, "status", nil}, {:literal, "inactive", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s(status != "inactive")
     end
 
     test "converts literal-to-literal comparison" do
-      ast = {:comparison, :gt, {:literal, 10}, {:literal, 5}}
+      ast = {:comparison, :gt, {:literal, 10, nil}, {:literal, 5, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "10 > 5"
     end
 
     test "converts identifier-to-identifier comparison" do
-      ast = {:comparison, :eq, {:identifier, "score"}, {:identifier, "threshold"}}
+      ast = {:comparison, :eq, {:identifier, "score", nil}, {:identifier, "threshold", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "score = threshold"
     end
 
     test "converts boolean comparisons" do
-      ast = {:comparison, :eq, {:identifier, "active"}, {:literal, true}}
+      ast = {:comparison, :eq, {:identifier, "active", nil}, {:literal, true, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "active = true"
@@ -181,21 +218,21 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - spacing options" do
     test "normal spacing (default)" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :normal)
 
       assert result == "score > 85"
     end
 
     test "compact spacing" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :compact)
 
       assert result == "score>85"
     end
 
     test "verbose spacing" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :verbose)
 
       assert result == "score  >  85"
@@ -212,7 +249,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
       ]
 
       for {op, expected} <- operators_and_expected do
-        ast = {:comparison, op, {:identifier, "score"}, {:literal, 85}}
+        ast = {:comparison, op, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
         result = StringVisitor.visit(ast, spacing: :verbose)
         assert result == expected
       end
@@ -221,21 +258,21 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - parentheses options" do
     test "minimal parentheses (default)" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :minimal)
 
       assert result == "score > 85"
     end
 
     test "explicit parentheses" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit)
 
       assert result == "(score > 85)"
     end
 
     test "no parentheses" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :none)
 
       assert result == "score > 85"
@@ -244,14 +281,14 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - combined options" do
     test "explicit parentheses with compact spacing" do
-      ast = {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}
+      ast = {:comparison, :gte, {:identifier, "age", nil}, {:literal, 18, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit, spacing: :compact)
 
       assert result == "(age>=18)"
     end
 
     test "verbose spacing with explicit parentheses" do
-      ast = {:comparison, :ne, {:identifier, "name"}, {:literal, "test"}}
+      ast = {:comparison, :ne, {:identifier, "name", nil}, {:literal, "test", nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit, spacing: :verbose)
 
       assert result == "(name  !=  \"test\")"
@@ -385,28 +422,31 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - edge cases" do
     test "handles strings with quotes that need escaping" do
-      ast = {:comparison, :eq, {:identifier, "message"}, {:literal, ~s(He said "hello")}}
+      ast =
+        {:comparison, :eq, {:identifier, "message", nil}, {:literal, ~s(He said "hello"), nil},
+         nil}
+
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s(message = "He said \\"hello\\"")
     end
 
     test "handles empty string comparisons" do
-      ast = {:comparison, :ne, {:identifier, "name"}, {:literal, ""}}
+      ast = {:comparison, :ne, {:identifier, "name", nil}, {:literal, "", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s(name != "")
     end
 
     test "handles zero comparisons" do
-      ast = {:comparison, :gt, {:identifier, "count"}, {:literal, 0}}
+      ast = {:comparison, :gt, {:identifier, "count", nil}, {:literal, 0, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "count > 0"
     end
 
     test "handles negative number comparisons" do
-      ast = {:comparison, :lt, {:identifier, "temp"}, {:literal, -10}}
+      ast = {:comparison, :lt, {:identifier, "temp", nil}, {:literal, -10, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "temp < -10"
@@ -415,21 +455,21 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - logical operators" do
     test "formats simple logical AND" do
-      ast = {:logical_and, {:literal, true}, {:literal, false}}
+      ast = {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "true AND false"
     end
 
     test "formats simple logical OR" do
-      ast = {:logical_or, {:literal, true}, {:literal, false}}
+      ast = {:logical_or, {:literal, true, nil}, {:literal, false, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "true OR false"
     end
 
     test "formats simple logical NOT" do
-      ast = {:logical_not, {:literal, true}}
+      ast = {:logical_not, {:literal, true, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "NOT true"
@@ -437,8 +477,8 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "formats logical AND with comparisons" do
       ast =
-        {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
-         {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}}
+        {:logical_and, {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+         {:comparison, :gte, {:identifier, "age", nil}, {:literal, 18, nil}, nil}, nil}
 
       result = StringVisitor.visit(ast, [])
 
@@ -447,8 +487,9 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "formats logical OR with comparisons" do
       ast =
-        {:logical_or, {:comparison, :eq, {:identifier, "role"}, {:literal, "admin"}},
-         {:comparison, :eq, {:identifier, "role"}, {:literal, "manager"}}}
+        {:logical_or,
+         {:comparison, :eq, {:identifier, "role", nil}, {:literal, "admin", nil}, nil},
+         {:comparison, :eq, {:identifier, "role", nil}, {:literal, "manager", nil}, nil}, nil}
 
       result = StringVisitor.visit(ast, [])
 
@@ -456,14 +497,17 @@ defmodule Predicator.Visitors.StringVisitorTest do
     end
 
     test "formats logical NOT with comparison" do
-      ast = {:logical_not, {:comparison, :eq, {:identifier, "expired"}, {:literal, true}}}
+      ast =
+        {:logical_not,
+         {:comparison, :eq, {:identifier, "expired", nil}, {:literal, true, nil}, nil}, nil}
+
       result = StringVisitor.visit(ast, [])
 
       assert result == "NOT expired = true"
     end
 
     test "formats nested logical NOT" do
-      ast = {:logical_not, {:logical_not, {:literal, false}}}
+      ast = {:logical_not, {:logical_not, {:literal, false, nil}, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "NOT NOT false"
@@ -473,9 +517,9 @@ defmodule Predicator.Visitors.StringVisitorTest do
       # (score > 85 AND age >= 18) OR admin = true
       ast =
         {:logical_or,
-         {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
-          {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}},
-         {:comparison, :eq, {:identifier, "admin"}, {:literal, true}}}
+         {:logical_and, {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+          {:comparison, :gte, {:identifier, "age", nil}, {:literal, 18, nil}, nil}, nil},
+         {:comparison, :eq, {:identifier, "admin", nil}, {:literal, true, nil}, nil}, nil}
 
       result = StringVisitor.visit(ast, [])
 
@@ -483,42 +527,44 @@ defmodule Predicator.Visitors.StringVisitorTest do
     end
 
     test "formats logical operators with compact spacing" do
-      ast = {:logical_and, {:literal, true}, {:literal, false}}
+      ast = {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :compact)
 
       assert result == "trueANDfalse"
     end
 
     test "formats logical operators with verbose spacing" do
-      ast = {:logical_or, {:literal, true}, {:literal, false}}
+      ast = {:logical_or, {:literal, true, nil}, {:literal, false, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :verbose)
 
       assert result == "true  OR  false"
     end
 
     test "formats logical operators with explicit parentheses" do
-      ast = {:logical_and, {:literal, true}, {:literal, false}}
+      ast = {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit)
 
       assert result == "(true AND false)"
     end
 
     test "formats logical NOT with explicit parentheses" do
-      ast = {:logical_not, {:literal, true}}
+      ast = {:logical_not, {:literal, true, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit)
 
       assert result == "(NOT true)"
     end
 
     test "formats logical NOT with no parentheses mode" do
-      ast = {:logical_not, {:literal, false}}
+      ast = {:logical_not, {:literal, false, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :none)
 
       assert result == "NOT false"
     end
 
     test "formats complex logical expression with all formatting options" do
-      ast = {:logical_not, {:logical_and, {:literal, true}, {:literal, false}}}
+      ast =
+        {:logical_not, {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}, nil}
+
       result = StringVisitor.visit(ast, spacing: :verbose, parentheses: :explicit)
 
       assert result == "(NOT  (true  AND  false))"
@@ -526,7 +572,10 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "formats left-associative AND operations" do
       # ((true AND false) AND true)
-      ast = {:logical_and, {:logical_and, {:literal, true}, {:literal, false}}, {:literal, true}}
+      ast =
+        {:logical_and, {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil},
+         {:literal, true, nil}, nil}
+
       result = StringVisitor.visit(ast, [])
 
       assert result == "true AND false AND true"
@@ -534,7 +583,10 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "formats left-associative OR operations" do
       # ((true OR false) OR true)
-      ast = {:logical_or, {:logical_or, {:literal, true}, {:literal, false}}, {:literal, true}}
+      ast =
+        {:logical_or, {:logical_or, {:literal, true, nil}, {:literal, false, nil}, nil},
+         {:literal, true, nil}, nil}
+
       result = StringVisitor.visit(ast, [])
 
       assert result == "true OR false OR true"
@@ -543,8 +595,8 @@ defmodule Predicator.Visitors.StringVisitorTest do
     test "formats mixed comparison and logical operations" do
       # score > 85 AND NOT expired
       ast =
-        {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
-         {:logical_not, {:identifier, "expired"}}}
+        {:logical_and, {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+         {:logical_not, {:identifier, "expired", nil}, nil}, nil}
 
       result = StringVisitor.visit(ast, [])
 
@@ -600,35 +652,35 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - arithmetic operators" do
     test "converts addition expression" do
-      ast = {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}}
+      ast = {:arithmetic, :add, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "a + b"
     end
 
     test "converts subtraction expression" do
-      ast = {:arithmetic, :subtract, {:literal, 10}, {:literal, 3}}
+      ast = {:arithmetic, :subtract, {:literal, 10, nil}, {:literal, 3, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "10 - 3"
     end
 
     test "converts multiplication expression" do
-      ast = {:arithmetic, :multiply, {:identifier, "x"}, {:literal, 2}}
+      ast = {:arithmetic, :multiply, {:identifier, "x", nil}, {:literal, 2, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "x * 2"
     end
 
     test "converts division expression" do
-      ast = {:arithmetic, :divide, {:literal, 100}, {:identifier, "divisor"}}
+      ast = {:arithmetic, :divide, {:literal, 100, nil}, {:identifier, "divisor", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "100 / divisor"
     end
 
     test "converts modulo expression" do
-      ast = {:arithmetic, :modulo, {:identifier, "n"}, {:literal, 5}}
+      ast = {:arithmetic, :modulo, {:identifier, "n", nil}, {:literal, 5, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "n % 5"
@@ -636,29 +688,29 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "converts nested arithmetic expressions" do
       # (a + b) * c
-      inner_add = {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}}
-      ast = {:arithmetic, :multiply, inner_add, {:identifier, "c"}}
+      inner_add = {:arithmetic, :add, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
+      ast = {:arithmetic, :multiply, inner_add, {:identifier, "c", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "a + b * c"
     end
 
     test "converts arithmetic with explicit parentheses mode" do
-      ast = {:arithmetic, :add, {:identifier, "x"}, {:literal, 5}}
+      ast = {:arithmetic, :add, {:identifier, "x", nil}, {:literal, 5, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit)
 
       assert result == "(x + 5)"
     end
 
     test "converts arithmetic with compact spacing" do
-      ast = {:arithmetic, :multiply, {:literal, 3}, {:literal, 4}}
+      ast = {:arithmetic, :multiply, {:literal, 3, nil}, {:literal, 4, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :compact)
 
       assert result == "3*4"
     end
 
     test "converts arithmetic with verbose spacing" do
-      ast = {:arithmetic, :subtract, {:identifier, "total"}, {:literal, 10}}
+      ast = {:arithmetic, :subtract, {:identifier, "total", nil}, {:literal, 10, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :verbose)
 
       assert result == "total  -  10"
@@ -667,28 +719,28 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - unary operators" do
     test "converts unary minus expression" do
-      ast = {:unary, :minus, {:identifier, "x"}}
+      ast = {:unary, :minus, {:identifier, "x", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "-x"
     end
 
     test "converts unary minus with literal" do
-      ast = {:unary, :minus, {:literal, 42}}
+      ast = {:unary, :minus, {:literal, 42, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "-42"
     end
 
     test "converts unary bang (logical NOT) expression" do
-      ast = {:unary, :bang, {:identifier, "active"}}
+      ast = {:unary, :bang, {:identifier, "active", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "!active"
     end
 
     test "converts unary bang with boolean literal" do
-      ast = {:unary, :bang, {:literal, true}}
+      ast = {:unary, :bang, {:literal, true, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "!true"
@@ -696,8 +748,8 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "converts nested unary expressions" do
       # !(-x)
-      inner_minus = {:unary, :minus, {:identifier, "x"}}
-      ast = {:unary, :bang, inner_minus}
+      inner_minus = {:unary, :minus, {:identifier, "x", nil}, nil}
+      ast = {:unary, :bang, inner_minus, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "!-x"
@@ -705,8 +757,8 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "converts unary with function call" do
       # !(len(name))
-      function_call = {:function_call, "len", [{:identifier, "name"}]}
-      ast = {:unary, :bang, function_call}
+      function_call = {:function_call, "len", [{:identifier, "name", nil}], nil}
+      ast = {:unary, :bang, function_call, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "!len(name)"
@@ -715,28 +767,28 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - equality operators" do
     test "converts equality (==) expression" do
-      ast = {:comparison, :eq, {:identifier, "x"}, {:identifier, "y"}}
+      ast = {:comparison, :eq, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "x = y"
     end
 
     test "converts inequality (!=) with equality syntax" do
-      ast = {:comparison, :ne, {:identifier, "status"}, {:literal, "active"}}
+      ast = {:comparison, :ne, {:identifier, "status", nil}, {:literal, "active", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == ~s(status != "active")
     end
 
     test "converts equality with explicit parentheses" do
-      ast = {:comparison, :eq, {:literal, 1}, {:literal, 1}}
+      ast = {:comparison, :eq, {:literal, 1, nil}, {:literal, 1, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit)
 
       assert result == "(1 = 1)"
     end
 
     test "converts equality with compact spacing" do
-      ast = {:comparison, :eq, {:identifier, "a"}, {:identifier, "b"}}
+      ast = {:comparison, :eq, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
       result = StringVisitor.visit(ast, spacing: :compact)
 
       assert result == "a=b"
@@ -746,8 +798,8 @@ defmodule Predicator.Visitors.StringVisitorTest do
   describe "visit/2 - mixed operator expressions" do
     test "converts arithmetic within comparison" do
       # x + y > 10
-      arithmetic = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      ast = {:comparison, :gt, arithmetic, {:literal, 10}}
+      arithmetic = {:arithmetic, :add, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
+      ast = {:comparison, :gt, arithmetic, {:literal, 10, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "x + y > 10"
@@ -755,9 +807,9 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "converts unary in logical expression" do
       # !active AND !expired
-      left_unary = {:unary, :bang, {:identifier, "active"}}
-      right_unary = {:unary, :bang, {:identifier, "expired"}}
-      ast = {:logical_and, left_unary, right_unary}
+      left_unary = {:unary, :bang, {:identifier, "active", nil}, nil}
+      right_unary = {:unary, :bang, {:identifier, "expired", nil}, nil}
+      ast = {:logical_and, left_unary, right_unary, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "!active AND !expired"
@@ -765,9 +817,9 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "converts complex nested expression" do
       # !(x + y == 10)
-      arithmetic = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      equality = {:comparison, :eq, arithmetic, {:literal, 10}}
-      ast = {:unary, :bang, equality}
+      arithmetic = {:arithmetic, :add, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
+      equality = {:comparison, :eq, arithmetic, {:literal, 10, nil}, nil}
+      ast = {:unary, :bang, equality, nil}
       result = StringVisitor.visit(ast, [])
 
       assert result == "!x + y = 10"
@@ -790,11 +842,14 @@ defmodule Predicator.Visitors.StringVisitorTest do
       assert Predicator.parse(decompiled) == {:ok, ast}
     end
 
-    test "renders a 3.6-shaped key through the normalizer" do
-      assert StringVisitor.visit({:object, [{{:identifier, "a"}, {:literal, 1}}]}, []) == "{a: 1}"
+    test "renders a hand-built key from its style" do
+      identifier_key =
+        {:object, [{{:object_key, "a", :identifier, nil}, {:literal, 1, nil}}], nil}
 
-      assert StringVisitor.visit({:object, [{{:string_literal, "a b"}, {:literal, 1}}]}, []) ==
-               ~s({"a b": 1})
+      assert StringVisitor.visit(identifier_key, []) == "{a: 1}"
+
+      double_key = {:object, [{{:object_key, "a b", :double, nil}, {:literal, 1, nil}}], nil}
+      assert StringVisitor.visit(double_key, []) == ~s({"a b": 1})
     end
   end
 end

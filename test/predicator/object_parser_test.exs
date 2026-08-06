@@ -10,7 +10,9 @@ defmodule Predicator.ObjectParserTest do
 
     test "simple object with identifier key" do
       {:ok, tokens} = Lexer.tokenize("{a: 1}")
-      assert {:ok, {:object, [{{:identifier, "a"}, {:literal, 1}}]}} = parse_positionless(tokens)
+
+      assert {:ok, {:object, [{{:object_key, "a", :identifier}, {:literal, 1}}]}} =
+               parse_positionless(tokens)
     end
 
     test "object with multiple properties" do
@@ -18,8 +20,8 @@ defmodule Predicator.ObjectParserTest do
 
       assert {:ok, {:object, entries}} = parse_positionless(tokens)
       assert length(entries) == 2
-      assert {{:identifier, "name"}, {:string_literal, "John", :single}} in entries
-      assert {{:identifier, "age"}, {:literal, 30}} in entries
+      assert {{:object_key, "name", :identifier}, {:string_literal, "John", :single}} in entries
+      assert {{:object_key, "age", :identifier}, {:literal, 30}} in entries
     end
 
     test "object with string key" do
@@ -27,15 +29,18 @@ defmodule Predicator.ObjectParserTest do
 
       assert {:ok,
               {:object,
-               [{{:string_literal, "key-with-dash"}, {:string_literal, "value", :single}}]}} =
+               [{{:object_key, "key-with-dash", :single}, {:string_literal, "value", :single}}]}} =
                parse_positionless(tokens)
     end
 
     test "nested object" do
       {:ok, tokens} = Lexer.tokenize("{user: {name: 'John'}}")
 
-      assert {:ok, {:object, [{{:identifier, "user"}, nested_obj}]}} = parse_positionless(tokens)
-      assert {:object, [{{:identifier, "name"}, {:string_literal, "John", :single}}]} = nested_obj
+      assert {:ok, {:object, [{{:object_key, "user", :identifier}, nested_obj}]}} =
+               parse_positionless(tokens)
+
+      assert {:object, [{{:object_key, "name", :identifier}, {:string_literal, "John", :single}}]} =
+               nested_obj
     end
 
     test "object with various value types" do
@@ -48,7 +53,7 @@ defmodule Predicator.ObjectParserTest do
     test "object with float values" do
       {:ok, tokens} = Lexer.tokenize("{pi: 3.14}")
 
-      assert {:ok, {:object, [{{:identifier, "pi"}, {:literal, 3.14}}]}} =
+      assert {:ok, {:object, [{{:object_key, "pi", :identifier}, {:literal, 3.14}}]}} =
                parse_positionless(tokens)
     end
 
@@ -61,7 +66,8 @@ defmodule Predicator.ObjectParserTest do
     test "object with function call as value" do
       {:ok, tokens} = Lexer.tokenize("{length: len('hello')}")
 
-      assert {:ok, {:object, [{{:identifier, "length"}, {:function_call, "len", [_arg]}}]}} =
+      assert {:ok,
+              {:object, [{{:object_key, "length", :identifier}, {:function_call, "len", [_arg]}}]}} =
                parse_positionless(tokens)
     end
 
@@ -70,7 +76,10 @@ defmodule Predicator.ObjectParserTest do
 
       assert {:ok,
               {:object,
-               [{{:identifier, "result"}, {:arithmetic, :add, {:literal, 5}, {:literal, 3}}}]}} =
+               [
+                 {{:object_key, "result", :identifier},
+                  {:arithmetic, :add, {:literal, 5}, {:literal, 3}}}
+               ]}} =
                parse_positionless(tokens)
     end
 
@@ -79,7 +88,7 @@ defmodule Predicator.ObjectParserTest do
 
       assert {:ok,
               {:object,
-               [{{:string_literal, "single-quote"}, {:string_literal, "value", :single}}]}} =
+               [{{:object_key, "single-quote", :single}, {:string_literal, "value", :single}}]}} =
                parse_positionless(tokens)
     end
 
@@ -88,7 +97,7 @@ defmodule Predicator.ObjectParserTest do
 
       assert {:ok,
               {:object,
-               [{{:string_literal, "double-quote"}, {:string_literal, "value", :single}}]}} =
+               [{{:object_key, "double-quote", :double}, {:string_literal, "value", :single}}]}} =
                parse_positionless(tokens)
     end
   end
@@ -158,16 +167,19 @@ defmodule Predicator.ObjectParserTest do
       assert Predicator.parse(Predicator.decompile(ast)) == {:ok, ast}
     end
 
-    test "a hand-built 3.6-shaped object compiles like its parsed equivalent" do
+    test "a hand-built object compiles like its parsed equivalent" do
       {:ok, parsed} = Predicator.parse(~s({a: 1}))
 
-      assert Predicator.Compiler.to_instructions({:object, [{{:identifier, "a"}, {:literal, 1}}]}) ==
+      hand_built =
+        {:object, [{{:object_key, "a", :identifier, nil}, {:literal, 1, nil}}], nil}
+
+      assert Predicator.Compiler.to_instructions(hand_built) ==
                Predicator.Compiler.to_instructions(parsed)
     end
   end
 
-  # Phase 1 of source positions: these assertions are about AST *shape*, so they
-  # read the position-free form.
+  # These assertions are about AST *shape*, so they read the slot-free form;
+  # positions and spans have their own suites.
   defp parse_positionless(input) do
     result =
       if is_binary(input),
@@ -175,7 +187,7 @@ defmodule Predicator.ObjectParserTest do
         else: Predicator.Parser.parse(input)
 
     case result do
-      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      {:ok, ast} -> {:ok, Predicator.ASTShape.strip(ast)}
       other -> other
     end
   end

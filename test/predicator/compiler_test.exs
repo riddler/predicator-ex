@@ -7,21 +7,21 @@ defmodule Predicator.CompilerTest do
 
   describe "to_instructions/2" do
     test "compiles literal to instructions" do
-      ast = {:literal, 42}
+      ast = {:literal, 42, nil}
       result = Compiler.to_instructions(ast)
 
       assert result == [["lit", 42]]
     end
 
     test "compiles identifier to instructions" do
-      ast = {:identifier, "score"}
+      ast = {:identifier, "score", nil}
       result = Compiler.to_instructions(ast)
 
       assert result == [["load", "score"]]
     end
 
     test "compiles comparison to instructions" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = Compiler.to_instructions(ast)
 
       assert result == [
@@ -41,7 +41,7 @@ defmodule Predicator.CompilerTest do
       }
 
       for {ast_op, instruction_op} <- operators_map do
-        ast = {:comparison, ast_op, {:identifier, "x"}, {:literal, 1}}
+        ast = {:comparison, ast_op, {:identifier, "x", nil}, {:literal, 1, nil}, nil}
         result = Compiler.to_instructions(ast)
 
         assert result == [
@@ -59,7 +59,7 @@ defmodule Predicator.CompilerTest do
       }
 
       for {ast_op, instruction_op} <- equality_operators do
-        ast = {:comparison, ast_op, {:identifier, "x"}, {:literal, 1}}
+        ast = {:comparison, ast_op, {:identifier, "x", nil}, {:literal, 1, nil}, nil}
         result = Compiler.to_instructions(ast)
 
         assert result == [
@@ -71,7 +71,7 @@ defmodule Predicator.CompilerTest do
     end
 
     test "compiles with opts parameter" do
-      ast = {:literal, 42}
+      ast = {:literal, 42, nil}
       result = Compiler.to_instructions(ast, some_option: true)
 
       assert result == [["lit", 42]]
@@ -114,21 +114,21 @@ defmodule Predicator.CompilerTest do
 
   describe "to_string/2" do
     test "converts literal to string" do
-      ast = {:literal, 42}
+      ast = {:literal, 42, nil}
       result = Compiler.to_string(ast)
 
       assert result == "42"
     end
 
     test "converts identifier to string" do
-      ast = {:identifier, "score"}
+      ast = {:identifier, "score", nil}
       result = Compiler.to_string(ast)
 
       assert result == "score"
     end
 
     test "converts comparison to string" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = Compiler.to_string(ast)
 
       assert result == "score > 85"
@@ -145,7 +145,7 @@ defmodule Predicator.CompilerTest do
       }
 
       for {ast_op, string_op} <- operators_map do
-        ast = {:comparison, ast_op, {:identifier, "x"}, {:literal, 5}}
+        ast = {:comparison, ast_op, {:identifier, "x", nil}, {:literal, 5, nil}, nil}
         result = Compiler.to_string(ast)
 
         assert result == "x #{string_op} 5"
@@ -153,7 +153,7 @@ defmodule Predicator.CompilerTest do
     end
 
     test "converts with formatting options" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
 
       # Test different spacing
       assert Compiler.to_string(ast, spacing: :normal) == "score > 85"
@@ -167,21 +167,21 @@ defmodule Predicator.CompilerTest do
     end
 
     test "converts string literals correctly" do
-      ast = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
+      ast = {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil}
       result = Compiler.to_string(ast)
 
       assert result == ~s(name = "John")
     end
 
     test "converts boolean literals correctly" do
-      ast = {:comparison, :ne, {:identifier, "active"}, {:literal, true}}
+      ast = {:comparison, :ne, {:identifier, "active", nil}, {:literal, true, nil}, nil}
       result = Compiler.to_string(ast)
 
       assert result == "active != true"
     end
 
     test "converts with opts parameter" do
-      ast = {:literal, 42}
+      ast = {:literal, 42, nil}
       result = Compiler.to_string(ast, spacing: :compact)
 
       assert result == "42"
@@ -216,7 +216,7 @@ defmodule Predicator.CompilerTest do
     test "AST -> instructions -> evaluation works with string representation" do
       alias Predicator.Evaluator
 
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       context = %{"score" => 90}
 
       # Convert to instructions and evaluate
@@ -247,8 +247,8 @@ defmodule Predicator.CompilerTest do
                 %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
     end
 
-    test "a caller-supplied 3.6-shaped AST compiles to an empty table" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+    test "a nil-slotted AST compiles to an empty table" do
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
 
       assert Compiler.to_instructions_with_positions(ast) ==
                {[["load", "score"], ["lit", 85], ["compare", "GT"]], %{}}
@@ -262,13 +262,15 @@ defmodule Predicator.CompilerTest do
     end
   end
 
-  describe "to_instructions/2 and to_string/2 accept either AST shape" do
-    test "a positioned AST compiles and renders the same as a bare one" do
+  describe "to_instructions/2 and to_string/2 with a hand-built AST" do
+    test "a positioned AST compiles and renders the same as a nil-slotted one" do
       {:ok, positioned} = Predicator.parse("score > 85")
-      bare = Predicator.Parser.strip_positions(positioned)
 
-      assert Compiler.to_instructions(positioned) == Compiler.to_instructions(bare)
-      assert Compiler.to_string(positioned) == Compiler.to_string(bare)
+      hand_built =
+        {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+
+      assert Compiler.to_instructions(positioned) == Compiler.to_instructions(hand_built)
+      assert Compiler.to_string(positioned) == Compiler.to_string(hand_built)
       assert Compiler.to_string(positioned) == "score > 85"
     end
   end

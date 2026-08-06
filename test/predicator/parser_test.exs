@@ -1494,8 +1494,8 @@ defmodule Predicator.ParserTest do
     end
   end
 
-  # Phase 1 of source positions: these assertions are about AST *shape*, so they
-  # read the position-free form.
+  # These assertions are about AST *shape*, so they read the slot-free form;
+  # positions and spans have their own suites.
   defp parse_positionless(input) do
     result =
       if is_binary(input),
@@ -1503,7 +1503,7 @@ defmodule Predicator.ParserTest do
         else: Predicator.Parser.parse(input)
 
     case result do
-      {:ok, ast} -> {:ok, Predicator.Parser.strip_positions(ast)}
+      {:ok, ast} -> {:ok, Predicator.ASTShape.strip(ast)}
       other -> other
     end
   end

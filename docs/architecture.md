@@ -278,22 +278,17 @@ independently.
 A node with a `nil` position contributes no table entry, so a position-free AST
 compiles to an empty table.
 
-**Boundary normalizers.** `Parser.strip_positions/1` removes positions,
-producing the 3.6 shape; `Parser.ensure_positions/1` appends `nil` to any node
-lacking one. Both are total, idempotent, and tolerant of a mixed tree, and both
-pass an unrecognized node through rather than raising. The visitors call
-`ensure_positions/1` at their public entry points, which is what lets
-`Predicator.decompile/2` and `Compiler.to_instructions/2` keep accepting a
-hand-built 3.6-shaped AST. Visitor clauses therefore have exactly one form each
-and their contract is "positioned AST in".
+**One AST shape.** Every node carries a trailing slot: a `{line, column}`, a
+span under `spans: true`, or `nil` for a node a caller built rather than parsed.
+There is no normalization at the visitors' entry points and no position-free
+variant of the AST - visitor clauses have exactly one form each and their
+contract is "node with a trailing slot in". Object keys are
+`{:object_key, value, style, slot}` nodes throughout (px-0y9).
 
-Object keys go through the same edge by their own pair of helpers:
-`ensure_positions/1` lifts every pre-4.0 key shape - the 3.6 bare
-`{:identifier, name}` / `{:string_literal, value}` and the 3.7 positioned
-`{:identifier, name, pos}` / `{:string_literal, value, pos}` - to an
-`{:object_key, ...}` node, and `strip_positions/1` still emits the 3.6 shape,
-which had no style on a key. That acceptance is scheduled for removal in 4.0.0
-(see px-tbv), when the whole pre-4.0 shape layer is cut in one piece.
+Predicator 3.7 and 3.8 accepted the position-free 3.6 shape at those entry
+points via `Parser.strip_positions/1` and `Parser.ensure_positions/1`. Both were
+removed in 4.0.0 (px-tbv.8) along with the `bare_ast/0` and `bare_object_key/0`
+types; a caller hand-building an AST supplies `nil` in the slot.
 
 **Runtime errors.** `EvaluationError`, `TypeMismatchError`, and
 `UndefinedVariableError` gained an optional `:position`. The evaluator carries
@@ -871,8 +866,8 @@ nothing is pushed, and no later instruction executes.
 4. Add evaluation logic to `evaluator.ex`
 5. Add compilation logic to `compiler.ex`
 6. Add string formatting to `string_visitor.ex`
-7. Point the new node at its operator token (see Source Positions) and widen
-   `strip_positions/1` and `ensure_positions/1` to recurse into it
+7. Point the new node at its operator token (see Source Positions) - the
+   trailing slot is part of the node shape, not an add-on
 8. Give the new node a span rule too (see Source Spans): which characters it
    covers, not just which token it blames
 9. Add comprehensive tests

@@ -11,17 +11,17 @@ defmodule Predicator.Visitor do
         @behaviour Predicator.Visitor
 
         @impl true
-        def visit({:literal, value}, _opts) do
+        def visit({:literal, value, _slot}, _opts) do
           value
         end
 
         @impl true
-        def visit({:identifier, name}, _opts) do
+        def visit({:identifier, name, _slot}, _opts) do
           name
         end
 
         @impl true
-        def visit({:comparison, op, left, right}, opts) do
+        def visit({:comparison, op, left, right, _slot}, opts) do
           left_result = visit(left, opts)
           right_result = visit(right, opts)
           {op, left_result, right_result}
@@ -45,11 +45,11 @@ defmodule Predicator.Visitor do
 
   ## Source positions
 
-  Implementations accept either a positioned AST or the position-free shape
-  Predicator 3.6 produced, normalizing with
-  `Predicator.Parser.ensure_positions/1` on the way in.
+  The contract is a positioned AST: every node carries a trailing slot holding
+  a position, a span, or `nil`. Implementations match on that shape directly -
+  there is no position-free variant and no normalization on the way in.
   """
-  @callback visit(ast_node :: Parser.ast() | Parser.bare_ast(), opts :: keyword()) :: term()
+  @callback visit(ast_node :: Parser.ast(), opts :: keyword()) :: term()
 
   @doc """
   Utility function to accept a visitor and process an AST.
@@ -58,11 +58,11 @@ defmodule Predicator.Visitor do
 
   ## Examples
 
-      iex> ast = {:literal, 42}
+      iex> ast = {:literal, 42, nil}
       iex> Predicator.Visitor.accept(ast, MyVisitor)
       42
   """
-  @spec accept(Parser.ast() | Parser.bare_ast(), module(), keyword()) :: term()
+  @spec accept(Parser.ast(), module(), keyword()) :: term()
   def accept(ast_node, visitor_module, opts \\ []) do
     visitor_module.visit(ast_node, opts)
   end

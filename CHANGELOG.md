@@ -45,6 +45,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ParseError.new/3` keeps its `(message, line, column)` signature, and error
   message text is unchanged.
 
+- **BREAKING: the pre-4.0 AST shape acceptance.**
+  `Predicator.Parser.strip_positions/1` and
+  `Predicator.Parser.ensure_positions/1` are gone, along with the
+  `t:Predicator.Parser.bare_ast/0` and `t:Predicator.Parser.bare_object_key/0`
+  types. The AST has one shape: every node carries a trailing slot holding a
+  position, a span, or `nil`.
+
+  `Predicator.decompile/2`, `Predicator.Compiler.to_instructions/2`,
+  `Predicator.Compiler.to_string/2`, and `Predicator.ContextLocation.resolve/2`
+  no longer accept the position-free shape Predicator 3.6 produced. A caller
+  building an AST by hand adds the slot:
+  `{:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}`.
+  A caller that was calling `strip_positions/1` to compare two ASTs while
+  ignoring positions writes that traversal itself; it is a few lines and its
+  exact semantics - whether object-key style is significant, for one - are the
+  caller's to choose.
+
+  The instruction set is unchanged, so stored compiled artifacts and the
+  cross-language interchange format are unaffected (ADR-0001).
+
 ### Unchanged
 
 Stated explicitly, because this release adds a second location representation

@@ -230,14 +230,14 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
 
   describe "visit_with_positions/2 - position-free input" do
     test "a fully position-free AST yields an empty table" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
 
       assert InstructionsVisitor.visit_with_positions(ast) ==
                {[["load", "score"], ["lit", 85], ["compare", "GT"]], %{}}
     end
 
     test "a mixed AST yields a partial table" do
-      ast = {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85}, nil}
+      ast = {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, nil}, nil}
 
       assert InstructionsVisitor.visit_with_positions(ast) ==
                {[["load", "score"], ["lit", 85], ["compare", "GT"]], %{0 => {1, 1}}}
@@ -280,14 +280,14 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
       end
     end
 
-    test "stripping positions first yields the same instructions and an empty table" do
+    test "blanking every slot yields the same instructions and an empty table" do
       for expression <- @corpus do
         {:ok, ast} = Predicator.parse(expression)
-        bare = Predicator.Parser.strip_positions(ast)
+        blanked = Predicator.ASTShape.blank(ast)
 
-        assert InstructionsVisitor.visit_with_positions(bare) ==
+        assert InstructionsVisitor.visit_with_positions(blanked) ==
                  {InstructionsVisitor.visit(ast), %{}},
-               "stripped AST diverged for #{inspect(expression)}"
+               "blanked AST diverged for #{inspect(expression)}"
       end
     end
   end

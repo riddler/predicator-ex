@@ -7,21 +7,21 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - literal nodes" do
     test "generates lit instruction for integer literal" do
-      ast = {:literal, 42}
+      ast = {:literal, 42, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["lit", 42]]
     end
 
     test "generates lit instruction for string literal" do
-      ast = {:literal, "hello"}
+      ast = {:literal, "hello", nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["lit", "hello"]]
     end
 
     test "generates lit instruction for boolean literal" do
-      ast = {:literal, true}
+      ast = {:literal, true, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["lit", true]]
@@ -30,14 +30,14 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - identifier nodes" do
     test "generates load instruction for identifier" do
-      ast = {:identifier, "score"}
+      ast = {:identifier, "score", nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["load", "score"]]
     end
 
     test "generates load instruction for underscore identifier" do
-      ast = {:identifier, "user_age"}
+      ast = {:identifier, "user_age", nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["load", "user_age"]]
@@ -46,7 +46,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - comparison nodes" do
     test "generates instructions for greater than comparison" do
-      ast = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -57,7 +57,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for less than comparison" do
-      ast = {:comparison, :lt, {:identifier, "age"}, {:literal, 18}}
+      ast = {:comparison, :lt, {:identifier, "age", nil}, {:literal, 18, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -68,7 +68,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for greater than or equal comparison" do
-      ast = {:comparison, :gte, {:identifier, "score"}, {:literal, 85}}
+      ast = {:comparison, :gte, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -79,7 +79,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for less than or equal comparison" do
-      ast = {:comparison, :lte, {:identifier, "age"}, {:literal, 65}}
+      ast = {:comparison, :lte, {:identifier, "age", nil}, {:literal, 65, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -90,7 +90,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for equality comparison" do
-      ast = {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
+      ast = {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -101,7 +101,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for not equal comparison" do
-      ast = {:comparison, :ne, {:identifier, "status"}, {:literal, "inactive"}}
+      ast = {:comparison, :ne, {:identifier, "status", nil}, {:literal, "inactive", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -112,7 +112,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions with literal-to-literal comparison" do
-      ast = {:comparison, :gt, {:literal, 10}, {:literal, 5}}
+      ast = {:comparison, :gt, {:literal, 10, nil}, {:literal, 5, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -123,7 +123,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions with identifier-to-identifier comparison" do
-      ast = {:comparison, :eq, {:identifier, "score"}, {:identifier, "threshold"}}
+      ast = {:comparison, :eq, {:identifier, "score", nil}, {:identifier, "threshold", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -136,7 +136,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - logical nodes" do
     test "generates instructions for logical AND" do
-      ast = {:logical_and, {:literal, true}, {:literal, false}}
+      ast = {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -147,7 +147,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for logical OR" do
-      ast = {:logical_or, {:identifier, "admin"}, {:literal, false}}
+      ast = {:logical_or, {:identifier, "admin", nil}, {:literal, false, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -158,7 +158,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for logical NOT" do
-      ast = {:logical_not, {:identifier, "expired"}}
+      ast = {:logical_not, {:identifier, "expired", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -168,7 +168,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for nested logical NOT" do
-      ast = {:logical_not, {:logical_not, {:literal, true}}}
+      ast = {:logical_not, {:logical_not, {:literal, true, nil}, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -182,9 +182,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       # (score > 85 AND age >= 18) OR admin = true
       ast = {
         :logical_or,
-        {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
-         {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}},
-        {:comparison, :eq, {:identifier, "admin"}, {:literal, true}}
+        {:logical_and, {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+         {:comparison, :gte, {:identifier, "age", nil}, {:literal, 18, nil}, nil}, nil},
+        {:comparison, :eq, {:identifier, "admin", nil}, {:literal, true, nil}, nil},
+        nil
       }
 
       result = InstructionsVisitor.visit(ast, [])
@@ -211,8 +212,9 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       # score > 85 AND name = "John"
       ast = {
         :logical_and,
-        {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
-        {:comparison, :eq, {:identifier, "name"}, {:literal, "John"}}
+        {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+        {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil},
+        nil
       }
 
       result = InstructionsVisitor.visit(ast, [])
@@ -232,8 +234,9 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       # role = "admin" OR role = "manager"
       ast = {
         :logical_or,
-        {:comparison, :eq, {:identifier, "role"}, {:literal, "admin"}},
-        {:comparison, :eq, {:identifier, "role"}, {:literal, "manager"}}
+        {:comparison, :eq, {:identifier, "role", nil}, {:literal, "admin", nil}, nil},
+        {:comparison, :eq, {:identifier, "role", nil}, {:literal, "manager", nil}, nil},
+        nil
       }
 
       result = InstructionsVisitor.visit(ast, [])
@@ -253,7 +256,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       # NOT expired = true
       ast = {
         :logical_not,
-        {:comparison, :eq, {:identifier, "expired"}, {:literal, true}}
+        {:comparison, :eq, {:identifier, "expired", nil}, {:literal, true, nil}, nil},
+        nil
       }
 
       result = InstructionsVisitor.visit(ast, [])
@@ -355,7 +359,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - arithmetic operators" do
     test "generates instructions for addition" do
-      ast = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
+      ast = {:arithmetic, :add, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -366,7 +370,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for subtraction" do
-      ast = {:arithmetic, :subtract, {:literal, 10}, {:literal, 3}}
+      ast = {:arithmetic, :subtract, {:literal, 10, nil}, {:literal, 3, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -377,7 +381,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for multiplication" do
-      ast = {:arithmetic, :multiply, {:identifier, "x"}, {:literal, 2}}
+      ast = {:arithmetic, :multiply, {:identifier, "x", nil}, {:literal, 2, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -388,7 +392,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for division" do
-      ast = {:arithmetic, :divide, {:literal, 100}, {:identifier, "divisor"}}
+      ast = {:arithmetic, :divide, {:literal, 100, nil}, {:identifier, "divisor", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -399,7 +403,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for modulo" do
-      ast = {:arithmetic, :modulo, {:identifier, "n"}, {:literal, 5}}
+      ast = {:arithmetic, :modulo, {:identifier, "n", nil}, {:literal, 5, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -411,8 +415,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for nested arithmetic operations" do
       # (x + y) * z
-      inner_add = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      ast = {:arithmetic, :multiply, inner_add, {:identifier, "z"}}
+      inner_add = {:arithmetic, :add, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
+      ast = {:arithmetic, :multiply, inner_add, {:identifier, "z", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -426,8 +430,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for complex arithmetic expression" do
       # a + b * c (should be: a + (b * c) due to precedence)
-      multiplication = {:arithmetic, :multiply, {:identifier, "b"}, {:identifier, "c"}}
-      ast = {:arithmetic, :add, {:identifier, "a"}, multiplication}
+      multiplication =
+        {:arithmetic, :multiply, {:identifier, "b", nil}, {:identifier, "c", nil}, nil}
+
+      ast = {:arithmetic, :add, {:identifier, "a", nil}, multiplication, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -442,7 +448,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - unary operators" do
     test "generates instructions for unary minus" do
-      ast = {:unary, :minus, {:identifier, "x"}}
+      ast = {:unary, :minus, {:identifier, "x", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -452,7 +458,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for unary minus with literal" do
-      ast = {:unary, :minus, {:literal, 42}}
+      ast = {:unary, :minus, {:literal, 42, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -462,7 +468,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for unary bang (logical NOT)" do
-      ast = {:unary, :bang, {:identifier, "active"}}
+      ast = {:unary, :bang, {:identifier, "active", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -472,7 +478,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for unary bang with boolean literal" do
-      ast = {:unary, :bang, {:literal, true}}
+      ast = {:unary, :bang, {:literal, true, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -483,8 +489,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for nested unary expressions" do
       # !(-x)
-      inner_minus = {:unary, :minus, {:identifier, "x"}}
-      ast = {:unary, :bang, inner_minus}
+      inner_minus = {:unary, :minus, {:identifier, "x", nil}, nil}
+      ast = {:unary, :bang, inner_minus, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -496,8 +502,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for unary with function call" do
       # !(len(name))
-      function_call = {:function_call, "len", [{:identifier, "name"}]}
-      ast = {:unary, :bang, function_call}
+      function_call = {:function_call, "len", [{:identifier, "name", nil}], nil}
+      ast = {:unary, :bang, function_call, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -510,7 +516,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - equality operators" do
     test "generates instructions for equality (==)" do
-      ast = {:comparison, :eq, {:identifier, "x"}, {:identifier, "y"}}
+      ast = {:comparison, :eq, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -521,7 +527,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for inequality (!=) with equality syntax" do
-      ast = {:comparison, :ne, {:identifier, "status"}, {:literal, "active"}}
+      ast = {:comparison, :ne, {:identifier, "status", nil}, {:literal, "active", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -533,8 +539,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for complex equality expression" do
       # x + y == 10
-      arithmetic = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      ast = {:comparison, :eq, arithmetic, {:literal, 10}}
+      arithmetic = {:arithmetic, :add, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
+      ast = {:comparison, :eq, arithmetic, {:literal, 10, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -550,8 +556,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
   describe "visit/2 - mixed operator expressions" do
     test "generates instructions for arithmetic in comparison" do
       # x + y > 10
-      arithmetic = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      ast = {:comparison, :gt, arithmetic, {:literal, 10}}
+      arithmetic = {:arithmetic, :add, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
+      ast = {:comparison, :gt, arithmetic, {:literal, 10, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -565,9 +571,9 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for unary in logical expression" do
       # !active AND !expired
-      left_unary = {:unary, :bang, {:identifier, "active"}}
-      right_unary = {:unary, :bang, {:identifier, "expired"}}
-      ast = {:logical_and, left_unary, right_unary}
+      left_unary = {:unary, :bang, {:identifier, "active", nil}, nil}
+      right_unary = {:unary, :bang, {:identifier, "expired", nil}, nil}
+      ast = {:logical_and, left_unary, right_unary, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -581,9 +587,9 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for complex nested expression" do
       # !(x + y == 10)
-      arithmetic = {:arithmetic, :add, {:identifier, "x"}, {:identifier, "y"}}
-      equality = {:comparison, :eq, arithmetic, {:literal, 10}}
-      ast = {:unary, :bang, equality}
+      arithmetic = {:arithmetic, :add, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
+      equality = {:comparison, :eq, arithmetic, {:literal, 10, nil}, nil}
+      ast = {:unary, :bang, equality, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -598,13 +604,15 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for arithmetic with logical operators" do
       # (a + b) > 5 AND (c - d) < 10
-      left_arithmetic = {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}}
-      left_comparison = {:comparison, :gt, left_arithmetic, {:literal, 5}}
+      left_arithmetic = {:arithmetic, :add, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
+      left_comparison = {:comparison, :gt, left_arithmetic, {:literal, 5, nil}, nil}
 
-      right_arithmetic = {:arithmetic, :subtract, {:identifier, "c"}, {:identifier, "d"}}
-      right_comparison = {:comparison, :lt, right_arithmetic, {:literal, 10}}
+      right_arithmetic =
+        {:arithmetic, :subtract, {:identifier, "c", nil}, {:identifier, "d", nil}, nil}
 
-      ast = {:logical_and, left_comparison, right_comparison}
+      right_comparison = {:comparison, :lt, right_arithmetic, {:literal, 10, nil}, nil}
+
+      ast = {:logical_and, left_comparison, right_comparison, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -625,21 +633,23 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - duration nodes" do
     test "generates duration instruction for simple duration" do
-      ast = {:duration, [{5, "d"}]}
+      ast = {:duration, [{5, "d"}], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[5, "d"]]]]
     end
 
     test "generates duration instruction for multiple units" do
-      ast = {:duration, [{1, "d"}, {8, "h"}, {30, "m"}]}
+      ast = {:duration, [{1, "d"}, {8, "h"}, {30, "m"}], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[1, "d"], [8, "h"], [30, "m"]]]]
     end
 
     test "generates duration instruction for all unit types" do
-      ast = {:duration, [{2, "y"}, {3, "mo"}, {4, "w"}, {5, "d"}, {6, "h"}, {7, "m"}, {8, "s"}]}
+      ast =
+        {:duration, [{2, "y"}, {3, "mo"}, {4, "w"}, {5, "d"}, {6, "h"}, {7, "m"}, {8, "s"}], nil}
+
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -651,21 +661,21 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates duration instruction for long unit names" do
-      ast = {:duration, [{1, "year"}, {2, "months"}, {3, "weeks"}]}
+      ast = {:duration, [{1, "year"}, {2, "months"}, {3, "weeks"}], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[1, "year"], [2, "months"], [3, "weeks"]]]]
     end
 
     test "generates duration instruction for zero values" do
-      ast = {:duration, [{0, "d"}, {0, "h"}]}
+      ast = {:duration, [{0, "d"}, {0, "h"}], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[0, "d"], [0, "h"]]]]
     end
 
     test "generates duration instruction for large values" do
-      ast = {:duration, [{999, "y"}, {365, "d"}]}
+      ast = {:duration, [{999, "y"}, {365, "d"}], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[999, "y"], [365, "d"]]]]
@@ -674,49 +684,49 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - relative date nodes" do
     test "generates instructions for relative date with ago" do
-      duration_ast = {:duration, [{1, "d"}, {8, "h"}]}
-      ast = {:relative_date, duration_ast, :ago}
+      duration_ast = {:duration, [{1, "d"}, {8, "h"}], nil}
+      ast = {:relative_date, duration_ast, :ago, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[1, "d"], [8, "h"]]], ["relative_date", "ago"]]
     end
 
     test "generates instructions for relative date with future" do
-      duration_ast = {:duration, [{2, "h"}, {30, "m"}]}
-      ast = {:relative_date, duration_ast, :future}
+      duration_ast = {:duration, [{2, "h"}, {30, "m"}], nil}
+      ast = {:relative_date, duration_ast, :future, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[2, "h"], [30, "m"]]], ["relative_date", "future"]]
     end
 
     test "generates instructions for relative date with next" do
-      duration_ast = {:duration, [{1, "w"}]}
-      ast = {:relative_date, duration_ast, :next}
+      duration_ast = {:duration, [{1, "w"}], nil}
+      ast = {:relative_date, duration_ast, :next, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[1, "w"]]], ["relative_date", "next"]]
     end
 
     test "generates instructions for relative date with last" do
-      duration_ast = {:duration, [{6, "mo"}]}
-      ast = {:relative_date, duration_ast, :last}
+      duration_ast = {:duration, [{6, "mo"}], nil}
+      ast = {:relative_date, duration_ast, :last, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[6, "mo"]]], ["relative_date", "last"]]
     end
 
     test "generates instructions for complex relative date" do
-      duration_ast = {:duration, [{1, "y"}, {2, "mo"}, {3, "d"}]}
-      ast = {:relative_date, duration_ast, :ago}
+      duration_ast = {:duration, [{1, "y"}, {2, "mo"}, {3, "d"}], nil}
+      ast = {:relative_date, duration_ast, :ago, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["duration", [[1, "y"], [2, "mo"], [3, "d"]]], ["relative_date", "ago"]]
     end
 
     test "generates instructions for relative date in comparison" do
-      duration_ast = {:duration, [{1, "d"}]}
-      relative_date_ast = {:relative_date, duration_ast, :ago}
-      ast = {:comparison, :gt, {:identifier, "created_at"}, relative_date_ast}
+      duration_ast = {:duration, [{1, "d"}], nil}
+      relative_date_ast = {:relative_date, duration_ast, :ago, nil}
+      ast = {:comparison, :gt, {:identifier, "created_at", nil}, relative_date_ast, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -729,15 +739,19 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
     test "generates instructions for complex expression with multiple relative dates" do
       # created_at > 1d ago AND updated_at < 1h from now
-      created_duration = {:duration, [{1, "d"}]}
-      created_relative = {:relative_date, created_duration, :ago}
-      created_comparison = {:comparison, :gt, {:identifier, "created_at"}, created_relative}
+      created_duration = {:duration, [{1, "d"}], nil}
+      created_relative = {:relative_date, created_duration, :ago, nil}
 
-      updated_duration = {:duration, [{1, "h"}]}
-      updated_relative = {:relative_date, updated_duration, :future}
-      updated_comparison = {:comparison, :lt, {:identifier, "updated_at"}, updated_relative}
+      created_comparison =
+        {:comparison, :gt, {:identifier, "created_at", nil}, created_relative, nil}
 
-      ast = {:logical_and, created_comparison, updated_comparison}
+      updated_duration = {:duration, [{1, "h"}], nil}
+      updated_relative = {:relative_date, updated_duration, :future, nil}
+
+      updated_comparison =
+        {:comparison, :lt, {:identifier, "updated_at", nil}, updated_relative, nil}
+
+      ast = {:logical_and, created_comparison, updated_comparison, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
@@ -756,28 +770,30 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - list nodes" do
     test "all-literal integer list compiles to a single lit instruction" do
-      ast = {:list, [{:literal, 1}, {:literal, 2}, {:literal, 3}]}
+      ast = {:list, [{:literal, 1, nil}, {:literal, 2, nil}, {:literal, 3, nil}], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["lit", [1, 2, 3]]]
     end
 
     test "all-literal string list compiles to a single lit instruction" do
-      ast = {:list, [{:string_literal, "a", :double}, {:string_literal, "b", :double}]}
+      ast =
+        {:list, [{:string_literal, "a", :double, nil}, {:string_literal, "b", :double, nil}], nil}
+
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["lit", ["a", "b"]]]
     end
 
     test "empty list compiles to a single lit instruction" do
-      ast = {:list, []}
+      ast = {:list, [], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["lit", []]]
     end
 
     test "identifier-only list compiles to make_list" do
-      ast = {:list, [{:identifier, "x"}, {:identifier, "y"}]}
+      ast = {:list, [{:identifier, "x", nil}, {:identifier, "y", nil}], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["load", "x"], ["load", "y"], ["make_list", 2]]
@@ -787,9 +803,9 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       ast =
         {:list,
          [
-           {:arithmetic, :add, {:identifier, "x"}, {:literal, 1}},
-           {:identifier, "y"}
-         ]}
+           {:arithmetic, :add, {:identifier, "x", nil}, {:literal, 1, nil}, nil},
+           {:identifier, "y", nil}
+         ], nil}
 
       result = InstructionsVisitor.visit(ast, [])
 
@@ -803,14 +819,17 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "mixed literal and non-literal list compiles to make_list" do
-      ast = {:list, [{:literal, 1}, {:identifier, "x"}]}
+      ast = {:list, [{:literal, 1, nil}, {:identifier, "x", nil}], nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["lit", 1], ["load", "x"], ["make_list", 2]]
     end
 
     test "nested list with a non-literal outer element compiles to make_list" do
-      ast = {:list, [{:list, [{:literal, 1}, {:literal, 2}]}, {:identifier, "x"}]}
+      ast =
+        {:list, [{:list, [{:literal, 1, nil}, {:literal, 2, nil}], nil}, {:identifier, "x", nil}],
+         nil}
+
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [["lit", [1, 2]], ["load", "x"], ["make_list", 2]]
@@ -820,9 +839,9 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       ast =
         {:list,
          [
-           {:function_call, "len", [{:identifier, "name"}]},
-           {:literal, 3}
-         ]}
+           {:function_call, "len", [{:identifier, "name", nil}], nil},
+           {:literal, 3, nil}
+         ], nil}
 
       result = InstructionsVisitor.visit(ast, [])
 
