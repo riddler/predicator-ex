@@ -575,14 +575,14 @@ the bug:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `mix test test/predicator/integration/unbound_type_mismatch_test.exs
+- [x] Full quality gate passes: `mix quality`
+- [x] `mix test test/predicator/integration/unbound_type_mismatch_test.exs
       test/predicator/integration/on_unbound_test.exs
       test/predicator/integration/spans_test.exs
       test/predicator/evaluator_positions_test.exs` is green
-- [ ] Coverage for `lib/predicator.ex` and `lib/predicator/evaluator.ex` stays
+- [x] Coverage for `lib/predicator.ex` and `lib/predicator/evaluator.ex` stays
       above the 90% floor
-- [ ] No `@tag :skip` and no weakened gate config anywhere in the diff
+- [x] No `@tag :skip` and no weakened gate config anywhere in the diff
 
 #### Manual Verification:
 - [ ] `Predicator.evaluate("1 + missing", %{})` reports `{1, 5}` - the caret
@@ -689,3 +689,13 @@ one `Enum.map/2` over a list that is almost always empty.
       run with no table records `nil` - neither crashes `put_position/2`
 - [ ] Dialyzer accepts `unbound_load()` against both `position_table()` and
       `span_table()` valued `positions` fields
+
+### Phase 2
+
+- [ ] `Predicator.evaluate("1 + missing", %{})` reports `{1, 5}` - the caret
+      lands on `missing`, not on the `+`
+- [ ] The rewritten `docs/architecture.md` paragraphs read as a coherent account
+      of three positioning sites, not as a patch over the old two-vs-one framing
+- [ ] `Predicator.evaluate("missing", %{}, on_unbound: :error)` is byte-identical
+      to its pre-change result - the `:error` policy path did not regress and its
+      position was not attached twice

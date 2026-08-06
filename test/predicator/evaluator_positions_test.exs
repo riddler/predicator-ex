@@ -41,25 +41,30 @@ defmodule Predicator.EvaluatorPositionsTest do
       assert error_for("nope(1)").position == {1, 1}
     end
 
-    # Since px-8um.7 the operator that rejects an unbound root's :undefined no
-    # longer reports its own position: the error is rewritten into an
-    # UndefinedVariableError, and the operator's position belongs to the
-    # operator, not to the variable a reader would go looking for.
-    test "an unbound load is reported as the variable, with no position" do
+    # Since px-1e1 the evaluator records each unbound load's own location, so the
+    # UndefinedVariableError that Predicator.evaluate/3 builds after the run points
+    # at the variable - not at the operator that rejected its :undefined, and not
+    # at nothing.
+    test "an unbound load rejected by an operator reports the variable's position" do
       error = error_for("1 + missing")
 
       assert %Predicator.Errors.UndefinedVariableError{variable: "missing"} = error
-      assert error.position == nil
+      assert error.position == {1, 5}
     end
 
-    # UndefinedVariableError is built by Predicator.evaluate/3 after the run, from
-    # the loads the evaluator recorded, so it never passes through the decoration
-    # point in step/1.
-    test "an UndefinedVariableError from a bare load has no position" do
+    test "an UndefinedVariableError from a bare load reports the load's position" do
       assert {:error, error} = Predicator.evaluate("missing", %{})
 
       assert error.variable == "missing"
+      assert error.position == {1, 1}
+    end
+
+    test "an instruction-list caller with no positions table keeps position: nil" do
+      assert {:error, error} = Predicator.evaluate([["load", "missing"]], %{})
+
+      assert error.variable == "missing"
       assert error.position == nil
+      assert error.span == nil
     end
 
     test "a multi-line expression reports the failing line" do

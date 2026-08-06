@@ -165,6 +165,17 @@ defmodule Predicator.Integration.SpansTest do
 
       assert slice(source, error.span) == "missing"
     end
+
+    test "an unbound load under the default policy slices to the variable" do
+      source = "1 + missing"
+      {:ok, instructions, spans} = Predicator.compile_with_spans(source)
+
+      assert {:error, %Predicator.Errors.UndefinedVariableError{} = error} =
+               Predicator.evaluate(instructions, %{}, positions: spans)
+
+      assert slice(source, error.span) == "missing"
+      assert error.position == {1, 5}
+    end
   end
 
   defp assert_slices_cleanly(node, source) when is_tuple(node) do

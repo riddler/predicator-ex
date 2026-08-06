@@ -3,45 +3,51 @@ defmodule Predicator.Integration.UnboundTypeMismatchTest do
 
   alias Predicator.Errors.{TypeMismatchError, UndefinedVariableError}
 
+  # Since px-1e1 the rewritten error carries the position the evaluator
+  # recorded at the variable's own load, not the rejecting operator's.
+  defp unbound_at(name, position) do
+    {:error, Predicator.Errors.put_position(UndefinedVariableError.new(name), position)}
+  end
+
   describe "opcodes that reject an :undefined operand name the unbound root (px-8um.7)" do
     test "logical not" do
-      assert Predicator.evaluate("not unbound", %{}) ==
-               {:error, UndefinedVariableError.new("unbound")}
+      assert Predicator.evaluate("not unbound", %{}) == unbound_at("unbound", {1, 5})
     end
 
     test "bang, which compiles to the same not opcode" do
-      assert Predicator.evaluate("!unbound", %{}) ==
-               {:error, UndefinedVariableError.new("unbound")}
+      assert Predicator.evaluate("!unbound", %{}) == unbound_at("unbound", {1, 2})
     end
 
     test "unary minus" do
-      assert Predicator.evaluate("-unbound", %{}) ==
-               {:error, UndefinedVariableError.new("unbound")}
+      assert Predicator.evaluate("-unbound", %{}) == unbound_at("unbound", {1, 2})
     end
 
+    # No positions: table is passed for a hand-built instruction list, so this
+    # doubles as the no-table regression test (px-1e1).
     test "unary_bang, reachable only from a hand-written instruction list" do
       assert Predicator.evaluate([["load", "unbound"], ["unary_bang"]], %{}) ==
                {:error, UndefinedVariableError.new("unbound")}
     end
 
-    for {op, expression} <- [
-          add: "unbound + 1",
-          subtract: "unbound - 1",
-          multiply: "unbound * 1",
-          divide: "unbound / 1",
-          modulo: "unbound % 1"
+    for {op, expression, position} <- [
+          {:add, "unbound + 1", {1, 1}},
+          {:subtract, "unbound - 1", {1, 1}},
+          {:multiply, "unbound * 1", {1, 1}},
+          {:divide, "unbound / 1", {1, 1}},
+          {:modulo, "unbound % 1", {1, 1}}
         ] do
       test "arithmetic #{op}" do
         assert Predicator.evaluate(unquote(expression), %{}) ==
-                 {:error, UndefinedVariableError.new("unbound")}
+                 unbound_at("unbound", unquote(Macro.escape(position)))
       end
     end
 
     test "the unbound operand on the right side is reported too" do
-      assert Predicator.evaluate("1 + unbound", %{}) ==
-               {:error, UndefinedVariableError.new("unbound")}
+      assert Predicator.evaluate("1 + unbound", %{}) == unbound_at("unbound", {1, 5})
     end
 
+    # No positions: table is passed, so these double as no-table regression
+    # tests (px-1e1) for the legacy opcodes.
     test "legacy [\"and\"], which the compiler no longer emits (px-e3g.1)" do
       assert Predicator.evaluate([["load", "a"], ["load", "b"], ["and"]], %{"a" => false}) ==
                {:error, UndefinedVariableError.new("b")}
@@ -84,23 +90,20 @@ defmodule Predicator.Integration.UnboundTypeMismatchTest do
 
   describe "in/contains already propagate :undefined and need no rewrite" do
     test "an unbound left operand of in" do
-      assert Predicator.evaluate("unbound in [1, 2]", %{}) ==
-               {:error, UndefinedVariableError.new("unbound")}
+      assert Predicator.evaluate("unbound in [1, 2]", %{}) == unbound_at("unbound", {1, 1})
     end
 
     test "an unbound right operand of in, which is not even a list" do
-      assert Predicator.evaluate("1 in unbound", %{}) ==
-               {:error, UndefinedVariableError.new("unbound")}
+      assert Predicator.evaluate("1 in unbound", %{}) == unbound_at("unbound", {1, 6})
     end
 
     test "an unbound left operand of contains, which is not even a list" do
-      assert Predicator.evaluate("unbound contains 1", %{}) ==
-               {:error, UndefinedVariableError.new("unbound")}
+      assert Predicator.evaluate("unbound contains 1", %{}) == unbound_at("unbound", {1, 1})
     end
 
     test "an unbound right operand of contains" do
       assert Predicator.evaluate("[1, 2] contains unbound", %{}) ==
-               {:error, UndefinedVariableError.new("unbound")}
+               unbound_at("unbound", {1, 17})
     end
   end
 

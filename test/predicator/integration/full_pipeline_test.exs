@@ -242,8 +242,9 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "unbound identifier inside a non-literal list returns an error tuple, not a raise" do
+      # px-1e1: positioned at the variable's own load, not the "+" that rejected it.
       assert Predicator.evaluate("[x + 1]", %{}) ==
-               {:error, UndefinedVariableError.new("x")}
+               {:error, Predicator.Errors.put_position(UndefinedVariableError.new("x"), {1, 2})}
     end
 
     test "all-literal fast path still compiles to a single lit instruction" do

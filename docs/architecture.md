@@ -315,22 +315,28 @@ site in the evaluator is covered by one call to `Errors.put_position/2`.
 instruction-list caller sees `position: nil` unless they pass `positions:`.
 Rendered `message` strings are unchanged.
 
-Two errors keep `position: nil` by construction: the empty-stack error, which
-belongs to no instruction, and the `UndefinedVariableError` that
-`Predicator.evaluate/3` builds *after* the run from the loads the evaluator
-recorded. The `UndefinedVariableError` that `px-8um.7` rewrites a
-`TypeMismatchError` into does too, deliberately: the position on hand belongs
-to the *rejecting operator* - `{1,1}` for the `not` in `"not unbound"`, `{1,9}`
-for the `+` in `"unbound + 1"` - not to the variable, so carrying it over would
-point a caller's editor at the wrong token.
+Only one error keeps `position: nil` by construction: the empty-stack error,
+which belongs to no instruction. The other two `UndefinedVariableError`
+construction sites that live outside `step/1` - `Predicator.evaluate/3`
+building it *after* the run from the loads the evaluator recorded, and the
+`px-8um.7` rewrite of a `TypeMismatchError` - both carry a position too
+(`px-1e1`). Neither builds it from the instruction pointer, because by the
+time either runs the pointer is gone; instead the evaluator records a location
+alongside each unbound load at the moment its `["load", name]` instruction
+executes, and both sites read that recorded pair. The location is the load's
+own, so `"unbound + 1"` reports the `{1, 1}` of `unbound`, not the `{1, 9}` of
+the `+` that rejected its `:undefined` - carrying the operator's position over
+would have pointed a caller's editor at the wrong token, which is exactly what
+recording the load's own location avoids.
 
-The third construction site is the one that *does* carry a position: the
-`on_unbound: :error` policy (`px-8um.3`) builds its `UndefinedVariableError`
-at the `load` instruction itself, so `step/1` hands it the variable's own
-`{line, column}`. `"not missing"` under `:error` reports `{1, 5}` - the
-`missing` - where the default policy's rewrite of the same expression reports
-`nil`. The asymmetry is intentional: the policy has the right token in scope
-and the other two do not.
+The third construction site is the `on_unbound: :error` policy (`px-8um.3`),
+which builds its `UndefinedVariableError` at the `load` instruction itself, so
+`step/1` hands it the variable's own `{line, column}` directly - it needs no
+recorded pair, because the instruction pointer is still in scope when it runs.
+`"not missing"` reports `{1, 5}` - the `missing` - under either policy: the
+`:error` policy from `step/1`, the default policy from the recorded load. All
+three sites position the error at the variable now; only the mechanism
+differs.
 
 ### Source Spans (v3.9.0, unreleased)
 
@@ -530,6 +536,20 @@ caller passes `positions:` from `compile_with_spans/1` instead.
   `unbound_loads` records absent keys only. The low-level
   `Evaluator.evaluate/3` is unchanged; this is an API-layer rewrite.
 
+- **Positioning the two after-the-run construction sites (`px-1e1`,
+  unreleased)**: `undefined_result/1` and `unbound_or_type_mismatch/2` used to
+  build a bare `UndefinedVariableError` with `position: nil`, because by the
+  time either runs the instruction pointer no longer exists. The evaluator now
+  records a location alongside each unbound load at the moment its
+  `["load", name]` instruction executes - `record_unbound_load/3` reads
+  `instruction_pointer` before `advance_instruction_pointer/1` moves it, the
+  same index `attach_error_position/2` would use for an error raised by that
+  instruction. `Evaluator.unbound_loads_with_locations/1` returns the
+  `{name, location}` pairs; `unbound_loads/1` is unchanged, a projection over
+  the names. Both API-layer sites read the pair and decorate the fresh error
+  they build with `Errors.put_position/2`, which discriminates a `nil`, a
+  point position, and a span.
+
 ### The `on_unbound` policy (`px-8um.3`, v3.8.0, unreleased)
 
 `Predicator.Context`'s `on_unbound` field selects what a load of an unbound
@@ -568,7 +588,7 @@ nothing is pushed, and no later instruction executes.
   | `missing OR true` | `{:ok, true}` | `{:error, ...}` |
   | `[missing]` | `{:ok, [:undefined]}` | `{:error, ...}` |
   | `{'a': missing}` | `{:ok, %{"a" => :undefined}}` | `{:error, ...}` |
-  | `missing`, `missing == 5`, `not missing`, `missing + 1` | `{:error, ...}` | same, now with a position |
+  | `missing`, `missing == 5`, `not missing`, `missing + 1` | `{:error, ...}` | same - both carry a position since `px-1e1` |
   | `false AND missing`, `true OR missing` | `{:ok, false}` / `{:ok, true}` | unchanged - never loaded |
 
 - **Plumbing**: `%Evaluator{}` gained an `on_unbound` field;

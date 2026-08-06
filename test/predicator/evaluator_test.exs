@@ -1355,6 +1355,59 @@ defmodule Predicator.EvaluatorTest do
     end
   end
 
+  describe "unbound_loads_with_locations/1" do
+    test "a covered index records its {line, column}" do
+      evaluator = %Evaluator{
+        instructions: [["load", "a"]],
+        context: %{},
+        positions: %{0 => {1, 1}}
+      }
+
+      {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads_with_locations(final) == [{"a", {1, 1}}]
+    end
+
+    test "an uncovered index records nil" do
+      evaluator = %Evaluator{
+        instructions: [["load", "a"]],
+        context: %{},
+        positions: %{1 => {1, 1}}
+      }
+
+      {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads_with_locations(final) == [{"a", nil}]
+    end
+
+    test "an absent positions table records nil" do
+      evaluator = %Evaluator{instructions: [["load", "a"]], context: %{}}
+
+      {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads_with_locations(final) == [{"a", nil}]
+    end
+
+    test "a span table records the span unchanged, not narrowed to its start" do
+      evaluator = %Evaluator{
+        instructions: [["load", "a"]],
+        context: %{},
+        positions: %{0 => {{1, 1}, {1, 2}}}
+      }
+
+      {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads_with_locations(final) == [{"a", {{1, 1}, {1, 2}}}]
+    end
+
+    test "a repeated load keeps the first occurrence's location" do
+      evaluator = %Evaluator{
+        instructions: [["load", "a"], ["load", "a"]],
+        context: %{},
+        positions: %{0 => {1, 1}, 1 => {1, 9}}
+      }
+
+      {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
+      assert Evaluator.unbound_loads_with_locations(final) == [{"a", {1, 1}}]
+    end
+  end
+
   describe "evaluate/3 with on_unbound: :error" do
     test "an unbound root errors instead of loading :undefined" do
       assert Evaluator.evaluate([["load", "x"]], %{}, on_unbound: :error) ==

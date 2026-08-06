@@ -77,7 +77,7 @@ defmodule Predicator do
   3. The final result is the top value on the stack when execution completes
   """
 
-  alias Predicator.{Compiler, Context, ContextLocation, Evaluator, Lexer, Parser, Types}
+  alias Predicator.{Compiler, Context, ContextLocation, Errors, Evaluator, Lexer, Parser, Types}
   alias Predicator.Errors.{ParseError, TypeMismatchError, UndefinedVariableError}
 
   @doc """
@@ -244,9 +244,9 @@ defmodule Predicator do
   # unbound (px-8um.8).
   @spec undefined_result(Evaluator.t()) :: {:ok, :undefined} | {:error, struct()}
   defp undefined_result(evaluator) do
-    case Evaluator.unbound_loads(evaluator) do
+    case Evaluator.unbound_loads_with_locations(evaluator) do
       [] -> {:ok, :undefined}
-      [variable_name | _rest] -> {:error, UndefinedVariableError.new(variable_name)}
+      [unbound_load | _rest] -> {:error, undefined_variable_error(unbound_load)}
     end
   end
 
@@ -263,11 +263,17 @@ defmodule Predicator do
   # with no unbound load came from bound data (%{"b" => :undefined}) or a
   # missing nested path (user.nope), which is a genuine type mismatch on data
   # the caller supplied, and also passes through.
+  #
+  # The rewritten error is positioned at the variable's own load, not at the
+  # rejecting operator: the operator's position went out with the
+  # TypeMismatchError this replaces, along with the struct it was on. That is
+  # the right trade - a caller's editor wants the caret on the variable, not
+  # on the `+` or `not` that merely noticed it was undefined (px-1e1).
   @spec unbound_or_type_mismatch(struct(), Evaluator.t()) :: struct()
   defp unbound_or_type_mismatch(%TypeMismatchError{got: got} = error, evaluator) do
     with true <- undefined_operand?(got),
-         [variable_name | _rest] <- Evaluator.unbound_loads(evaluator) do
-      UndefinedVariableError.new(variable_name)
+         [unbound_load | _rest] <- Evaluator.unbound_loads_with_locations(evaluator) do
+      undefined_variable_error(unbound_load)
     else
       _no_rewrite -> error
     end
@@ -282,6 +288,17 @@ defmodule Predicator do
   defp undefined_operand?({:undefined, _right}), do: true
   defp undefined_operand?({_left, :undefined}), do: true
   defp undefined_operand?(_got), do: false
+
+  # The location is the raw positions-table entry the evaluator recorded at the
+  # load - nil, a point position, or a span. Errors.put_position/2 discriminates
+  # all three, setting :span as well when it is handed one, so nothing here has
+  # to know which mode the program was compiled in.
+  @spec undefined_variable_error(Evaluator.unbound_load()) :: UndefinedVariableError.t()
+  defp undefined_variable_error({variable_name, location}) do
+    variable_name
+    |> UndefinedVariableError.new()
+    |> Errors.put_position(location)
+  end
 
   @doc """
   Compiles a string expression to instruction list.
