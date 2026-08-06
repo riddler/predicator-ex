@@ -368,24 +368,32 @@ node type needs a row in both.
 | `relative_date` (`ago`) | duration start | past the `ago` token |
 | `relative_date` (`from now`) | duration start | past the `now` token |
 | `relative_date` (`next`, `last`) | the direction keyword token | duration end |
+| parenthesized expression | the `(` token | past the `)` token |
 
 Two consequences worth stating: a quoted string's and a `#`-fenced date's span
 include their delimiters, because the lexer's `length` is the full source
 extent; and an empty `[]`, `{}`, or `f()` still spans both delimiters, because
 the end comes from the closing token rather than from a child.
 
-**Parentheses are excluded, by design.** `(a + b)` gives the `arithmetic` node
-the span of `a + b`. Parentheses build no node - `parse_primary_token/2` returns
-the inner expression unchanged - so including them would mean attributing
-another node's characters to this one. This is a known limit, not an oversight.
+**Parentheses widen the span, by design.** `(a + b)` gives the `arithmetic`
+node the span of `(a + b)`, not just `a + b`. Parentheses build no node of
+their own - `parse_primary_token/2`'s `:lparen` clause returns the inner
+expression, rewriting its trailing slot to run from the `(` token's start to
+past the `)` token before handing it back - so the widened span still belongs
+to the inner expression's node; nothing new is attributed to it, only more of
+the source the parentheses already delimit.
 
-It has a knock-on effect worth knowing about: a parent inherits its child's
-start, so `(a + b) * c` gives the `multiply` node a span slicing to
-`a + b) * c` - the opening paren is outside it, the closing one inside. The
-span is still contained in the source and still ends at the right character;
-it just does not read as balanced. A consumer that wants to widen to the
-enclosing parentheses has to re-lex, which is why this is documented rather
-than worked around.
+Because a parent inherits its child's start, this composes upward for free:
+`(a + b) * c` gives the `multiply` node a span slicing to the whole source
+string, since the left operand's span already runs from `(` to past `)`.
+Nesting composes to the outermost pair - `((a))` widens twice, once per
+`:lparen` clause, and each rewrite replaces the slot rather than merging, so
+the result is the outermost extent and the intermediate one is not retained.
+A parenthesized leaf widens the same way: `(a)` gives the `identifier` node
+the span of `(a)`. The one thing lost is the inner extent itself - `a + b` and
+`(a + b)` become indistinguishable by span - which a consumer that wants it
+back can recover by trimming the balanced parens off the ends of the slice it
+already has.
 
 **The side table.** `Predicator.compile_with_spans/1` is the span-mode sibling
 of `compile_with_positions/1`, returning a `t:Predicator.Types.span_table/0`.

@@ -16,7 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `t:Predicator.Types.span/0` - `{{start_line, start_col}, {end_line, end_col}}`
   with an **exclusive** end, matching LSP ranges - instead of a
   `{line, column}`. For `a * true` the `arithmetic` node spans the whole
-  expression rather than naming column 3.
+  expression rather than naming column 3. A parenthesized expression's span
+  widens to include its parentheses, so `(a + b)` spans `(a + b)` rather than
+  `a + b`, and this composes upward: `(a + b) * c` gives the `multiply` node a
+  span slicing to the whole source string. Nesting composes to the outermost
+  pair, so `((a))` spans `((a))`.
 
 - `t:Predicator.Types.span/0` and `t:Predicator.Types.span_table/0`.
 
