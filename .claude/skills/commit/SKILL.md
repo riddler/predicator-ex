@@ -32,6 +32,9 @@ have their own triggers in CLAUDE.md's authority table.
 - the working tree carries changes unrelated to the claimed issue
 - Step 1.5 found no beads issue (interactive mode asks the user; auto mode has
   nobody to ask, so it stops and says so)
+- the only bead signal was the branch prefix and `bd show` says that bead is
+  already closed - the name outlived its bead, and auto mode has nobody to ask
+  which bead this commit is for
 
 A refusal is a report, not a fallback to interactive. Say which condition fired
 and what would clear it.
@@ -109,27 +112,44 @@ Attempt to detect a related beads issue using these strategies in order.
 **IMPORTANT**: Run these as separate bash commands to avoid shell parsing
 errors:
 
-1. **Get branch name**:
+1. **An explicit ID** - `$ARGUMENTS`, if one was given. Validate with `bd show`
+   and use it; the other strategies do not run.
+
+2. **The bead this session was seeded with.** `/new-worktree` names the bead
+   twice in every seeded prompt - in the seed command (`/work px-abc --auto`)
+   and in the fixed finishing clause ("unrelated to px-abc"). That is one bead,
+   in this session, stated by whoever started it. It is a stronger signal than
+   anything derived from the branch, and on a branch carrying several beads it
+   is the only signal that names the bead *this commit* is for.
+
+   This is not the same as inferring from claimed `in_progress` beads, which is
+   ambiguous across parallel worktrees and is not a strategy here.
+
+3. **A plan document in the diff.**
+   ```bash
+   git diff main...HEAD --name-only | grep 'docs/plans/'
+   ```
+   Plan filenames carry the issue ID: `YYMMDD-<issue-id>-*.md`. Commit-specific,
+   so it outranks the branch name.
+
+4. **The branch prefix** - last, and a hint rather than an authority.
    ```bash
    git branch --show-current
    ```
    Worktree branches are named `<beads-id>-<slug>` (e.g.
-   `px-abc-object-notation`), so the issue ID is usually the prefix.
+   `px-abc-object-notation`), but that name is fixed at creation: it names the
+   bead the worktree was cut for, not necessarily the bead this commit is for.
+   On a branch carrying several beads the prefix names the first one and is
+   wrong for every later commit.
 
-2. **Check modified plan documents** (if no issue from branch):
-   ```bash
-   git diff main...HEAD --name-only | grep 'docs/plans/'
-   ```
-   - Plan filenames carry the issue ID: `YYMMDD-<issue-id>-*.md`
+   **Validate the status, not just the existence.** `bd show <id>` on a prefix-
+   derived ID that comes back `closed` means the name outlived its bead.
+   Interactive mode asks which bead this commit is for; **auto mode refuses and
+   reports**, naming the branch and the closed bead. Writing a `Refs:` line
+   pointing at a closed bead would have `/cleanup-worktrees` close nothing and
+   leave the real bead open.
 
-3. **Check session context**:
-   - Look for issue mentions in your conversation context
-   - The user may have mentioned "px-abc" or claimed an issue earlier
-
-4. **Validate the issue exists** (if an ID was found):
-   ```bash
-   bd show ISSUE_ID
-   ```
+   Every ID from strategies 2-4 is validated with `bd show <id>` before use.
 
 5. **Fallback to user prompt**:
    - If no valid issue detected, ask: "Is this commit related to a beads issue?
@@ -225,7 +245,7 @@ Show the user the prepared commit in a clear format:
 ```
 I've analyzed your changes and prepared the following:
 
-**Related Issue**: px-abc - "Add object notation" (detected from branch name)
+**Related Issue**: px-abc - "Add object notation" (from seeded prompt)
 
 **Git Commit Message**:
 ```
@@ -308,8 +328,11 @@ COMMIT_MSG
    Commit: [short sha] [commit title]
    Files: [list]
    Gate: full mix quality green   (or: docs only, no quality gate applicable)
-   Issue: px-xxx (left in_progress - it closes on merge, not on commit)
+   Issue: px-xxx (from seeded prompt; left in_progress - it closes on merge)
    ```
+
+   Name the Step 1.5 strategy the bead came from, so a prefix-derived ID is
+   visible as the weakest signal rather than reading like a confirmed one.
 
 Do not push and do not close the beads issue. This holds in both modes and is
 not something `--auto` relaxes: `bd close` fires on merge into `origin/main`,

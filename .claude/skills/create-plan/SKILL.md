@@ -117,10 +117,29 @@ Then wait for the user's input.
    - Validate that its recommendations are still current if the doc is old
 
 2. **Spawn research agents to gather context**:
-   If the input did not come with full `file:line` detail, use the `Explore`
-   agent (read-only, breadth-first) in parallel before asking the user any
-   questions. Give each one a narrow question and ask for `file:line`
-   references back. Useful splits in this codebase:
+   If the input did not come with full `file:line` detail, spawn agents in
+   parallel before asking the user any questions. Give each one a narrow
+   question and ask for `file:line` references back. Pick by what the question
+   needs:
+
+   - **codebase-locator** - WHERE files and components live
+   - **codebase-analyzer** - HOW a specific component works
+   - **codebase-pattern-finder** - existing patterns to model the change after
+   - **thoughts-locator** / **thoughts-analyzer** - prior research, plans,
+     ADRs, and the relevant section of `docs/architecture.md`
+   - **Explore** - read-only breadth-first sweep when the question is
+     "what touches X" and no specialized agent fits
+   - **general-purpose** - when the question needs more than reading: running
+     `mix run` snippets, checking behavior in `iex`, or reading the Ruby and
+     JavaScript siblings if the user has them checked out locally. Say
+     explicitly in the prompt when an agent should look outside
+     `/Users/johnnyt/repos/github/predicator-ex`.
+
+   The research agents are documentarians: they describe what exists and do
+   not critique it. Accepted ADRs are settled - cite the number, do not
+   re-argue the decision.
+
+   Useful splits in this codebase:
 
    - the lexer/parser path for a syntax change (`lib/predicator/lexer.ex`,
      `parser.ex`, `types.ex`)
@@ -131,10 +150,6 @@ Then wait for the user's input.
      grammar change that `StringVisitor` cannot render back is an incomplete
      change
    - the test layout for the area being touched (`test/predicator/**`)
-
-   Use `general-purpose` when the question needs more than reading - running
-   `mix run` snippets, checking behavior in `iex`, or reading the Ruby and
-   JavaScript siblings if the user has them checked out locally.
 
 3. **Read all files identified by the research agents**:
    - After they complete, read ALL files they identified as relevant
@@ -181,9 +196,14 @@ After getting initial clarifications:
 2. **Create a research todo list** to track exploration tasks
 
 3. **Spawn parallel sub-agents for comprehensive research**, each focused on one
-   question, each asked to return specific `file:line` references. `Explore` is
-   the default; `general-purpose` when the answer needs execution or web
-   lookups (hexdocs, the sibling implementations' repos).
+   question, each asked to return specific `file:line` references. Use the same
+   agent menu as step 2: **codebase-locator** to find things,
+   **codebase-analyzer** to understand them, **codebase-pattern-finder** for
+   existing patterns to model after, **thoughts-locator** /
+   **thoughts-analyzer** for prior research, plans, and ADRs,
+   **web-search-researcher** for external documentation, and
+   **general-purpose** when the answer needs execution (`iex`, `mix run`) or a
+   repo outside this checkout.
 
 4. **Wait for ALL sub-tasks to complete** before proceeding
 
@@ -510,7 +530,11 @@ When spawning research sub-agents:
 4. **Be EXTREMELY specific about directories** - include the full path context
    in your prompts, and say explicitly when a task should look outside this repo
    (a sibling implementation, a downstream consumer)
-5. **Prefer `Explore`** - it is read-only, which is what research wants
+5. **Prefer a read-only agent** - the specialized research agents
+   (`codebase-locator`, `codebase-analyzer`, `codebase-pattern-finder`,
+   `thoughts-locator`, `thoughts-analyzer`) and `Explore` all are, which is what
+   research wants. Reach for `general-purpose` only when the question genuinely
+   needs execution or a repo outside this checkout
 6. **Request specific `file:line` references** in responses
 7. **Wait for all tasks to complete** before synthesizing
 8. **Verify sub-agent results**:

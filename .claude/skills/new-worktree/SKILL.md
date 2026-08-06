@@ -32,14 +32,15 @@ ask for the slug - it matters and should not be guessed.
 **Seed command** (optional) is what the tmux session in step 5 runs, e.g.:
 
 ```
-/new-worktree px-abc-object-notation -- /create-plan px-abc
+/new-worktree px-abc-object-notation -- /work px-abc --auto
 ```
 
-This is how `/next-issue` hands its triage decision (plan / implement) to the
-session that will act on it. Without it the decision is lost and the new
-session re-derives it from scratch, usually differently. Omitted - someone
-invoking this skill directly - falls back to a generic seed that tells the
-session to read the bead and decide for itself.
+The seed names the *orchestrator*, not a stage: `/work` sizes the job in the
+worktree, where the codebase is readable, and drives research / plan /
+implement itself. This is how `/next-issue` and `/next-issues` hand a claimed
+bead to the session that will act on it - all they pass is the id. Omitted -
+someone invoking this skill directly - falls back to the same `/work` seed, so
+a hand-made worktree behaves exactly like a routed one.
 
 ## Steps
 
@@ -59,6 +60,17 @@ session to read the bead and decide for itself.
    ```
    (`--no-track` keeps the new branch push-safe; drop to `main` only in the
    offline/fallback case above.)
+
+   Then trust the new worktree path:
+   ```bash
+   mise trust ../predicator-ex-worktrees/<name>
+   ```
+   mise trusts `mise.toml` per directory path, not per repo, so the freshly
+   created worktree path is untrusted even though it is the same repo content -
+   without this, the first mise-managed command run there (step 4) prompts to
+   trust the config and hangs a non-interactive agent session the same way an
+   unaliased `-i` flag does (see CLAUDE.md's "Non-interactive shell commands"
+   section).
 
 3. **Warm the caches.** Clone `deps/`, `_build/` and `priv/plts/` from this
    checkout into the worktree. On APFS `cp -Rc` uses copy-on-write clonefiles,
@@ -133,27 +145,38 @@ session to read the bead and decide for itself.
      -c "/Users/johnnyt/repos/github/predicator-ex-worktrees/<name>")
    [ -n "$win" ] || { echo 'tmux window not created, skipping'; exit 0; }
    tmux send-keys -t "$win" \
-     "claude --permission-mode auto '<seed>.$FINISH'" Enter
+     "claude --permission-mode auto --model opus '<seed>.$FINISH'" Enter
    ```
+
+   `--model` is passed explicitly, never left to whatever default the launched
+   session would otherwise inherit (`~/.claude/settings.json`'s global default,
+   which may not be Opus or Sonnet at all). It is a *constant* because every
+   seeded session runs `/work`, which orchestrates on Opus and assigns the
+   implementation tier to its own subagents. The tier split did not disappear -
+   it moved inside the session, applied per stage instead of per launch. A
+   skill's own `model:` frontmatter (e.g. `work`'s) governs that skill's
+   invocation once the session is already running; it does not govern the CLI
+   session itself, which is why this flag exists at all and must not be
+   "simplified" away.
 
    `<seed>` is the seed command from the input when one was given - pass it
    through verbatim, including the leading slash:
 
    ```
-   claude --permission-mode auto '/create-plan px-abc.$FINISH'
+   claude --permission-mode auto --model opus '/work px-abc --auto.$FINISH'
    ```
 
-   With no seed command, fall back to:
+   With no seed command, fall back to the same orchestrator:
 
    ```
-   claude --permission-mode auto 'Work bead <id> in this worktree. Start with bd show <id>.$FINISH'
+   claude --permission-mode auto --model opus '/work <id> --auto.$FINISH'
    ```
 
-   The finishing clause is appended unconditionally, to every bucket's seed and
-   to the fallback, because this step is the one place all buckets
+   The finishing clause is appended unconditionally, to a given seed and to the
+   fallback, because this step is the one place every caller
    (`/next-issue`, `/next-issues`, and a direct `/new-worktree` invocation)
-   converge - editing it here reaches every seeded session without touching
-   the bucket-selection skills themselves. It specifies `/commit --auto`
+   converges - editing it here reaches every seeded session without touching
+   the calling skills themselves. It specifies `/commit --auto`
    rather than bare `/commit` because the tmux session runs unattended under
    `--permission-mode auto`: `/commit`'s interactive approval step would stall
    with nobody watching the window to answer it. This does not grant commit
@@ -180,11 +203,10 @@ session to read the bead and decide for itself.
    - **`-d` on `new-window`** so creating three worktrees in a row does not yank
      focus three times. The user jumps to the one they want when they are ready.
 
-   The fallback prompt points at `bd show` rather than restating the bead: the
-   beads DB is shared across worktrees, so the new session reads it directly,
-   and a restated description goes stale. The same reasoning is why a seed
-   command passes only the bead id - `/create-plan px-abc`, not a paraphrase
-   of what to plan.
+   Both forms pass only the bead id, never a paraphrase of the work: the beads
+   DB is shared across worktrees, so the new session reads the bead directly
+   with `bd show`, while a restated description goes stale the moment the bead
+   is updated.
 
    `--permission-mode auto` starts the seeded session in auto mode, so it makes
    routine calls without stopping to confirm each one - the point of fanning
@@ -195,10 +217,12 @@ session to read the bead and decide for itself.
 
 6. **Report.** State the worktree path, the branch and what it was cut from,
    that caches were cloned (and whether the PLT came along), the quality
-   result, and **the tmux window** (its name and id, or why it was skipped) so
-   the user can jump to it with the prefix key. Remind that subsequent work on
-   this issue happens **inside the worktree**, and the worktree is removed at
-   merge (`git worktree remove ../predicator-ex-worktrees/<name>`).
+   result, **the tmux window** (its name and id, or why it was skipped), and
+   **the model it launched with** (`opus`, per step 5) so the user can jump to
+   it with the prefix key and knows which model is running there without
+   switching to the window. Remind that subsequent work on this issue happens
+   **inside the worktree**, and the worktree is removed at merge
+   (`git worktree remove ../predicator-ex-worktrees/<name>`).
 
 ## Notes
 
@@ -218,3 +242,15 @@ session to read the bead and decide for itself.
 - A **busy** session blocks its own worktree's cleanup and is reported, so a
   sweep run while an agent is mid-turn is safe and re-running it later finishes
   the job.
+- **A seeded session cannot spawn a nested `claude` session of its own.**
+  `--permission-mode auto` (step 5) blocks `tmux send-keys ... 'claude' Enter`
+  via the auto-mode classifier. This is not model-specific; the classifier
+  decision is the same regardless of which model is driving. If a bead needs a
+  live Claude session to observe (spinner frames, dialog layout, the input
+  box's suggested-prompt placeholder, or similar), do not try to launch one -
+  use a **sibling worktree session** instead. `/next-issues` routinely stands
+  up two or three seeded sessions in the same tmux server, so a batch run
+  always has live sessions available to `tmux capture-pane` against, with
+  nothing new to launch and nothing to clean up afterward. They are also more
+  representative than a bare `claude` started in a scratch directory, since
+  they are real sessions in real worktrees.
