@@ -312,14 +312,14 @@ test for the non-breaking claim.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] The existing `describe "unbound_loads/1"` block in
+- [x] Full quality gate passes: `mix quality`
+- [x] The existing `describe "unbound_loads/1"` block in
       `test/predicator/evaluator_test.exs:1293-1356` passes **unmodified** -
       that is the proof the public shape did not move
-- [ ] The `unbound_loads/1` doctest at `lib/predicator/evaluator.ex:139-148`
+- [x] The `unbound_loads/1` doctest at `lib/predicator/evaluator.ex:139-148`
       passes unmodified
-- [ ] New `unbound_loads_with_locations/1` doctest passes
-- [ ] Coverage for `lib/predicator/evaluator.ex` stays above the 90% floor in
+- [x] New `unbound_loads_with_locations/1` doctest passes
+- [x] Coverage for `lib/predicator/evaluator.ex` stays above the 90% floor in
       `coveralls.json`
 
 #### Manual Verification:
@@ -680,3 +680,12 @@ one `Enum.map/2` over a list that is almost always empty.
   `docs/plans/260804-px-8um.8-runtime-unbound-tracking.md`
 - ADR-0001 (`docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md`) -
   no ISA change here, so no cross-language work
+
+## Deferred Manual Verification
+
+### Phase 1
+
+- [ ] In `iex -S mix`: a run over a span table records a span in the pair, and a
+      run with no table records `nil` - neither crashes `put_position/2`
+- [ ] Dialyzer accepts `unbound_load()` against both `position_table()` and
+      `span_table()` valued `positions` fields

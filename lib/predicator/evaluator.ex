@@ -42,13 +42,24 @@ defmodule Predicator.Evaluator do
           functions: %{binary() => {function_arity(), function()}},
           positions: Types.position_table() | Types.span_table(),
           halted: boolean(),
-          unbound_loads: [binary()],
+          unbound_loads: [unbound_load()],
           on_unbound: Predicator.Context.on_unbound(),
           size: non_neg_integer() | nil
         }
 
   @typedoc "A function's accepted argument count(s): a fixed arity, or a set of arities for optional/variadic-style args"
   @type function_arity :: non_neg_integer() | [non_neg_integer()]
+
+  @typedoc """
+  An executed load of a root that was not bound, paired with the source location
+  of the `["load", _]` instruction that read it.
+
+  The location is the raw `positions` table entry: `nil` when the run carried no
+  table or the index was uncovered, a `t:Predicator.Types.position/0` under point
+  positions, a `t:Predicator.Types.span/0` under spans. Hand it to
+  `Predicator.Errors.put_position/2`, which discriminates the three.
+  """
+  @type unbound_load :: {binary(), Types.position() | Types.span() | nil}
 
   defstruct [
     :instructions,
@@ -136,6 +147,9 @@ defmodule Predicator.Evaluator do
   result. Deciding that would require tracking which stack value descends from
   which load.
 
+  `unbound_loads_with_locations/1` returns the same loads with the source
+  location of each.
+
   ## Examples
 
       iex> instructions = [["load", "a"], ["load", "b"]]
@@ -148,7 +162,39 @@ defmodule Predicator.Evaluator do
       ["b"]
   """
   @spec unbound_loads(t()) :: [binary()]
-  def unbound_loads(%__MODULE__{unbound_loads: names}), do: Enum.reverse(names)
+  def unbound_loads(%__MODULE__{} = evaluator) do
+    evaluator |> unbound_loads_with_locations() |> Enum.map(&elem(&1, 0))
+  end
+
+  @doc """
+  The same loads `unbound_loads/1` reports, each paired with the source location
+  of the `["load", _]` instruction that read it.
+
+  The location comes from the run's `positions` table, read at the load itself, so
+  it names the *variable's* token - not the operator that later rejected its
+  `:undefined`. It is `nil` when the run carried no table (an instruction-list
+  caller who passed no `positions:`), a `{line, column}` under point positions, and
+  a span under a table from `Predicator.compile_with_spans/1`.
+  `Predicator.evaluate/3` uses this to position the `UndefinedVariableError` it
+  builds after the run.
+
+  A name loaded more than once appears once, with the location of its first
+  executed load.
+
+  ## Examples
+
+      iex> instructions = [["load", "a"], ["load", "b"]]
+      iex> {:ok, _result, evaluator} =
+      ...>   Predicator.Evaluator.run_prepared(%Predicator.Evaluator{
+      ...>     instructions: instructions,
+      ...>     context: %{},
+      ...>     positions: %{1 => {1, 5}}
+      ...>   })
+      iex> Predicator.Evaluator.unbound_loads_with_locations(evaluator)
+      [{"a", nil}, {"b", {1, 5}}]
+  """
+  @spec unbound_loads_with_locations(t()) :: [unbound_load()]
+  def unbound_loads_with_locations(%__MODULE__{unbound_loads: loads}), do: Enum.reverse(loads)
 
   @doc """
   Evaluates a list of instructions with the given context and options.
@@ -1215,14 +1261,28 @@ defmodule Predicator.Evaluator do
 
   # The dedup check stays here rather than in unbound_load?/3: the policy fires
   # on the first unbound load and halts, so it never needs it.
+  #
+  # Dedup keys on the name alone, so a name loaded twice keeps the location of
+  # its *first* executed load - the same entry, and the same reported variable,
+  # the pre-px-1e1 names-only list produced.
   @spec record_unbound_load(t(), binary(), Types.value()) :: t()
   defp record_unbound_load(%__MODULE__{} = evaluator, variable_name, value) do
     if unbound_load?(evaluator, variable_name, value) and
-         variable_name not in evaluator.unbound_loads do
-      %__MODULE__{evaluator | unbound_loads: [variable_name | evaluator.unbound_loads]}
+         not List.keymember?(evaluator.unbound_loads, variable_name, 0) do
+      entry = {variable_name, current_location(evaluator)}
+      %__MODULE__{evaluator | unbound_loads: [entry | evaluator.unbound_loads]}
     else
       evaluator
     end
+  end
+
+  # The load's own location, read at the load. record_unbound_load/3 runs from
+  # inside execute_instruction/2, before advance_instruction_pointer/1, so
+  # instruction_pointer is still this load's index - the same index
+  # attach_error_position/2 reads for an error raised by this instruction.
+  @spec current_location(t()) :: Types.position() | Types.span() | nil
+  defp current_location(%__MODULE__{positions: positions, instruction_pointer: ip}) do
+    Map.get(positions, ip)
   end
 
   @spec execute_object_new(__MODULE__.t()) :: {:ok, __MODULE__.t()}
