@@ -78,7 +78,7 @@ defmodule Predicator.Errors.PositionTest do
     end
 
     test "falls back to the span's start on a struct with :position but no :span" do
-      error = %ParseError{message: "boom", line: 1, column: 1, position: nil}
+      error = %ParseError{message: "boom", position: nil}
       decorated = Errors.put_position(error, {{1, 1}, {1, 9}})
 
       refute Map.has_key?(decorated, :span)

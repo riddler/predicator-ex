@@ -179,12 +179,14 @@ strings, and never raises at a leaf:
 
 ```elixir
 iex> {:error, err} = Predicator.evaluate("score >> 85", %{})
-iex> {err.__struct__, err.line, err.column}
-{Predicator.Errors.ParseError, 1, 8}
+iex> {err.__struct__, err.position}
+{Predicator.Errors.ParseError, {1, 8}}
+iex> err.message
+"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'"
 
 iex> {:error, err} = Predicator.evaluate("score AND", %{})
-iex> {err.__struct__, err.column}
-{Predicator.Errors.ParseError, 10}
+iex> err.position
+{1, 10}
 ```
 
 A function that errors mid-evaluation surfaces as an `EvaluationError`:
