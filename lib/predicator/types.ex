@@ -78,31 +78,9 @@ defmodule Predicator.Types do
   A single instruction in the stack machine.
 
   Instructions are lists where the first element is the operation name
-  and remaining elements are arguments.
-
-  Currently supported instructions:
-  - `["lit", value()]` - Push literal value onto stack
-  - `["load", binary()]` - Load variable from context onto stack
-  - `["compare", binary()]` - Compare top two stack values with operator
-  - `["and"]` - Logical AND of top two boolean values
-  - `["or"]` - Logical OR of top two boolean values
-  - `["jump_if_falsy_or_pop", integer()]` - Jump forward if top is falsy (leaving it), else pop
-  - `["jump_if_true_or_pop", integer()]` - Jump forward if top is true (leaving it), else pop
-  - `["not"]` - Logical NOT of top boolean value
-  - `["in"]` - Membership test (element in collection)
-  - `["contains"]` - Membership test (collection contains element)
-  - `["add"]` - Pop two values, add them, push result
-  - `["subtract"]` - Pop two values, subtract them, push result
-  - `["multiply"]` - Pop two values, multiply them, push result
-  - `["divide"]` - Pop two values, divide them, push result
-  - `["modulo"]` - Pop two values, modulo operation, push result
-  - `["unary_minus"]` - Pop one value, negate it, push result
-  - `["unary_bang"]` - Pop one value, logical NOT it, push result
-  - `["bracket_access"]` - Pop key and object, push object[key] result
-  - `["object_new"]` - Push new empty object onto stack
-  - `["object_set", binary()]` - Pop value and object, set object[key] = value, push object
-  - `["make_list", integer()]` - Pop n values, push them as a list
-  - `["call", binary(), integer()]` - Call built-in function with arguments from stack
+  and remaining elements are arguments. The full opcode set - every
+  instruction the evaluator accepts, its operands, stack effect, and error
+  semantics - is specified in [`docs/isa.md`](../../docs/isa.md).
 
   No instruction carries a source position. Positions travel in a separate
   `t:position_table/0`, produced alongside the instruction list by
@@ -116,23 +94,6 @@ defmodule Predicator.Types do
       ["lit", 42]           # Push literal 42 onto stack
       ["load", "score"]     # Load variable 'score' from context
       ["compare", "GT"]     # Pop two values, compare with >, push result
-      ["and"]               # Pop two boolean values, push AND result
-      ["or"]                # Pop two boolean values, push OR result
-      ["jump_if_falsy_or_pop", 3]  # If top is false/:undefined, jump 3 forward, else pop
-      ["jump_if_true_or_pop", 3]   # If top is true, jump 3 forward, else pop
-      ["not"]               # Pop one boolean value, push NOT result
-      ["add"]               # Pop two values, add them, push result
-      ["subtract"]          # Pop two values, subtract them, push result
-      ["multiply"]          # Pop two values, multiply them, push result
-      ["divide"]            # Pop two values, divide them, push result
-      ["modulo"]            # Pop two values, modulo them, push result
-      ["unary_minus"]       # Pop one value, negate it, push result
-      ["unary_bang"]        # Pop one value, logical NOT it, push result
-      ["bracket_access"]    # Pop key and object, push object[key]
-      ["object_new"]        # Push new empty object onto stack
-      ["object_set", "name"] # Pop value and object, set object["name"] = value, push object
-      ["make_list", 2]      # Pop 2 values, push them as a 2-element list
-      ["call", "len", 1]    # Pop 1 argument, call len function, push result
   """
   @type instruction :: [binary() | value()]
 
