@@ -38,6 +38,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `:position` to the span's start, so a caller reading only `:position`
   still gets a usable caret under `spans: true`.
 
+### Documentation
+
+- **ADR-0003: the Elixir implementation leads the ISA.** Amends ADR-0001's
+  consequences (not its decision): sibling parity in Ruby and JavaScript is a
+  downstream obligation, not a gate on ISA changes made here, and the ISA is
+  versioned so a sibling behind the current version is an expected, documented
+  state rather than a defect. Stored-artifact compatibility remains the
+  stronger, separate guarantee. The ADR also settles three rules the ISA moves
+  under: an opcode's semantics never change under its own name, ISA versions are
+  integers independent of this library's version (additive versions ship in a
+  minor release, opcode retirement in a major one), and each sibling publishes
+  its own supported version rather than being tracked in a matrix here. This
+  does not change the instruction set - no opcode is added, removed, or
+  resemanticized. `README.md`'s "Cross-Language Siblings" section and the
+  equivalent section in `docs/architecture.md` are reworded to match.
+
 ### Changed
 
 - **BREAKING: the minimum Elixir version is now 1.18.** `mix.exs` previously

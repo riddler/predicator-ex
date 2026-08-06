@@ -4,10 +4,14 @@
 |---|---|---|
 | [0001](0001-keep-the-stack-vm-revise-the-instruction-set.md) | Keep the stack VM; revise the instruction set (ISA v2) | accepted |
 | [0002](0002-the-equals-grammar-break.md) | The `=` grammar break (4.0) | accepted |
+| [0003](0003-the-elixir-implementation-leads-the-isa.md) | The Elixir implementation leads the ISA | accepted |
 
 New ADRs: next number, same three-section format (Context, Decision,
 Consequences). An ADR is amended by a new ADR that supersedes it, not by
-rewriting history; superseded decisions stay visible as the path taken.
+rewriting history; superseded decisions stay visible as the path taken. An ADR
+whose *decision* still holds but whose *consequences* have moved is amended in
+place by a later ADR that says so at the top and names the sentences it
+replaces - ADR-0003 does this to ADR-0001 - and the amended ADR stays accepted.
 
 ADR-0001 opens a 3.6-4.0 arc designed around statifier's six upstream seams.
 The remaining decisions from that design - the Context struct, typed undefined,
