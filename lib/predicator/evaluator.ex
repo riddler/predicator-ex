@@ -5,28 +5,11 @@ defmodule Predicator.Evaluator do
   The evaluator executes a list of instructions using a stack machine approach.
   Instructions operate on a stack, with the most recent values at the top (head of list).
 
-  Supported instruction types:
-  - `["lit", value]` - Push literal value onto stack
-  - `["load", variable_name]` - Load variable from context onto stack
-  - `["compare", operator]` - Compare top two stack values with operator
-  - `["and"]` - Logical AND of top two boolean values
-  - `["or"]` - Logical OR of top two boolean values
-  - `["jump_if_falsy_or_pop", offset]` - If top of stack is `false` or `:undefined`, jump forward `offset` instructions leaving it on the stack; if `true`, pop and continue; any other type is a TypeMismatchError
-  - `["jump_if_true_or_pop", offset]` - If top of stack is exactly `true`, jump forward `offset` instructions leaving it on the stack; if `false` or `:undefined`, pop and continue; any other type is a TypeMismatchError
-  - `["not"]` - Logical NOT of top boolean value
-  - `["in"]` - Membership test (element in collection)
-  - `["contains"]` - Membership test (collection contains element)
-  - `["add"]` - Add top two integer values
-  - `["subtract"]` - Subtract top two integer values
-  - `["multiply"]` - Multiply top two integer values
-  - `["divide"]` - Divide top two integer values (integer division)
-  - `["modulo"]` - Modulo operation on top two integer values
-  - `["unary_minus"]` - Negate top integer value
-  - `["unary_bang"]` - Logical NOT of top boolean value
-  - `["bracket_access"]` - Pop key and object, push object[key] result
-  - `["call", function_name, arg_count]` - Call function with arguments from stack
-  - `["duration", units]` - Create duration value from unit list
-  - `["relative_date", direction]` - Calculate relative date from duration and direction
+  The instruction set - every opcode this module accepts, its operands, stack
+  effect, and error semantics - is specified in
+  [`docs/isa.md`](../../docs/isa.md), not here. That includes opcodes the
+  compiler no longer emits (`and`, `or`) but this module still runs, for
+  stored artifacts and v1 siblings (ADR-0001).
   """
 
   alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
