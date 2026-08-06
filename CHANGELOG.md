@@ -34,6 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `:position` to the span's start, so a caller reading only `:position`
   still gets a usable caret under `spans: true`.
 
+### Removed
+
+- **Breaking:** `:line` and `:column` on `Predicator.Errors.ParseError`. The
+  struct now stores the location once, in `:position`, as the
+  `{line, column}` tuple typed `t:Predicator.Types.position/0` that
+  `EvaluationError`, `TypeMismatchError`, and `UndefinedVariableError` already
+  carry. Code reading `error.line` reads `elem(error.position, 0)` instead, or
+  better, matches `%ParseError{position: {line, column}}`.
+  `ParseError.new/3` keeps its `(message, line, column)` signature, and error
+  message text is unchanged.
+
 ### Unchanged
 
 Stated explicitly, because this release adds a second location representation

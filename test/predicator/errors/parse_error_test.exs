@@ -4,19 +4,18 @@ defmodule Predicator.Errors.ParseErrorTest do
   alias Predicator.Errors.ParseError
 
   describe "new/3" do
-    test "populates :line and :column" do
+    test "stores the line and column as a single :position tuple" do
       error = ParseError.new("bad input", 2, 5)
 
       assert error.message == "bad input"
-      assert error.line == 2
-      assert error.column == 5
+      assert error.position == {2, 5}
     end
 
-    test "derives :position as a {line, column} tuple matching :line and :column" do
+    test "does not carry separate :line and :column fields" do
       error = ParseError.new("bad input", 2, 5)
 
-      assert error.position == {2, 5}
-      assert error.position == {error.line, error.column}
+      refute Map.has_key?(error, :line)
+      refute Map.has_key?(error, :column)
     end
   end
 end

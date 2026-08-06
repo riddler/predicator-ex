@@ -54,7 +54,7 @@ defmodule PredicatorTest do
     test "returns error for parse failures" do
       result = Predicator.evaluate("score >", %{})
 
-      assert {:error, %Predicator.Errors.ParseError{message: message, line: 1, column: 8}} =
+      assert {:error, %Predicator.Errors.ParseError{message: message, position: {1, 8}}} =
                result
 
       assert message =~
