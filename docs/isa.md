@@ -21,7 +21,9 @@ The versioning scheme is settled by ADR-0003; this section records it rather
 than re-arguing it.
 
 - ISA versions are integers - v1, v2, v3 - with no correspondence to this
-  library's semver. ISA v2 landed across 3.7.0 and 3.8.0.
+  library's semver. All three ISA v2 opcodes shipped in 3.7.0; 3.8.0 then
+  refined v2 semantics without adding an opcode (it made every arithmetic and
+  legacy logical opcode report an unbound root rather than a type mismatch).
 - An opcode's semantics never change under its own name. A change to what an
   opcode does is a new name at a new version. This is what makes "scan the
   opcode names in a list" a sound answer to "what version does this list
@@ -44,9 +46,10 @@ each row.
 
 - A program is a flat list of instructions. An instruction is a JSON array
   whose first element is the opcode name and whose remaining elements are
-  operands (`lib/predicator/types.ex:137`). Nothing else is in the wire
+  operands (`t:Predicator.Types.instruction/0`). Nothing else is in the wire
   format - source positions and spans travel in an Elixir-side side table
-  that is never serialized (`lib/predicator/types.ex:107-112`).
+  that is never serialized (`t:Predicator.Types.position_table/0`,
+  `t:Predicator.Types.span_table/0`).
 - Execution is sequential from index 0. The program halts when the
   instruction pointer reaches or passes the end of the list, so a forward
   jump past the last instruction is a normal halt, not an error.
@@ -172,104 +175,113 @@ instruction, which pushes its own value. Neither jump itself ever pushes.
 
 ## 5. Per-opcode semantics and errors
 
-All line references are to `lib/predicator/evaluator.ex`.
+Each opcode names the private functions in `lib/predicator/evaluator.ex` that
+implement it: the `execute_instruction/2` clause matching its name, plus the
+helper it delegates to. Function names rather than line numbers, so a
+reference survives an edit above it.
 
-- **`lit`** (`:388`) - pushes the operand unchanged. No error path.
-- **`load`** (`:393`) - string-key lookup in the context; an absent key
-  pushes `:undefined` (`:1184-1190`). Atom keys are not read: the context is
+- **`lit`** - pushes the operand unchanged. No error path.
+- **`load`** (`load_from_context/2`) - string-key lookup in the context; an
+  absent key pushes `:undefined`. Atom keys are not read: the context is
   normalized to string keys before evaluation. This is the only opcode that
   reads a root variable; `access` and `bracket_access` operate on a value
   already on the stack.
-- **`access`** (`:408`, `:555`) - pops the target, pushes
-  `target[property]`. A missing key, or a target that is neither a map nor a
-  list, pushes `:undefined` (`:1060-1094`) - never an error. An empty stack
-  is `EvaluationError` insufficient operands.
-- **`compare`** (`:414`, `:545`) - operand is one of `GT`, `LT`, `EQ`,
-  `GTE`, `LTE`, `NE`, `STRICT_EQ`, `STRICT_NE`; any other string is an
-  unknown instruction. Pops right then left (stack top is the right
-  operand).
+- **`access`** (`execute_access/2`, `access_value/2`) - pops the target,
+  pushes `target[property]`. A missing key, or a target that is neither a map
+  nor a list, pushes `:undefined` - never an error. An empty stack is
+  `EvaluationError` insufficient operands.
+- **`compare`** (`execute_compare/2`, `compare_values/3`) - operand is one of
+  `GT`, `LT`, `EQ`, `GTE`, `LTE`, `NE`, `STRICT_EQ`, `STRICT_NE`; any other
+  string is an unknown instruction. Pops right then left (stack top is the
+  right operand).
   - `:undefined` on either side under a non-strict operator (anything except
-    `STRICT_EQ`/`STRICT_NE`) pushes `:undefined` (`:581-587`).
+    `STRICT_EQ`/`STRICT_NE`) pushes `:undefined`.
   - `STRICT_EQ`/`STRICT_NE` are resolved before any type dispatch and work
-    over every value including `:undefined` (`:590-591`). A `Date` is never
-    strictly equal to a `DateTime`, since strict equality is Elixir `===`
-    and the two are different structs.
+    over every value including `:undefined`. A `Date` is never strictly equal
+    to a `DateTime`, since strict equality is Elixir `===` and the two are
+    different structs.
   - `Date`/`Date` and `DateTime`/`DateTime` compare chronologically, never
     by struct-key order; a mixed `Date`/`DateTime` pair coerces the `Date`
-    to 00:00:00 UTC before comparing (`:594-610`).
-  - A type-mismatched pair under a non-strict operator pushes `:undefined`
-    (`:623`) - it is **not** an error.
+    to 00:00:00 UTC before comparing.
+  - A type-mismatched pair under a non-strict operator pushes `:undefined` -
+    it is **not** an error.
   - Fewer than two values on the stack is `EvaluationError`.
-- **`and`, `or`** (`:420`, `:425`) - **legacy: accepted but never emitted by
+- **`and`, `or`** - **legacy: accepted but never emitted by
   the compiler.** Both operands must be booleans; anything else, including
   `:undefined`, is `TypeMismatchError` with operation `logical_and` /
-  `logical_or` and expected type `boolean` (`:666-677`, `:690-701`). They do
+  `logical_or` and expected type `boolean`. They do
   not short-circuit: both operands are already on the stack by the time
   either opcode runs. Kept for stored artifacts and for v1 sibling
   implementations (ADR-0001); ADR-0003 permits retiring them at a major
   version with an upgrade path (`px-tbv.9`). A v2 implementation still has to
   run them - they are not deprecated out of the evaluator, only out of code
   generation.
-- **`not`** (`:430`, `:708`) - boolean required; `:undefined` or any other
-  type is `TypeMismatchError` (operation `logical_not`, expected `boolean`).
-- **`in`** (`:435`, `:724`) - `left in right`. Either operand `:undefined`
-  pushes `:undefined`. The right operand must be a list, else
+- **`not`** (`execute_logical_not/1`) - boolean required; `:undefined` or any
+  other type is `TypeMismatchError` (operation `logical_not`, expected
+  `boolean`).
+- **`in`** (`execute_membership/2`) - `left in right`. Either operand
+  `:undefined` pushes `:undefined`. The right operand must be a list, else
   `TypeMismatchError` (operation `in`, expected `list`). Membership uses
-  type-matched equality with chronological date comparison, and `:undefined`
-  is never equal to anything (`:637-652`).
-- **`contains`** (`:440`, `:742`) - `left contains right`. Mirror of `in`;
-  the **left** operand must be the list, and the type mismatch is reported
-  against the left operand's type.
-- **`add`** (`:445`, `:773`, `:859-920`) - number+number is numeric
+  type-matched equality with chronological date comparison
+  (`values_equal?/2`), and `:undefined` is never equal to anything.
+- **`contains`** (`execute_membership/2`) - `left contains right`. Mirror of
+  `in`; the **left** operand must be the list, and the type mismatch is
+  reported against the left operand's type.
+- **`add`** (`execute_arithmetic/2`) - number+number is numeric
   addition; string+string, string+number, and number+string concatenate
   (numbers are stringified); list+list concatenates; `Date`/`DateTime` +
   duration and duration + `Date`/`DateTime` do date arithmetic. Anything
   else, including any `:undefined` operand, is `TypeMismatchError`
   (operation `add`, expected `number_or_string`).
-- **`subtract`** (`:449`, `:786`, `:930-989`) - number-number is numeric
+- **`subtract`** (`execute_arithmetic/2`) - number-number is numeric
   subtraction; `Date`-`Date` yields a duration in days; `DateTime`-`DateTime`
   a duration in seconds; a mixed `Date`/`DateTime` pair coerces the `Date`
   to UTC midnight first; `Date`/`DateTime` - duration does date arithmetic.
   Else `TypeMismatchError` (operation `subtract`, expected
   `number_or_date`). Note the asymmetry with `add`: subtraction does not
   concatenate strings or lists.
-- **`multiply`** (`:799`) - numbers only, else `TypeMismatchError`
-  (expected `number`).
-- **`divide`** (`:805-826`) - **the zero check runs before the type
-  check**, so a right operand of integer `0` or float `0.0` is
+- **`multiply`** (`execute_arithmetic/2`) - numbers only, else
+  `TypeMismatchError` (expected `number`).
+- **`divide`** (`execute_arithmetic/2`) - **the zero check runs before the
+  type check**, so a right operand of integer `0` or float `0.0` is
   `EvaluationError` `"division_by_zero"` regardless of the left operand's
   type. Two integers use truncating integer division; any float operand
   uses float division. Otherwise `TypeMismatchError` (expected `number`).
-- **`modulo`** (`:829-837`) - same zero-first ordering as `divide`,
-  `EvaluationError` `"modulo_by_zero"`. **Integers only** - a float operand
-  is `TypeMismatchError` (expected `number`), which is the one place
-  `modulo` diverges from the other four arithmetic opcodes.
-- **`unary_minus`** (`:466`, `:1016`) - number required, else
+- **`modulo`** (`execute_arithmetic/2`) - **integers only**, which is the one
+  place `modulo` diverges from the other four arithmetic opcodes: a float
+  operand is `TypeMismatchError` (expected `number`). A right operand of
+  integer `0` is checked before the type check, as in `divide`, and is
+  `EvaluationError` `"modulo_by_zero"`. There is **no float-zero clause** -
+  unlike `divide`, a right operand of `0.0` is a `TypeMismatchError`, not
+  `"modulo_by_zero"`.
+- **`unary_minus`** (`execute_unary/2`) - number required, else
   `TypeMismatchError` (expected `number`).
-- **`unary_bang`** (`:470`, `:1022`) - boolean required, else
+- **`unary_bang`** (`execute_unary/2`) - boolean required, else
   `TypeMismatchError` (expected `boolean`). Semantically identical to
   `not`; the two differ only in which surface operator produced them and in
   the operation name carried on the error.
-- **`bracket_access`** (`:475`, `:1044`) - pops the key (stack top) then the
-  target. A map accepts a string, atom, or integer key; a list accepts a
-  non-negative integer index. A missing key, an out-of-range index, a
-  negative index, or a target that is neither map nor list all push
-  `:undefined` (`:1060-1094`). A key of any other type is
+- **`bracket_access`** (`execute_bracket_access/1`, `access_value/2`) - pops
+  the key (stack top) then the target. A map accepts a string, atom, or
+  integer key; a list accepts a non-negative integer index. A missing key, an
+  out-of-range index, a negative index, or a target that is neither map nor
+  list all push `:undefined`. A key of any other type is
   `TypeMismatchError` (operation `bracket_access`, expected `string`, the
-  message naming string/integer/atom as the accepted key types)
-  (`:1096-1113`). Fewer than two values on the stack is `EvaluationError`.
-- **`call`** (`:480`, `:1116`) - pops `arg_count` values; the deepest
-  (pushed first) is the first argument. Fewer than `arg_count` values on the
-  stack is `EvaluationError` `"insufficient_arguments"`. An unknown function
-  name, an arity mismatch, a function returning `{:error, message}`, or a
-  function that raises are all `EvaluationError` with operation
-  `function_call` (`:1127-1170`). **The builtin function set is not part of
+  message naming string/integer/atom as the accepted key types).
+  Fewer than two values on the stack is `EvaluationError`.
+- **`call`** (`execute_function_call/3`, `call_function/4`) - pops
+  `arg_count` values; the deepest (pushed first) is the first argument. Fewer
+  than `arg_count` values on the stack is `EvaluationError`
+  `"insufficient_arguments"`. An unknown function name, an arity mismatch, a
+  function returning `{:error, message}`, or a function that raises are all
+  `EvaluationError` with operation
+  `function_call`. **The builtin function set is not part of
   the ISA table** - see [Language Reference](reference/language.md). A
   sibling implements `call` plus whatever functions it chooses to provide;
   the conformance corpus's `functions` tier is where that set is pinned.
-- **`object_new`** (`:486`, `:1289`) - pushes an empty map. No error path.
-- **`object_set`** (`:491`, `:1295`) - pops the value (stack top) and the
-  object beneath it, pushes the object with `key` set to that value. Fewer
+- **`object_new`** (`execute_object_new/1`) - pushes an empty map. No error
+  path.
+- **`object_set`** (`execute_object_set/2`) - pops the value (stack top) and
+  the object beneath it, pushes the object with `key` set to that value. Fewer
   than two values on the stack is `EvaluationError`. **The non-map case is
   unspecified behavior**: the Elixir evaluator does not return a well-formed
   error there today - it crashes rather than returning `{:error, _}` - which
@@ -278,15 +290,16 @@ All line references are to `lib/predicator/evaluator.ex`.
   the non-map case is reachable only from a hand-built instruction list; a
   sibling should treat it as undefined behavior rather than replicate the
   exact failure mode.
-- **`make_list`** (`:497`, `:1311`) - pops `count` values and pushes them as
-  a list **in source order**: the stack holds them reversed, deepest first,
-  and this opcode reverses them back (`:1316`). Fewer than `count` values on
+- **`make_list`** (`execute_make_list/2`) - pops `count` values and pushes
+  them as a list **in source order**: the stack holds them reversed, deepest
+  first, and this opcode reverses them back. Fewer than `count` values on
   the stack is `EvaluationError`. `count` of `0` pushes `[]`. The compiler
   only emits this opcode for a list with at least one non-literal element;
   an all-literal list compiles to a single `["lit", [...]]` instead, which
   is why v1 siblings can still run most list expressions.
-- **`jump_if_falsy_or_pop`** (`:503`, `:1324`) - if the stack top is `false`
-  or `:undefined`, jump to `index + offset`, **leaving the value on the
+- **`jump_if_falsy_or_pop`** (`execute_jump_if_falsy_or_pop/2`,
+  `jump_to/2`) - if the stack top is `false` or `:undefined`, jump to
+  `index + offset`, **leaving the value on the
   stack** as the result of the expression; if it is exactly `true`, pop it
   and fall through to the next instruction; any other value is
   `TypeMismatchError` (expected `boolean`). An empty stack is
@@ -294,7 +307,8 @@ All line references are to `lib/predicator/evaluator.ex`.
   `[["load","a"],["jump_if_falsy_or_pop",2],["load","b"]]` - if `a` is falsy,
   the jump lands past `["load","b"]` and `a`'s value is the result; if `a`
   is `true`, it is popped and `b`'s value becomes the result.
-- **`jump_if_true_or_pop`** (`:509`, `:1344`) - mirror of
+- **`jump_if_true_or_pop`** (`execute_jump_if_true_or_pop/2`, `jump_to/2`) -
+  mirror of
   `jump_if_falsy_or_pop`: jump on exactly `true`, leaving the value on the
   stack; pop and fall through on `false` or `:undefined`; anything else is
   `TypeMismatchError`. Worked example, `a OR b`:
@@ -302,7 +316,7 @@ All line references are to `lib/predicator/evaluator.ex`.
   ECMAScript alignment explicitly: `undefined AND x` short-circuits to
   `:undefined` without evaluating `x`, while `undefined OR x` falls through
   and takes `x`'s value.
-- **`duration`** (`:515`, `:1371`) - pushes a duration map built from the
+- **`duration`** (`execute_duration/2`) - pushes a duration map built from the
   operand's unit pairs. Accepted unit strings, all of them:
   `y`/`year`/`years`, `mo`/`month`/`months`, `w`/`week`/`weeks`,
   `d`/`day`/`days`, `h`/`hour`/`hours`, `m`/`min`/`minute`/`minutes`,
@@ -310,9 +324,9 @@ All line references are to `lib/predicator/evaluator.ex`.
   pairs overwrite earlier ones naming the same unit. An unrecognized unit
   string is `EvaluationError` `"invalid_duration_unit"`; a pair that is not
   `[integer, string]` is `EvaluationError` `"invalid_duration_format"`.
-- **`relative_date`** (`:520`, `:1416`) - pops a duration map, pushes a
-  `DateTime`. `"ago"` and `"last"` subtract the duration from the current
-  time; `"future"` and `"next"` add it. Any other direction string is
+- **`relative_date`** (`execute_relative_date/2`) - pops a duration map,
+  pushes a `DateTime`. `"ago"` and `"last"` subtract the duration from the
+  current time; `"future"` and `"next"` add it. Any other direction string is
   `EvaluationError` `"invalid_direction"`; a non-map on top of the stack is
   `EvaluationError` `"invalid_stack_value"`; an empty stack is
   `EvaluationError` insufficient operands. **The result depends on the
@@ -345,6 +359,10 @@ What a reader might expect to find here and will not:
 |---|---|---|
 | v1 | everything not listed below | up to 3.6.x |
 | v2 | `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list` | 3.7.0 |
+
+This table records the release each opcode was *introduced* in. A version's
+semantics can be refined in a later release without a new opcode and without
+a new ISA version - 3.8.0 did exactly that to v2, as noted in §1.
 
 ISA v1 is defined as the full opcode set the Elixir evaluator accepted
 before ADR-0001. A sibling declaring v1 support is claiming that whole set;
