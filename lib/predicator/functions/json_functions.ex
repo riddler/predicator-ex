@@ -32,32 +32,41 @@ defmodule Predicator.Functions.JSONFunctions do
     }
   end
 
+  # JSON.encode!/1 raises for anything it cannot represent - tuples, PIDs,
+  # refs, funs, non-string map keys, invalid UTF-8. All of those fall back to
+  # inspect/1, which is what a predicate has always seen for such values.
   defp call_stringify([value], _context) do
-    case Jason.encode(value) do
-      {:ok, json} ->
-        {:ok, json}
-
-      {:error, _encode_error} ->
-        # For values that can't be JSON encoded, convert to string
-        {:ok, inspect(value)}
-    end
+    {:ok, JSON.encode!(value)}
   rescue
-    error -> {:error, "JSON.stringify failed: #{Exception.message(error)}"}
+    _error -> {:ok, inspect(value)}
   end
 
   defp call_parse([json_string], _context) when is_binary(json_string) do
-    case Jason.decode(json_string) do
+    case JSON.decode(json_string) do
       {:ok, value} ->
         {:ok, value}
 
-      {:error, error} ->
-        {:error, "Invalid JSON: #{Exception.message(error)}"}
+      {:error, reason} ->
+        {:error, "Invalid JSON: #{describe_decode_error(reason)}"}
     end
-  rescue
-    error -> {:error, "JSON.parse failed: #{Exception.message(error)}"}
   end
 
   defp call_parse([_value], _context) do
     {:error, "JSON.parse expects a string argument"}
+  end
+
+  # JSON.decode/1 reports failures as bare tuples rather than exception
+  # structs, so there is no Exception.message/1 to lean on. The inspect/1
+  # fallback keeps an unrecognized future shape readable instead of raising.
+  defp describe_decode_error({:invalid_byte, position, byte}) do
+    "unexpected byte 0x#{Base.encode16(<<byte>>)} at position #{position}"
+  end
+
+  defp describe_decode_error({:unexpected_end, position}) do
+    "unexpected end of input at position #{position}"
+  end
+
+  defp describe_decode_error(reason) do
+    inspect(reason)
   end
 end

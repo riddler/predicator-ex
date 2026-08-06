@@ -28,6 +28,8 @@ def deps do
 end
 ```
 
+Predicator requires Elixir 1.18 or later and has no runtime dependencies.
+
 ## Quick Start
 
 ```elixir

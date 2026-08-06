@@ -111,7 +111,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         )
 
       # Parse it back to verify it's valid JSON
-      {:ok, parsed} = Jason.decode(result)
+      {:ok, parsed} = JSON.decode(result)
       assert parsed == data
     end
 
@@ -211,6 +211,65 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
       assert String.contains?(message, "expects a string")
     end
 
+    test "JSON.stringify falls back to inspect for unencodable values",
+         %{functions: functions} do
+      {:ok, result} =
+        Predicator.evaluate(
+          "JSON.stringify(value)",
+          %{"value" => self()},
+          functions: functions
+        )
+
+      assert result == inspect(self())
+    end
+
+    test "JSON.stringify falls back to inspect for invalid UTF-8",
+         %{functions: functions} do
+      bad = <<0xFF, 0xFE>>
+
+      {:ok, result} =
+        Predicator.evaluate(
+          "JSON.stringify(value)",
+          %{"value" => bad},
+          functions: functions
+        )
+
+      assert result == inspect(bad)
+    end
+
+    test "JSON.stringify falls back to inspect for tuples", %{functions: functions} do
+      {:ok, result} =
+        Predicator.evaluate(
+          "JSON.stringify(value)",
+          %{"value" => {1, 2}},
+          functions: functions
+        )
+
+      assert result == inspect({1, 2})
+    end
+
+    test "JSON.parse names the offending byte and position", %{functions: functions} do
+      {:error, %{message: message}} =
+        Predicator.evaluate(
+          "JSON.parse(json)",
+          %{"json" => "not json"},
+          functions: functions
+        )
+
+      assert String.contains?(message, "Invalid JSON: unexpected byte 0x6F at position 1")
+    end
+
+    test "JSON.parse names truncated input", %{functions: functions} do
+      {:error, %{message: message}} =
+        Predicator.evaluate(
+          "JSON.parse(json)",
+          %{"json" => ~s({"a":)},
+          functions: functions
+        )
+
+      assert String.contains?(message, "Invalid JSON: unexpected end of input at position 5")
+    end
+
     test "round-trip JSON stringify and parse", %{functions: functions} do
       original = %{"user" => "Alice", "items" => [1, 2, 3], "active" => true}
 
@@ -246,7 +305,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
           functions: functions
         )
 
-      {:ok, parsed} = Jason.decode(result)
+      {:ok, parsed} = JSON.decode(result)
       # 85^2
       assert parsed == %{"name" => "Alice", "total" => 7225.0}
     end
