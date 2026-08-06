@@ -53,7 +53,7 @@ period.
 - **Lexer** (`lib/predicator/lexer.ex`): Tokenizes expressions with position tracking
 - **Parser** (`lib/predicator/parser.ex`): Recursive descent parser building AST
 - **Compiler** (`lib/predicator/compiler.ex`): Converts AST to executable instructions  
-- **Evaluator** (`lib/predicator/evaluator.ex`): Executes instructions against data
+- **Evaluator** (`lib/predicator/evaluator.ex`): Executes instructions against data. See [`docs/isa.md`](isa.md) for the instruction set specification.
 - **Visitors** (`lib/predicator/visitors/`): AST transformation modules
   - **StringVisitor**: Converts AST back to strings
   - **InstructionsVisitor**: Converts AST to executable instructions
@@ -85,14 +85,17 @@ The ISA is versioned, and each sibling declares the version it supports and
 adopts a newer one on its own schedule. **A sibling running behind the current
 ISA version is an expected, documented state - not a defect.** ADR-0001 added
 four opcodes (`jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`,
-`store`) that the siblings do not yet implement; the Elixir side ships the
-first two as of 3.7.0, so `AND` and `OR` short-circuit here, and a compiled
-instruction list containing `jump_if_falsy_or_pop` or `jump_if_true_or_pop`
-will not run on a sibling that hasn't adopted them. See
+`store`) to the ISA, of which `store` is not yet implemented by any evaluator,
+Elixir or sibling - see [`docs/isa.md`](isa.md)'s "Not in the ISA" section; the
+siblings do not yet implement the other three either. The Elixir side ships
+`jump_if_falsy_or_pop` and `jump_if_true_or_pop` as of 3.7.0, so `AND` and `OR`
+short-circuit here, and a compiled instruction list containing either will not
+run on a sibling that hasn't adopted them. See
 [ADR-0003](adr/0003-the-elixir-implementation-leads-the-isa.md) for why
 sibling parity is a downstream obligation rather than a gate on changes made
-here, and [ADR-0001](adr/0001-keep-the-stack-vm-revise-the-instruction-set.md)
-for the opcodes themselves.
+here, [ADR-0001](adr/0001-keep-the-stack-vm-revise-the-instruction-set.md) for
+the opcodes themselves, and [`docs/isa.md`](isa.md) for the specification each
+ISA version refers to.
 
 ISA versions are integers and do not track this library's version: v2 has been
 landing across 3.7.0 and 3.8.0. An additive ISA version ships in a minor
