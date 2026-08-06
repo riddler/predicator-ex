@@ -203,11 +203,32 @@ reference survives an edit above it.
   - `Date`/`Date` and `DateTime`/`DateTime` compare chronologically, never
     by struct-key order; a mixed `Date`/`DateTime` pair coerces the `Date`
     to 00:00:00 UTC before comparing.
-  - A type-mismatched pair under a non-strict operator pushes `:undefined` -
-    it is **not** an error.
+  - **Every other pair must be type-matched**, where "matched" means both
+    numbers, both booleans, both strings, both lists, or both plain maps
+    (`types_match/2`). Integer and float are the same type for this purpose,
+    so `1 < 2.0` compares and `1 == 1.0` is `true` - while `STRICT_EQ` on
+    that same pair is `false`, because strict equality does not bridge
+    integer and float. This is the one place the two equality families
+    disagree on numbers, and it is worth a conformance case.
+  - **A type-mismatched pair under a non-strict operator pushes
+    `:undefined`** - it is **not** an error. `1 > "a"` is `:undefined`, and
+    so is `true == 1`.
+  - Ordering on a matched pair, by type:
+    - **numbers** - numeric order.
+    - **strings** - lexicographic by Unicode codepoint, comparing the UTF-8
+      bytes. Not a locale collation: no case folding, no accent folding.
+    - **booleans** - `false < true`.
+    - **lists** - element-wise, comparing the first position where the two
+      differ; a proper prefix sorts before the longer list.
+    - **maps** - the Elixir reference implementation orders these by Erlang
+      term order (size first, then sorted keys, then values). **A sibling
+      should treat ordering comparisons between two maps as unspecified**
+      rather than reproduce that rule; the conformance corpus does not
+      exercise them. `EQ`/`NE`/`STRICT_EQ`/`STRICT_NE` on two maps are
+      well-defined and portable - only `GT`/`LT`/`GTE`/`LTE` are not.
   - Fewer than two values on the stack is `EvaluationError`.
-- **`and`, `or`** - **legacy: accepted but never emitted by
-  the compiler.** Both operands must be booleans; anything else, including
+- **`and`, `or`** - **legacy: accepted but never emitted by the
+  compiler.** Both operands must be booleans; anything else, including
   `:undefined`, is `TypeMismatchError` with operation `logical_and` /
   `logical_or` and expected type `boolean`. They do
   not short-circuit: both operands are already on the stack by the time
