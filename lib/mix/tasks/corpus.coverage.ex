@@ -1,0 +1,121 @@
+defmodule Mix.Tasks.Corpus.Coverage do
+  @shortdoc "Reports opcode/pattern gaps between the ExUnit suite and the corpus"
+
+  @moduledoc """
+  Prints a checklist of behaviors the existing ExUnit suite exercises that
+  the shipped conformance corpus does not (`px-35i.4` Phase 6).
+
+  The corpus is authored JSON completed by the real pipeline, not extracted
+  from the suite (see `docs/plans/260807-px-35i.4-conformance-corpus.md`'s
+  "The generation mechanism" section) - so nothing else tells an author what
+  the 16k-line suite exercises that the corpus does not. This task closes
+  that loop, using the existing suite as an authoring checklist rather than
+  as the corpus's source of truth.
+
+  ## What it does
+
+  1. Reads every `test/**/*.exs` file **except** `test/predicator/conformance/**`
+     (the corpus's own test suite, not "the existing suite" this task
+     checklists) and statically extracts literal `Predicator.evaluate/2,3` and
+     `Predicator.compile/1` source strings via
+     `Predicator.Conformance.Coverage.extract_sources/1`.
+  2. Compiles each extracted source through the real compiler and counts
+     opcode/operand patterns via
+     `Predicator.Conformance.Coverage.suite_pattern_frequencies/1`.
+  3. Reads the shipped `conformance/corpus/tier-*.json` cases and computes the
+     same patterns via `corpus_pattern_frequencies/1`.
+  4. Diffs the two and prints every pattern the suite hits more than the
+     corpus, grouped by tier.
+
+  This is dev-only tooling: it never writes a conformance case, never touches
+  `conformance/cases/`, and never fails the gate - a wide report is expected
+  and is not itself a failure. It is a **heuristic** report (see
+  `Predicator.Conformance.Coverage`'s moduledoc for exactly what it can and
+  cannot see); its top entries need a human read before being authored as
+  cases, since some will be Elixir-internal test scaffolding rather than
+  genuine corpus gaps.
+
+  ## Usage
+
+      mix corpus.coverage
+  """
+
+  use Mix.Task
+
+  alias Predicator.Conformance.Coverage
+
+  @test_glob "test/**/*.exs"
+  @excluded_prefix "test/predicator/conformance/"
+  @corpus_glob "conformance/corpus/tier-*.json"
+
+  @impl Mix.Task
+  @spec run([String.t()]) :: :ok
+  def run(_args) do
+    sources = suite_sources()
+
+    suite_freqs =
+      with_deprecation_warnings_silenced(fn -> Coverage.suite_pattern_frequencies(sources) end)
+
+    corpus_freqs = Coverage.corpus_pattern_frequencies(corpus_cases())
+    gaps = Coverage.diff(suite_freqs, corpus_freqs)
+
+    Mix.shell().info(
+      "Scanned #{length(suite_test_files())} suite file(s), extracted #{length(sources)} " <>
+        "literal source(s) (#{map_size(suite_freqs)} distinct pattern(s))."
+    )
+
+    Mix.shell().info("")
+    Mix.shell().info(Coverage.format_report(gaps))
+  end
+
+  @spec suite_sources() :: [String.t()]
+  defp suite_sources do
+    suite_test_files()
+    |> Enum.flat_map(fn path -> path |> File.read!() |> Coverage.extract_sources() end)
+    |> Enum.uniq()
+  end
+
+  @spec suite_test_files() :: [String.t()]
+  defp suite_test_files do
+    @test_glob
+    |> Path.wildcard()
+    |> Enum.reject(&String.starts_with?(&1, @excluded_prefix))
+    |> Enum.sort()
+  end
+
+  @spec corpus_cases() :: [map()]
+  defp corpus_cases do
+    @corpus_glob
+    |> Path.wildcard()
+    |> Enum.sort()
+    |> Enum.flat_map(&decode_corpus_file/1)
+  end
+
+  @spec decode_corpus_file(String.t()) :: [map()]
+  defp decode_corpus_file(path) do
+    path
+    |> File.read!()
+    |> String.split("\n", trim: true)
+    |> Enum.map(&JSON.decode!/1)
+  end
+
+  # Many suite sources deliberately use the deprecated `=` equality operator
+  # (ADR-0002); compiling ~500 of them at once is noisy without this. Purely
+  # cosmetic - it never changes what a source compiles to - so the previous
+  # setting is restored once this task's own compilation pass is done rather
+  # than left flipped for the rest of the VM.
+  @spec with_deprecation_warnings_silenced((-> result)) :: result when result: var
+  defp with_deprecation_warnings_silenced(fun) do
+    previous = Application.get_env(:predicator, :deprecation_warnings)
+    Application.put_env(:predicator, :deprecation_warnings, false)
+
+    try do
+      fun.()
+    after
+      case previous do
+        nil -> Application.delete_env(:predicator, :deprecation_warnings)
+        value -> Application.put_env(:predicator, :deprecation_warnings, value)
+      end
+    end
+  end
+end

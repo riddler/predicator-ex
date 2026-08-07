@@ -90,6 +90,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   case without an Elixir toolchain, and the known-uncovered list. `docs/isa.md`
   now points at `conformance/README.md` as the spec's executable form.
 
+- **`mix corpus.coverage`** (`px-35i.4` Phase 6). The corpus is authored, not
+  extracted from the existing ExUnit suite, so nothing else tells an author
+  what that suite exercises that the corpus does not. This dev-only task
+  statically scans `test/**/*.exs` (excluding the corpus's own test suite)
+  for literal `Predicator.evaluate/2,3` and `Predicator.compile/1` sources,
+  compiles each through the real compiler, and diffs the resulting opcode/
+  operand patterns against the shipped corpus's own instructions, printing a
+  checklist of gaps grouped by tier. `Predicator.Conformance.Coverage` holds
+  the diffing logic; report only, it never writes a case and never fails the
+  gate.
+
 ### Documentation
 
 - **`docs/isa.md`: the ISA reference.** The single specification of
