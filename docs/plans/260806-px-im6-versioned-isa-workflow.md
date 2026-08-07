@@ -574,36 +574,62 @@ Recorded per the "no human available" invariant rather than resolved.
 
 ## Deferred Manual Verification
 
+All items below were verified against the branch at `7c3f98e`. Each records
+what was checked, so a reviewer can re-check the claim rather than re-derive it.
+
 ### Phase 1: Reframe the CLAUDE.md anchor
-- [ ] The "Read before making design decisions" list still reads as a list of
-      four things to read, not a paragraph of policy
-- [ ] No em dashes or non-ASCII punctuation introduced into `CLAUDE.md`
+- [x] The "Read before making design decisions" list still reads as a list of
+      four things to read, not a paragraph of policy - it is a **three**-bullet
+      list (`docs/architecture.md`, `docs/adr/`, `docs/isa.md`) followed by a
+      separate framing paragraph. The plan's "four" counted that paragraph as a
+      fourth entry; the list/paragraph split is the property that mattered and
+      it holds
+- [x] No em dashes or non-ASCII punctuation introduced into `CLAUDE.md` - the
+      only non-ASCII byte in the file is `façade` at line 169, present on
+      `origin/main` and untouched by this branch
 
 ### Phase 2: Rename Cross-Language Impact to ISA Impact
-- [ ] The `## ISA Impact` block in `/create-plan`'s template is the only full
-      copy of the three questions; the other two files point at it
-- [ ] `/create-plan`'s Pre-Write Checklist and its template still name the same
-      section (they are ~500 lines apart and drift easily)
-- [ ] Markdown fences and list nesting inside the template block are intact -
-      the block sits inside a fenced ````markdown` example
+- [x] The `## ISA Impact` block in `/create-plan`'s template is the only full
+      copy of the three questions; the other two files point at it -
+      `iterate-plan` says "link by name, don't restate the three questions",
+      and `research-codebase`'s template section is a three-line abbreviation
+      that defers to `docs/isa.md`
+- [x] `/create-plan`'s Pre-Write Checklist and its template still name the same
+      section - all four references agree on `ISA Impact` (the optional-section
+      list, the template heading, the Step-summary line, and the checklist item)
+- [x] Markdown fences and list nesting inside the template block are intact -
+      the ISA Impact heading sits inside the ````markdown` fence, and the inner
+      ```` ```elixir ```` block nests correctly within it
 
 ### Phase 3: Rekey sizing and triage on the ISA version
-- [ ] `/work`'s bucket table (line ~109) and the sizing rule beneath it still
-      agree with each other after the edit
-- [ ] The new "handling without an opcode change is not a bump" carve-out does
-      not accidentally license a just-do-it for evaluator semantics changes -
-      those are still multi-area and land in Plan-only by the area rule
+- [x] `/work`'s bucket table and the sizing rule beneath it still agree with
+      each other after the edit - the Direction row still claims
+      "instruction-set questions" and the rule routes an ISA bump to Direction
+      or Plan-only
+- [x] The new "handling without an opcode change is not a bump" carve-out does
+      not accidentally license a just-do-it for evaluator semantics changes.
+      The carve-out ends "sizes like any other change", so the area rule still
+      applies; and `/create-plan`'s ISA Impact block settles the harder case
+      directly - "an opcode's semantics never change under its own name: a
+      different answer from an existing form is a new name" - which makes a
+      semantics change an opcode change, hence a bump. **Note:** that second
+      step is a one-hop dependency on another file; `/work` does not restate
+      it. Tightening the carve-out in place would be a small follow-up
 
 ### Phase 4: Rekey the reporting skills
-- [ ] `/implement-plan`'s pointer at `## ISA Impact` matches the section name
+- [x] `/implement-plan`'s pointer at `## ISA Impact` matches the section name
       Phase 2 established
-- [ ] `/merge-request`'s Notes bullet still reads as one bullet in a four-bullet
-      list, not as a paragraph
+- [x] `/merge-request`'s Notes bullet still reads as one bullet in a
+      four-bullet list (Why / What / Notes / bead references), not as a
+      paragraph
 
 ### Phase 5: Reframe the research agents and sweep
-- [ ] `codebase-pattern-finder.md`'s sibling bullet was left alone (it makes no
-      parity claim) and still reads correctly beside the reframed agents
-- [ ] No skill anywhere describes a lagging sibling as a blocker - read the four
-      reporting/sizing bullets end to end, not just the greps
-- [ ] `CHANGELOG.md` needs no entry: this is agent-workflow tooling, not a
-      user-facing library change
+- [x] `codebase-pattern-finder.md`'s sibling bullet was left alone - the file
+      does not appear in `git diff origin/main..HEAD --name-only`, and its
+      bullet only says the siblings live outside this repo, which is still true
+- [x] No skill anywhere describes a lagging sibling as a blocker - every
+      surviving mention was read end to end, and the two that discuss adoption
+      (`/create-plan`'s template, `/merge-request`'s Notes bullet) both state
+      explicitly that a lagging sibling is not a blocker
+- [x] `CHANGELOG.md` needs no entry - the branch touches no file under `lib/`
+      or `test/`, so nothing user-facing changed
