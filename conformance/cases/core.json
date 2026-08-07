@@ -1,0 +1,60 @@
+[
+  {
+    "id": "core/literal-integer",
+    "source": "42",
+    "expected": { "result": 42 },
+    "notes": "the simplest possible tier-1 case: a bare literal, no context"
+  },
+  {
+    "id": "core/literal-true",
+    "source": "true",
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/gt-int-true",
+    "source": "score > 85",
+    "context": { "score": 90 },
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/gt-int-false",
+    "source": "score > 85",
+    "context": { "score": 80 },
+    "expected": { "result": false },
+    "notes": "boundary is exclusive; see comparison/gt-int-boundary"
+  },
+  {
+    "id": "comparison/gt-int-boundary",
+    "source": "score > 85",
+    "context": { "score": 85 },
+    "expected": { "result": false },
+    "notes": "85 is not > 85 - the boundary is exclusive"
+  },
+  {
+    "id": "comparison/loose-eq-int-float",
+    "source": "1 == 1.0",
+    "expected": { "result": true },
+    "notes": "docs/isa.md: loose equality compares by numeric value across int/float"
+  },
+  {
+    "id": "comparison/strict-eq-int-float-false",
+    "source": "1 === 1.0",
+    "expected": { "result": false },
+    "notes": "docs/isa.md: strict equality also requires matching type, unlike =="
+  },
+  {
+    "id": "logical/and-short-circuit-false",
+    "source": "false and true",
+    "expected": { "result": false }
+  },
+  {
+    "id": "logical/or-short-circuit-true",
+    "source": "true or false",
+    "expected": { "result": true }
+  },
+  {
+    "id": "logical/not-true",
+    "source": "not true",
+    "expected": { "result": false }
+  }
+]

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riddler/predicator-ex/conformance/schema/case.json",
+  "title": "Predicator conformance authored case",
+  "description": "An authored case in conformance/cases/*.json, before mix corpus.generate completes it. See conformance/README.md for the full field-by-field contract.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Human-chosen, path-like, globally unique, stable forever. Never renamed once shipped.",
+      "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*(?:/[a-z0-9]+(?:[-_][a-z0-9]+)*)*$"
+    },
+    "source": {
+      "type": ["string", "null"],
+      "description": "A predicator expression. Exactly one of source or instructions is present (non-null)."
+    },
+    "instructions": {
+      "type": "array",
+      "description": "A raw instruction list, for evaluator-only cases no source compiles to (e.g. the legacy [\"and\"]/[\"or\"] opcodes). Exactly one of source or instructions is present (non-null).",
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": true
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "Variable bindings, tagged-value encoded. Defaults to {}.",
+      "default": {}
+    },
+    "expected": {
+      "type": "object",
+      "description": "An assertion, checked against the real compiler/evaluator's computed result at generation time. Generation fails loudly on disagreement.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "result": {
+              "description": "The expected evaluation result, tagged-value encoded."
+            }
+          },
+          "required": ["result"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "The error struct's short module name, e.g. \"TypeMismatchError\"."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "A structured reason token. Normative. The error message is never carried."
+                }
+              },
+              "required": ["type", "reason"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["error"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "tier": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "An assertion. Computed as max(tier(opcode)) over the case's instructions; disagreement fails generation naming the case and the forcing opcode."
+    },
+    "features": {
+      "type": "array",
+      "description": "Extra feature tags merged with the computed set. Not a replacement for the computed tags.",
+      "items": { "type": "string" }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free text carried into the shipped corpus. JSON has no comments; this is the substitute."
+    }
+  },
+  "required": ["id"],
+  "additionalProperties": false
+}
