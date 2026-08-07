@@ -102,8 +102,8 @@ a green gate that never ran.
      visitors)
    - What bugs were fixed
    - What was refactored or improved internally
-   - Whether the instruction set changed - that is cross-language interchange
-     (ADR-0001) and belongs in the message
+   - Whether the ISA moved, and to what version - a bump belongs in the message
+     (ADR-0003)
 
 ### Step 1.5: Detect Related Beads Issue
 
