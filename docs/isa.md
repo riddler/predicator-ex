@@ -31,8 +31,24 @@ than re-arguing it.
 - Adding an operand form or widening an accepted type is a new version but
   not a new name.
 - An additive version - new opcodes only, every existing instruction list
-  still valid - ships in a minor release. Retiring an opcode invalidates
-  stored artifacts and takes a major release plus an upgrade path.
+  still valid - ships in a minor release.
+- **Retirement mints the next ISA integer**, in addition to taking a major
+  library release and an upgrade path. The integer moves because a build that
+  no longer runs an opcode must be distinguishable from one that does -
+  without it, the version stamp reports a list runnable that the build will
+  refuse.
+- **A version's opcode set is a half-open interval.** Each opcode is
+  introduced at one version and, if ever retired, removed at another;
+  version *v*'s set is every opcode with `introduced <= v < removed_in`. A
+  version's set is fixed once minted - retiring at v3 does not change what v2
+  was - so a sibling declaring v2 claims v2's whole set, retired opcodes
+  included.
+- The check a consumer performs is membership in
+  `Predicator.Instructions.opcode_set/1` for this build's version, not a bare
+  comparison against `required_isa/1`'s result: `required_isa/1` still names
+  the version an instruction list needs, and `retired_in/1` names the version
+  that removed an opcode, and together they are what lets a refusal name a
+  version rather than say "unknown opcode".
 - A sibling behind the current version is an expected, documented state.
   Each sibling publishes the version it supports in its own repository; this
   document maintains no support matrix.
@@ -109,9 +125,11 @@ tagged-value JSON encoding is `px-35i.4`'s concern, not restated here.
 
 ## 4. The opcode table
 
-One row per opcode the evaluator accepts, including opcodes the compiler no
-longer emits. Columns: **Opcode**, **Operands**, **Pops**, **Pushes**,
-**ISA**, **Tier**, **Emitted by compiler**.
+One row per opcode the ISA has ever contained, including opcodes the
+compiler no longer emits and opcodes a later version retired. A retired
+opcode keeps its row so the version scan stays total. Columns: **Opcode**,
+**Operands**, **Pops**, **Pushes**, **ISA**, **Tier**, **Emitted by
+compiler**, **Removed in**.
 
 Error semantics are not a table column: several opcodes have three or four
 distinct error paths, more than a cell can carry cleanly. See the per-opcode
@@ -144,38 +162,52 @@ feature tags, not by tiers.
 
 ### Opcodes
 
-| Opcode | Operands | Pops | Pushes | ISA | Tier | Emitted by compiler |
-|---|---|---|---|---|---|---|
-| `lit` | value | 0 | 1 | v1 | 1 | yes |
-| `load` | name (string) | 0 | 1 | v1 | 1 | yes |
-| `access` | property (string) | 1 | 1 | v1 | 3 | yes |
-| `compare` | operator (string) | 2 | 1 | v1 | 1 | yes |
-| `and` | - | 2 | 1 | v1 | 1 | no |
-| `or` | - | 2 | 1 | v1 | 1 | no |
-| `not` | - | 1 | 1 | v1 | 1 | yes |
-| `in` | - | 2 | 1 | v1 | 3 | yes |
-| `contains` | - | 2 | 1 | v1 | 3 | yes |
-| `add` | - | 2 | 1 | v1 | 2 | yes |
-| `subtract` | - | 2 | 1 | v1 | 2 | yes |
-| `multiply` | - | 2 | 1 | v1 | 2 | yes |
-| `divide` | - | 2 | 1 | v1 | 2 | yes |
-| `modulo` | - | 2 | 1 | v1 | 2 | yes |
-| `unary_minus` | - | 1 | 1 | v1 | 1 | yes |
-| `unary_bang` | - | 1 | 1 | v1 | 1 | yes |
-| `bracket_access` | - | 2 | 1 | v1 | 3 | yes |
-| `call` | name (string), arg_count (int >= 0) | arg_count | 1 | v1 | 5 | yes |
-| `object_new` | - | 0 | 1 | v1 | 4 | yes |
-| `object_set` | key (string) | 2 | 1 | v1 | 4 | yes |
-| `make_list` | count (int >= 0) | count | 1 | v2 | 3 | yes |
-| `jump_if_falsy_or_pop` | offset (int > 0) | 0 or 1 | 0 | v2 | 1 | yes |
-| `jump_if_true_or_pop` | offset (int > 0) | 0 or 1 | 0 | v2 | 1 | yes |
-| `duration` | units (list of `[int, string]`) | 0 | 1 | v1 | 4 | yes |
-| `relative_date` | direction (string) | 1 | 1 | v1 | 4 | yes |
+| Opcode | Operands | Pops | Pushes | ISA | Tier | Emitted by compiler | Removed in |
+|---|---|---|---|---|---|---|---|
+| `lit` | value | 0 | 1 | v1 | 1 | yes | - |
+| `load` | name (string) | 0 | 1 | v1 | 1 | yes | - |
+| `access` | property (string) | 1 | 1 | v1 | 3 | yes | - |
+| `compare` | operator (string) | 2 | 1 | v1 | 1 | yes | - |
+| `and` | - | 2 | 1 | v1 | 1 | no | - |
+| `or` | - | 2 | 1 | v1 | 1 | no | - |
+| `not` | - | 1 | 1 | v1 | 1 | yes | - |
+| `in` | - | 2 | 1 | v1 | 3 | yes | - |
+| `contains` | - | 2 | 1 | v1 | 3 | yes | - |
+| `add` | - | 2 | 1 | v1 | 2 | yes | - |
+| `subtract` | - | 2 | 1 | v1 | 2 | yes | - |
+| `multiply` | - | 2 | 1 | v1 | 2 | yes | - |
+| `divide` | - | 2 | 1 | v1 | 2 | yes | - |
+| `modulo` | - | 2 | 1 | v1 | 2 | yes | - |
+| `unary_minus` | - | 1 | 1 | v1 | 1 | yes | - |
+| `unary_bang` | - | 1 | 1 | v1 | 1 | yes | - |
+| `bracket_access` | - | 2 | 1 | v1 | 3 | yes | - |
+| `call` | name (string), arg_count (int >= 0) | arg_count | 1 | v1 | 5 | yes | - |
+| `object_new` | - | 0 | 1 | v1 | 4 | yes | - |
+| `object_set` | key (string) | 2 | 1 | v1 | 4 | yes | - |
+| `make_list` | count (int >= 0) | count | 1 | v2 | 3 | yes | - |
+| `jump_if_falsy_or_pop` | offset (int > 0) | 0 or 1 | 0 | v2 | 1 | yes | - |
+| `jump_if_true_or_pop` | offset (int > 0) | 0 or 1 | 0 | v2 | 1 | yes | - |
+| `duration` | units (list of `[int, string]`) | 0 | 1 | v1 | 4 | yes | - |
+| `relative_date` | direction (string) | 1 | 1 | v1 | 4 | yes | - |
 
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` pop 0 or 1 values and push
 0: on the taken branch they leave the value on the stack (net 0 change), and
 on the fall-through branch they pop it and execution continues into the next
 instruction, which pushes its own value. Neither jump itself ever pushes.
+
+### Retired opcodes
+
+An opcode's **Removed in** cell holds `-` for a live opcode or `vN` for one
+retired at ISA v*N*. That marker is the ISA version that removed the opcode,
+not a library version (§1). A retired opcode keeps its row in this table, its
+entry in `Predicator.Instructions`'s opcode map, and its membership in the
+tier-names table above; it loses exactly one thing, its
+`execute_instruction/2` clause in the evaluator. `required_isa/1` and
+`tier/1` keep answering for it with a version rather than falling back to
+`unknown_opcode`. The conformance corpus keeps a retired opcode's cases too,
+with frozen expectations rather than ones the evaluator recomputes - see §8
+and [`conformance/README.md`](../conformance/README.md). Retiring an opcode
+still requires an upgrade path (ADR-0003).
 
 ## 5. Per-opcode semantics and errors
 
@@ -380,14 +412,17 @@ What a reader might expect to find here and will not:
 
 ## 7. Version history
 
-| ISA | Opcodes introduced | Shipped in |
-|---|---|---|
-| v1 | everything not listed below | up to 3.6.x |
-| v2 | `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list` | 3.7.0 |
+| ISA | Opcodes introduced | Opcodes retired | Shipped in |
+|---|---|---|---|
+| v1 | everything not listed below | - | up to 3.6.x |
+| v2 | `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list` | - | 3.7.0 |
 
-This table records the release each opcode was *introduced* in. A version's
-semantics can be refined in a later release without a new opcode and without
-a new ISA version - 3.8.0 did exactly that to v2, as noted in §1.
+This table records the release each opcode was *introduced* in, and, once any
+opcode has been retired, the release each was *removed* in - both ends of the
+interval §1 defines. A version whose only change is a retirement still gets a
+row here. A version's semantics can also be refined in a later release
+without a new opcode and without a new ISA version - 3.8.0 did exactly that
+to v2, as noted in §1.
 
 ISA v1 is defined as the full opcode set the Elixir evaluator accepted
 before ADR-0001. A sibling declaring v1 support is claiming that whole set;

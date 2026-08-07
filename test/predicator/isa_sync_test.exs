@@ -20,10 +20,13 @@ defmodule Predicator.IsaSyncTest do
 
   alias Predicator.Instructions
 
-  # The opcode set is 25 (docs/isa.md section 4; lib/predicator/evaluator.ex
-  # execute_instruction/2 clause heads at :371-509). Both parsing tests guard
-  # against a regex that silently matches nothing - and passes vacuously - by
-  # asserting this literal count rather than only "non-empty".
+  # The opcode *table* size is 25 (docs/isa.md section 4) - retired rows
+  # included, since a retired opcode keeps its row (docs/isa.md section 4,
+  # "Retired opcodes"). The evaluator clause-head count is derived from this
+  # via opcode_set/1 below rather than asserted against this literal, because
+  # that surface shrinks on retirement while the table does not. Both parsing
+  # tests guard against a regex that silently matches nothing - and passes
+  # vacuously - by asserting this literal count rather than only "non-empty".
   @opcode_count 25
 
   describe "docs/isa.md section 4 table versus the opcode map" do
@@ -59,13 +62,55 @@ defmodule Predicator.IsaSyncTest do
 
     test "isa_version/0 is the maximum version in the table", %{isa_doc: isa_doc} do
       rows = parse_isa_table(isa_doc)
-      max_table_version = rows |> Enum.map(&elem(&1, 1)) |> Enum.max()
+      introduced_versions = Enum.map(rows, &elem(&1, 1))
+
+      # A retirement-only version mints the next ISA integer without
+      # introducing any opcode at it (docs/isa.md section 1), so it appears
+      # nowhere in column 5 (ISA) - only in column 8 (Removed in). The
+      # maximum must therefore be taken over both columns, or isa_version/0
+      # could move ahead of this assertion with no way for it to notice.
+      removed_versions =
+        isa_doc
+        |> parse_removed_column()
+        |> Enum.map(&elem(&1, 1))
+        |> Enum.reject(&is_nil/1)
+
+      max_table_version = Enum.max(introduced_versions ++ removed_versions)
 
       assert Instructions.isa_version() == max_table_version
     end
 
     test "section 1's current-version line agrees with isa_version/0", %{isa_doc: isa_doc} do
       assert isa_doc =~ "Current version: **ISA v#{Instructions.isa_version()}**."
+    end
+  end
+
+  describe "docs/isa.md section 4 table's Removed in column versus retired_in/1" do
+    setup do
+      {:ok, isa_doc: File.read!("docs/isa.md")}
+    end
+
+    test "every row's Removed in cell agrees with retired_in/1", %{isa_doc: isa_doc} do
+      rows = parse_removed_column(isa_doc)
+
+      assert rows != [],
+             "the docs/isa.md section 4 Removed-in column regex matched no " <>
+               "rows - it likely needs updating to match the table's current " <>
+               "column layout"
+
+      assert length(rows) == @opcode_count,
+             "expected #{@opcode_count} opcode rows with a Removed-in cell " <>
+               "in docs/isa.md section 4, got #{length(rows)}: " <>
+               "#{inspect(Enum.map(rows, &elem(&1, 0)))}"
+
+      for {opcode, removed_in} <- rows do
+        assert Instructions.retired_in(opcode) == {:ok, removed_in},
+               "docs/isa.md lists `#{opcode}`'s Removed in cell as " <>
+                 "#{inspect(removed_in)}, but " <>
+                 "Predicator.Instructions.retired_in/1 disagrees - update " <>
+                 "the @opcodes map in lib/predicator/instructions.ex (or " <>
+                 "the table, if the table is the one that's wrong)"
+      end
     end
   end
 
@@ -112,18 +157,39 @@ defmodule Predicator.IsaSyncTest do
     test "every execute_instruction/2 clause head opcode is a known opcode", %{
       evaluator_src: evaluator_src
     } do
-      opcodes = parse_evaluator_opcodes(evaluator_src)
+      clause_head_opcodes = parse_evaluator_opcodes(evaluator_src)
 
-      assert opcodes != MapSet.new(),
+      assert clause_head_opcodes != MapSet.new(),
              "the evaluator.ex clause-head regex matched no opcodes - it likely " <>
                "needs updating to match execute_instruction/2's current shape"
 
-      assert MapSet.size(opcodes) == @opcode_count,
-             "expected #{@opcode_count} execute_instruction/2 clause heads in " <>
-               "lib/predicator/evaluator.ex, got #{MapSet.size(opcodes)}: " <>
-               "#{inspect(Enum.sort(opcodes))}"
+      # Retired opcodes keep their table row and lose their evaluator clause
+      # (docs/isa.md section 4, "Retired opcodes"), so the clause-head count
+      # is the live opcode count, not the table size. Deriving it means a
+      # retirement needs no edit here - and the two assertions below are what
+      # the literal was really guarding: no live opcode without a clause, no
+      # retired opcode with one.
+      live_opcodes = Instructions.opcode_set(Instructions.isa_version())
 
-      for opcode <- opcodes do
+      retired_opcodes =
+        Instructions.opcodes()
+        |> Enum.filter(fn {_opcode, info} -> Map.has_key?(info, :removed_in) end)
+        |> Enum.map(fn {opcode, _info} -> opcode end)
+        |> MapSet.new()
+
+      assert MapSet.size(clause_head_opcodes) == MapSet.size(live_opcodes),
+             "expected #{MapSet.size(live_opcodes)} execute_instruction/2 clause " <>
+               "heads (the live opcode count) in lib/predicator/evaluator.ex, got " <>
+               "#{MapSet.size(clause_head_opcodes)}: " <>
+               "#{inspect(Enum.sort(clause_head_opcodes))}"
+
+      assert MapSet.difference(live_opcodes, clause_head_opcodes) == MapSet.new(),
+             "every live opcode must have an execute_instruction/2 clause"
+
+      assert MapSet.intersection(clause_head_opcodes, retired_opcodes) == MapSet.new(),
+             "a retired opcode must not have an execute_instruction/2 clause"
+
+      for opcode <- clause_head_opcodes do
         assert {:ok, _version} = Instructions.required_isa([[opcode]]),
                "the evaluator has an execute_instruction/2 clause for `#{opcode}`, " <>
                  "but it is missing from the @opcodes map in " <>
@@ -150,6 +216,40 @@ defmodule Predicator.IsaSyncTest do
     |> Enum.map(fn [_line, opcode, version, tier] ->
       {opcode, String.to_integer(version), String.to_integer(tier)}
     end)
+  end
+
+  # Matches the same rows as @isa_table_row_regex, capturing column 1 (the
+  # opcode) and column 8 ("Removed in"): "-" for a live opcode, "vN" for one
+  # retired at ISA vN. Kept separate from @isa_table_row_regex so that regex -
+  # and the row count and round-trip assertions built on it - is unchanged by
+  # the column's arrival.
+  @isa_removed_column_regex ~r/^\|\s*`([a-z_]+)`\s*\|(?:[^|]*\|){6}\s*(\S+)\s*\|\s*$/m
+
+  @spec parse_removed_column(String.t()) :: [{String.t(), pos_integer() | nil}]
+  defp parse_removed_column(isa_doc) do
+    @isa_removed_column_regex
+    |> Regex.scan(isa_doc)
+    |> Enum.map(fn [_line, opcode, cell] -> {opcode, parse_removed_cell(opcode, cell)} end)
+  end
+
+  @spec parse_removed_cell(String.t(), String.t()) :: pos_integer() | nil
+  defp parse_removed_cell(_opcode, "-"), do: nil
+
+  defp parse_removed_cell(opcode, "v" <> digits) do
+    case Integer.parse(digits) do
+      {version, ""} -> version
+      _invalid -> flunk_removed_cell(opcode, "v" <> digits)
+    end
+  end
+
+  defp parse_removed_cell(opcode, cell), do: flunk_removed_cell(opcode, cell)
+
+  @spec flunk_removed_cell(String.t(), String.t()) :: no_return()
+  defp flunk_removed_cell(opcode, cell) do
+    flunk(
+      "docs/isa.md's Removed in cell for `#{opcode}` is #{inspect(cell)}, but only " <>
+        "\"-\" (live) or \"vN\" (retired at ISA vN) are accepted forms"
+    )
   end
 
   # Matches rows of the tier *names* table (docs/isa.md:130-137), e.g.:
