@@ -79,8 +79,8 @@ as a child.
   so it can be swept into their trackers later. An `upstream` issue changes no
   files here, so it takes no `area:` label. **A change to the instruction set is
   not automatically `upstream`** - the Elixir side of it is real work in this
-  repo (ADR-0001); file the sibling-side work as its own `upstream` bead if it
-  needs tracking.
+  repo (ADR-0003); file the sibling-side adoption as its own `upstream` bead if
+  it needs tracking; it is never a dependency of the Elixir work (ADR-0003).
 
 ```bash
 bd update <id> --add-label area:lexer-parser --add-label area:api
