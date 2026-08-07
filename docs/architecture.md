@@ -105,6 +105,14 @@ As of 2026-08-06 both siblings are ISA v1 implementations. That is a snapshot,
 not a tracked matrix - each sibling publishes the version it supports in the
 monorepo, and that is the authority.
 
+This repo publishes three artifacts and maintains no support matrix of its
+own: the spec ([`docs/isa.md`](isa.md)), the corpus
+([`conformance/`](../conformance/README.md)) that makes a sibling's claim
+verifiable by running it, and the ratchet format
+([`conformance/RATCHET.md`](../conformance/RATCHET.md), `px-35i.8`) a sibling
+uses to record which cases it passes and defend that claim against a moving
+corpus over time.
+
 ### The `=` grammar break (4.0)
 
 4.0 makes `=` assignment-only and valid only in statement position; `==` and
