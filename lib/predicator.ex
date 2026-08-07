@@ -77,7 +77,18 @@ defmodule Predicator do
   3. The final result is the top value on the stack when execution completes
   """
 
-  alias Predicator.{Compiler, Context, ContextLocation, Errors, Evaluator, Lexer, Parser, Types}
+  alias Predicator.{
+    Compiler,
+    Context,
+    ContextLocation,
+    Errors,
+    Evaluator,
+    Instructions,
+    Lexer,
+    Parser,
+    Types
+  }
+
   alias Predicator.Errors.{ParseError, TypeMismatchError, UndefinedVariableError}
 
   @doc """
@@ -299,6 +310,23 @@ defmodule Predicator do
     |> UndefinedVariableError.new()
     |> Errors.put_position(location)
   end
+
+  @doc """
+  Returns the ISA version this build emits and can run.
+
+  ISA versions are integers, independent of this library's semantic version
+  (ADR-0003). Compare it against `Predicator.Instructions.required_isa/1`
+  before running a stored instruction list, so a version mismatch is caught
+  up front instead of failing partway through evaluation. See
+  [`docs/isa.md`](../docs/isa.md) for the full versioning scheme.
+
+  ## Examples
+
+      iex> Predicator.isa_version()
+      2
+  """
+  @spec isa_version() :: pos_integer()
+  defdelegate isa_version(), to: Instructions
 
   @doc """
   Compiles a string expression to instruction list.
