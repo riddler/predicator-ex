@@ -40,12 +40,60 @@ Each case exercises up to two independent things a sibling implements:
 
 A case with `"source": null` is an **evaluator-only** case - most commonly the
 legacy `["and"]`/`["or"]` opcodes ([ADR-0001](../docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md)),
-which the compiler never emits but which the evaluator must still run forever
-for stored artifacts and v1 siblings. Such a case is **absent from the
-compiler surface's case set** - it is not a case the compiler surface skips,
-because there is nothing here for the compiler to do. A runner scoped to the
-compiler surface simply filters to `source != null` before it starts; it
-never reports these ids at all, passing or failing.
+which the compiler never emits and which
+[ADR-0001](../docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md)
+originally said the evaluator must still run **forever** for stored artifacts
+and v1 siblings.
+[ADR-0003](../docs/adr/0003-the-elixir-implementation-leads-the-isa.md)
+amended that "forever" - retirement at a version boundary, with an upgrade
+path, is permitted; see "Retired opcodes and their cases" below for what that
+means for a case's evaluator form. The surface rule itself does not change: a
+`source: null` case is **absent from the compiler surface's case set** - it
+is not a case the compiler surface skips, because there is nothing here for
+the compiler to do. A runner scoped to the compiler surface simply filters to
+`source != null` before it starts; it never reports these ids at all, passing
+or failing.
+
+## Retired opcodes and their cases
+
+Retirement mints a new ISA version (`docs/isa.md` section 1); a version's
+opcode set is a half-open interval, `Predicator.Instructions.opcode_set/1`,
+not the full opcode table. A case using an opcode retired at or below the
+corpus's `isa_version` cannot be run by this build's reference evaluator -
+there is no `execute_instruction/2` clause left for it (`docs/isa.md` section
+4, "Retired opcodes") - so it takes a different path than every other case
+here:
+
+- It keeps its id, its tier, and its place in the tier file. Nothing removes
+  it, because a sibling claiming an earlier version still needs it.
+- Its `expected_result` or `expected_error` is **frozen** from the authored
+  case rather than recomputed - the generator takes the authored `expected`
+  verbatim instead of running `instructions` through
+  `Predicator.evaluate/3`.
+- It carries the `retired` feature tag, so a runner can select it out
+  mechanically.
+- It is necessarily `source: null`: the compiler never emits a retired
+  opcode, so a retired case is always evaluator-only (see "The two surfaces"
+  above).
+
+What a runner does with a `retired`-tagged case depends on the version it
+claims: a runner targeting the current version filters `retired` out along
+with anything else it does not support; a runner claiming an earlier version -
+one at or after the opcode's `isa` and before its `removed_in` - runs them
+normally, and that is what makes the earlier-version claim verifiable at all.
+
+This also changes what `conformance/manifest.json`'s per-tier `opcodes` array
+means: it lists what that tier unlocks **at the manifest's `isa_version`**,
+not every opcode that has ever belonged to the tier. A retired opcode leaves
+that array once its `removed_in` version is reached, while its case(s) stay
+in the tier file regardless - the array is a version-scoped opcode listing,
+the file is not.
+
+This is a version boundary, not an exclusion: it changes *when* an opcode is
+required, not whether it is ever required. "Opcodes excluded from the
+coverage rule" below is a distinct, narrower mechanism - a permanent
+exclusion for opcodes no case can ever pin an expected value for - and is not
+where a retired opcode goes.
 
 ## The tagged-value encoding
 

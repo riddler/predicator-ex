@@ -21,8 +21,14 @@ defmodule Predicator.Conformance.Features do
 
   alias Predicator.Errors.{EvaluationError, TypeMismatchError, UndefinedVariableError}
 
-  @typedoc "A case outcome, as computed by the generator - what the tags are derived from."
-  @type outcome :: {:result, term()} | {:error, struct()}
+  @typedoc """
+  A case outcome, as computed by the generator - what the tags are derived
+  from. `:retired` stands in for a real error struct when a case's `expected`
+  is frozen data rather than a live evaluation (`Predicator.Conformance.
+  Generator`'s retired-opcode path) - `outcome_tags/1`'s `{:error, _other}`
+  catch-all maps it to the same `"errors"` tag a real struct would produce.
+  """
+  @type outcome :: {:result, term()} | {:error, struct() | :retired}
 
   # Opcode -> the tag(s) it always contributes, regardless of operands.
   # `compare` and the legacy `and`/`or` opcodes are handled separately below

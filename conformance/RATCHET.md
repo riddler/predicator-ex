@@ -157,6 +157,19 @@ Three distinct things this catches, all worth writing down:
 with the pinned corpus's tier for that case FAILS, same handling, same
 reasoning.
 
+A retired opcode does not change this. A case using an opcode retired at or
+below the corpus's `isa_version` (`docs/isa.md` section 4, "Retired
+opcodes"; [`conformance/README.md`](README.md)'s "Retired opcodes and their
+cases") keeps its id and stays a member of the **evaluator** surface's case
+set - its `expected_result`/`expected_error` is frozen data rather than a
+live evaluation, but rule 1 does not distinguish frozen from computed, only
+membership - and, being `source: null`, is absent from the **compiler**
+surface's, exactly as any other `source: null` case is. Rule 1, the tier
+check, and R5 completeness all continue to resolve its id unchanged. A
+retirement moves `corpus_hash`, which is an ordinary pin refresh under "Corpus
+drift under a pinned version" above, not a new failure mode - nothing about
+the ratchet rules themselves changes.
+
 ## Rule 3: grown only by verify-then-add
 
 **Nothing hand-edits the registry.** The only input to the writing step is a
