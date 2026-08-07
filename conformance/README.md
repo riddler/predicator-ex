@@ -188,6 +188,20 @@ fails the suite.
   an expected value. A clock-injection seam would make this coverable and is
   its own future issue if wanted.
 
+### Functions excluded from the coverage rule
+
+`mix corpus.coverage`'s tier-5 section marks these builtins as documented
+exclusions - an inline note, not a bare `corpus: 0` row - for the same reason
+`relative_date` above is excluded: no case can pin an expected value.
+`Predicator.Conformance.Coverage.documented_exclusion_functions/0` is the one
+place this list is declared in code; a test binds it to this exact section,
+the same way `opcode_coverage_test.exs` binds `relative_date` to the section
+above.
+
+- `Date.now` - depends on the system clock, same root cause as
+  `relative_date` (`docs/isa.md` section 5).
+- `Math.random` - depends on the RNG (`docs/isa.md` section 5).
+
 ### Also out of scope
 
 These are not opcode-coverage exclusions - the opcodes involved are covered

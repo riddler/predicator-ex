@@ -24,16 +24,25 @@ defmodule Mix.Tasks.Corpus.Coverage do
      `Predicator.Conformance.Coverage.suite_pattern_frequencies/1`.
   3. Reads the shipped `conformance/corpus/tier-*.json` cases and computes the
      same patterns via `corpus_pattern_frequencies/1`.
-  4. Diffs the two and prints every pattern the suite hits more than the
-     corpus, grouped by tier.
+  4. Diffs the two, keeping every pattern the suite hits more than the
+     corpus.
+  5. Classifies each tier-5 (`call:<name>`) gap against the real builtin
+     registry (`Predicator.Evaluator.merge_functions([])`'s keys) via
+     `Coverage.classify/2`, and prints the result grouped by tier -
+     `px-q1f`, so a test-registered function name (`boom`, `double`, ...)
+     reads as "not a corpus candidate" rather than as an unauthored gap, and
+     a non-deterministic builtin (`Date.now`, `Math.random`, same for the
+     `relative_date` opcode) reads as a documented exclusion rather than a
+     bare `corpus: 0`.
 
   This is dev-only tooling: it never writes a conformance case, never touches
   `conformance/cases/`, and never fails the gate - a wide report is expected
   and is not itself a failure. It is a **heuristic** report (see
   `Predicator.Conformance.Coverage`'s moduledoc for exactly what it can and
   cannot see); its top entries need a human read before being authored as
-  cases, since some will be Elixir-internal test scaffolding rather than
-  genuine corpus gaps.
+  cases, since some will still be Elixir-internal test scaffolding that
+  `classify/2`'s registry check does not catch (e.g. an opts-handling
+  assertion that happens to compile) rather than genuine corpus gaps.
 
   ## Usage
 
@@ -43,6 +52,7 @@ defmodule Mix.Tasks.Corpus.Coverage do
   use Mix.Task
 
   alias Predicator.Conformance.Coverage
+  alias Predicator.Evaluator
 
   @test_glob "test/**/*.exs"
   @excluded_prefix "test/predicator/conformance/"
@@ -57,7 +67,11 @@ defmodule Mix.Tasks.Corpus.Coverage do
       with_deprecation_warnings_silenced(fn -> Coverage.suite_pattern_frequencies(sources) end)
 
     corpus_freqs = Coverage.corpus_pattern_frequencies(corpus_cases())
-    gaps = Coverage.diff(suite_freqs, corpus_freqs)
+
+    gaps =
+      suite_freqs
+      |> Coverage.diff(corpus_freqs)
+      |> Coverage.classify(builtin_function_names())
 
     Mix.shell().info(
       "Scanned #{length(suite_test_files())} suite file(s), extracted #{length(sources)} " <>
@@ -89,6 +103,14 @@ defmodule Mix.Tasks.Corpus.Coverage do
     |> Path.wildcard()
     |> Enum.sort()
     |> Enum.flat_map(&decode_corpus_file/1)
+  end
+
+  # The builtin registry `Coverage.classify/2` sorts tier-5 gaps against -
+  # `opts[:functions]` deliberately excluded, since a name only registered
+  # there by a test is exactly what should classify as suite-local.
+  @spec builtin_function_names() :: MapSet.t(String.t())
+  defp builtin_function_names do
+    [] |> Evaluator.merge_functions() |> Map.keys() |> MapSet.new()
   end
 
   @spec decode_corpus_file(String.t()) :: [map()]

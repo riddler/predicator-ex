@@ -103,7 +103,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   operand patterns against the shipped corpus's own instructions, printing a
   checklist of gaps grouped by tier. `Predicator.Conformance.Coverage` holds
   the diffing logic; report only, it never writes a case and never fails the
-  gate.
+  gate. Function gaps are classified against the builtin registry: a name no
+  builtin module registers is suite-local test scaffolding and prints under a
+  trailing "Not corpus candidates" heading, and the non-deterministic
+  exclusions carry an inline note instead of a bare `corpus: 0` row.
 
 ### Documentation
 

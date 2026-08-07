@@ -85,4 +85,33 @@ defmodule Mix.Tasks.Corpus.CoverageTest do
 
     assert output =~ "No coverage gaps found"
   end
+
+  test "classifies tier-5 gaps: builtin gap plain, non-deterministic builtin marked inline, suite-local moved to a trailing section" do
+    write_test_file(
+      "test/some_test.exs",
+      ~S"""
+      defmodule SomeTest do
+        use ExUnit.Case
+
+        test "checks something" do
+          assert Predicator.evaluate("Math.abs(-1)", %{}) == {:ok, 1}
+          assert Predicator.evaluate("Date.now()", %{}) != nil
+          assert Predicator.evaluate("boom()", %{}, functions: %{"boom" => {0, fn _, _ -> {:ok, 1} end}}) != nil
+        end
+      end
+      """
+    )
+
+    write_corpus_tier(1, [%{"instructions" => [["lit", 1]]}])
+
+    output = capture_io(fn -> Task.run([]) end)
+
+    assert output =~ "call:Math.abs - suite: 1, corpus: 0\n"
+
+    assert output =~
+             "call:Date.now - suite: 1, corpus: 0 (documented exclusion: non-deterministic, see conformance/README.md)"
+
+    assert output =~ "Not corpus candidates"
+    assert output =~ "call:boom - suite: 1, corpus: 0"
+  end
 end
