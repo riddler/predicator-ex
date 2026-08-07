@@ -56,8 +56,13 @@ defmodule Predicator.MixProject do
       name: @app,
       # Deliberately excludes docs/ - hexdocs is built from docs()'s extras:
       # paths read off the publisher's disk, not from this tarball, so the
-      # markdown sources only bloat what mix deps.get downloads.
-      files: ~w(lib/predicator* mix.exs README.md LICENSE CHANGELOG.md),
+      # markdown sources only bloat what mix deps.get downloads. conformance/
+      # (the corpus, its manifest, and its schemas) does ship, so a sibling
+      # can read it from a hex artifact rather than a git checkout (px-35i.4).
+      # lib/mix/tasks/corpus.generate.ex is deliberately not shipped: it is a
+      # dev tool for regenerating the corpus in this repo, not something a
+      # consuming application needs at runtime.
+      files: ~w(lib/predicator* conformance mix.exs README.md LICENSE CHANGELOG.md),
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
       maintainers: ["Predicator Team"]
