@@ -95,6 +95,7 @@ defmodule Predicator.MixProject do
       extras: [
         "README.md",
         "docs/reference/language.md",
+        "docs/isa.md",
         "docs/guides/nested-data-access.md",
         "docs/guides/custom-functions.md",
         "docs/guides/location-expressions.md",
@@ -103,11 +104,12 @@ defmodule Predicator.MixProject do
          [title: "Architecture Decision Records", filename: "architecture-decision-records"]},
         "docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md",
         "docs/adr/0002-the-equals-grammar-break.md",
+        "docs/adr/0003-the-elixir-implementation-leads-the-isa.md",
         "CHANGELOG.md",
         "LICENSE"
       ],
       groups_for_extras: [
-        Reference: ~r{docs/reference/},
+        Reference: ~r{docs/(reference/|isa\.md)},
         Guides: ~r{docs/guides/},
         Architecture: ~r{docs/(architecture|adr/)}
       ]
