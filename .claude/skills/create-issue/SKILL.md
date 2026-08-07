@@ -59,13 +59,13 @@ as a child.
 
 - Add at least one **`area:`** label to every issue that will change files in this
   repo - `area:lexer-parser`, `area:evaluator`, `area:context`, `area:functions`,
-  `area:visitors`, `area:api`, `area:skills`, `area:docs`, `area:build`. The
-  vocabulary and the paths each covers are in
+  `area:visitors`, `area:api`, `area:conformance`, `area:skills`, `area:docs`,
+  `area:build`. The vocabulary and the paths each covers are in
   [CLAUDE.md](../../../CLAUDE.md#area-labels). This is not a topical tag: it is
   what lets a batch picker tell whether two issues collide, so label by the paths
   in the acceptance criteria, not by subject matter.
 
-  Two that come up constantly:
+  Three that come up constantly:
   - **`area:build`** covers `mix.exs`, `mix.lock`, `.quality.exs`, `.credo.exs`,
     `coveralls.json`, `mise.toml`, `.gitignore`, and `.github/**`. It is
     exclusive - a bead carrying it batches with nothing and lands on `main`
@@ -73,6 +73,11 @@ as a child.
   - **`area:api`** covers `lib/predicator.ex` and the error structs. A bead that
     adds a function *and* exposes it carries both `area:functions` and
     `area:api`, which is correct: it does touch both.
+  - **`area:conformance`** covers the corpus subtree - `conformance/**`,
+    `lib/predicator/conformance/**`, `lib/mix/tasks/corpus.*.ex`, and their
+    tests. It is *not* `area:build`: regenerating or extending the corpus
+    touches no build file. A conformance bead that does edit `mix.exs` or
+    `coveralls.json` carries both labels and lands alone, like any other.
 - Add topical labels the user mentions (e.g. `tooling`, `workflow`, `quality`).
 - Add the **`upstream`** label when the issue's work happens in the Ruby or
   JavaScript sibling implementation or in a downstream consumer rather than here,
