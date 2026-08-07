@@ -708,16 +708,16 @@ the assertion that this phase moved nothing.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `mix corpus.generate --check` reports no drift
-- [ ] `git diff --stat conformance/` shows **only** `README.md` and `RATCHET.md`
+- [x] Full quality gate passes: `mix quality`
+- [x] `mix corpus.generate --check` reports no drift
+- [x] `git diff --stat conformance/` shows **only** `README.md` and `RATCHET.md`
       changed - no `corpus/*.json`, no `manifest.json`, no
       `examples/registry.example.json`
-- [ ] `test/predicator/conformance/ratchet_registry_test.exs` passes unchanged,
+- [x] `test/predicator/conformance/ratchet_registry_test.exs` passes unchanged,
       including the `corpus_hash` pin
-- [ ] `opcode_coverage_test.exs`'s three tests pass with `@excluded_opcodes`
+- [x] `opcode_coverage_test.exs`'s three tests pass with `@excluded_opcodes`
       still `~w(relative_date)`
-- [ ] Coverage for `Predicator.Conformance.Generator` stays above 90% with the
+- [x] Coverage for `Predicator.Conformance.Generator` stays above 90% with the
       retired path exercised
 
 #### Manual Verification:
@@ -892,3 +892,7 @@ retirement.
   and the *evaluator clause still present* disagreement - then revert
 - (Phase 2) The §4 table still renders as a table in a markdown preview with 8
   columns
+- (Phase 3) Read `conformance/README.md`'s new subsection as a sibling
+  implementer: it says what to do with a `retired`-tagged case at each
+  version claim
+- (Phase 3) `RATCHET.md`'s paragraph makes clear no ratchet rule changed

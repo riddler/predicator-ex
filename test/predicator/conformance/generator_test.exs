@@ -328,4 +328,92 @@ defmodule Predicator.Conformance.GeneratorTest do
       assert problem =~ "raised"
     end
   end
+
+  # `and` is picked here only as a stand-in opcode to inject via
+  # `:retired_opcodes` - no real opcode carries `removed_in` yet
+  # (docs/plans/260807-px-t2v-isa-retirement-mechanics.md Phase 3). These
+  # tests exercise the classification path itself, independent of which
+  # opcode is actually retired someday.
+  describe "generate/2 - the retired-opcode path" do
+    test "a frozen result case takes the authored expected verbatim, tier and legacy_logical intact" do
+      cases = [
+        %{
+          "id" => "t/retired-result",
+          "instructions" => [["lit", true], ["lit", true], ["and"]],
+          "expected" => %{"result" => true}
+        }
+      ]
+
+      assert {:ok, %{tiers: %{1 => [completed]}}} =
+               Generator.generate(cases, retired_opcodes: MapSet.new(["and"]))
+
+      assert completed["expected_result"] == true
+      assert completed["tier"] == 1
+      assert "retired" in completed["features"]
+      assert "legacy_logical" in completed["features"]
+      assert completed["source"] == nil
+    end
+
+    test "a frozen error case takes the authored expected_error verbatim, with the errors tag" do
+      cases = [
+        %{
+          "id" => "t/retired-error",
+          "instructions" => [["lit", 1], ["lit", 0], ["and"]],
+          "expected" => %{"error" => %{"type" => "EvaluationError", "reason" => "made_up"}}
+        }
+      ]
+
+      assert {:ok, %{tiers: %{1 => [completed]}}} =
+               Generator.generate(cases, retired_opcodes: MapSet.new(["and"]))
+
+      assert completed["expected_error"] == %{"type" => "EvaluationError", "reason" => "made_up"}
+      refute Map.has_key?(completed, "expected_result")
+      assert "retired" in completed["features"]
+      assert "errors" in completed["features"]
+    end
+
+    test "a retired case with no expected fails, naming the opcode" do
+      cases = [%{"id" => "t/retired-noexpected", "instructions" => [["lit", true], ["and"]]}]
+
+      assert {:error, [%{id: "t/retired-noexpected", problem: problem}]} =
+               Generator.generate(cases, retired_opcodes: MapSet.new(["and"]))
+
+      assert problem =~ "and"
+      assert problem =~ "expected"
+    end
+
+    test "a retired case authoring source fails, naming the opcode" do
+      # "and"/"or" are never source-emitted (the compiler always emits
+      # jump_if_falsy_or_pop/jump_if_true_or_pop for source-level and/or), so
+      # this test picks "compare" as the stand-in retired opcode instead -
+      # any opcode the source compiles to works, and this rule is about
+      # authoring "source" at all for a retired-opcode case, not specific to
+      # "and"/"or".
+      cases = [
+        %{"id" => "t/retired-source", "source" => "1 = 1", "expected" => %{"result" => true}}
+      ]
+
+      assert {:error, [%{id: "t/retired-source", problem: problem}]} =
+               Generator.generate(cases, retired_opcodes: MapSet.new(["compare"]))
+
+      assert problem =~ "compare"
+      assert problem =~ "source"
+    end
+
+    test "a case using no retired opcode is unaffected when the option is passed" do
+      cases = [%{"id" => "t/not-retired", "source" => "42"}]
+
+      assert {:ok, %{tiers: %{1 => [completed]}}} =
+               Generator.generate(cases, retired_opcodes: MapSet.new(["and"]))
+
+      assert completed["expected_result"] == 42
+      refute "retired" in completed["features"]
+    end
+
+    test "the default :retired_opcodes is empty today, so generate/1 and generate/2 agree" do
+      cases = "conformance/cases/core.json" |> File.read!() |> JSON.decode!()
+
+      assert Generator.generate(cases) == Generator.generate(cases, [])
+    end
+  end
 end

@@ -56,6 +56,15 @@ defmodule Predicator.Conformance.Generator do
   every case generates cleanly, or `{:error, [case_error, ...]}` with **every**
   failing case's problem, not just the first.
 
+  Accepts an options keyword list. The only option is `:retired_opcodes`, a
+  `MapSet` of opcode names this build's reference evaluator can no longer run
+  (`docs/isa.md` section 4, "Retired opcodes"). It defaults to the opcodes
+  present in `Instructions.opcodes/0` but absent from
+  `Instructions.opcode_set(Instructions.isa_version())` - today that default
+  is empty, since no opcode carries `:removed_in` yet. A case that uses a
+  retired opcode is classified in `generate_case/3` and takes a frozen-
+  expectation path instead of running the pipeline below.
+
   ## Examples
 
       iex> {:ok, result} = Predicator.Conformance.Generator.generate([
@@ -77,15 +86,16 @@ defmodule Predicator.Conformance.Generator do
       iex> Predicator.Conformance.Generator.generate([%{"id" => "bad", "source" => "score >"}])
       {:error, [%{id: "bad", problem: "source \\"score >\\" failed to compile: Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 8"}]}
   """
-  @spec generate([authored_case()]) ::
+  @spec generate([authored_case()], keyword()) ::
           {:ok, %{tiers: %{pos_integer() => [completed_case()]}, manifest: map()}}
           | {:error, [case_error()]}
-  def generate(cases) when is_list(cases) do
+  def generate(cases, opts \\ []) when is_list(cases) and is_list(opts) do
+    retired_opcodes = Keyword.get(opts, :retired_opcodes, default_retired_opcodes())
     duplicate_ids = duplicate_ids(cases)
 
     {oks, errors} =
       cases
-      |> Enum.map(&generate_case(&1, duplicate_ids))
+      |> Enum.map(&generate_case(&1, duplicate_ids, retired_opcodes))
       |> Enum.split_with(&match?({:ok, _completed}, &1))
 
     case errors do
@@ -98,6 +108,16 @@ defmodule Predicator.Conformance.Generator do
     end
   end
 
+  # The opcodes this build's Instructions table knows about but this build's
+  # ISA version no longer includes (docs/isa.md section 1's half-open
+  # interval). Empty today - no opcode carries :removed_in yet - so
+  # generate/1 and generate/2 with no :retired_opcodes agree.
+  @spec default_retired_opcodes() :: MapSet.t(String.t())
+  defp default_retired_opcodes do
+    all_opcodes = Instructions.opcodes() |> Map.keys() |> MapSet.new()
+    MapSet.difference(all_opcodes, Instructions.opcode_set(Instructions.isa_version()))
+  end
+
   @spec duplicate_ids([authored_case()]) :: MapSet.t(term())
   defp duplicate_ids(cases) do
     cases
@@ -107,27 +127,122 @@ defmodule Predicator.Conformance.Generator do
     |> Enum.into(MapSet.new(), fn {id, _count} -> id end)
   end
 
-  @spec generate_case(authored_case(), MapSet.t(term())) ::
+  @spec generate_case(authored_case(), MapSet.t(term()), MapSet.t(String.t())) ::
           {:ok, completed_case()} | {:error, case_error()}
-  defp generate_case(raw, duplicate_ids) do
+  defp generate_case(raw, duplicate_ids, retired_opcodes) do
     id_for_error = Map.get(raw, "id")
 
     with {:ok, id} <- fetch_id(raw, duplicate_ids),
          {:ok, endpoint} <- fetch_endpoint(raw),
          {:ok, context} <- decode_context(raw),
          {:ok, instructions} <- resolve_instructions(endpoint),
-         {:ok, outcome} <- evaluate_case(instructions, context),
-         {:ok, expected} <- expected_fields(outcome),
-         :ok <- check_expected(raw, expected),
+         retired_used = retired_opcodes_used(instructions, retired_opcodes),
+         {:ok, {outcome, expected}} <- resolve_outcome(raw, instructions, context, retired_used),
          {:ok, {tier, forcing_opcode}} <- compute_tier(instructions),
          :ok <- check_tier(raw, tier, forcing_opcode),
          {:ok, encoded_instructions} <- encode_instructions(instructions) do
-      features = Features.compute(instructions, context, outcome, authored_features(raw))
+      extra_tags = authored_features(raw) ++ retired_feature_tags(retired_used)
+      features = Features.compute(instructions, context, outcome, extra_tags)
       {:ok, assemble_case(id, raw, encoded_instructions, expected, tier, features)}
     else
       {:error, problem} -> {:error, %{id: id_for_error, problem: problem}}
     end
   end
+
+  # A case using an opcode this build's ISA version has retired cannot be
+  # completed by the reference evaluator - there is no clause left to run it
+  # (docs/isa.md section 4, "Retired opcodes"). Its authored `expected` is
+  # frozen as data instead: the case keeps its id, its tier, and its place in
+  # the live corpus so a sibling claiming an earlier version still has it, and
+  # so the ratchet's case ids keep resolving.
+  @spec resolve_outcome(authored_case(), Types.instruction_list(), map(), [String.t()]) ::
+          {:ok, {Features.outcome(), {:result, Values.json()} | {:error, map()}}}
+          | {:error, String.t()}
+  defp resolve_outcome(raw, instructions, context, [] = _retired_used) do
+    with {:ok, outcome} <- evaluate_case(instructions, context),
+         {:ok, expected} <- expected_fields(outcome),
+         :ok <- check_expected(raw, expected) do
+      {:ok, {outcome, expected}}
+    end
+  end
+
+  defp resolve_outcome(raw, _instructions, _context, retired_used) do
+    with :ok <- check_no_source(raw, retired_used),
+         {:ok, expected} <- fetch_frozen_expected(raw, retired_used),
+         {:ok, outcome} <- synthesize_outcome(expected) do
+      {:ok, {outcome, expected}}
+    end
+  end
+
+  @spec retired_opcodes_used(Types.instruction_list(), MapSet.t(String.t())) :: [String.t()]
+  defp retired_opcodes_used(instructions, retired_opcodes) do
+    instructions
+    |> Enum.flat_map(fn
+      [opcode | _operands] when is_binary(opcode) -> [opcode]
+      _malformed -> []
+    end)
+    |> Enum.filter(&MapSet.member?(retired_opcodes, &1))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  @spec check_no_source(authored_case(), [String.t()]) :: :ok | {:error, String.t()}
+  defp check_no_source(raw, retired_used) do
+    case Map.get(raw, "source") do
+      source when is_binary(source) ->
+        {:error,
+         "case uses retired opcode(s) #{inspect(retired_used)} and authors \"source\" - " <>
+           "the compiler cannot emit a retired opcode; author \"instructions\" directly"}
+
+      _no_source ->
+        :ok
+    end
+  end
+
+  @spec fetch_frozen_expected(authored_case(), [String.t()]) ::
+          {:ok, {:result, Values.json()} | {:error, map()}} | {:error, String.t()}
+  defp fetch_frozen_expected(raw, retired_used) do
+    case Map.get(raw, "expected") do
+      %{"result" => result} = expected when map_size(expected) == 1 ->
+        {:ok, {:result, result}}
+
+      %{"error" => error} = expected when map_size(expected) == 1 ->
+        {:ok, {:error, error}}
+
+      nil ->
+        {:error,
+         "case uses retired opcode(s) #{inspect(retired_used)} and must author \"expected\" - " <>
+           "the reference evaluator can no longer compute it"}
+
+      other ->
+        {:error,
+         ~s("expected" must be exactly {"result": ...} or {"error": {...}}, got #{inspect(other)})}
+    end
+  end
+
+  # Synthesizes an outcome from the frozen `expected` so Features.compute/4
+  # still has something to derive value-level tags from. `{:error, :retired}`
+  # is not a real error struct, but Features.outcome_tags/1's
+  # `{:error, _other}` catch-all maps any error term to the "errors" tag, the
+  # same tag a real struct would produce - so this is a safe stand-in.
+  @spec synthesize_outcome({:result, Values.json()} | {:error, map()}) ::
+          {:ok, Features.outcome()} | {:error, String.t()}
+  defp synthesize_outcome({:result, json}) do
+    case Values.from_json(json) do
+      {:ok, decoded} ->
+        {:ok, {:result, decoded}}
+
+      {:error, reason} ->
+        {:error,
+         "authored expected result #{inspect(json)} could not be decoded: #{inspect(reason)}"}
+    end
+  end
+
+  defp synthesize_outcome({:error, _error_map}), do: {:ok, {:error, :retired}}
+
+  @spec retired_feature_tags([String.t()]) :: [String.t()]
+  defp retired_feature_tags([]), do: []
+  defp retired_feature_tags(_retired_used), do: ["retired"]
 
   # `instructions` (from Predicator.compile/1 or an authored "instructions"
   # list) carries real ISA values as operands - a "lit" pushing a Date,
@@ -404,9 +519,22 @@ defmodule Predicator.Conformance.Generator do
     end
   end
 
+  # The opcode table restricted to what this build's ISA version currently
+  # includes (docs/isa.md section 1's half-open interval, via
+  # `Instructions.opcode_set/1`). A retired opcode keeps its case(s) in the
+  # corpus (see the retired-case path above) but leaves this view, so a
+  # tier's "opcodes" array in the manifest lists what that tier unlocks *at
+  # this build's ISA version* - a no-op today, since no opcode carries
+  # :removed_in yet.
+  @spec current_opcodes() :: %{String.t() => Instructions.opcode_info()}
+  defp current_opcodes do
+    live = Instructions.opcode_set(Instructions.isa_version())
+    Instructions.opcodes() |> Map.filter(fn {opcode, _info} -> MapSet.member?(live, opcode) end)
+  end
+
   @spec group_by_tier([completed_case()]) :: %{pos_integer() => [completed_case()]}
   defp group_by_tier(cases) do
-    known_tiers = Instructions.opcodes() |> Map.values() |> Enum.map(& &1.tier) |> Enum.uniq()
+    known_tiers = current_opcodes() |> Map.values() |> Enum.map(& &1.tier) |> Enum.uniq()
     base = Map.new(known_tiers, &{&1, []})
 
     cases
@@ -419,7 +547,7 @@ defmodule Predicator.Conformance.Generator do
   @spec build_manifest([completed_case()]) :: map()
   defp build_manifest(cases) do
     opcodes_by_tier =
-      Instructions.opcodes()
+      current_opcodes()
       |> Enum.group_by(fn {_opcode, %{tier: tier}} -> tier end, fn {opcode, _info} -> opcode end)
 
     case_counts = Enum.frequencies_by(cases, & &1["tier"])

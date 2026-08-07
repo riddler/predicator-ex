@@ -1,11 +1,18 @@
 defmodule Predicator.Conformance.OpcodeCoverageTest do
   @moduledoc """
   The mechanical coverage rule from the plan (`px-35i.4` Phase 5): every
-  opcode in `Predicator.Instructions.opcodes/0` appears in at least one
-  authored case's `instructions`, except the opcodes named in
+  opcode in this build's ISA version - `Instructions.opcode_set(Instructions.
+  isa_version())`, not the full `Instructions.opcodes/0` table - appears in
+  at least one authored case's `instructions`, except the opcodes named in
   `conformance/README.md`'s "Opcodes excluded from the coverage rule"
   section - today just `relative_date` (Open Question #2: its result depends
   on the system clock, so no case can pin an expected value).
+
+  A retired opcode drops out of `opcode_set/1` at its `:removed_in` version,
+  so it stops being required here - a version boundary, not an exclusion. Its
+  case(s) stay in the corpus regardless (`docs/isa.md` section 4, "Retired
+  opcodes"); this test only asserts what must be *newly* covered, not what
+  must be absent.
 
   `@excluded_opcodes` below is the one place this exclusion is declared for
   the test; a second assertion parses `conformance/README.md` and requires
@@ -28,7 +35,7 @@ defmodule Predicator.Conformance.OpcodeCoverageTest do
     covered = covered_opcodes()
 
     expected =
-      Instructions.opcodes() |> Map.keys() |> MapSet.new() |> MapSet.difference(excluded())
+      Instructions.opcode_set(Instructions.isa_version()) |> MapSet.difference(excluded())
 
     missing = MapSet.difference(expected, covered)
 
