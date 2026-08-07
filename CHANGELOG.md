@@ -65,7 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The conformance corpus** (`px-35i.4`). `conformance/` in the repository -
   deliberately not shipped in the hex package, since nothing an application
-  does at runtime reads it. Authored cases live in `conformance/cases/*.json`;
+  does at runtime reads it. The tooling that maintains it is excluded for the
+  same reason and is **not public API**: the `mix corpus.*` tasks and the
+  `Predicator.Conformance.*` modules they call exist only in a git checkout.
+  Authored cases live in `conformance/cases/*.json`;
   the generated, checked-in corpus in `conformance/corpus/tier-*.json` (one
   case per line, sorted by id); and `conformance/manifest.json` (ISA version, a
   `corpus_hash` sha256 over the corpus content, and the tier/opcode/case-count

@@ -56,14 +56,26 @@ defmodule Predicator.MixProject do
       name: @app,
       # Deliberately excludes docs/ - hexdocs is built from docs()'s extras:
       # paths read off the publisher's disk, not from this tarball, so the
-      # markdown sources only bloat what mix deps.get downloads. conformance/
-      # is deliberately NOT shipped for the same reason: nothing an application
-      # does at runtime reads the corpus, so shipping it would put hundreds of
-      # test cases into every consumer's deps directory to serve an audience -
-      # sibling implementers - who are working from a git checkout anyway
-      # (px-35i.4). Same rationale excludes lib/mix/tasks/corpus.*.ex, the dev
-      # tools that regenerate it.
+      # markdown sources only bloat what mix deps.get downloads.
+      #
+      # The whole conformance apparatus is excluded on the same principle:
+      # nothing an application does at runtime touches it, and the audience
+      # that does - sibling implementers - works from a git checkout. That is
+      # three things, excluded three ways (px-35i.4):
+      #
+      #   conformance/                   the corpus, manifest, and schemas;
+      #                                  simply absent from files:
+      #   lib/mix/tasks/corpus.*.ex      the dev tasks that regenerate it;
+      #                                  lib/predicator* never matched them
+      #   lib/predicator/conformance/    the generator modules the tasks call;
+      #                                  matched by the glob, so removed by
+      #                                  exclude_patterns below
+      #
+      # Nothing under lib/ outside those two directories references
+      # Predicator.Conformance, so dropping it cannot break a consumer's
+      # compile. A test guards that invariant.
       files: ~w(lib/predicator* mix.exs README.md LICENSE CHANGELOG.md),
+      exclude_patterns: [~r{\Alib/predicator/conformance/}],
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
       maintainers: ["Predicator Team"]
