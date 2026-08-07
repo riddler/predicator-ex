@@ -563,12 +563,12 @@ assert MapSet.intersection(clause_head_opcodes, retired_opcodes) == MapSet.new()
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `test/predicator/isa_sync_test.exs` passes with all four bindings green
+- [x] Full quality gate passes: `mix quality`
+- [x] `test/predicator/isa_sync_test.exs` passes with all four bindings green
       (row count, round-trip, tier-names equality, removed-column agreement)
-- [ ] The removed-column regex matches 25 rows, not 0 - the vacuity guard fires
+- [x] The removed-column regex matches 25 rows, not 0 - the vacuity guard fires
       if the column layout drifts
-- [ ] `mix corpus.generate --check` still reports no drift
+- [x] `mix corpus.generate --check` still reports no drift
 
 #### Manual Verification:
 - [ ] §1 reads as a rule a sibling implementer can apply without reading this
@@ -885,3 +885,10 @@ retirement.
 - (Phase 1) In `iex`, `Instructions.opcode_set(1)` and `opcode_set(2)` differ by
   exactly `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`
 - (Phase 1) `retired_in("and")` reads as `{:ok, nil}`, not an error
+- (Phase 2) §1 reads as a rule a sibling implementer can apply without reading
+  this plan: what mints a version, and what version *v* comprises
+- (Phase 2) Temporarily setting `"and" => %{isa: 1, tier: 1, removed_in: 3}` in
+  `@opcodes` produces a red suite that names the *doc column* disagreement
+  and the *evaluator clause still present* disagreement - then revert
+- (Phase 2) The §4 table still renders as a table in a markdown preview with 8
+  columns
