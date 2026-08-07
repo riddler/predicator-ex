@@ -139,6 +139,7 @@ of the tree it touches. A bead may carry several.
 | `area:functions` | `lib/predicator/functions/**` |
 | `area:visitors` | `lib/predicator/visitor.ex`, `lib/predicator/visitors/**` |
 | `area:api` | `lib/predicator.ex`, `lib/predicator/errors.ex`, `lib/predicator/errors/**` |
+| `area:conformance` | `conformance/**`, `lib/predicator/conformance/**`, `lib/mix/tasks/corpus.*.ex`, `test/predicator/conformance/**`, `test/mix/tasks/corpus_*_test.exs` |
 | `area:skills` | `.claude/**` |
 | `area:docs` | `docs/**`, `CLAUDE.md`, `README.md`, `CHANGELOG.md` |
 | `area:build` | `mix.exs`, `mix.lock`, `.quality.exs`, `.credo.exs`, `coveralls.json`, `mise.toml`, `.gitignore`, `.github/**` |
@@ -170,6 +171,30 @@ public façade or adds an error type, and folding that into whichever subsystem
 prompted it would make almost every pair of beads collide. A bead that adds a
 function *and* exposes it carries both labels, which is the correct answer -
 it does touch both.
+
+`area:conformance` exists because the corpus tree is a self-contained subtree
+with its own generator, its own mix tasks, and its own tests, and nothing
+outside it imports `Predicator.Conformance` (`mix.exs`'s package exclusion
+depends on that, and a test guards it). It was labeled `area:build` when
+px-35i.4 created it, which was right for that branch and wrong for every branch
+after it: `area:build` is exclusive, so routine corpus work serialized the whole
+queue behind itself. The evidence is the two follow-ons, px-q1f and px-1ka, which
+carried `area:build` and between them touched no build file at all. Standing up
+the tree cost one edit to `mix.exs`; regenerating and extending it costs none.
+See `docs/research/260807-px-phw-conformance-area-label.md` for the full
+argument.
+
+The relationship to `area:build` is the ordinary one, with no special case: a
+conformance bead that also edits `mix.exs`, `coveralls.json`, or any other file
+in the `area:build` row carries **both** labels, and carrying `area:build`
+re-triggers its exclusivity in full - the bead lands alone. That is not a
+penalty for touching conformance, it is the file-collision rule doing its job.
+Widening `area:conformance` to absorb such a bead would put a `mix.lock` or gate
+change into a batch, which is exactly the hazard `area:build` exists to prevent.
+Note also that `area:conformance` stops at the subtree: `docs/isa.md`,
+`lib/predicator/instructions.ex`, and `test/predicator/isa_sync_test.exs` feed
+the corpus but are `area:docs` and `area:evaluator`, and a bead moving them
+carries those.
 
 The one class of bead with no area label is work that changes no files in this
 repo: `upstream` beads, whose work happens in the Ruby or JavaScript sibling or
