@@ -60,5 +60,99 @@
       "error": { "type": "EvaluationError", "reason": "insufficient_arguments" }
     },
     "notes": "fewer than arg_count values on the stack - only reachable from a hand-built instruction list, since the compiler always emits enough operand instructions to match the call's arg_count"
+  },
+  {
+    "id": "functions/ends-with",
+    "source": "ends_with(\"hello world\", \"world\")",
+    "expected": { "result": true }
+  },
+  {
+    "id": "functions/lower",
+    "source": "lower(\"WORLD\")",
+    "expected": { "result": "world" }
+  },
+  {
+    "id": "functions/trim",
+    "source": "trim(\"  hello  \")",
+    "expected": { "result": "hello" },
+    "notes": "trims leading and trailing whitespace only; the corpus does not pin internal whitespace, which trim() leaves untouched"
+  },
+  {
+    "id": "functions/math-abs",
+    "source": "Math.abs(-7)",
+    "expected": { "result": 7 }
+  },
+  {
+    "id": "functions/math-sqrt",
+    "source": "Math.sqrt(16)",
+    "expected": { "result": 4.0 },
+    "notes": "always returns a float, even for a perfect square"
+  },
+  {
+    "id": "functions/math-sqrt-negative-error",
+    "source": "Math.sqrt(-1)",
+    "expected": {
+      "error": {
+        "type": "EvaluationError",
+        "reason": "Math.sqrt expects a non-negative number"
+      }
+    },
+    "notes": "Math.sqrt of a negative number is an EvaluationError (operation function_call), not NaN and not a complex result - a sibling implementer should not assume IEEE-754 NaN propagation here. reason equals message for this class of error; see functions/json-parse-invalid-error's note."
+  },
+  {
+    "id": "functions/math-ceil",
+    "source": "Math.ceil(2.1)",
+    "expected": { "result": 3 },
+    "notes": "returns an integer, not a float"
+  },
+  {
+    "id": "functions/math-floor",
+    "source": "Math.floor(2.9)",
+    "expected": { "result": 2 },
+    "notes": "returns an integer, not a float"
+  },
+  {
+    "id": "functions/math-min",
+    "source": "Math.min(3, 7)",
+    "expected": { "result": 3 }
+  },
+  {
+    "id": "functions/math-round-half-away-from-zero",
+    "source": "Math.round(-2.5)",
+    "expected": { "result": -3 },
+    "notes": "rounds half away from zero: -2.5 rounds to -3, not -2 (banker's rounding) and not toward positive infinity"
+  },
+  {
+    "id": "functions/json-stringify-map-keys-sorted",
+    "source": "JSON.stringify(user)",
+    "context": { "user": { "name": "John", "age": 30 } },
+    "expected": { "result": "{\"age\":30,\"name\":\"John\"}" },
+    "notes": "JSON.stringify sorts map keys alphabetically in its output - predicator maps have no defined iteration order, so a sibling should sort keys too rather than assume insertion order round-trips"
+  },
+  {
+    "id": "functions/json-parse-array",
+    "source": "JSON.parse(\"[1,2,3]\")",
+    "expected": { "result": [1, 2, 3] }
+  },
+  {
+    "id": "functions/json-parse-invalid-error",
+    "source": "JSON.parse(\"not json\")",
+    "expected": {
+      "error": {
+        "type": "EvaluationError",
+        "reason": "Invalid JSON: unexpected byte 0x6F at position 1"
+      }
+    },
+    "notes": "reason equals message for this error, unlike most opcode-level errors - JSON.parse's failure path does not carry a separate structured token, only the human-readable description"
+  },
+  {
+    "id": "functions/date-month",
+    "source": "Date.month(#2024-03-15#)",
+    "expected": { "result": 3 }
+  },
+  {
+    "id": "functions/date-day",
+    "source": "Date.day(#2024-03-15#)",
+    "expected": { "result": 15 }
   }
 ]
