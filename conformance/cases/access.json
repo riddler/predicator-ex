@@ -1,0 +1,68 @@
+[
+  {
+    "id": "access/dot-present",
+    "source": "user.name",
+    "context": { "user": { "name": "Ada" } },
+    "expected": { "result": "Ada" }
+  },
+  {
+    "id": "access/dot-missing-key-is-undefined",
+    "source": "user.missing",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "docs/isa.md: a missing key, or a target that is neither map nor list, pushes :undefined - never an error"
+  },
+  {
+    "id": "access/dot-on-non-object-is-undefined",
+    "source": "score.foo",
+    "context": { "score": 5 },
+    "expected": { "result": { "$type": "undefined" } }
+  },
+  {
+    "id": "access/bracket-map-string-key",
+    "source": "user[\"name\"]",
+    "context": { "user": { "name": "Ada" } },
+    "expected": { "result": "Ada" }
+  },
+  {
+    "id": "access/bracket-list-integer-index",
+    "source": "items[1]",
+    "context": { "items": [10, 20, 30] },
+    "expected": { "result": 20 }
+  },
+  {
+    "id": "access/bracket-list-out-of-range-is-undefined",
+    "source": "items[10]",
+    "context": { "items": [1, 2, 3] },
+    "expected": { "result": { "$type": "undefined" } }
+  },
+  {
+    "id": "access/bracket-list-negative-index-is-undefined",
+    "source": "items[-1]",
+    "context": { "items": [1, 2, 3] },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "docs/isa.md: negative indices are not supported and push :undefined rather than indexing from the end"
+  },
+  {
+    "id": "access/bracket-key-wrong-type",
+    "source": "user[1.5]",
+    "context": { "user": { "a": 1 } },
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "bracket_access" }
+    },
+    "notes": "a key that is not a string, integer, or atom is a TypeMismatchError - unlike a missing key or an out-of-range index, which are undefined"
+  },
+  {
+    "id": "access/make-list-source-order",
+    "source": "[a, b, c]",
+    "context": { "a": 1, "b": 2, "c": 3 },
+    "expected": { "result": [1, 2, 3] },
+    "notes": "docs/isa.md: make_list reverses the stack (deepest first) back into source order; an all-literal list compiles to a single lit instead, so at least one non-literal element is needed to force this opcode"
+  },
+  {
+    "id": "access/make-list-count-zero",
+    "instructions": [["make_list", 0]],
+    "expected": { "result": [] },
+    "notes": "count: 0 is reachable only from a hand-built instruction list - the compiler never emits make_list for an empty literal list, which compiles to [\"lit\", []] instead"
+  }
+]

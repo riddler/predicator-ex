@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riddler/predicator-ex/conformance/schema/report.json",
+  "title": "Predicator conformance runner report",
+  "description": "The shape a sibling's runner emits after running one surface at one tier against the corpus. This repo does not write a runner (px-35i.8); this schema is the contract a runner's output is checked against. The per-case result enum is exactly [\"pass\", \"fail\"] - the structural half of the never-skip rule (conformance/README.md): a feature the runner has not implemented yet is a fail naming the reason, never a skip, because skip is not a representable value here.",
+  "type": "object",
+  "properties": {
+    "isa_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The ISA version the runner claims to support."
+    },
+    "corpus_hash": {
+      "type": "string",
+      "description": "The manifest.json corpus_hash this report was run against.",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "tier": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The highest tier run. Running tier N means every case in tiers 1..N was run, not tier N alone."
+    },
+    "surface": {
+      "type": "string",
+      "enum": ["evaluator", "compiler"],
+      "description": "evaluator: run instructions, compare to expected_result/expected_error. compiler: parse source, compare emitted instructions structurally. A case with source: null is absent from the compiler surface's case set, not run and not skipped by it."
+    },
+    "results": {
+      "type": "array",
+      "description": "One entry per case the runner attempted, in any order.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The case id from the corpus."
+          },
+          "result": {
+            "type": "string",
+            "enum": ["pass", "fail"],
+            "description": "No skip value. A case whose feature is unimplemented is a fail naming that feature in reason, not an absent or skipped entry."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Required when result is \"fail\"; a short, structured explanation (e.g. an unimplemented feature tag, or the expected vs. actual value). Free text, not normative - unlike expected_error's type/reason on a case itself."
+          }
+        },
+        "required": ["id", "result"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["isa_version", "corpus_hash", "tier", "surface", "results"],
+  "additionalProperties": false
+}

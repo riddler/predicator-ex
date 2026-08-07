@@ -1,0 +1,54 @@
+[
+  {
+    "id": "errors/unbound-root-variable",
+    "source": "missing",
+    "expected": {
+      "error": { "type": "UndefinedVariableError", "reason": "unbound_variable" }
+    },
+    "notes": "load of an absent root variable, under the default on_unbound policy - an evaluation option, not part of the ISA (docs/isa.md section 2). Contrast with access.json's access-on-missing-key cases, which push :undefined rather than erroring."
+  },
+  {
+    "id": "errors/unary-minus-type-mismatch",
+    "source": "-\"x\"",
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "unary_minus" }
+    }
+  },
+  {
+    "id": "errors/unary-bang-type-mismatch",
+    "instructions": [["lit", 5], ["unary_bang"]],
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "unary_bang" }
+    }
+  },
+  {
+    "id": "errors/not-type-mismatch",
+    "source": "not 5",
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "logical_not" }
+    }
+  },
+  {
+    "id": "errors/empty-stack-at-halt",
+    "instructions": [],
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "empty_stack" }
+    },
+    "notes": "docs/isa.md: the one error that belongs to no instruction and therefore carries no source position - only reachable via an empty hand-built instruction list"
+  },
+  {
+    "id": "errors/insufficient-operands-compare",
+    "instructions": [["lit", 1], ["compare", "EQ"]],
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "insufficient_operands" }
+    },
+    "notes": "docs/isa.md: insufficient operands is an EvaluationError, not a TypeMismatchError, at every opcode that checks stack depth before checking types - insufficient_operands is the one reason token shared across all of them"
+  },
+  {
+    "id": "errors/insufficient-operands-bracket-access",
+    "instructions": [["lit", 1], ["bracket_access"]],
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "insufficient_operands" }
+    }
+  }
+]

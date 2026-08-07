@@ -1,0 +1,164 @@
+[
+  {
+    "id": "arithmetic/add-int",
+    "source": "2 + 3",
+    "expected": { "result": 5 }
+  },
+  {
+    "id": "arithmetic/add-string-concat",
+    "source": "\"hello \" + \"world\"",
+    "expected": { "result": "hello world" },
+    "notes": "docs/isa.md: string+string, string+number, and number+string all concatenate (numbers stringified)"
+  },
+  {
+    "id": "arithmetic/add-number-to-string-concat",
+    "source": "\"score: \" + 5",
+    "expected": { "result": "score: 5" }
+  },
+  {
+    "id": "arithmetic/add-list-concat",
+    "source": "[1, 2] + [3]",
+    "expected": { "result": [1, 2, 3] }
+  },
+  {
+    "id": "arithmetic/add-type-mismatch",
+    "source": "user.missing + 1",
+    "context": { "user": {} },
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "add" }
+    },
+    "notes": ":undefined is rejected by add, unlike compare/in/contains which propagate it"
+  },
+  {
+    "id": "arithmetic/subtract-int",
+    "source": "10 - 3",
+    "expected": { "result": 7 }
+  },
+  {
+    "id": "arithmetic/subtract-no-string-concat",
+    "source": "\"ab\" - \"a\"",
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "subtract" }
+    },
+    "notes": "docs/isa.md: the asymmetry with add - subtract never concatenates strings or lists"
+  },
+  {
+    "id": "arithmetic/multiply-int",
+    "source": "6 * 7",
+    "expected": { "result": 42 }
+  },
+  {
+    "id": "arithmetic/multiply-type-mismatch",
+    "source": "5 * true",
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "multiply" }
+    }
+  },
+  {
+    "id": "arithmetic/divide-int-truncating",
+    "source": "7 / 2",
+    "expected": { "result": 3 },
+    "notes": "two integers use truncating integer division"
+  },
+  {
+    "id": "arithmetic/divide-float",
+    "source": "7.0 / 2",
+    "expected": { "result": 3.5 }
+  },
+  {
+    "id": "arithmetic/divide-by-zero-int",
+    "source": "1 / 0",
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "division_by_zero" }
+    }
+  },
+  {
+    "id": "arithmetic/divide-by-zero-float",
+    "source": "1 / 0.0",
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "division_by_zero" }
+    },
+    "notes": "docs/isa.md: divide's zero check runs before the type check, for both integer 0 and float 0.0"
+  },
+  {
+    "id": "arithmetic/divide-zero-before-type-check",
+    "source": "true / 0",
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "division_by_zero" }
+    },
+    "notes": "the right operand being zero is reported even though the left operand is also the wrong type - zero wins"
+  },
+  {
+    "id": "arithmetic/modulo-int",
+    "source": "7 % 2",
+    "expected": { "result": 1 }
+  },
+  {
+    "id": "arithmetic/modulo-by-zero-int",
+    "source": "5 % 0",
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "modulo_by_zero" }
+    }
+  },
+  {
+    "id": "arithmetic/modulo-float-zero-is-type-mismatch-not-modulo-by-zero",
+    "source": "5 % 0.0",
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "modulo" }
+    },
+    "notes": "docs/isa.md: modulo's one asymmetry with divide - there is no float-zero clause, so 0.0 on the right is a TypeMismatchError (floats are rejected outright), not modulo_by_zero"
+  },
+  {
+    "id": "arithmetic/modulo-rejects-float-operand",
+    "source": "5.0 % 2",
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "modulo" }
+    },
+    "notes": "modulo is integers only - the one place it diverges from the other four arithmetic opcodes"
+  },
+  {
+    "id": "arithmetic/date-plus-duration",
+    "source": "#2024-01-15# + 3d",
+    "expected": {
+      "result": { "$type": "date", "value": "2024-01-18" }
+    }
+  },
+  {
+    "id": "arithmetic/date-minus-date-yields-duration",
+    "source": "#2024-01-15# - #2024-01-10#",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 5,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "notes": "Date - Date yields a duration in days"
+  },
+  {
+    "id": "arithmetic/datetime-minus-datetime-yields-duration-seconds",
+    "source": "#2024-01-15T10:00:00Z# - #2024-01-15T08:00:00Z#",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 7200
+        }
+      }
+    },
+    "notes": "DateTime - DateTime yields a duration in seconds"
+  }
+]

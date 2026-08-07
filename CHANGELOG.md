@@ -76,6 +76,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   semantic change nobody meant to make turns the gate red instead of silently
   shipping a stale corpus.
 
+- **Conformance corpus breadth, schemas, and the runner contract** (`px-35i.4`
+  Phase 5). Cases now cover every opcode except the two documented exclusions
+  (`relative_date`, clock-dependent; `object_set` on a non-map, unspecified),
+  a rule `test/predicator/conformance/opcode_coverage_test.exs` enforces and
+  binds to `conformance/README.md`'s own exclusion list. `conformance/schema/`
+  gains `corpus.json`, `manifest.json`, and `report.json` (JSON Schema, draft
+  2020-12) alongside the existing `case.json`; every generated artifact is
+  validated against its own schema. `conformance/README.md` is the runner
+  contract a sibling implementer reads first: the two surfaces (evaluator and
+  compiler), the tagged-value encoding normatively, the never-skip rule and
+  why `schema/report.json`'s `result` enum has no skip value, how to add a
+  case without an Elixir toolchain, and the known-uncovered list. `docs/isa.md`
+  now points at `conformance/README.md` as the spec's executable form.
+
 ### Documentation
 
 - **`docs/isa.md`: the ISA reference.** The single specification of

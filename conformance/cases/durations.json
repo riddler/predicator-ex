@@ -1,0 +1,108 @@
+[
+  {
+    "id": "durations/single-unit",
+    "source": "3d",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 3,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "notes": "hand-decode: seven keys, all present, defaulting to 0 - this is the normative shape docs/isa.md:100-106 and Open Question #1 in the plan settle on"
+  },
+  {
+    "id": "durations/multi-unit",
+    "source": "2w3d",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 2,
+          "days": 3,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    }
+  },
+  {
+    "id": "durations/milliseconds-key-present-only-when-used",
+    "source": "500ms",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0,
+          "milliseconds": 500
+        }
+      }
+    },
+    "notes": "the milliseconds key is present only when a ms-family unit was used; every other case in this file omits it because it is 0"
+  },
+  {
+    "id": "durations/later-unit-pair-overwrites-earlier",
+    "instructions": [["duration", [[1, "h"], [2, "h"]]]],
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 2,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "notes": "docs/isa.md: later pairs overwrite earlier ones naming the same unit - reachable from source too (e.g. an author writing 1h2h), but a hand-built list states the intent directly"
+  },
+  {
+    "id": "durations/invalid-unit",
+    "instructions": [["duration", [[3, "xyz"]]]],
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "invalid_duration_unit" }
+    },
+    "notes": "only reachable from a hand-built instruction list - the lexer/parser never produce an unrecognized unit string, which is why this case authors instructions directly rather than source"
+  },
+  {
+    "id": "durations/invalid-format",
+    "instructions": [["duration", [["bad"]]]],
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "invalid_duration_format" }
+    },
+    "notes": "a unit pair that is not [integer, string] - also only reachable via a hand-built instruction list"
+  },
+  {
+    "id": "durations/datetime-plus-duration",
+    "source": "#2024-01-15T10:00:00Z# + 2h",
+    "expected": {
+      "result": { "$type": "datetime", "value": "2024-01-15T12:00:00Z" }
+    }
+  },
+  {
+    "id": "durations/date-minus-duration",
+    "source": "#2024-01-15# - 3d",
+    "expected": {
+      "result": { "$type": "date", "value": "2024-01-12" }
+    }
+  }
+]

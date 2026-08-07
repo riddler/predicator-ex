@@ -1,0 +1,64 @@
+[
+  {
+    "id": "functions/len",
+    "source": "len(\"hello\")",
+    "expected": { "result": 5 }
+  },
+  {
+    "id": "functions/upper",
+    "source": "upper(\"world\")",
+    "expected": { "result": "WORLD" }
+  },
+  {
+    "id": "functions/starts-with",
+    "source": "starts_with(\"hello world\", \"hello\")",
+    "expected": { "result": true }
+  },
+  {
+    "id": "functions/substring-three-arg",
+    "source": "substring(\"hello world\", 0, 5)",
+    "expected": { "result": "hello" },
+    "notes": "substring's arity is [2, 3] - both forms are accepted"
+  },
+  {
+    "id": "functions/index-of-not-found",
+    "source": "index_of(\"hello world\", \"nope\")",
+    "expected": { "result": -1 }
+  },
+  {
+    "id": "functions/concat-lists",
+    "source": "concat([1, 2], [3])",
+    "expected": { "result": [1, 2, 3] }
+  },
+  {
+    "id": "functions/math-pow",
+    "source": "Math.pow(2, 3)",
+    "expected": { "result": 8.0 }
+  },
+  {
+    "id": "functions/math-max",
+    "source": "Math.max(2, 3)",
+    "expected": { "result": 3 }
+  },
+  {
+    "id": "functions/date-year",
+    "source": "Date.year(#2024-03-15#)",
+    "expected": { "result": 2024 }
+  },
+  {
+    "id": "functions/unknown-function",
+    "source": "nope(1)",
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "Unknown function: nope" }
+    },
+    "notes": "docs/isa.md: an unknown function name is an EvaluationError with operation function_call; the builtin function set itself is not part of the ISA - see the Language Reference"
+  },
+  {
+    "id": "functions/insufficient-arguments-on-stack",
+    "instructions": [["call", "len", 1]],
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "insufficient_arguments" }
+    },
+    "notes": "fewer than arg_count values on the stack - only reachable from a hand-built instruction list, since the compiler always emits enough operand instructions to match the call's arg_count"
+  }
+]

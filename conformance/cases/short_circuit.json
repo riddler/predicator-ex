@@ -1,0 +1,52 @@
+[
+  {
+    "id": "short_circuit/and-worked-example",
+    "source": "a and b",
+    "context": { "a": true, "b": false },
+    "expected": { "result": false },
+    "notes": "docs/isa.md's worked example: [[\"load\",\"a\"],[\"jump_if_falsy_or_pop\",2],[\"load\",\"b\"]] - a is true, so it is popped and b's value becomes the result"
+  },
+  {
+    "id": "short_circuit/and-falls-short-on-falsy-left",
+    "source": "a and b",
+    "context": { "a": false, "b": true },
+    "expected": { "result": false },
+    "notes": "a is falsy, so the jump lands past load b and a's own value is the result - b is never evaluated"
+  },
+  {
+    "id": "short_circuit/or-worked-example",
+    "source": "a or b",
+    "context": { "a": false, "b": true },
+    "expected": { "result": true },
+    "notes": "mirror of the and example: a is falsy, so it is popped and b's value becomes the result"
+  },
+  {
+    "id": "short_circuit/or-short-circuits-on-truthy-left",
+    "source": "a or b",
+    "context": { "a": true, "b": false },
+    "expected": { "result": true },
+    "notes": "a is true, so the jump lands past load b - b is never evaluated"
+  },
+  {
+    "id": "short_circuit/undefined-and-x-short-circuits-to-undefined",
+    "source": "user.missing and true",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "docs/isa.md: undefined AND x short-circuits to :undefined without evaluating x - :undefined is falsy at a jump, same as false"
+  },
+  {
+    "id": "short_circuit/undefined-or-x-falls-through-to-x",
+    "source": "user.missing or true",
+    "context": { "user": {} },
+    "expected": { "result": true },
+    "notes": "docs/isa.md: undefined OR x falls through and takes x's value, the ECMAScript-aligned behavior stated explicitly for jump_if_true_or_pop"
+  },
+  {
+    "id": "short_circuit/jump-condition-must-be-boolean",
+    "source": "1 and true",
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "jump_if_falsy_or_pop" }
+    },
+    "notes": "a jump condition that is neither exactly true, false, nor :undefined is a TypeMismatchError, not a truthiness coercion"
+  }
+]

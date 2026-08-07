@@ -1,0 +1,84 @@
+[
+  {
+    "id": "comparison/lt-int-true",
+    "source": "3 < 5",
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/gte-int-boundary-true",
+    "source": "5 >= 5",
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/lte-int-false",
+    "source": "5 <= 4",
+    "expected": { "result": false }
+  },
+  {
+    "id": "comparison/ne-int-true",
+    "source": "5 != 4",
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/eq-string-true",
+    "source": "\"admin\" == \"admin\"",
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/lt-string-lexicographic",
+    "source": "\"abc\" < \"abd\"",
+    "expected": { "result": true },
+    "notes": "string ordering is lexicographic by UTF-8 byte, not locale collation"
+  },
+  {
+    "id": "comparison/lt-boolean-false-before-true",
+    "source": "false < true",
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/lt-list-elementwise",
+    "source": "[1, 2] < [1, 3]",
+    "expected": { "result": true },
+    "notes": "lists compare element-wise at the first differing position"
+  },
+  {
+    "id": "comparison/lt-list-prefix",
+    "source": "[1] < [1, 2]",
+    "expected": { "result": true },
+    "notes": "a proper prefix sorts before the longer list"
+  },
+  {
+    "id": "comparison/strict-eq-list-true",
+    "source": "[1, 2] === [1, 2]",
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/strict-ne-list-true",
+    "source": "[1, 2] !== [1, 3]",
+    "expected": { "result": true }
+  },
+  {
+    "id": "comparison/type-mismatch-is-undefined-not-error",
+    "source": "1 > \"a\"",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "docs/isa.md: a type-mismatched pair under a non-strict operator pushes :undefined - it is never an error"
+  },
+  {
+    "id": "comparison/loose-eq-cross-type-is-undefined",
+    "source": "true == 1",
+    "expected": { "result": { "$type": "undefined" } }
+  },
+  {
+    "id": "comparison/strict-eq-cross-type-is-false-not-undefined",
+    "source": "1 === \"1\"",
+    "expected": { "result": false },
+    "notes": "STRICT_EQ/STRICT_NE are resolved before any type dispatch and never produce :undefined, unlike the non-strict operators on a mismatched pair"
+  },
+  {
+    "id": "comparison/undefined-propagates-through-non-strict-compare",
+    "source": "user.missing > 1",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "user.missing is a genuine :undefined produced by access on an absent key, not a load of an absent root (which errors under default options - see errors.json)"
+  }
+]
