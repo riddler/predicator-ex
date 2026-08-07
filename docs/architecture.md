@@ -163,16 +163,6 @@ configured in `.quality.exs`, and the thresholds it enforces stay with the
 tools that own them - `coveralls.json` for the 90% coverage minimum, `.credo.exs`
 for the checks, `mix.exs` for the Dialyzer PLT.
 
-### Coverage Stats
-
-- **Overall**: 92.2%
-- **Evaluator**: 95.7% (arithmetic with type coercion, unary, and all operations)
-- **StringVisitor**: 97.5% (all formatting options)
-- **InstructionsVisitor**: 95.2% (all AST node types)
-- **Lexer**: 98.4% (all token types including floats and arithmetic)
-- **Parser**: 86.4% (complex expressions with precedence and float support)
-- **Target**: >90% for all components ✅
-
 ## Key Design Decisions
 
 ### Security First
@@ -199,37 +189,7 @@ for the checks, `mix.exs` for the Dialyzer PLT.
 - High complexity is appropriate and necessary for these functions
 - Well-tested and contained complexity
 
-## File Structure
-
-```text
-lib/predicator/
-├── lexer.ex           # Tokenization with position tracking
-├── parser.ex          # Recursive descent parser  
-├── compiler.ex        # AST to instructions conversion
-├── evaluator.ex       # Instruction execution engine with custom function support
-├── visitor.ex         # Visitor behavior definition
-├── types.ex           # Type specifications
-├── functions/         # Function system components
-│   └── system_functions.ex   # Built-in functions (len, upper, abs, etc.)
-└── visitors/          # AST transformation modules
-    ├── string_visitor.ex      # AST to string decompilation  
-    └── instructions_visitor.ex # AST to instructions conversion
-
-test/predicator/
-├── lexer_test.exs
-├── parser_test.exs  
-├── compiler_test.exs
-├── evaluator_test.exs
-├── object_evaluation_test.exs     # Object literal evaluation tests
-├── object_edge_cases_test.exs     # Object literal edge cases
-├── object_integration_test.exs    # Object literal integration tests
-├── predicator_test.exs            # Integration tests
-└── visitors/                      # Visitor tests
-    ├── string_visitor_test.exs
-    └── instructions_visitor_test.exs
-```
-
-## Recent Additions (2025)
+## Recent Additions
 
 ### Source Positions (v3.7.0)
 
@@ -943,7 +903,9 @@ nothing is pushed, and no later instruction executes.
 - **Property Testing**: Comprehensive input validation
 - **Error Path Testing**: All error conditions covered
 - **Round-trip Testing**: AST → String → AST consistency
-- **Current Test Count**: 886 tests (65 doctests + 821 regular tests)
+
+Run `mix test` for the current count and `mix test.coverage` for the coverage
+reading; both change too often to transcribe here.
 
 ## Code Standards
 
@@ -975,9 +937,3 @@ nothing is pushed, and no later instruction executes.
 - Elixir ~> 1.18 required
 - All dependencies in development/test only
 - No runtime dependencies for core functionality
-
-- When creating git commit messages:
-  - be concise but informative, and highlight the functional changes
-  - no need to mention code quality improvements as they are expected (unless the functional change is about code quality improvements)
-  - commit titles should be less than 50 characters and be in the simple present tense (active voice)
-  - commit descriptions should wrap at about 72 characters and also be in the simple present tense (active voice)
