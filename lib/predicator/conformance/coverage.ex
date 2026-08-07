@@ -48,6 +48,36 @@ defmodule Predicator.Conformance.Coverage do
   authored as cases - some will be Elixir-internal scaffolding (opts
   handling, struct internals) rather than genuine corpus gaps.
 
+  ## Classifying tier-5 (`call:<name>`) gaps
+
+  `diff/2` alone cannot tell a genuine builtin gap from noise: a `call:<name>`
+  pattern's name might be a test-registered function (`boom`, `double`, ...)
+  that a sibling implementation could never implement, or a builtin whose
+  result is non-deterministic (`Date.now`, `Math.random`) and therefore can
+  never get a pinned corpus case either. `classify/2` sorts every gap into
+  one of three statuses (`px-q1f`):
+
+  - `:gap` - a genuine builtin gap, worth authoring.
+  - `:excluded` - a documented exclusion: `relative_date` (an opcode, see
+    `conformance/README.md`'s "Opcodes excluded from the coverage rule") or a
+    name in `documented_exclusion_functions/0` (see the README's "Functions
+    excluded from the coverage rule"). Shown inline with a note rather than as
+    a bare `corpus: 0` row.
+  - `:suite_local` - a `call:<name>` whose name is not a key of the caller-
+    supplied builtin registry (in practice `Predicator.Evaluator.
+    merge_functions([])`), so it was registered by an individual ExUnit test
+    via its own `opts[:functions]` map and can never become a corpus case.
+    `format_report/1` moves these to a trailing labelled section rather than
+    dropping them silently - the report is a heuristic instrument, and a
+    reader who remembers writing a test for one of these names should be able
+    to see where it went rather than wonder if the scan missed it.
+
+  Classification is deliberately **not** a hardcoded name list on the "this is
+  a builtin" side: `classify/2` takes the registry as data from the caller
+  (`mix corpus.coverage` passes `Predicator.Evaluator.merge_functions([])`'s
+  keys) so a new builtin needs no update here to stop showing up as
+  suite-local.
+
   Report only: nothing here writes a case or fails a gate.
   """
 
@@ -59,14 +89,45 @@ defmodule Predicator.Conformance.Coverage do
   @typedoc "pattern => how many times it was observed."
   @type pattern_frequencies :: %{pattern() => pos_integer()}
 
+  @typedoc """
+  A gap's classification, set by `classify/2` (absent - equivalently `:gap` -
+  on a gap fresh out of `diff/2`, which knows nothing about the builtin
+  registry):
+
+  - `:gap` - worth authoring.
+  - `:excluded` - a documented, non-deterministic exclusion; see the
+    moduledoc's "Classifying tier-5 gaps" section.
+  - `:suite_local` - a test-registered function name, never a corpus
+    candidate.
+  """
+  @type gap_status :: :gap | :excluded | :suite_local
+
   @typedoc "One coverage gap: a pattern the suite hits more than the corpus does."
   @type gap :: %{
-          tier: pos_integer(),
-          tier_name: String.t(),
-          pattern: pattern(),
-          suite_count: pos_integer(),
-          corpus_count: non_neg_integer()
+          required(:tier) => pos_integer(),
+          required(:tier_name) => String.t(),
+          required(:pattern) => pattern(),
+          required(:suite_count) => pos_integer(),
+          required(:corpus_count) => non_neg_integer(),
+          optional(:status) => gap_status()
         }
+
+  # The opcode-level documented exclusion (conformance/README.md's "Opcodes
+  # excluded from the coverage rule"). A plain list, not a MapSet, because
+  # classify_gap/2 below matches it in a function-head guard, and `in` is
+  # only guard-safe against a literal list or range. Kept here as the
+  # tier-5-adjacent sibling of @documented_exclusion_functions below rather
+  # than imported from opcode_coverage_test.exs's @excluded_opcodes - that
+  # module attribute is private to a test module, and duplicating one atom is
+  # cheaper than reaching into a test file from lib code.
+  @documented_exclusion_opcodes ~w(relative_date)
+
+  # Function-level documented exclusions (conformance/README.md's "Functions
+  # excluded from the coverage rule") - non-deterministic builtins that, like
+  # relative_date above, no case can pin an expected value for. Kept in sync
+  # with the README by Predicator.Conformance.CoverageTest's
+  # "documented exclusion functions match conformance/README.md" test.
+  @documented_exclusion_functions MapSet.new(["Date.now", "Math.random"])
 
   # Display names only - Predicator.Instructions.opcodes/0 remains the single
   # source of truth for tier membership; this table exists purely so the
@@ -257,8 +318,81 @@ defmodule Predicator.Conformance.Coverage do
   defp opcode_of(pattern), do: pattern |> String.split(":", parts: 2) |> List.first()
 
   @doc """
-  Formats a list of gaps (as returned by `diff/2`) as a human-readable
-  report, grouped by tier so it is actionable one tier at a time.
+  The builtin function names documented as non-deterministic exclusions in
+  `conformance/README.md`'s "Functions excluded from the coverage rule"
+  section - `Date.now` and `Math.random`. `classify/2` marks a `call:<name>`
+  gap whose name is in this set as `:excluded` rather than `:gap`, the same
+  treatment `relative_date` gets as an opcode-level exclusion.
+
+  ## Examples
+
+      iex> Predicator.Conformance.Coverage.documented_exclusion_functions() |> Enum.sort()
+      ["Date.now", "Math.random"]
+  """
+  @spec documented_exclusion_functions() :: MapSet.t(String.t())
+  def documented_exclusion_functions, do: @documented_exclusion_functions
+
+  @doc """
+  Classifies each gap's `:status` (see the moduledoc's "Classifying tier-5
+  gaps" section and `t:gap_status/0`): `:gap`, `:excluded`, or `:suite_local`.
+
+  `builtin_names` is the set of function names the classifier treats as
+  real builtins - in practice the caller passes
+  `Predicator.Evaluator.merge_functions([])`'s keys, so this module never
+  hardcodes "what is a builtin" itself. A gap whose pattern is not a
+  `call:<name>` pattern (i.e. not tier 5) is `:gap` unless it is the
+  documented opcode exclusion `relative_date`.
+
+  ## Examples
+
+      iex> gaps = [
+      ...>   %{tier: 5, tier_name: "functions", pattern: "call:Math.abs", suite_count: 3, corpus_count: 0},
+      ...>   %{tier: 5, tier_name: "functions", pattern: "call:Date.now", suite_count: 6, corpus_count: 0},
+      ...>   %{tier: 5, tier_name: "functions", pattern: "call:boom", suite_count: 2, corpus_count: 0},
+      ...>   %{tier: 4, tier_name: "rich types", pattern: "relative_date", suite_count: 4, corpus_count: 0}
+      ...> ]
+      iex> Predicator.Conformance.Coverage.classify(gaps, MapSet.new(["Math.abs", "Date.now"]))
+      ...> |> Enum.map(& &1.status)
+      [:gap, :excluded, :suite_local, :excluded]
+  """
+  @spec classify([gap()], MapSet.t(String.t())) :: [gap()]
+  def classify(gaps, builtin_names) when is_list(gaps) do
+    Enum.map(gaps, &classify_gap(&1, builtin_names))
+  end
+
+  @spec classify_gap(gap(), MapSet.t(String.t())) :: gap()
+  defp classify_gap(%{pattern: pattern} = gap, _builtin_names)
+       when pattern in @documented_exclusion_opcodes do
+    Map.put(gap, :status, :excluded)
+  end
+
+  defp classify_gap(%{pattern: "call:" <> function_name} = gap, builtin_names) do
+    Map.put(gap, :status, call_status(function_name, builtin_names))
+  end
+
+  defp classify_gap(gap, _builtin_names), do: Map.put(gap, :status, :gap)
+
+  @spec call_status(String.t(), MapSet.t(String.t())) :: gap_status()
+  defp call_status(function_name, builtin_names) do
+    cond do
+      MapSet.member?(@documented_exclusion_functions, function_name) -> :excluded
+      MapSet.member?(builtin_names, function_name) -> :gap
+      true -> :suite_local
+    end
+  end
+
+  @doc """
+  Formats a list of gaps (as returned by `diff/2`, typically classified by
+  `classify/2` first) as a human-readable report, grouped by tier so it is
+  actionable one tier at a time.
+
+  A gap's `:status` (absent counts as `:gap`) controls how it is shown:
+  `:gap` prints plainly, `:excluded` gets an inline note instead of
+  appearing as an unqualified `corpus: 0` row, and `:suite_local` entries are
+  pulled out of every tier and moved to a trailing labelled section rather
+  than being silently dropped - this is a heuristic instrument, and a reader
+  who remembers writing a test against one of these names should see where it
+  went, not wonder if the scan missed it.
 
   ## Examples
 
@@ -272,22 +406,51 @@ defmodule Predicator.Conformance.Coverage do
   end
 
   def format_report(gaps) when is_list(gaps) do
-    gaps
-    |> Enum.group_by(& &1.tier)
-    |> Enum.sort_by(fn {tier, _entries} -> tier end)
-    |> Enum.map_join("\n", &format_tier/1)
+    {suite_local, reportable} = Enum.split_with(gaps, &(status_of(&1) == :suite_local))
+
+    tiers_report =
+      reportable
+      |> Enum.group_by(& &1.tier)
+      |> Enum.sort_by(fn {tier, _entries} -> tier end)
+      |> Enum.map_join("\n", &format_tier/1)
+
+    tiers_report <> format_suite_local_section(suite_local)
   end
+
+  @spec status_of(gap()) :: gap_status()
+  defp status_of(gap), do: Map.get(gap, :status, :gap)
 
   @spec format_tier({pos_integer(), [gap()]}) :: String.t()
   defp format_tier({tier, entries}) do
     %{tier_name: tier_name} = List.first(entries)
     header = "Tier #{tier} (#{tier_name}):\n"
+    lines = Enum.map_join(entries, "\n", &format_gap_line/1)
 
+    header <> lines <> "\n"
+  end
+
+  @spec format_gap_line(gap()) :: String.t()
+  defp format_gap_line(entry) do
+    base = "  #{entry.pattern} - suite: #{entry.suite_count}, corpus: #{entry.corpus_count}"
+
+    case status_of(entry) do
+      :excluded -> base <> " (documented exclusion: non-deterministic, see conformance/README.md)"
+      _gap -> base
+    end
+  end
+
+  @spec format_suite_local_section([gap()]) :: String.t()
+  defp format_suite_local_section([]), do: ""
+
+  defp format_suite_local_section(entries) do
     lines =
-      Enum.map_join(entries, "\n", fn entry ->
+      entries
+      |> Enum.sort_by(&{-&1.suite_count, &1.pattern})
+      |> Enum.map_join("\n", fn entry ->
         "  #{entry.pattern} - suite: #{entry.suite_count}, corpus: #{entry.corpus_count}"
       end)
 
-    header <> lines <> "\n"
+    "\nNot corpus candidates (suite-local test functions, never real corpus " <>
+      "gaps - not a key in the builtin registry):\n" <> lines <> "\n"
   end
 end
