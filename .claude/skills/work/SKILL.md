@@ -108,11 +108,14 @@ starts at the plan stage and runs through implementation from there.
 | **Just-do-it** | implement | one implementation subagent, no artifacts | Bounded doc / chore / config / single-module change, low blast radius. |
 | **Direction** | direction | direction stage (Step 3) -> resumes into the sequence below | ADR-shaped work: architecture decisions, grammar or instruction-set questions, review of plans or of finished phases. |
 
-**Anything that changes the instruction set is at least Direction or
-Plan-only, never just-do-it.** The instruction set is the cross-language
-interchange format shared with the Ruby and JavaScript implementations
-(ADR-0001), so a change to it is not a local decision and does not belong in
-an unreviewed one-shot.
+**Anything that bumps the ISA version is at least Direction or Plan-only, never
+just-do-it.** The Elixir implementation leads the instruction set (ADR-0003),
+so the constraint is not sibling readiness - it is the paperwork the bump owes:
+a version, a `docs/isa.md` entry, a conformance-corpus tier, and a migration
+note if a stored instruction list is affected. That is more than an unreviewed
+one-shot should decide. A change that touches instruction *handling* without
+adding, removing, or altering an opcode does not bump the version and sizes
+like any other change.
 
 **Direction still goes through the worktree-per-bead path, deliberately.** An
 ADR is a `docs/` change and often precedes the code it governs, so a warmed
@@ -205,9 +208,10 @@ directly into the Agent call. Tell the subagent to:
   anyway. The human gate on this work is the review of the branch it lands on,
   same as any other change. A call too narrow for its own ADR goes to
   `docs/research/` instead, naming the bead;
-- **say explicitly whether the decision changes the instruction set.** That is
-  cross-language interchange (ADR-0001), so it binds the Ruby and JavaScript
-  siblings too and has to be visible in the ADR, not inferred from it;
+- **say explicitly whether the decision moves the ISA, and if so at what
+  version.** ADR-0003 makes that a versioning and stored-artifact question, not
+  a sibling-readiness one, and it has to be visible in the ADR rather than
+  inferred from it;
 - return the artifact path and a one-line statement of the decision it made
   (or the open question it could not resolve, recorded in the artifact per
   the "no human is available" invariant above).
@@ -267,8 +271,8 @@ Always report:
 - any **Deferred Manual Verification** items the loop surfaced, and any open
   questions a stage recorded in its artifact,
 - for a stopped loop: the refusal reason and the phase it stopped at,
-- whether the work changed the instruction set (ADR-0001), since that has to
-  reach the commit message and the eventual PR body.
+- whether the work moved the ISA and to what version (ADR-0003), since that
+  has to reach the commit message and the eventual PR body.
 
 ## Guidelines
 

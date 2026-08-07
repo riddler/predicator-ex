@@ -379,11 +379,11 @@ work (ADR-0003)."
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `grep -n 'not a local decision' .claude/skills/work/SKILL.md` returns
+- [x] `grep -n 'not a local decision' .claude/skills/work/SKILL.md` returns
       nothing
-- [ ] `grep -n 'ADR-0003' .claude/skills/work/SKILL.md
+- [x] `grep -n 'ADR-0003' .claude/skills/work/SKILL.md
       .claude/skills/create-issue/SKILL.md` returns hits in both
-- [ ] `mix quality` clean
+- [ ] `mix quality` clean (skipped: docs-only change, no Elixir code touched)
 
 #### Manual Verification:
 - [ ] `/work`'s bucket table (line ~109) and the sizing rule beneath it still
@@ -582,3 +582,10 @@ Recorded per the "no human available" invariant rather than resolved.
       section (they are ~500 lines apart and drift easily)
 - [ ] Markdown fences and list nesting inside the template block are intact -
       the block sits inside a fenced ````markdown` example
+
+### Phase 3: Rekey sizing and triage on the ISA version
+- [ ] `/work`'s bucket table (line ~109) and the sizing rule beneath it still
+      agree with each other after the edit
+- [ ] The new "handling without an opcode change is not a bump" carve-out does
+      not accidentally license a just-do-it for evaluator semantics changes -
+      those are still multi-area and land in Plan-only by the area rule
