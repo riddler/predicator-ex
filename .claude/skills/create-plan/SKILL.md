@@ -52,7 +52,7 @@ The plan document **MUST** include ALL of the following sections in this order:
 9. `## References` (source docs, ADR numbers, file:line refs)
 
 Optional sections (include if applicable): `## Performance Considerations`,
-`## Cross-Language Impact` (when the instruction set changes - see ADR-0001).
+`## ISA Impact` (when an opcode changes - see ADR-0003 and `docs/isa.md`).
 
 ---
 
@@ -98,7 +98,8 @@ Then wait for the user's input.
    - Design or research documents under `docs/`
    - Related implementation plans in `docs/plans/`
    - Relevant ADRs in `docs/adr/` (accepted ADRs are settled; the plan must fit
-     them - ADR-0001 sets the 3.6-4.0 arc and keeps the stack VM on ISA v2)
+     them - ADR-0001 sets the 3.6-4.0 arc and keeps the stack VM on ISA v2;
+     ADR-0003 makes this repo the reference implementation of the ISA)
    - `docs/architecture.md` for the grammar, precedence table, and component map
    - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read
      entire files
@@ -176,7 +177,7 @@ Then wait for the user's input.
 
    Questions that my research couldn't answer:
    - [Specific technical question that requires human judgment]
-   - [Grammar or instruction-set decision that affects the sibling implementations]
+   - [Grammar or instruction-set decision that would bump the ISA version]
    - [Design preference that affects implementation]
    ```
 
@@ -370,10 +371,26 @@ surfaced once at the end instead of blocking here.
 
 [Any performance implications or optimizations needed]
 
-## Cross-Language Impact
+## ISA Impact
 
-[If the instruction set changed: what the Ruby and JavaScript implementations
-need, per ADR-0001. Omit this section if the ISA is untouched.]
+[Only when the change adds, removes, renames, or alters an opcode. Per
+ADR-0003 the Elixir implementation leads the ISA, so this section answers three
+mechanical questions rather than asking what the siblings need:
+
+1. **Version** - does this bump the current ISA version (`docs/isa.md`,
+   section 1)? An additive version (new opcodes only, every existing
+   instruction list still valid) ships in a minor release; retiring an opcode
+   takes a major release. An opcode's semantics never change under its own
+   name: a different answer from an existing form is a new name.
+2. **Stamp** - what the change owes `docs/isa.md`: an opcode subsection, the
+   version it enters at, and a conformance-corpus tier.
+3. **Migration** - can an instruction list compiled before this change still
+   run and still produce the same answer? If not, name the upgrade path that
+   rewrites it.
+
+A sibling implementation behind the current ISA version is an expected,
+documented state - not a defect and not a blocker on this change (ADR-0003).
+Omit this section entirely when no opcode changes.]
 
 ## References
 
@@ -490,8 +507,9 @@ need, per ADR-0001. Omit this section if the ISA is untouched.]
 - Extend `InstructionsVisitor` so it compiles, and `StringVisitor` so it
   round-trips
 - Handle the new instructions in the evaluator
-- A new instruction is a change to the cross-language interchange format
-  (ADR-0001), so the plan says what the Ruby and JavaScript siblings need
+- A new instruction moves the ISA (ADR-0003), so the plan carries an
+  `## ISA Impact` section: the version it lands at, its `docs/isa.md` entry and
+  corpus tier, and a migration note if stored artifacts are affected
 
 ### For New Functions
 
@@ -586,6 +604,6 @@ Based on your design note, I see the seams are already identified with file refe
       Manual Verification
 - [ ] Automated criteria use the ex_quality commands (`mix quality --profile
       loop`, `mix quality`)
-- [ ] If the instruction set changed, a Cross-Language Impact section says what
-      the siblings need (ADR-0001)
+- [ ] If an opcode changed, an ISA Impact section answers the version / stamp /
+      migration questions (ADR-0003)
 - [ ] No unresolved open questions remain in the document

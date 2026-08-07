@@ -297,12 +297,18 @@ entirely when it does not apply.]"
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `grep -rn 'Cross-Language Impact' .claude/` returns nothing
-- [ ] `grep -rn 'ISA Impact' .claude/` returns hits in all three of
+- [x] `grep -rn 'Cross-Language Impact' .claude/` returns nothing
+- [x] `grep -rn 'ISA Impact' .claude/` returns hits in all three of
       `create-plan`, `iterate-plan`, `research-codebase`
 - [ ] `grep -rn 'siblings need' .claude/skills/create-plan/SKILL.md` returns
-      nothing
-- [ ] `mix quality` clean
+      nothing - **FAILS**: the canonical `## ISA Impact` block quoted verbatim
+      in "Desired End State" itself contains the phrase "rather than asking
+      what the siblings need" (line ~378 post-edit). Copied character for
+      character as instructed; this check conflicts with the plan's own
+      canonical text rather than with the implementation. Flagging rather than
+      silently editing the canonical block or weakening the check.
+- [ ] Full gate is clean (no Elixir touched, so this is a formality):
+      `mix quality`
 
 #### Manual Verification:
 - [ ] The `## ISA Impact` block in `/create-plan`'s template is the only full
@@ -568,3 +574,11 @@ Recorded per the "no human available" invariant rather than resolved.
 - [ ] The "Read before making design decisions" list still reads as a list of
       four things to read, not a paragraph of policy
 - [ ] No em dashes or non-ASCII punctuation introduced into `CLAUDE.md`
+
+### Phase 2: Rename Cross-Language Impact to ISA Impact
+- [ ] The `## ISA Impact` block in `/create-plan`'s template is the only full
+      copy of the three questions; the other two files point at it
+- [ ] `/create-plan`'s Pre-Write Checklist and its template still name the same
+      section (they are ~500 lines apart and drift easily)
+- [ ] Markdown fences and list nesting inside the template block are intact -
+      the block sits inside a fenced ````markdown` example

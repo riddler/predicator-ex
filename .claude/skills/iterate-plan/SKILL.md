@@ -140,8 +140,10 @@ Get user confirmation before proceeding.
    - If modifying scope, update "What We're NOT Doing"
    - If changing approach, update "Implementation Approach"
    - Maintain the distinction between automated and manual success criteria
-   - If the change now touches the instruction set, the plan needs a
-     Cross-Language Impact section (ADR-0001); if it no longer does, remove it
+   - If the change now touches an opcode, the plan needs an `## ISA Impact`
+     section (ADR-0003); if it no longer does, remove it. See `/create-plan`'s
+     template for the wording - link by name, don't restate the three
+     questions
    - If a phase's Implementation Note or sizing is edited, keep it consistent
      with the interactive/`--loop` wording and sizing rule in `/create-plan`'s
      template (see that skill's Phase template and Step 3) - link by name,
