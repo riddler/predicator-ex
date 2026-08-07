@@ -63,10 +63,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Tier is a conformance-corpus grouping (`px-35i.4`), a function of opcode
   only, per `docs/isa.md` section 4.
 
-- **The conformance corpus** (`px-35i.4`). `conformance/` ships in the hex
-  package: authored cases in `conformance/cases/*.json`; the generated,
-  checked-in corpus in `conformance/corpus/tier-*.json` (one case per line,
-  sorted by id); and `conformance/manifest.json` (ISA version, a
+- **The conformance corpus** (`px-35i.4`). `conformance/` in the repository -
+  deliberately not shipped in the hex package, since nothing an application
+  does at runtime reads it. Authored cases live in `conformance/cases/*.json`;
+  the generated, checked-in corpus in `conformance/corpus/tier-*.json` (one
+  case per line, sorted by id); and `conformance/manifest.json` (ISA version, a
   `corpus_hash` sha256 over the corpus content, and the tier/opcode/case-count
   table). `mix corpus.generate` regenerates both from the authored cases by
   running each through the real compiler and evaluator; `mix corpus.generate
