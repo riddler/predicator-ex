@@ -93,6 +93,12 @@ defmodule Predicator.InstructionsTest do
       assert String.contains?(error.message, "nope")
     end
 
+    test "the message names the ISA version this build supports" do
+      {:error, error} = Instructions.required_isa([["nope"]])
+      assert String.contains?(error.message, "nope")
+      assert String.contains?(error.message, "ISA v#{Instructions.isa_version()}")
+    end
+
     # "store" is the reserved v-next opcode name (docs/isa.md section 6) and
     # is not in the map yet - px-tbv.2 adds it, at which point this
     # expectation flips intentionally rather than by accident.
