@@ -1,6 +1,6 @@
 defmodule Predicator.Instructions do
   @moduledoc """
-  Version queries over a compiled instruction list.
+  Version and tier queries over a compiled instruction list.
 
   The instruction set is versioned (ADR-0003): there is a current ISA version
   this build emits and can run, and any instruction list can be asked what
@@ -8,9 +8,16 @@ defmodule Predicator.Instructions do
   handed a list, compares the two and refuses up front rather than failing
   partway through a run.
 
-  The opcode set and the version each opcode was introduced at are specified
-  in [`docs/isa.md`](../../docs/isa.md); the table below is its executable
-  form, and a test asserts the two agree.
+  Every opcode also carries a **conformance tier** (`px-35i.4`): a
+  conformance-corpus grouping, a function of opcode only, that never depends
+  on the value types an expression happens to use. A lower tier is a smaller,
+  more foundational surface, so an implementation that has only tier 1 can
+  run only tier 1's cases and get a green.
+
+  The opcode set, the ISA version each opcode was introduced at, and each
+  opcode's tier are specified in [`docs/isa.md`](../../docs/isa.md) section 4;
+  the table below is its executable form - one table with two columns, not
+  two tables - and a test asserts the two agree.
   """
 
   alias Predicator.Errors.EvaluationError
@@ -19,36 +26,37 @@ defmodule Predicator.Instructions do
   # The ISA version this build emits and can run (docs/isa.md, section 1).
   @isa_version 2
 
-  # Opcode -> the ISA version that introduced it (docs/isa.md, sections 4
-  # and 7). An opcode's semantics never change under its own name (ADR-0003),
-  # which is what makes a name scan a sound answer rather than a
-  # best-effort one.
-  @opcode_isa %{
-    "lit" => 1,
-    "load" => 1,
-    "access" => 1,
-    "compare" => 1,
-    "and" => 1,
-    "or" => 1,
-    "not" => 1,
-    "in" => 1,
-    "contains" => 1,
-    "add" => 1,
-    "subtract" => 1,
-    "multiply" => 1,
-    "divide" => 1,
-    "modulo" => 1,
-    "unary_minus" => 1,
-    "unary_bang" => 1,
-    "bracket_access" => 1,
-    "call" => 1,
-    "object_new" => 1,
-    "object_set" => 1,
-    "duration" => 1,
-    "relative_date" => 1,
-    "make_list" => 2,
-    "jump_if_falsy_or_pop" => 2,
-    "jump_if_true_or_pop" => 2
+  # Opcode -> the ISA version that introduced it, and the conformance tier it
+  # belongs to (docs/isa.md, section 4). An opcode's semantics never change
+  # under its own name (ADR-0003), which is what makes a name scan a sound
+  # answer rather than a best-effort one. isa_sync_test binds both columns to
+  # docs/isa.md.
+  @opcodes %{
+    "lit" => %{isa: 1, tier: 1},
+    "load" => %{isa: 1, tier: 1},
+    "access" => %{isa: 1, tier: 3},
+    "compare" => %{isa: 1, tier: 1},
+    "and" => %{isa: 1, tier: 1},
+    "or" => %{isa: 1, tier: 1},
+    "not" => %{isa: 1, tier: 1},
+    "in" => %{isa: 1, tier: 3},
+    "contains" => %{isa: 1, tier: 3},
+    "add" => %{isa: 1, tier: 2},
+    "subtract" => %{isa: 1, tier: 2},
+    "multiply" => %{isa: 1, tier: 2},
+    "divide" => %{isa: 1, tier: 2},
+    "modulo" => %{isa: 1, tier: 2},
+    "unary_minus" => %{isa: 1, tier: 1},
+    "unary_bang" => %{isa: 1, tier: 1},
+    "bracket_access" => %{isa: 1, tier: 3},
+    "call" => %{isa: 1, tier: 5},
+    "object_new" => %{isa: 1, tier: 4},
+    "object_set" => %{isa: 1, tier: 4},
+    "duration" => %{isa: 1, tier: 4},
+    "relative_date" => %{isa: 1, tier: 4},
+    "make_list" => %{isa: 2, tier: 3},
+    "jump_if_falsy_or_pop" => %{isa: 2, tier: 1},
+    "jump_if_true_or_pop" => %{isa: 2, tier: 1}
   }
 
   @doc """
@@ -56,6 +64,54 @@ defmodule Predicator.Instructions do
   """
   @spec isa_version() :: pos_integer()
   def isa_version, do: @isa_version
+
+  @doc """
+  Returns the full opcode table: every known opcode mapped to the ISA version
+  that introduced it and its conformance tier (`docs/isa.md` section 4).
+
+  ## Examples
+
+      iex> Predicator.Instructions.opcodes()["lit"]
+      %{isa: 1, tier: 1}
+  """
+  @spec opcodes() :: %{optional(String.t()) => %{isa: pos_integer(), tier: pos_integer()}}
+  def opcodes, do: @opcodes
+
+  @doc """
+  Returns the conformance tier for a single `opcode`.
+
+  Tier is a conformance-corpus grouping (`px-35i.4`), a function of opcode
+  only - it never depends on the value types an expression happens to use
+  (`docs/isa.md` section 4). Returns
+  `{:error, %EvaluationError{reason: "unknown_opcode"}}` for an opcode not in
+  the table, the same reason `required_isa/1` uses.
+
+  ## Examples
+
+      iex> Predicator.Instructions.tier("lit")
+      {:ok, 1}
+
+      iex> Predicator.Instructions.tier("make_list")
+      {:ok, 3}
+
+      iex> Predicator.Instructions.tier("nope")
+      {:error, %Predicator.Errors.EvaluationError{reason: "unknown_opcode", message: "Unknown opcode: \\"nope\\"", operation: :tier}}
+  """
+  @spec tier(String.t()) :: {:ok, pos_integer()} | {:error, EvaluationError.t()}
+  def tier(opcode) when is_binary(opcode) do
+    case Map.fetch(@opcodes, opcode) do
+      {:ok, %{tier: tier}} ->
+        {:ok, tier}
+
+      :error ->
+        {:error,
+         EvaluationError.new(
+           "Unknown opcode: #{inspect(opcode)}",
+           "unknown_opcode",
+           :tier
+         )}
+    end
+  end
 
   @doc """
   Returns the minimum ISA version required to run `instructions`.
@@ -113,8 +169,8 @@ defmodule Predicator.Instructions do
   @spec opcode_version(term(), non_neg_integer()) ::
           {:ok, pos_integer()} | {:error, EvaluationError.t()}
   defp opcode_version([opcode | _operands], _index) when is_binary(opcode) do
-    case Map.fetch(@opcode_isa, opcode) do
-      {:ok, version} ->
+    case Map.fetch(@opcodes, opcode) do
+      {:ok, %{isa: version}} ->
         {:ok, version}
 
       :error ->

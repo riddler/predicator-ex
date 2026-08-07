@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   added or altered, and every instruction list valid before this release is
   valid after it.
 
+- `Predicator.Instructions.opcodes/0`, returning the full opcode table -
+  every opcode mapped to the ISA version that introduced it and its
+  conformance tier - and `Predicator.Instructions.tier/1`, returning a single
+  opcode's tier as `{:ok, integer}` or the same `"unknown_opcode"`
+  `{:error, %Predicator.Errors.EvaluationError{}}` `required_isa/1` returns.
+  Tier is a conformance-corpus grouping (`px-35i.4`), a function of opcode
+  only, per `docs/isa.md` section 4.
+
 ### Documentation
 
 - **`docs/isa.md`: the ISA reference.** The single specification of
