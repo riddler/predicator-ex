@@ -181,3 +181,94 @@ The step (naming is the sibling's; the semantics are not):
    `corpus_hash` and `isa_version` from the manifest, `claims` as the caller
    asserts (and see the completeness check the reference runner section
    defines, which will refuse a claim the entries do not support).
+
+## The reference runner
+
+Small by design, and doubles as the worked example of consuming the corpus:
+
+```text
+run(surface, tier_n):
+  manifest = parse_json(read("conformance/manifest.json"))
+  cases    = []
+  for t in manifest.tiers where t.tier <= tier_n:        # tiers are CUMULATIVE
+    for line in read(t.file).split("\n") where line != "":
+      cases.append(parse_json(line))
+
+  if surface == "compiler":
+    cases = cases.filter(c -> c.source != null)          # absent, not skipped
+
+  results = []
+  for c in cases:
+    if surface == "evaluator":
+      actual = my_evaluator.run(decode(c.instructions), decode(c.context))
+      results.append(compare_value(c, actual))
+    else:
+      actual = my_compiler.compile(c.source)
+      results.append(compare_instructions(c, actual))
+
+  return {isa_version: my_isa_version, corpus_hash: manifest.corpus_hash,
+          tier: tier_n, surface: surface, results: results}
+```
+
+The pieces that do not fit in the pseudocode itself: `decode` points at
+[`conformance/README.md`](README.md)'s tagged-value table (`$type` of `date`,
+`datetime`, `duration`, `undefined`; everything else decodes as itself).
+`compare_value` checks `expected_result` structurally, or - when the case
+expects an error - `expected_error`'s `type` and `reason` fields, never the
+human-readable message. `compare_instructions` compares the compiler's output
+structurally against `c.instructions`.
+
+Restate never-skip at the point it bites: **an unimplemented feature produces
+`{"result": "fail", "reason": "<feature> not implemented"}`, never an absent
+entry.** `report.json`'s enum makes any other choice unrepresentable, but the
+runner author needs to be told what to do instead, not only what not to do.
+
+## The check step
+
+The CI-side counterpart, which writes nothing:
+
+```text
+check(registry, manifest, corpus):
+  fail unless registry.corpus_hash == manifest.corpus_hash        # R1: the pin
+  for e in registry.entries:
+    fail unless (e.case_id, e.surface) in surface_case_set(corpus, e.surface)
+    fail unless e.tier == corpus[e.case_id].tier                  # R2: rule 1
+  fail unless reencode(registry) == read_bytes(registry_path)     # R3: rule 2
+  reports = {s: run(s, max_tier_for(registry, s)) for s in surfaces_present}
+  for e in registry.entries:
+    fail unless reports[e.surface].result_for(e.case_id) == "pass"  # R4: no regression
+  for cl in registry.claims:                                        # R5: completeness
+    for c in surface_case_set(corpus, cl.surface) where c.tier <= cl.tier:
+      fail unless (c.id, cl.surface) in registry.entries
+```
+
+Each check earns its line in the spec:
+
+- **R1, the pin.** A `corpus_hash` mismatch is a **hard failure**, not a
+  warning and not an auto-refresh. Every entry in the file is a claim about a
+  specific corpus; if the corpus moved, the claims are unverified, and a
+  ratchet of unverified claims is worth nothing. The remedy is to re-run
+  verify-then-add, which - because it refuses to record a failing case and
+  refuses to drop an existing entry - either produces a correctly re-pinned
+  file or fails loudly naming what regressed. There is no path through this
+  that silently shrinks.
+- **R2** is rule 1 and its tier sibling, from above.
+- **R3** is what makes rule 2 *enforced* rather than aspirational: re-encode
+  the parsed registry per the normative encoding rules and byte-compare. A
+  hand edit, a pretty-printer, or an editor that reindents on save is caught
+  here, which is the only way "nothing hand-edits this file" is a fact rather
+  than a hope.
+- **R4** is the ratchet: every recorded pass must still pass, today.
+- **R5** is what makes `claims` mean something. Without it a registry says
+  only "these pass" and never "and that is all of tier N", so it cannot be a
+  green/red signal on its own. With it, a sibling's CI is one command.
+
+Two properties, stated explicitly so nobody reads R5 as stricter than it is:
+
+- **Entries above the claimed tier are legal and are still ratchet-checked.**
+  A sibling mid-climb records tier-2 passes while claiming tier 1; R4
+  protects them, R5 ignores them.
+- **An empty `claims` array is a valid, passing registry.** Per ADR-0003 a
+  sibling adopts on a boundary of its own choosing; a registry with entries
+  and no claims is an honest "here is what I pass, I am not asserting a tier
+  yet", and this rule must not turn that into a failure.
