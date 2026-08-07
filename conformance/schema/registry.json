@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riddler/predicator-ex/conformance/schema/registry.json",
+  "title": "Predicator sibling conformance ratchet registry",
+  "description": "The registry format a sibling implementation (impl/rb, impl/ts, or any future port) uses to record which corpus cases it passes, on which surface, against which corpus version. This repo does not ship a registry; conformance/examples/registry.example.json is a worked example generated from this checkout's own corpus, and conformance/RATCHET.md is the normative contract - the two surfaces' case sets, the verify-then-add growth rule, and the ordering and encoding rules this schema cannot express.",
+  "type": "object",
+  "properties": {
+    "claims": {
+      "type": "array",
+      "description": "Zero or more {surface, tier} objects, at most one per surface - 'every case in tiers 1..N on this surface has an entry' (conformance/RATCHET.md rule R5). May be empty. See RATCHET.md for the required sort order (by surface, ascending by codepoint), which this schema cannot express.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "surface": {
+            "type": "string",
+            "enum": ["evaluator", "compiler"]
+          },
+          "tier": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["surface", "tier"],
+        "additionalProperties": false
+      }
+    },
+    "corpus_hash": {
+      "type": "string",
+      "description": "The conformance/manifest.json corpus_hash every entry was verified against - the pin (conformance/RATCHET.md).",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "entries": {
+      "type": "array",
+      "description": "One {case_id, surface, tier} per verified pass - the ratchet itself. See conformance/RATCHET.md for the required sort order (surface, then tier, then case_id, all ascending by codepoint) and the one-element-per-line encoding, neither of which this schema can express.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "description": "A corpus case id (conformance/schema/corpus.json's id pattern). Stable forever once shipped.",
+            "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*(?:/[a-z0-9]+(?:[-_][a-z0-9]+)*)*$"
+          },
+          "surface": {
+            "type": "string",
+            "enum": ["evaluator", "compiler"]
+          },
+          "tier": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["case_id", "surface", "tier"],
+        "additionalProperties": false
+      }
+    },
+    "implementation": {
+      "type": "string",
+      "description": "Self-identifying name, e.g. \"predicator-rb\". Diagnostic only - not matched against anything."
+    },
+    "isa_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The manifest's isa_version at pin time. Redundant with corpus_hash by design - see conformance/RATCHET.md."
+    }
+  },
+  "required": ["claims", "corpus_hash", "entries", "implementation", "isa_version"],
+  "additionalProperties": false
+}
