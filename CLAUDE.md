@@ -188,11 +188,17 @@ Read before making design decisions:
   per-feature history, conventions, and troubleshooting. The detailed reference
   for this codebase.
 - `docs/adr/` - the reasoning behind architectural decisions; cite ADR numbers
-  instead of re-arguing them. ADR-0001 sets the 3.6-4.0 arc.
+  instead of re-arguing them. ADR-0001 sets the 3.6-4.0 arc; ADR-0003 amends
+  its consequences and governs how the instruction set moves.
+- `docs/isa.md` - the instruction set specification: the opcodes, the execution
+  model, and the versioning rules. The authority for any ISA question.
 
-Predicator has sibling implementations in Ruby and JavaScript. The instruction
-set is the cross-language interchange format, so changes to it are not local to
-this repo (ADR-0001).
+Predicator is the reference implementation of the instruction set; Ruby and
+JavaScript siblings adopt it on a version boundary of their own choosing
+(ADR-0003). A sibling behind the current ISA version is an expected,
+documented state, never a blocker here. What a change to the instruction set
+does owe is a version, an entry in `docs/isa.md`, and a migration note if a
+stored artifact is affected.
 
 ## Build & Test
 
