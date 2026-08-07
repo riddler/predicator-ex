@@ -202,8 +202,8 @@ House style: `CLAUDE.md` is hyphen-and-ASCII throughout; match it.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `grep -n 'not local to' CLAUDE.md` returns nothing
-- [ ] `grep -n 'isa.md\|ADR-0003' CLAUDE.md` returns both new references
+- [x] `grep -n 'not local to' CLAUDE.md` returns nothing
+- [x] `grep -n 'isa.md\|ADR-0003' CLAUDE.md` returns both new references
 - [ ] Full gate is clean (no Elixir touched, so this is a formality):
       `mix quality`
 
@@ -561,3 +561,10 @@ Recorded per the "no human available" invariant rather than resolved.
    makes greppable. This plan does not add one - inventing a label is a
    governance change beyond px-im6's acceptance criteria - but it is worth a
    bead if ISA changes become frequent.
+
+## Deferred Manual Verification
+
+### Phase 1: Reframe the CLAUDE.md anchor
+- [ ] The "Read before making design decisions" list still reads as a list of
+      four things to read, not a paragraph of policy
+- [ ] No em dashes or non-ASCII punctuation introduced into `CLAUDE.md`
