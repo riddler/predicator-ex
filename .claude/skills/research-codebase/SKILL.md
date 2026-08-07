@@ -135,13 +135,14 @@ Use the issue as the research prompt:
    - Use the **thoughts-analyzer** agent to extract key insights from specific documents (only the most relevant ones)
    - Accepted ADRs are settled decisions: cite their numbers, do not re-argue them
 
-   **For cross-language comparison (only when the question involves the
-   instruction set or another implementation's behavior):**
-   - The instruction set is the interchange format shared with the Ruby and
-     JavaScript siblings (ADR-0001). Those repos live outside this checkout;
-     point a codebase-locator/analyzer agent at a sibling path explicitly when
-     the question genuinely needs it, and say in the prompt that it is looking
-     outside `/Users/johnnyt/repos/github/predicator-ex`.
+   **For ISA questions (only when the question involves the instruction set
+   or another implementation's behavior):**
+   - `docs/isa.md` is the instruction set specification and the first place to
+     look. The Ruby and JavaScript siblings live outside this checkout; point a
+     codebase-locator/analyzer agent at a sibling path explicitly when the
+     question genuinely needs it, and say in the prompt that it is looking
+     outside `/Users/johnnyt/repos/github/predicator-ex`. A sibling's own repo
+     is the authority on which ISA version it supports (ADR-0003).
 
    **For web research (only if user explicitly asks):**
    - Use the **web-search-researcher** agent for external documentation and resources
@@ -238,11 +239,11 @@ Use the issue as the research prompt:
 
      [Current patterns, conventions, and design implementations found in the codebase; cite ADR numbers where applicable]
 
-     ## Cross-Language Impact
+     ## ISA Impact
 
-     [Only when the instruction set is involved: what an ISA change here would
-     mean for the Ruby and JavaScript siblings, per ADR-0001. Omit the section
-     entirely when it does not apply.]
+     [Only when an opcode is involved: the ISA version it belongs to per
+     `docs/isa.md`, and whether the question implies a version bump. Omit the
+     section entirely when it does not apply.]
 
      ## Historical Context (from docs/)
 
