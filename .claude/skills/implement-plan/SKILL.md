@@ -163,9 +163,10 @@ If the plan touches the lexer, parser, compiler, evaluator, or visitors:
 - **A grammar change is not done until `StringVisitor` round-trips it.**
   Rendering the AST back to source is part of the public contract, not a
   nicety.
-- **Instructions are the cross-language interchange format** (ADR-0001). Adding
-  or changing one is a decision the Ruby and JavaScript implementations have to
-  match, so it belongs in the commit message and the PR body, not just the code.
+- **Adding or altering an opcode moves the ISA** (ADR-0003). The plan's
+  `## ISA Impact` section names the version, the `docs/isa.md` entry, and any
+  migration note; carry all three into the commit message and the PR body, not
+  just the code.
 - Errors are values: return `{:ok, result} | {:error, ...}` and let the caller
   decide. Never raise at a leaf, and never rescue-to-default.
 - No `eval`, no `Code.eval_string`, no dynamic dispatch on user input. That is

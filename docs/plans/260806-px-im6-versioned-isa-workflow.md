@@ -430,10 +430,14 @@ message and the PR body, not just the code."
 
 #### Automated Verification:
 - [ ] `grep -rn 'have to match\|not a local' .claude/skills/` returns nothing
-- [ ] `grep -rn 'ADR-0003' .claude/skills/commit/SKILL.md
+      (one unrelated pre-existing hit remains: `create-plan/SKILL.md:163`,
+      "precedence is a whole-language decision, not a local one" - not about
+      the ISA/siblings and outside Phase 4's three target files)
+- [x] `grep -rn 'ADR-0003' .claude/skills/commit/SKILL.md
       .claude/skills/merge-request/SKILL.md
       .claude/skills/implement-plan/SKILL.md` returns hits in all three
-- [ ] `mix quality` clean
+- [ ] `mix quality` clean (skipped: docs-only carve-out, no Elixir files
+      touched)
 
 #### Manual Verification:
 - [ ] `/implement-plan`'s pointer at `## ISA Impact` matches the section name
@@ -589,3 +593,9 @@ Recorded per the "no human available" invariant rather than resolved.
 - [ ] The new "handling without an opcode change is not a bump" carve-out does
       not accidentally license a just-do-it for evaluator semantics changes -
       those are still multi-area and land in Plan-only by the area rule
+
+### Phase 4: Rekey the reporting skills
+- [ ] `/implement-plan`'s pointer at `## ISA Impact` matches the section name
+      Phase 2 established
+- [ ] `/merge-request`'s Notes bullet still reads as one bullet in a four-bullet
+      list, not as a paragraph

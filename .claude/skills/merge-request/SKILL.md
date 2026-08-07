@@ -207,10 +207,10 @@ trailers on the branch's own commits, falling back to the branch prefix
    - **Why** - the problem, in the bead's terms
    - **What** - the shape of the change, not a file list; the diff has that
    - **Notes** - anything surprising, deliberately deferred, or worth a second
-     opinion, plus which gate ran. If the change touches the instruction set,
-     say so explicitly: it is the cross-language interchange format shared with
-     the Ruby and JavaScript implementations (ADR-0001), so it is not a local
-     decision.
+     opinion, plus which gate ran. If the change moves the ISA, say so
+     explicitly and name the version it lands at, plus its `docs/isa.md` entry
+     and any migration note (ADR-0003). A sibling that has not adopted that
+     version is not a blocker on the PR.
    - The bead references: `Closes px-xxx` for **every** bead the branch's
      trailers name, one per line (and the epic, if they share one)
 
