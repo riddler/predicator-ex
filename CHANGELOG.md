@@ -135,6 +135,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   guessing. Nothing here enters the hex package: `conformance/` is excluded
   from `mix.exs`'s `files:` list, same as the rest of the corpus tree.
 
+- **Opcode retirement mechanics** (`px-t2v`). `Predicator.Instructions.in_isa?/2`
+  answers whether an opcode's table entry is in a given ISA version's set;
+  `opcode_set/1` returns the full set of opcode names a given ISA version
+  comprises; `retired_in/1` returns the ISA version that retired an opcode, or
+  `{:ok, nil}` for one still live, mirroring `tier/1`'s error shape for an
+  unknown name. `opcodes/0`'s value shape widens to carry an optional
+  `:removed_in` key alongside the existing `:isa` and `:tier` - no opcode
+  carries it yet, so every existing return value is unchanged.
+
 ### Documentation
 
 - **`docs/isa.md`: the ISA reference.** The single specification of
@@ -178,6 +187,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `positions:` still sees `nil`.
 
 ### Changed
+
+- `docs/isa.md` now specifies opcode retirement mechanics: retiring an opcode
+  mints the next ISA version, a version's opcode set is a half-open interval
+  so a retired opcode keeps its table row instead of being deleted, and the
+  conformance corpus freezes a retired case's expectation rather than
+  recomputing it through an evaluator clause that no longer exists.
 
 - `Predicator.Instructions.required_isa/1`'s `unknown_opcode` error message now
   names the ISA version this build supports, not just the offending opcode:

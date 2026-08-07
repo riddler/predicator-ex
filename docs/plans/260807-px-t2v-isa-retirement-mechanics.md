@@ -779,9 +779,9 @@ is **not** a release request.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` still green (unchanged from Phase 3; no Elixir moved)
-- [ ] `bd show px-t2v` lists `area:evaluator` among its labels
-- [ ] `bd show px-tbv.9` shows `→ px-t2v` under `DEPENDS ON`
+- [x] `mix quality` still green (unchanged from Phase 3; no Elixir moved)
+- [x] `bd show px-t2v` lists `area:evaluator` among its labels
+- [x] `bd show px-tbv.9` shows `→ px-t2v` under `DEPENDS ON`
 
 #### Manual Verification:
 - [ ] The CHANGELOG entry describes the change from a consumer's point of view,
@@ -896,3 +896,7 @@ retirement.
   implementer: it says what to do with a `retired`-tagged case at each
   version claim
 - (Phase 3) `RATCHET.md`'s paragraph makes clear no ratchet rule changed
+- (Phase 4) The CHANGELOG entry describes the change from a consumer's point of
+  view, not the plan's
+- (Phase 4) px-tbv.9's note is specific enough that its implementer does not
+  have to re-derive any of the three decisions
