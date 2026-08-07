@@ -18,6 +18,16 @@ defmodule Predicator.Instructions do
   opcode's tier are specified in [`docs/isa.md`](../../docs/isa.md) section 4;
   the table below is its executable form - one table with two columns, not
   two tables - and a test asserts the two agree.
+
+  A retired opcode keeps its row rather than losing it: the row gains an
+  optional `:removed_in` key naming the ISA version that retired it, so
+  `required_isa/1` and `tier/1` keep answering with a version instead of
+  falling back to `unknown_opcode` for an artifact that predates the
+  retirement. A version's opcode set is therefore an interval - introduced at
+  one version and, if ever retired, removed at another - and is fixed once
+  minted: retiring an opcode at a later version does not change what an
+  earlier version's set was. `in_isa?/2`, `opcode_set/1`, and `retired_in/1`
+  are the queries built on that interval.
   """
 
   alias Predicator.Errors.EvaluationError
@@ -25,6 +35,18 @@ defmodule Predicator.Instructions do
 
   # The ISA version this build emits and can run (docs/isa.md, section 1).
   @isa_version 2
+
+  @typedoc """
+  One opcode's table entry: the ISA version that introduced it, its conformance
+  tier, and - only when it has been retired - the ISA version that removed it.
+  An opcode is in ISA version `v` iff `isa <= v < removed_in` (docs/isa.md §1);
+  an entry with no `:removed_in` key has never been retired.
+  """
+  @type opcode_info :: %{
+          :isa => pos_integer(),
+          :tier => pos_integer(),
+          optional(:removed_in) => pos_integer()
+        }
 
   # Opcode -> the ISA version that introduced it, and the conformance tier it
   # belongs to (docs/isa.md, section 4). An opcode's semantics never change
@@ -74,7 +96,7 @@ defmodule Predicator.Instructions do
       iex> Predicator.Instructions.opcodes()["lit"]
       %{isa: 1, tier: 1}
   """
-  @spec opcodes() :: %{optional(String.t()) => %{isa: pos_integer(), tier: pos_integer()}}
+  @spec opcodes() :: %{optional(String.t()) => opcode_info()}
   def opcodes, do: @opcodes
 
   @doc """
@@ -109,6 +131,106 @@ defmodule Predicator.Instructions do
            "Unknown opcode: #{inspect(opcode)}",
            "unknown_opcode",
            :tier
+         )}
+    end
+  end
+
+  @doc """
+  Returns whether an opcode's table entry is a member of `version`'s opcode set.
+
+  A live entry (no `:removed_in` key) is in every version at or after the one
+  that introduced it. A retired entry is in every version from the one that
+  introduced it up to, but not including, the one that removed it - the
+  half-open interval `[isa, removed_in)` (`docs/isa.md` §1). This is the
+  membership test `opcode_set/1` is built from, and it is what a consumer
+  should apply instead of a bare `required_isa(list) <= isa_version()`
+  comparison once any opcode is retired: a retired opcode still reports the
+  version that introduced it, so the `<=` comparison alone cannot see that a
+  later build no longer runs it.
+
+  Takes an explicit `opcode_info()` rather than an opcode name so the retired
+  branch is doctestable and unit-testable today, before any real opcode
+  carries a `:removed_in` value.
+
+  ## Examples
+
+      iex> Predicator.Instructions.in_isa?(%{isa: 1, tier: 1}, 1)
+      true
+
+      iex> Predicator.Instructions.in_isa?(%{isa: 2, tier: 3}, 1)
+      false
+
+      iex> Predicator.Instructions.in_isa?(%{isa: 1, tier: 1, removed_in: 3}, 2)
+      true
+
+      iex> Predicator.Instructions.in_isa?(%{isa: 1, tier: 1, removed_in: 3}, 3)
+      false
+
+      iex> Predicator.Instructions.in_isa?(%{isa: 1, tier: 1, removed_in: 3}, 4)
+      false
+  """
+  @spec in_isa?(opcode_info(), pos_integer()) :: boolean()
+  def in_isa?(%{isa: introduced} = info, version)
+      when is_integer(version) and version > 0 do
+    case Map.fetch(info, :removed_in) do
+      {:ok, removed_in} -> introduced <= version and version < removed_in
+      :error -> introduced <= version
+    end
+  end
+
+  @doc """
+  Returns the set of opcode names that are members of `version`'s opcode set.
+
+  A build running ISA version `v` can run an instruction list iff every
+  opcode it uses is a member of `opcode_set(v)`. This is the check that
+  supersedes a bare `required_isa(list) <= isa_version()` comparison once any
+  opcode is retired - `required_isa/1` alone stops being sufficient because a
+  retired opcode still reports the version that introduced it, not the
+  version that removed it.
+
+  ## Examples
+
+      iex> Predicator.Instructions.opcode_set(1) |> MapSet.member?("make_list")
+      false
+
+      iex> Predicator.Instructions.opcode_set(2) |> MapSet.member?("make_list")
+      true
+  """
+  @spec opcode_set(pos_integer()) :: MapSet.t(String.t())
+  def opcode_set(version) when is_integer(version) and version > 0 do
+    for {opcode, info} <- @opcodes, in_isa?(info, version), into: MapSet.new(), do: opcode
+  end
+
+  @doc """
+  Returns the ISA version that retired a single `opcode`, or `nil` if it has
+  never been retired.
+
+  Mirrors `tier/1`'s shape, including its `unknown_opcode` error for an
+  opcode not in the table. Together with `required_isa/1`, this is what lets
+  a refusal name both halves of ADR-0003's promised message: the version an
+  instruction list needs, and, when that opcode has since been retired, the
+  version that removed it.
+
+  ## Examples
+
+      iex> Predicator.Instructions.retired_in("lit")
+      {:ok, nil}
+
+      iex> Predicator.Instructions.retired_in("nope")
+      {:error, %Predicator.Errors.EvaluationError{reason: "unknown_opcode", message: "Unknown opcode: \\"nope\\"", operation: :retired_in}}
+  """
+  @spec retired_in(String.t()) :: {:ok, pos_integer() | nil} | {:error, EvaluationError.t()}
+  def retired_in(opcode) when is_binary(opcode) do
+    case Map.fetch(@opcodes, opcode) do
+      {:ok, info} ->
+        {:ok, Map.get(info, :removed_in)}
+
+      :error ->
+        {:error,
+         EvaluationError.new(
+           "Unknown opcode: #{inspect(opcode)}",
+           "unknown_opcode",
+           :retired_in
          )}
     end
   end
