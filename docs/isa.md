@@ -73,9 +73,12 @@ each row.
 - Execution is sequential from index 0. The program halts when the
   instruction pointer reaches or passes the end of the list, so a forward
   jump past the last instruction is a normal halt, not an error.
-- The result is the top of the stack at halt. An empty stack at halt is an
-  `EvaluationError` with reason `"empty_stack"`; it is the one error that
-  belongs to no instruction and therefore carries no source position.
+- **In expression mode, the result is the top of the stack at halt.** An empty
+  stack at halt is an `EvaluationError` with reason `"empty_stack"`; it is the
+  one error that belongs to no instruction and therefore carries no source
+  position. A deeper stack is not an error: the top is the result and anything
+  beneath it is discarded. This rule, `empty_stack` included, is expression
+  mode's alone - see "Two execution modes" below.
 - **Opcodes validate, they do not coerce.** There is no general truthiness
   rule; a boolean-expecting opcode handed a non-boolean is a
   `TypeMismatchError`.
@@ -108,6 +111,43 @@ each row.
   it changes what a `load` of an absent root does but adds no opcode and no
   wire-format change. See `docs/architecture.md` for that option; it is not
   respecified here.
+
+### Two execution modes
+
+A program is a flat instruction list with no header, so nothing in the wire
+format says whether it is an expression or a statement program. **The mode is
+carried by the entry point, not by the artifact.** In this implementation
+`Predicator.evaluate/2,3` is expression mode and `Predicator.execute/2` - the
+4.0 statement layer, §6 - is statement mode; a sibling exposes the same two
+calls under whatever names it likes. The instruction set is identical in both:
+no opcode is restricted to one mode, and no opcode means anything different in
+the other. Only what "result" means differs.
+
+- **Expression mode** - the result is the top of the stack at halt, and an
+  empty stack at halt is `empty_stack`, as above.
+- **Statement mode** - the result is **the context at halt**, not a stack
+  value. The stack is scratch space between statement boundaries: a
+  well-formed statement program ends each statement with a `store` or a `pop`
+  and therefore halts with an **empty stack by design**. That is a normal
+  halt. `empty_stack` is an expression-mode rule and is never raised in
+  statement mode. A non-empty stack at halt is likewise not an error in
+  statement mode; the residue is discarded, exactly as expression mode
+  discards everything beneath the top.
+
+A statement program that halts on an error has no result. Whether the
+partially applied context from the statements that completed before the error
+is kept or discarded is a property of the host API, not of the VM; the VM
+specifies only that execution stops at the failing instruction.
+
+A host may additionally surface the value of the program's last expression
+statement alongside the context. That is a host-API convenience, not an ISA
+guarantee - the statement boundary's `pop` discards it as far as the VM is
+concerned.
+
+Statement mode is specified here, ahead of the opcodes that reach it, so the
+statement layer arrives as two opcodes plus an entry point rather than as a
+change to this specification. Until `store` and `pop` exist (§6), no evaluator
+has a statement entry point and no program is a statement program.
 
 ## 3. Value types
 
@@ -152,7 +192,7 @@ row's tier does not depend on the value types the expression happens to use
 | 3 | access | `in`, `contains`, `access`, `bracket_access`, `make_list` |
 | 4 | rich types | `object_new`, `object_set`, `duration`, `relative_date` |
 | 5 | functions | `call` |
-| 6 | statements | (none yet - reserved for `store`) |
+| 6 | statements | (none yet - reserved for `store` and `pop`) |
 
 Tiers are defined by opcode, not by value. A date comparison
 (`[["lit", Date], ["lit", Date], ["compare", "GT"]]`) is tier 1 by opcode,
@@ -397,6 +437,16 @@ What a reader might expect to find here and will not:
 - `["store", n]` - specified by ADR-0001 for the 4.0 statement layer, not
   implemented and not accepted by any current evaluator clause. Reserved
   name, tier 6.
+- `["pop"]` - the statement-boundary opcode of the same 4.0 statement layer:
+  it discards an expression statement's value so the next statement begins
+  from a clean stack. Not implemented and not accepted by any current
+  evaluator clause. Reserved name, tier 6, beside `store`. It is **not**
+  related to `jump_if_falsy_or_pop` / `jump_if_true_or_pop`, which are live
+  ISA v2 opcodes that pop conditionally as part of a jump; the shared word in
+  their names is the only thing the three have in common.
+- A statement entry point. §2's "Two execution modes" specifies statement
+  mode's halt contract, but no current evaluator exposes one, so every program
+  any implementation runs today is an expression program.
 - Source positions and spans - these travel in an Elixir-side side table,
   never serialized as part of the instruction list. See
   `docs/architecture.md`'s Source Positions and Source Spans sections.

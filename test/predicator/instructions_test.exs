@@ -191,6 +191,15 @@ defmodule Predicator.InstructionsTest do
                Instructions.required_isa([["store", 0]])
     end
 
+    # "pop" is the statement-boundary opcode reserved beside "store"
+    # (docs/isa.md section 6) and is not in the map yet - px-tbv.2 adds it,
+    # at which point this expectation flips intentionally rather than by
+    # accident.
+    test "pop is currently an unknown opcode" do
+      assert {:error, %EvaluationError{reason: "unknown_opcode"}} =
+               Instructions.required_isa([["pop"]])
+    end
+
     test "the first bad opcode wins when there are two" do
       {:error, error} = Instructions.required_isa([["nope"], ["also_nope"]])
       assert String.contains?(error.message, "nope")
