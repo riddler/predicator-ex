@@ -28,10 +28,12 @@ You are a specialist at extracting HIGH-VALUE insights from project documents (r
    - Identify what was actually implemented vs proposed
    - For ADRs (docs/adr/), note the status line (accepted, superseded) - an
      accepted ADR is settled; cite its number instead of re-arguing it
-   - Note whether a decision touches the **instruction set**, which is the
-     cross-language interchange format shared with the Ruby and JavaScript
-     siblings (ADR-0001). Those are not local decisions and should be
-     surfaced as such.
+   - Note whether a decision moves the **instruction set**, and if so at what
+     ISA version - `docs/isa.md` is the specification and ADR-0003 makes this
+     repo its reference implementation. Surface the version, not a
+     sibling-readiness question. ADR-0003 amends ADR-0001's consequences
+     without superseding it, so do not report ADR-0001's amended consequences
+     (the cross-language interchange framing) as still live.
 
 ## Analysis Strategy
 

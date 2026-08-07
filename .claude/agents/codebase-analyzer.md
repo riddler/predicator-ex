@@ -48,8 +48,8 @@ anywhere. Useful orientation:
   `Compiler` / `Visitors.InstructionsVisitor` (flat instruction list) ->
   `Evaluator` (stack VM) -> `{:ok, value} | {:error, struct}`. A change at one
   stage usually implies the next one.
-- **The instruction set is the cross-language interchange format** shared with
-  the Ruby and JavaScript siblings (ADR-0001). Instructions are plain lists,
+- **The instruction set is specified in `docs/isa.md`**, and this repository is
+  its reference implementation (ADR-0003). Instructions are plain lists,
   readable directly, which makes printing a compiled program the fastest way to
   understand an evaluation.
 - **`Visitors.StringVisitor` renders the AST back to source**, so the AST shape
@@ -134,7 +134,7 @@ Structure your analysis like this:
 - **Errors as values**: `{:ok, _} | {:error, struct}`, never raised at a leaf
 - **Flat instruction list**: no nesting, no dynamic dispatch on user input
 - **Visitor pattern**: one visitor per output shape (instructions, string)
-- **Cross-language ISA**: instruction changes are shared with Ruby/JS (ADR-0001)
+- **Versioned ISA**: opcodes are specified in `docs/isa.md`; a change to one moves the version (ADR-0003)
 
 ### Configuration
 - Function registry assembled in `lib/predicator/functions/...`
