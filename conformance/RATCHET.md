@@ -83,7 +83,7 @@ Tier-first ordering was considered and rejected: it interleaves the two
 independent climbs, so a surface's progress is never visible as a block and a
 tier's worth of new entries scatters through the file.
 
-## Encoding
+## Rule 2: one entry per line, sorted, never reflowed
 
 Normative, and binding on the **writer** only - a reader just parses JSON:
 
