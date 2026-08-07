@@ -1,0 +1,40 @@
+[
+  {
+    "id": "dates/gt-date-true",
+    "source": "#2024-01-15# > #2024-01-10#",
+    "expected": { "result": true },
+    "notes": "date comparison is tier 1 by opcode (compare); the dates feature tag carries the value-level requirement, per docs/isa.md's tier note"
+  },
+  {
+    "id": "dates/gte-date-boundary-true",
+    "source": "#2024-01-15# >= #2024-01-15#",
+    "expected": { "result": true }
+  },
+  {
+    "id": "dates/ne-date-true",
+    "source": "#2024-01-15# != #2024-01-10#",
+    "expected": { "result": true }
+  },
+  {
+    "id": "dates/lt-datetime-true",
+    "source": "#2024-01-15T10:00:00Z# < #2024-01-15T11:00:00Z#",
+    "expected": { "result": true }
+  },
+  {
+    "id": "dates/mixed-date-datetime-loose-eq-coerces-to-midnight-utc",
+    "source": "#2024-01-15# == #2024-01-15T00:00:00Z#",
+    "expected": { "result": true },
+    "notes": "docs/isa.md: a mixed Date/DateTime pair coerces the Date to 00:00:00 UTC before comparing"
+  },
+  {
+    "id": "dates/mixed-date-datetime-lt-true",
+    "source": "#2024-01-15# < #2024-01-15T01:00:00Z#",
+    "expected": { "result": true }
+  },
+  {
+    "id": "dates/mixed-date-datetime-strict-eq-is-false",
+    "source": "#2024-01-15# === #2024-01-15T00:00:00Z#",
+    "expected": { "result": false },
+    "notes": "docs/isa.md: a Date is never strictly equal to a DateTime, since strict equality is Elixir === and the two are different structs - even at the same instant"
+  }
+]

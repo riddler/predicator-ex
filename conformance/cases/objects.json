@@ -1,0 +1,28 @@
+[
+  {
+    "id": "objects/literal-single-key",
+    "source": "{name: \"John\"}",
+    "expected": { "result": { "name": "John" } }
+  },
+  {
+    "id": "objects/literal-multi-key",
+    "source": "{name: \"John\", age: 30}",
+    "expected": { "result": { "name": "John", "age": 30 } }
+  },
+  {
+    "id": "objects/literal-nested",
+    "source": "{user: {role: \"admin\"}}",
+    "expected": { "result": { "user": { "role": "admin" } } }
+  },
+  {
+    "id": "objects/equality-by-structure",
+    "source": "{a: 1, b: 2} == {a: 1, b: 2}",
+    "expected": { "result": true },
+    "notes": "docs/isa.md: EQ/NE/STRICT_EQ/STRICT_NE on two maps are well-defined and portable - only GT/LT/GTE/LTE between two maps are unspecified, and the conformance corpus does not exercise those"
+  },
+  {
+    "id": "objects/strict-equality-by-structure",
+    "source": "{a: 1} === {a: 1}",
+    "expected": { "result": true }
+  }
+]

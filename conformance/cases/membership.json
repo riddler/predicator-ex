@@ -1,0 +1,53 @@
+[
+  {
+    "id": "membership/in-true",
+    "source": "role in [\"admin\", \"manager\"]",
+    "context": { "role": "admin" },
+    "expected": { "result": true }
+  },
+  {
+    "id": "membership/in-false",
+    "source": "role in [\"admin\", \"manager\"]",
+    "context": { "role": "guest" },
+    "expected": { "result": false }
+  },
+  {
+    "id": "membership/contains-true",
+    "source": "[1, 2, 3] contains 2",
+    "expected": { "result": true }
+  },
+  {
+    "id": "membership/contains-false",
+    "source": "[1, 2, 3] contains 9",
+    "expected": { "result": false }
+  },
+  {
+    "id": "membership/in-undefined-left-propagates",
+    "source": "user.missing in [1, 2, 3]",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } }
+  },
+  {
+    "id": "membership/contains-undefined-right-propagates",
+    "source": "[1, 2, 3] contains user.missing",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } }
+  },
+  {
+    "id": "membership/in-right-must-be-list",
+    "source": "role in \"notalist\"",
+    "context": { "role": "x" },
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "in" }
+    },
+    "notes": "in's right operand must be a list"
+  },
+  {
+    "id": "membership/contains-left-must-be-list",
+    "source": "\"x\" contains 1",
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "contains" }
+    },
+    "notes": "contains is the mirror of in - the left operand must be the list"
+  }
+]

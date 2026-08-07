@@ -56,5 +56,17 @@
     "id": "logical/not-true",
     "source": "not true",
     "expected": { "result": false }
+  },
+  {
+    "id": "logical/unary-minus",
+    "source": "-score",
+    "context": { "score": 5 },
+    "expected": { "result": -5 }
+  },
+  {
+    "id": "logical/unary-bang",
+    "source": "true == !false",
+    "expected": { "result": true },
+    "notes": "! at a non-top-level unary position compiles to unary_bang; NOT/top-level ! compile to the not opcode instead (see legacy.json for the bare and/or opcodes and short_circuit.json for the jump opcodes)"
   }
 ]

@@ -80,7 +80,12 @@ current version is an expected, documented state, not a defect. See
 [ADR-0003](docs/adr/0003-the-elixir-implementation-leads-the-isa.md) for the
 reasoning and [docs/architecture.md](docs/architecture.md) for what each
 sibling currently supports. [docs/isa.md](docs/isa.md) is the specification a
-sibling implements against.
+sibling implements against, and [conformance/](conformance/README.md) is how a
+sibling verifies a claim of support against it: a checked-in, language-neutral
+JSON corpus, tiered so a v1-only implementation runs a smaller, complete slice
+rather than skipping its way through the whole thing. This is the
+versioned-contract framing ADR-0003 asks for - a sibling behind the current
+ISA version is expected and documented, not a parity deficit to apologize for.
 
 ## Development
 

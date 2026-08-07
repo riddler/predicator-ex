@@ -120,11 +120,35 @@ defmodule Predicator.Conformance.Generator do
          {:ok, expected} <- expected_fields(outcome),
          :ok <- check_expected(raw, expected),
          {:ok, {tier, forcing_opcode}} <- compute_tier(instructions),
-         :ok <- check_tier(raw, tier, forcing_opcode) do
+         :ok <- check_tier(raw, tier, forcing_opcode),
+         {:ok, encoded_instructions} <- encode_instructions(instructions) do
       features = Features.compute(instructions, context, outcome, authored_features(raw))
-      {:ok, assemble_case(id, raw, instructions, expected, tier, features)}
+      {:ok, assemble_case(id, raw, encoded_instructions, expected, tier, features)}
     else
       {:error, problem} -> {:error, %{id: id_for_error, problem: problem}}
+    end
+  end
+
+  # `instructions` (from Predicator.compile/1 or an authored "instructions"
+  # list) carries real ISA values as operands - a "lit" pushing a Date,
+  # DateTime, or duration map is common once a case exercises tier 4. Those
+  # are not JSON-encodable as-is (Predicator.Conformance.JSON's canonical
+  # encoder only sorts and escapes; it does not know the ISA value domain),
+  # so every operand is round-tripped through the same tagged-value codec
+  # used for context and expected_result/expected_error before the
+  # instructions list is shipped. Values.to_json/1 already walks nested
+  # lists generically, so passing it the whole instructions list handles
+  # every opcode's operand shape (string, integer, [integer, string] pairs,
+  # value literals) uniformly.
+  @spec encode_instructions(Types.instruction_list()) ::
+          {:ok, [Values.json()]} | {:error, String.t()}
+  defp encode_instructions(instructions) do
+    case Values.to_json(instructions) do
+      {:ok, encoded} ->
+        {:ok, encoded}
+
+      {:error, reason} ->
+        {:error, "instructions #{inspect(instructions)} could not be encoded: #{inspect(reason)}"}
     end
   end
 
@@ -353,7 +377,7 @@ defmodule Predicator.Conformance.Generator do
   @spec assemble_case(
           String.t(),
           authored_case(),
-          Types.instruction_list(),
+          [Values.json()],
           {:result, Values.json()} | {:error, map()},
           pos_integer(),
           [String.t()]

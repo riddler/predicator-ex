@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riddler/predicator-ex/conformance/schema/corpus.json",
+  "title": "Predicator conformance corpus case",
+  "description": "One completed, shipped case as it appears in conformance/corpus/tier-N.json - one JSON object per line, produced by mix corpus.generate from an authored case (schema/case.json). See conformance/README.md for the full field-by-field contract.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Human-chosen, path-like, globally unique, stable forever.",
+      "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*(?:/[a-z0-9]+(?:[-_][a-z0-9]+)*)*$"
+    },
+    "source": {
+      "type": ["string", "null"],
+      "description": "A predicator expression, or null for an evaluator-only case with no source (e.g. the legacy [\"and\"]/[\"or\"] opcodes). A null-source case is absent from the compiler surface's case set, not skipped by it."
+    },
+    "instructions": {
+      "type": "array",
+      "description": "The compiled instruction list, tagged-value encoded. If \"source\" is non-null, this is what it compiles to; a compiler-surface runner compares its own compilation of \"source\" against this list structurally.",
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": true
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "Variable bindings, tagged-value encoded."
+    },
+    "expected_result": {
+      "description": "Present iff expected_error is absent. The evaluation result, tagged-value encoded."
+    },
+    "expected_error": {
+      "type": "object",
+      "description": "Present iff expected_result is absent.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The error struct's short module name, e.g. \"TypeMismatchError\". Normative."
+        },
+        "reason": {
+          "type": "string",
+          "description": "A structured reason token. Normative. The error message is never carried."
+        }
+      },
+      "required": ["type", "reason"],
+      "additionalProperties": false
+    },
+    "tier": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "max(tier(opcode)) over the case's instructions. Running tier N means running tiers 1..N."
+    },
+    "features": {
+      "type": "array",
+      "description": "Feature tags, sorted and deduplicated - the finer cut across tiers.",
+      "items": { "type": "string" }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free text, carried over from the authored case unchanged."
+    }
+  },
+  "required": ["id", "source", "instructions", "context", "tier", "features"],
+  "oneOf": [
+    { "required": ["expected_result"] },
+    { "required": ["expected_error"] }
+  ],
+  "additionalProperties": false
+}

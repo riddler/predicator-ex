@@ -393,3 +393,18 @@ ISA v1 is defined as the full opcode set the Elixir evaluator accepted
 before ADR-0001. A sibling declaring v1 support is claiming that whole set;
 where a sibling falls short of it, the sibling publishes that fact in its
 own repository. No support matrix is maintained here (ADR-0003).
+
+## 8. Conformance corpus
+
+This document specifies the ISA in prose; [`conformance/README.md`](../conformance/README.md)
+is its **executable form** - a checked-in, language-neutral JSON corpus a
+sibling runs its compiler and evaluator against, tier by tier, without an
+Elixir toolchain (`px-35i.4`, ADR-0003). Read it before implementing against
+a tier or adding a case.
+
+The corpus's scope boundary matches this document's: it does **not** cover
+surface syntax (§6 - `=` and `==` compile identically, so a source-level test
+would encode a divergence that does not exist) and it does **not** cover
+parse or lexer errors (every authored case's `source`, when present, compiles
+successfully). Coverage here means the instruction layer this document
+specifies, nothing above it.
