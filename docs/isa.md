@@ -400,7 +400,9 @@ This document specifies the ISA in prose; [`conformance/README.md`](../conforman
 is its **executable form** - a checked-in, language-neutral JSON corpus a
 sibling runs its compiler and evaluator against, tier by tier, without an
 Elixir toolchain (`px-35i.4`, ADR-0003). Read it before implementing against
-a tier or adding a case.
+a tier or adding a case. [`conformance/RATCHET.md`](../conformance/RATCHET.md)
+is the companion format a sibling uses to record and defend its conformance
+claim over time (`px-35i.8`).
 
 The corpus's scope boundary matches this document's: it does **not** cover
 surface syntax (§6 - `=` and `==` compile identically, so a source-level test

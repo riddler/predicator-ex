@@ -154,6 +154,14 @@ This is affordable precisely because of tiers: an implementation that only
 supports tier 1 does not need to skip its way through tiers 2-5's cases -
 it runs `tier-1.json` alone, which is a complete, green, honest result.
 
+## Recording what you pass
+
+This document is the runner contract: what a sibling's runner reads and how it
+compares. What a runner's output feeds into is a separate document -
+[`conformance/RATCHET.md`](RATCHET.md) specifies the registry format a sibling
+uses to record which cases it passes, on which surface, against which corpus
+version, and grow that record only by verify-then-add.
+
 ## How to add a case, without any Elixir
 
 1. Edit (or create) a file in `conformance/cases/*.json` - a JSON array of

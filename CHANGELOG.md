@@ -108,6 +108,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   trailing "Not corpus candidates" heading, and the non-deterministic
   exclusions carry an inline note instead of a bare `corpus: 0` row.
 
+- **`conformance/RATCHET.md`: the sibling conformance ratchet format**
+  (`px-35i.8`). Specifies the registry a sibling implementation (`impl/rb`,
+  `impl/ts`, or any future port) writes to record which corpus cases it
+  passes, on which surface, against which corpus version - this repo
+  publishes the format only, and ships no registry and no runner itself. A
+  registry entry keys on `(case_id, surface)`, not `case_id` alone, because a
+  `source: null` case is absent from the compiler's case set rather than
+  present-and-skipped, and a flat id list cannot express that a `compiler`
+  claim on such a case is meaningless. Rule 1: an entry whose
+  `(case_id, surface)` pair (or `tier`) disagrees with the pinned corpus fails
+  the run, never silently drops. Rule 2: the registry is grown only by
+  verify-then-add - written solely from a runner report, refusing to record a
+  failing case and never removing an existing entry - so every line in the
+  file is a claim a run actually observed. The whole registry pins to a single
+  `corpus_hash` from `conformance/manifest.json`; a mismatch is a hard
+  failure, not an auto-refresh. `conformance/schema/registry.json` is the
+  schema and `conformance/examples/registry.example.json` the worked example,
+  both validated against the shipped corpus by
+  `test/predicator/conformance/ratchet_registry_test.exs`. RATCHET.md also
+  carries language-neutral pseudocode for the reference runner and the CI-side
+  check step, so a sibling with no Elixir toolchain can implement both without
+  guessing. Nothing here enters the hex package: `conformance/` is excluded
+  from `mix.exs`'s `files:` list, same as the rest of the corpus tree.
+
 ### Documentation
 
 - **`docs/isa.md`: the ISA reference.** The single specification of
