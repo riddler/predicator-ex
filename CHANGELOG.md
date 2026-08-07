@@ -118,10 +118,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   present-and-skipped, and a flat id list cannot express that a `compiler`
   claim on such a case is meaningless. Rule 1: an entry whose
   `(case_id, surface)` pair (or `tier`) disagrees with the pinned corpus fails
-  the run, never silently drops. Rule 2: the registry is grown only by
-  verify-then-add - written solely from a runner report, refusing to record a
-  failing case and never removing an existing entry - so every line in the
-  file is a claim a run actually observed. The whole registry pins to a single
+  the run, never silently drops. Rule 2: entries are sorted by
+  `(surface, tier, case_id)` and encoded one per line with no indentation, so
+  ratcheting a case in is a one-line diff rather than a reflowed array nobody
+  reviews. Rule 3: the registry is grown only by verify-then-add - written
+  solely from a runner report, refusing to record a failing case and never
+  removing an existing entry - so every line in the file is a claim a run
+  actually observed. The whole registry pins to a single
   `corpus_hash` from `conformance/manifest.json`; a mismatch is a hard
   failure, not an auto-refresh. `conformance/schema/registry.json` is the
   schema and `conformance/examples/registry.example.json` the worked example,
