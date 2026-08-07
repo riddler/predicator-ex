@@ -152,6 +152,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Predicator.Instructions.required_isa/1`'s `unknown_opcode` error message now
+  names the ISA version this build supports, not just the offending opcode:
+  `Unknown opcode "store"; this build supports ISA v2` instead of
+  `Unknown opcode: "store"`. The error struct is unchanged - reason
+  `"unknown_opcode"`, operation `:required_isa`.
+
 - **BREAKING: the minimum Elixir version is now 1.18.** `mix.exs` previously
   declared `~> 1.11`, but CI has tested only 1.17 and 1.18 for a long time, so
   the declaration promised support that was neither verified nor known to work.

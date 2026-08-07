@@ -151,7 +151,7 @@ defmodule Predicator.Instructions do
       {:ok, 1}
 
       iex> Predicator.Instructions.required_isa([["nope"]])
-      {:error, %Predicator.Errors.EvaluationError{reason: "unknown_opcode", message: "Unknown opcode: \\"nope\\"", operation: :required_isa}}
+      {:error, %Predicator.Errors.EvaluationError{reason: "unknown_opcode", message: "Unknown opcode \\"nope\\"; this build supports ISA v2", operation: :required_isa}}
   """
   @spec required_isa(Types.instruction_list()) ::
           {:ok, pos_integer()} | {:error, EvaluationError.t()}
@@ -176,7 +176,7 @@ defmodule Predicator.Instructions do
       :error ->
         {:error,
          EvaluationError.new(
-           "Unknown opcode: #{inspect(opcode)}",
+           "Unknown opcode #{inspect(opcode)}; this build supports ISA v#{@isa_version}",
            "unknown_opcode",
            :required_isa
          )}
