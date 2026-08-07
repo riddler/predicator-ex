@@ -499,16 +499,16 @@ v2 on the stack VM) and `CLAUDE.md`'s equivalent.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `grep -rniE 'not a local decision|have to match|siblings need|sibling
+- [x] `grep -rniE 'not a local decision|have to match|siblings need|sibling
       parity' .claude/ CLAUDE.md` returns nothing
-- [ ] `grep -rn 'ADR-0001' .claude/ CLAUDE.md` returns only the two arc/ISA-v2
+- [x] `grep -rn 'ADR-0001' .claude/ CLAUDE.md` returns only the two arc/ISA-v2
       citations
-- [ ] `grep -rn 'ADR-0003\|docs/isa.md' .claude/ CLAUDE.md` returns hits in
+- [x] `grep -rn 'ADR-0003\|docs/isa.md' .claude/ CLAUDE.md` returns hits in
       every file this plan touched
-- [ ] `mix quality` clean, and `git status` shows no `lib/` or `test/` changes
+- [x] `mix quality` clean, and `git status` shows no `lib/` or `test/` changes
 
 #### Manual Verification:
-- [ ] `codebase-pattern-finder.md`'s sibling bullet was left alone (it makes no
+- [x] `codebase-pattern-finder.md`'s sibling bullet was left alone (it makes no
       parity claim) and still reads correctly beside the reframed agents
 - [ ] No skill anywhere describes a lagging sibling as a blocker - read the four
       reporting/sizing bullets end to end, not just the greps
@@ -599,3 +599,11 @@ Recorded per the "no human available" invariant rather than resolved.
       Phase 2 established
 - [ ] `/merge-request`'s Notes bullet still reads as one bullet in a four-bullet
       list, not as a paragraph
+
+### Phase 5: Reframe the research agents and sweep
+- [ ] `codebase-pattern-finder.md`'s sibling bullet was left alone (it makes no
+      parity claim) and still reads correctly beside the reframed agents
+- [ ] No skill anywhere describes a lagging sibling as a blocker - read the four
+      reporting/sizing bullets end to end, not just the greps
+- [ ] `CHANGELOG.md` needs no entry: this is agent-workflow tooling, not a
+      user-facing library change

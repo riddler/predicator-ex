@@ -54,8 +54,8 @@ non-evaluative condition engine. Know these locations before searching:
   per-feature history), `docs/adr/` (numbered ADRs), `docs/plans/`,
   `docs/guides/`, `docs/reference/language.md`, `docs/research/`
 - **Sibling implementations** - Ruby and JavaScript ports live outside this
-  repo. Only search them when explicitly asked; the instruction set is the
-  shared interchange format (ADR-0001).
+  repo. Only search them when explicitly asked; the ISA they implement against
+  is specified in `docs/isa.md`.
 
 ### Initial Broad Search
 
