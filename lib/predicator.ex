@@ -25,10 +25,7 @@ defmodule Predicator do
   - First element is the operation name (string)
   - Remaining elements are operation arguments
 
-  Currently supported instructions:
-  - `["lit", value]` - Push a literal value onto the stack
-  - `["load", variable_name]` - Load a variable from context onto the stack
-  - `["compare", operator]` - Compare top two stack values (GT, LT, EQ, GTE, LTE, NE)
+  The full opcode set is specified in [`docs/isa.md`](../docs/isa.md).
 
   ## Context
 

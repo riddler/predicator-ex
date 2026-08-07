@@ -42,6 +42,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   load paired with the source location of the instruction that read it.
   `unbound_loads/1` is unchanged.
 
+- **ISA version stamping.** `Predicator.isa_version/0` returns the integer ISA
+  version this build emits and can run, currently `2`, independent of the
+  library's semantic version (ADR-0003). `Predicator.Instructions.required_isa/1`
+  takes a compiled instruction list and returns the minimum ISA version it
+  needs, computed by scanning its opcode names against the table in
+  `docs/isa.md`: `{:ok, integer}`, or `{:error, %Predicator.Errors.EvaluationError{}}`
+  for an unknown opcode or a malformed element. Together they let a consumer
+  holding a stored artifact, or a sibling implementation handed an instruction
+  list, refuse it up front instead of failing partway through a run. **No
+  instruction changed**: the wire format is still a bare list, no opcode was
+  added or altered, and every instruction list valid before this release is
+  valid after it.
+
 ### Documentation
 
 - **`docs/isa.md`: the ISA reference.** The single specification of

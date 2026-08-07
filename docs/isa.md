@@ -39,6 +39,10 @@ than re-arguing it.
 
 Current version: **ISA v2**.
 
+At runtime, `Predicator.isa_version/0` returns this build's version as an
+integer, and `Predicator.Instructions.required_isa/1` returns the minimum
+version a given instruction list needs.
+
 ## 2. Execution model
 
 The rules that govern every opcode, stated once here rather than repeated in
