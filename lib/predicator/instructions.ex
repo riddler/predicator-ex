@@ -358,9 +358,21 @@ defmodule Predicator.Instructions do
      value (ECMAScript-aligned, ADR-0001).
   3. **A non-boolean *right* operand the left operand did not decide.**
      `true and 1` was a `TypeMismatchError` and is now `1`. A non-boolean
-     **left** operand is still a `TypeMismatchError` at the jump, since the
-     guard sits on the operand the expression actually depends on, which is
-     unchanged.
+     **left** operand still errors, since the guard sits on the operand the
+     expression actually depends on - but the error moves from the retired
+     opcode to the jump, so a consumer matching on it sees `operation:
+     :jump_if_falsy_or_pop` / `:jump_if_true_or_pop` where it saw
+     `:logical_and` / `:logical_or`, and a correspondingly reworded message.
+     The struct is a `TypeMismatchError` either way.
+
+  ## The upgraded list requires ISA v2
+
+  Jumps are ISA v2 opcodes (`docs/isa.md` section 4), so upgrading raises a
+  list's `required_isa/1` answer from `1` to `2`. This matters only where a
+  stored artifact is shared with another implementation: both the Ruby and
+  JavaScript siblings claim ISA v1 today, and a v1 implementation that ran
+  the legacy list will refuse the upgraded one. Upgrade in step with the
+  consumers of the artifact, not ahead of them.
 
   ## Examples
 
