@@ -98,8 +98,10 @@ the opcodes themselves, and [`docs/isa.md`](isa.md) for the specification each
 ISA version refers to.
 
 ISA versions are integers and do not track this library's version: v2 has been
-landing across 3.7.0 and 3.8.0. An additive ISA version ships in a minor
-release; retiring an opcode invalidates stored artifacts and takes a major one.
+landing across 3.7.0 and 3.8.0. v3 is minted by 4.0.0 and is the first version
+whose only change is a retirement (`and`, `or`), which is why the integer
+moved without a new opcode. An additive ISA version ships in a minor release;
+retiring an opcode invalidates stored artifacts and takes a major one.
 
 As of 2026-08-06 both siblings are ISA v1 implementations. That is a snapshot,
 not a tracked matrix - each sibling publishes the version it supports in the
