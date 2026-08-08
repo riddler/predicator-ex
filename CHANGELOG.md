@@ -163,6 +163,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `:removed_in` key alongside the existing `:isa` and `:tier` - no opcode
   carries it yet, so every existing return value is unchanged.
 
+- **Two new guides** (`px-ycj`). [Porting Predicator](docs/guides/porting.md)
+  is the path a sibling implementation follows: what an ISA version obliges it
+  to implement, the two conformance surfaces and which to lead with, how to
+  run the tiered corpus, and what "conformant at tier N" claims.
+  [Embedding compiled programs](docs/guides/embedding.md) is the
+  compile-once/store/check lifecycle: `compile/1` versus
+  `compile_with_spans/1`, what is safe to store, the `required_isa/1` check
+  against `isa_version/0`, and what a major version does to a stored
+  artifact. Both are published as hexdocs extras and linked from the README.
+
 ### Documentation
 
 - **`docs/reference/language.md` documents `:undefined` and sparse-data
