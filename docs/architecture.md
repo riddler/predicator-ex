@@ -64,7 +64,7 @@ period.
 ### Core Components
 
 - **Lexer** (`lib/predicator/lexer.ex`): Tokenizes expressions with position tracking
-- **Parser** (`lib/predicator/parser.ex`): Recursive descent parser building AST
+- **Parser** (`lib/predicator/parser.ex`): Recursive descent parser building AST. See the node inventory in `docs/reference/ast.md` for the shape of each node.
 - **Compiler** (`lib/predicator/compiler.ex`): Converts AST to executable instructions  
 - **Evaluator** (`lib/predicator/evaluator.ex`): Executes instructions against data. See [`docs/isa.md`](isa.md) for the instruction set specification.
 - **Visitors** (`lib/predicator/visitors/`): AST transformation modules
