@@ -73,6 +73,7 @@ defmodule Predicator.Lexer do
           | {:rbrace, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:colon, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:comma, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:semicolon, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:dot, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:in_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:contains_op, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -375,6 +376,10 @@ defmodule Predicator.Lexer do
 
       ?, ->
         token = {:comma, line, col, 1, ","}
+        tokenize_chars(rest, line, col + 1, [token | tokens])
+
+      ?; ->
+        token = {:semicolon, line, col, 1, ";"}
         tokenize_chars(rest, line, col + 1, [token | tokens])
 
       ?. ->

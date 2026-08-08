@@ -373,6 +373,103 @@ defmodule Predicator.LexerTest do
     end
   end
 
+  describe "tokenize/1 - semicolon" do
+    test "tokenizes a lone semicolon" do
+      assert {:ok, tokens} = Lexer.tokenize(";")
+
+      assert tokens == [
+               {:semicolon, 1, 1, 1, ";"},
+               {:eof, 1, 2, 0, nil}
+             ]
+    end
+
+    test "tokenizes semicolon at the start of input" do
+      assert {:ok, tokens} = Lexer.tokenize(";a")
+
+      assert tokens == [
+               {:semicolon, 1, 1, 1, ";"},
+               {:identifier, 1, 2, 1, "a"},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+
+    test "tokenizes semicolon in the middle of input, adjacent to identifiers" do
+      assert {:ok, tokens} = Lexer.tokenize("a;b")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "a"},
+               {:semicolon, 1, 2, 1, ";"},
+               {:identifier, 1, 3, 1, "b"},
+               {:eof, 1, 4, 0, nil}
+             ]
+    end
+
+    test "tokenizes semicolon at the end of input" do
+      assert {:ok, tokens} = Lexer.tokenize("a;")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "a"},
+               {:semicolon, 1, 2, 1, ";"},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+
+    test "tracks columns correctly with surrounding whitespace" do
+      assert {:ok, tokens} = Lexer.tokenize("a ; b")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "a"},
+               {:semicolon, 1, 3, 1, ";"},
+               {:identifier, 1, 5, 1, "b"},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes semicolon adjacent to other punctuation" do
+      assert {:ok, tokens} = Lexer.tokenize("(a);[b]")
+
+      assert tokens == [
+               {:lparen, 1, 1, 1, "("},
+               {:identifier, 1, 2, 1, "a"},
+               {:rparen, 1, 3, 1, ")"},
+               {:semicolon, 1, 4, 1, ";"},
+               {:lbracket, 1, 5, 1, "["},
+               {:identifier, 1, 6, 1, "b"},
+               {:rbracket, 1, 7, 1, "]"},
+               {:eof, 1, 8, 0, nil}
+             ]
+    end
+
+    test "does not affect colon and comma tokenization" do
+      assert {:ok, tokens} = Lexer.tokenize("{a: 1, b: 2}")
+
+      assert tokens == [
+               {:lbrace, 1, 1, 1, "{"},
+               {:identifier, 1, 2, 1, "a"},
+               {:colon, 1, 3, 1, ":"},
+               {:integer, 1, 5, 1, 1},
+               {:comma, 1, 6, 1, ","},
+               {:identifier, 1, 8, 1, "b"},
+               {:colon, 1, 9, 1, ":"},
+               {:integer, 1, 11, 1, 2},
+               {:rbrace, 1, 12, 1, "}"},
+               {:eof, 1, 13, 0, nil}
+             ]
+    end
+
+    test "multiple semicolons in sequence each tokenize independently" do
+      assert {:ok, tokens} = Lexer.tokenize("a;;b")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "a"},
+               {:semicolon, 1, 2, 1, ";"},
+               {:semicolon, 1, 3, 1, ";"},
+               {:identifier, 1, 4, 1, "b"},
+               {:eof, 1, 5, 0, nil}
+             ]
+    end
+  end
+
   describe "tokenize/1 - parentheses" do
     test "tokenizes parentheses" do
       assert {:ok, tokens} = Lexer.tokenize("()")
