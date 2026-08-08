@@ -4,7 +4,7 @@ This guide is for a host that compiles a predicate once, persists the result,
 and evaluates it many times later - possibly under a different build of this
 library than the one that compiled it. Follow it and a stored artifact is
 never silently mis-run: it either still runs, or it is refused with a message
-naming why ([ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md)).
+naming why ([ADR-0003](../adr/0003-the-elixir-implementation-leads-the-isa.md)).
 
 ## Choose a compile function
 
@@ -138,7 +138,7 @@ Run that check at load time, before evaluating, and branch on why it failed:
   opcode comes back unchanged), so it is safe to call unconditionally over
   every stored artifact rather than pre-filtering for the ones that need it.
 - Anything else - refuse rather than mis-run
-  ([ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md)).
+  ([ADR-0003](../adr/0003-the-elixir-implementation-leads-the-isa.md)).
 
 The evaluator carries its own backstop for a check you skip or get wrong:
 running a stored list containing the retired `and`/`or` opcodes on this build
@@ -158,7 +158,7 @@ before a partial run, not because this backstop is missing.
 
 Retiring an opcode mints the next ISA integer, takes a major library release,
 and requires an upgrade path (`docs/isa.md` section 1;
-[ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md)).
+[ADR-0003](../adr/0003-the-elixir-implementation-leads-the-isa.md)).
 A stored instruction list is therefore never stranded and never silently
 mis-run by a later build: it either still runs unchanged, or it is refused
 with a message naming the version, or `upgrade/1` rewrites it onto the

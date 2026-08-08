@@ -696,32 +696,40 @@ only if a reviewer disagrees.
 
 ### Phase 1
 
-- [ ] The guide reads as a how-to: goal-framed sections, imperative steps, no
+- [x] The guide reads as a how-to: goal-framed sections, imperative steps, no
       paragraph that re-argues ADR-0003 or reproduces the opcode table
-- [ ] Both surfaces are named, and the evaluator-first recommendation states
+- [x] Both surfaces are named, and the evaluator-first recommendation states
       *why* (no parser needed; tier 1 is complete on its own)
-- [ ] No tier's opcode list, and no sibling support matrix, is restated in the
+- [x] No tier's opcode list, and no sibling support matrix, is restated in the
       guide
-- [ ] Typography matches the neighboring guides (hyphens, no em dashes)
-- [ ] `doc/index.html` from `mix docs` shows the guide under Guides
+- [x] Typography matches the neighboring guides (hyphens, no em dashes)
+- [x] `doc/index.html` from `mix docs` shows the guide under Guides
 
 ### Phase 2
 
-- [ ] The `required_isa/1` versus `isa_version/0` walk is end to end: get the
+- [x] The `required_isa/1` versus `isa_version/0` walk is end to end: get the
       requirement, perform the membership check, and act on each failure branch
-- [ ] The bare-`<=` caveat is present and reads as a correction, not a footnote
-- [ ] The storage advice matches `Predicator.Compiled`'s moduledoc in substance,
+- [x] The bare-`<=` caveat is present and reads as a correction, not a footnote
+- [x] The storage advice matches `Predicator.Compiled`'s moduledoc in substance,
       including the no-integrity-check hazard
-- [ ] No section drifts into reference (no opcode table, no full restatement of
+- [x] No section drifts into reference (no opcode table, no full restatement of
       `upgrade/1`'s three divergences) or explanation (no re-argued ADR-0009)
-- [ ] Typography matches the neighboring guides
+- [x] Typography matches the neighboring guides
 
 ### Phase 3
 
-- [ ] Both guides appear under Guides in the generated sidebar, ordered
+- [x] Both guides appear under Guides in the generated sidebar, ordered
       nested-data-access, custom-functions, location-expressions, embedding,
       porting
-- [ ] Every link in both guides resolves - relative ones inside the generated
+- [x] Every link in both guides resolves - relative ones inside the generated
       docs, absolute GitHub ones in a browser
 - [ ] The PR body flags the `mix.exs` and `test/docs_examples_test.exs` edits as
       touching areas outside the bead's `area:docs` label
+
+2026-08-08: Manual review walked this checklist and found two defects, now
+fixed: porting.md restated a stale tier-1 opcode list that still included the
+retired `and`/`or` opcodes and contradicted the guide's own later instruction
+to defer to `conformance/manifest.json`; embedding.md linked ADR-0003 with an
+absolute GitHub URL in three places despite ADR-0003 being an ExDoc extra,
+which the link policy in open question 2 calls for a relative link. Both are
+corrected. The last Phase 3 item stays unchecked - no PR exists yet.
