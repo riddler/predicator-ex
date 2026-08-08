@@ -49,7 +49,7 @@ defmodule Predicator.Visitor do
   a position, a span, or `nil`. Implementations match on that shape directly -
   there is no position-free variant and no normalization on the way in.
   """
-  @callback visit(ast_node :: Parser.ast(), opts :: keyword()) :: term()
+  @callback visit(ast_node :: Parser.ast() | Parser.program(), opts :: keyword()) :: term()
 
   @doc """
   Utility function to accept a visitor and process an AST.

@@ -68,7 +68,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   List of instructions in the format `[["operation", ...args]]`
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.ast(), keyword()) :: [[binary() | term()]]
+  @spec visit(Parser.ast() | Parser.program(), keyword()) :: [[binary() | term()]]
   def visit(ast_node, opts \\ []) do
     ast_node
     |> visit_annotated(opts)
@@ -92,7 +92,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       iex> Predicator.Visitors.InstructionsVisitor.visit_with_positions({:literal, 42, nil})
       {[["lit", 42]], %{}}
   """
-  @spec visit_with_positions(Parser.ast(), keyword()) ::
+  @spec visit_with_positions(Parser.ast() | Parser.program(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}
   def visit_with_positions(ast_node, opts \\ []) do
     annotated = visit_annotated(ast_node, opts)
@@ -112,7 +112,9 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   # Each clause pairs the instructions the node emits *itself* with that node's
   # own position; instructions contributed by children keep the position their
   # own node gave them.
-  @spec visit_annotated(Parser.ast(), keyword()) :: [annotated()]
+  @spec visit_annotated(Parser.ast() | Parser.program() | Parser.assignment(), keyword()) :: [
+          annotated()
+        ]
   defp visit_annotated(ast_node, opts)
 
   defp visit_annotated({:literal, value, position}, _opts) do
@@ -275,6 +277,62 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     direction_str = map_relative_direction(direction)
     duration_instructions ++ [{["relative_date", direction_str], position}]
   end
+
+  defp visit_annotated({:program, statements, _position}, opts) do
+    Enum.flat_map(statements, &visit_statement(&1, opts))
+  end
+
+  defp visit_annotated({:assignment, lhs, rhs, position}, opts) do
+    segments = location_segments(lhs, opts)
+    depth = location_depth(lhs)
+
+    segments ++ visit_annotated(rhs, opts) ++ [{["store", depth], position}]
+  end
+
+  # Compiles one statement of a program. An assignment compiles to its own
+  # instructions (a store, never a pop - the assignment's value is consumed by
+  # the write itself). Any other statement is a bare expression: its
+  # instructions plus a trailing pop, so every statement boundary leaves the
+  # stack empty (Q3, docs/isa.md section 2).
+  @spec visit_statement(Parser.statement(), keyword()) :: [annotated()]
+  defp visit_statement({:assignment, _lhs, _rhs, _position} = assignment, opts) do
+    visit_annotated(assignment, opts)
+  end
+
+  defp visit_statement(expression, opts) do
+    visit_annotated(expression, opts) ++ [{["pop"], statement_position(expression)}]
+  end
+
+  # Every AST node's trailing element is its position slot, whatever the
+  # node's arity - reach it structurally rather than adding a clause per node
+  # type.
+  @spec statement_position(Parser.ast()) :: Types.position() | Types.span() | nil
+  defp statement_position(node), do: elem(node, tuple_size(node) - 1)
+
+  # Walks an assignment's lhs chain root-to-leaf, emitting one `["lit", ...]`
+  # segment per accessor. A bracket key is an arbitrary expression, so its
+  # segment may be more than one instruction (Q2).
+  @spec location_segments(Parser.ast(), keyword()) :: [annotated()]
+  defp location_segments({:identifier, name, position}, _opts), do: [{["lit", name], position}]
+
+  defp location_segments({:property_access, object, property, position}, opts),
+    do: location_segments(object, opts) ++ [{["lit", property], position}]
+
+  defp location_segments({:bracket_access, object, key, _position}, opts),
+    do: location_segments(object, opts) ++ visit_annotated(key, opts)
+
+  # `["store", n]`'s `n` is the chain's segment DEPTH, not the number of
+  # instructions the segments compiled to - counted structurally here rather
+  # than as `length(location_segments(lhs, opts))`, which a computed bracket
+  # key (e.g. `a[k + 1] = 1`) would inflate: the key compiles to more than one
+  # instruction but is still exactly one segment (Q2).
+  @spec location_depth(Parser.ast()) :: pos_integer()
+  defp location_depth({:identifier, _name, _position}), do: 1
+
+  defp location_depth({:property_access, object, _property, _position}),
+    do: location_depth(object) + 1
+
+  defp location_depth({:bracket_access, object, _key, _position}), do: location_depth(object) + 1
 
   # Helper function to map AST comparison operators to instruction format
   @spec map_comparison_op(Parser.comparison_op()) :: binary()
