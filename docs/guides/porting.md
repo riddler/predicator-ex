@@ -96,10 +96,9 @@ two independent things a sibling implements
 **Implement the evaluator first.** It needs no lexer and no parser - you feed
 it already-compiled instructions and a context - so it is reachable before
 you have written a line of surface-syntax code. Tier 1 alone is a complete,
-self-contained target: nothing in it requires an opcode outside `lit`,
-`load`, `compare`, `not`, `unary_bang`, `unary_minus`,
-`jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `and`, `or`. A tier-1-only
-evaluator is a complete, green, honest result, not a partial one.
+self-contained target - see `conformance/manifest.json` for the opcodes it
+unlocks at your ISA version. A tier-1-only evaluator is a complete, green,
+honest result, not a partial one.
 
 ## Run tier 1
 
