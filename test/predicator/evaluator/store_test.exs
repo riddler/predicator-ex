@@ -136,6 +136,10 @@ defmodule Predicator.Evaluator.StoreTest do
     end
   end
 
+  # px-ids: both tests here hand-build a `positions` table with no
+  # `segment_positions` table, so they take the fallback path - this is the
+  # designed-in proof that a run carrying no segment table degrades to
+  # exactly px-tbv.11's behaviour (the store instruction's own entry).
   describe "store: a wrapped LocationError reads the position table at the store's own instruction index" do
     test "not_a_container carries the [\"store\", n] instruction's position" do
       instructions = [["lit", "a"], ["lit", "b"], ["lit", 2], ["store", 2]]
@@ -164,6 +168,71 @@ defmodule Predicator.Evaluator.StoreTest do
                  instructions: instructions,
                  context: %{},
                  positions: positions
+               })
+    end
+  end
+
+  describe "store: a run carrying a segment table blames the failing segment" do
+    test "not_a_container reads the failing segment's own annotation" do
+      instructions = [["lit", "a"], ["lit", "b"], ["lit", "c"], ["lit", 2], ["store", 3]]
+
+      assert {:error, %EvaluationError{reason: "not_a_container", position: {9, 4}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{"a" => %{"b" => 1}},
+                 positions: %{4 => {9, 1}},
+                 segment_positions: %{4 => [{9, 1}, {9, 4}, {9, 7}]}
+               })
+    end
+
+    test "a bad segment type reads the bad segment's own annotation" do
+      instructions = [["lit", "a"], ["lit", true], ["lit", 1], ["store", 2]]
+
+      assert {:error, %TypeMismatchError{position: {9, 4}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 positions: %{3 => {9, 1}},
+                 segment_positions: %{3 => [{9, 1}, {9, 4}]}
+               })
+    end
+
+    test "insufficient_operands keeps the store instruction's own entry" do
+      # No segment is identified (D2), so the segment table is not consulted
+      # even though this run carries one at the store's own index - branch
+      # coverage for segment_annotation/2's catch-all (a nil index).
+      instructions = [["lit", "a"], ["store", 2]]
+
+      assert {:error, %EvaluationError{reason: "insufficient_operands", position: {7, 3}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 positions: %{1 => {7, 3}},
+                 segment_positions: %{1 => [{9, 1}, {9, 2}]}
+               })
+    end
+
+    test "a segment table with a nil entry falls back to the instruction's entry" do
+      instructions = [["lit", "a"], ["lit", "b"], ["lit", "c"], ["lit", 2], ["store", 3]]
+
+      assert {:error, %EvaluationError{reason: "not_a_container", position: {9, 1}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{"a" => %{"b" => 1}},
+                 positions: %{4 => {9, 1}},
+                 segment_positions: %{4 => [{9, 1}, nil, {9, 7}]}
+               })
+    end
+
+    test "a segment table whose list is shorter than the index falls back" do
+      instructions = [["lit", "a"], ["lit", "b"], ["lit", "c"], ["lit", 2], ["store", 3]]
+
+      assert {:error, %EvaluationError{reason: "not_a_container", position: {9, 1}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{"a" => %{"b" => 1}},
+                 positions: %{4 => {9, 1}},
+                 segment_positions: %{4 => [{9, 1}]}
                })
     end
   end

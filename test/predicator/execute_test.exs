@@ -122,27 +122,52 @@ defmodule Predicator.ExecuteTest do
       refute Map.has_key?(ctx.data, "c")
     end
 
-    test "a store failure blames the lhs root, not the `=`" do
+    test "a store failure blames the failing segment" do
       # `a` is at column 8; the `=` this used to report is at column 12.
+      # Segment 0 is the lhs root here, so this position is unchanged by px-ids.
       assert {:error, %Errors.EvaluationError{reason: "not_a_container", position: {1, 8}}, _ctx} =
                Predicator.execute("a = 1; a.b = 2; d = 3", %{})
     end
 
-    test "an invalid list index blames the lhs root" do
-      assert {:error, %Errors.EvaluationError{reason: "invalid_index", position: {1, 13}}, _ctx} =
+    test "an invalid list index blames the failing segment" do
+      # Was {1, 13} (the lhs root `xs`) before px-ids; now the key expression
+      # `0-1` that produced the bad index.
+      assert {:error, %Errors.EvaluationError{reason: "invalid_index", position: {1, 17}}, _ctx} =
                Predicator.execute("xs = [1,2]; xs[0-1] = 9", %{})
     end
 
-    test "span mode is unchanged: the caret is the lhs root, the underline the statement" do
-      assert {:error, %Errors.EvaluationError{position: {1, 8}, span: {{1, 8}, {1, 15}}}, _ctx} =
+    test "a deep chain blames the interior segment that actually failed" do
+      # `a` is at column 15; the failing segment is `.b`, whose point position
+      # is the `.` at column 16 (docs/reference/ast.md:122-124) - not column 17,
+      # the property name, which this plan explicitly does not reach.
+      assert {:error, %Errors.EvaluationError{reason: "not_a_container", position: {1, 16}}, _ctx} =
+               Predicator.execute(~s(a = {"b": 1}; a.b.c = 2), %{})
+    end
+
+    test "a bare instruction list with no segment table degrades to the store instruction's own entry" do
+      assert {:error, %Errors.EvaluationError{reason: "not_a_container", position: nil}, ctx} =
+               Predicator.execute([["lit", "a"], ["lit", "b"], ["lit", 2], ["store", 2]], %{
+                 "a" => 1
+               })
+
+      assert ctx.data == %{"a" => 1}
+    end
+
+    test "span mode narrows to the failing segment; the caret is unchanged (D1)" do
+      # Was span: {{1, 8}, {1, 15}} (the whole statement) before px-ids;
+      # position: {1, 8} is unchanged because a chain node's span starts at
+      # the chain root.
+      assert {:error, %Errors.EvaluationError{position: {1, 8}, span: {{1, 8}, {1, 9}}}, _ctx} =
                Predicator.execute("a = 1; a.b = 2; d = 3", %{}, spans: true)
     end
 
-    test "a bad segment blames the lhs root and names both accepted types" do
+    test "a bad segment blames the failing segment and names both accepted types" do
+      # Was position: {1, 1} (the lhs root `a`) before px-ids; now the key
+      # expression `true` that produced the bad segment.
       assert {:error,
               %Errors.TypeMismatchError{
                 expected: :string,
-                position: {1, 1},
+                position: {1, 3},
                 message: "Store requires a string or an integer, got true (boolean)"
               }, _ctx} = Predicator.execute("a[true] = 1", %{"a" => %{}})
     end
