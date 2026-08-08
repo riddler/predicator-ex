@@ -1,16 +1,10 @@
 {
-  "_comment": "The deny rules below implement ADR-0008 (docs/adr/0008-the-quality-gate-and-its-non-editable-config.md) and bead px-rfn: .quality.exs, .credo.exs, and coveralls.json are the quality gate's config and are not agent-editable. deny, not ask, is deliberate - an ask rule prompts on every call including inside --auto seeded worktree sessions where nobody is there to answer, and the session stalls; a deny fails cleanly and the agent reports it, which is what ADR-0008 prescribes. Known limit: a deny on Edit/Write/NotebookEdit does not cover Bash (sed -i, a > redirect). Closing that would need Bash patterns, which are leaky and would catch legitimate commands. This is not a sandbox - it makes a gate-config edit unmistakably deliberate in a diff. A legitimate gate change carries area:build (exclusive, lands alone, human-reviewed per ADR-0005); the maintainer edits these files directly or lifts the rule for that bead.",
+  "_comment": "The deny rules below implement ADR-0008 (docs/adr/0008-the-quality-gate-and-its-non-editable-config.md) and bead px-rfn: .quality.exs, .credo.exs, and coveralls.json are the quality gate's config and are not agent-editable. deny, not ask, is deliberate - an ask rule prompts on every call including inside --auto seeded worktree sessions where nobody is there to answer, and the session stalls; a deny fails cleanly and the agent reports it, which is what ADR-0008 prescribes. Only Edit(path) rules are matched against file paths, and an Edit rule covers every file-editing tool - Write and NotebookEdit included - so the three entries below are the whole protection. The absence of Write() and NotebookEdit() companions is deliberate, not an oversight - they match nothing, and the harness prints a warning for each one at session start (px-6my removed six such entries). Known limit: a deny on Edit does not cover Bash (sed -i, a > redirect). Closing that would need Bash patterns, which are leaky and would catch legitimate commands. This is not a sandbox - it makes a gate-config edit unmistakably deliberate in a diff. A legitimate gate change carries area:build (exclusive, lands alone, human-reviewed per ADR-0005); the maintainer edits these files directly or lifts the rule for that bead.",
   "permissions": {
     "deny": [
       "Edit(.quality.exs)",
-      "Write(.quality.exs)",
-      "NotebookEdit(.quality.exs)",
       "Edit(.credo.exs)",
-      "Write(.credo.exs)",
-      "NotebookEdit(.credo.exs)",
-      "Edit(coveralls.json)",
-      "Write(coveralls.json)",
-      "NotebookEdit(coveralls.json)"
+      "Edit(coveralls.json)"
     ]
   }
 }
