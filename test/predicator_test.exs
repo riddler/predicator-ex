@@ -264,6 +264,89 @@ defmodule PredicatorTest do
     end
   end
 
+  describe "parse_program/2" do
+    test "parses a single-statement program" do
+      assert Predicator.parse_program("a = 1") ==
+               {:ok,
+                {:program,
+                 [{:assignment, {:identifier, "a", {1, 1}}, {:literal, 1, {1, 5}}, {1, 3}}],
+                 {1, 1}}}
+    end
+
+    test "parses a multi-statement program with a trailing separator" do
+      assert {:ok, {:program, statements, _pos}} = Predicator.parse_program("a = 1; b = 2;")
+      assert length(statements) == 2
+
+      assert Enum.all?(statements, fn
+               {:assignment, _lhs, _rhs, _pos} -> true
+               _other -> false
+             end)
+    end
+
+    test "a bare expression statement mixes with assignments" do
+      assert {:ok, {:program, statements, _pos}} =
+               Predicator.parse_program("a = 1; a > 0; b = 2")
+
+      assert [
+               {:assignment, _lhs1, _rhs1, _pos1},
+               {:comparison, :gt, _left, _right, _pos2},
+               {:assignment, _lhs2, _rhs2, _pos3}
+             ] = statements
+    end
+
+    test "assigns through a property.bracket.property chain" do
+      assert {:ok, {:program, [{:assignment, lhs, _rhs, _pos}], _program_pos}} =
+               Predicator.parse_program("user.items[0].name = 'Ada'")
+
+      assert {:property_access,
+              {:bracket_access,
+               {:property_access, {:identifier, "user", _user_pos}, "items", _items_pos}, _key,
+               _bracket_pos}, "name", _prop_pos} = lhs
+    end
+
+    test "non-assignable lhs gives the location-shape error, not the == fix-it" do
+      assert Predicator.parse_program("42 = 1") ==
+               {:error,
+                "Left side of '=' must be an assignable location - an identifier, a property " <>
+                  "access, or a bracket access.", 1, 4}
+    end
+
+    test "nested = gives the == fix-it error" do
+      assert {:error, message, _line, _col} = Predicator.parse_program("a = b = 1")
+      assert message =~ "is not an equality operator"
+    end
+
+    test "empty input, a lone ';', and adjacent ';;' are all parse errors" do
+      assert {:error, _message, _line, _col} = Predicator.parse_program("")
+      assert {:error, _message, _line, _col} = Predicator.parse_program(";")
+      assert {:error, _message, _line, _col} = Predicator.parse_program("a;;b")
+    end
+
+    test "leftover tokens after a statement report a pointed error" do
+      assert Predicator.parse_program("a = 1 extra") ==
+               {:error, "Unexpected token identifier 'extra' after statement", 1, 7}
+    end
+
+    test "propagates lexer errors the same way parse/2 does" do
+      assert Predicator.parse_program("a = @") == Predicator.parse("a = @")
+    end
+
+    test "spans: true puts a span in every node's trailing slot" do
+      assert Predicator.parse_program("a = 1", spans: true) ==
+               {:ok,
+                {:program,
+                 [
+                   {:assignment, {:identifier, "a", {{1, 1}, {1, 2}}},
+                    {:literal, 1, {{1, 5}, {1, 6}}}, {{1, 1}, {1, 6}}}
+                 ], {{1, 1}, {1, 6}}}}
+    end
+
+    test "spans: false is the default and byte-identical to spans-less parse_program/2" do
+      assert Predicator.parse_program("a = 1; b = 2", spans: false) ==
+               Predicator.parse_program("a = 1; b = 2")
+    end
+  end
+
   describe "runtime error spans" do
     test "a string expression with spans: true populates :span and :position" do
       assert {:error, error} = Predicator.evaluate("a * true", %{"a" => 1}, spans: true)

@@ -140,6 +140,39 @@ defmodule Predicator.Parser do
           | {:relative_date, ast(), relative_direction(), position()}
 
   @typedoc """
+  An assignment statement: `location "=" expression`.
+
+  `location` is the raw access chain the parser built - an `{:identifier, ...}`
+  optionally wrapped in any number of `{:property_access, ...}` and
+  `{:bracket_access, ...}` nodes. It is kept as a chain rather than flattened to
+  a path because a bracket key may be an arbitrary expression, resolvable only
+  against a context; `Predicator.ContextLocation.resolve/2` does that at
+  runtime. The chain's depth is the segment count `["store", n]` needs
+  (ADR-0001).
+  """
+  @type assignment :: {:assignment, ast(), ast(), position()}
+
+  @typedoc """
+  One statement: an assignment, or a bare expression.
+  """
+  @type statement :: assignment() | ast()
+
+  @typedoc """
+  A parsed statement sequence: `statement (";" statement)* [";"]`.
+
+  Produced only by `parse_program/2`. A program is never an `t:ast/0`: the
+  expression entry point cannot return one, and an expression consumer never
+  has to handle one.
+  """
+  @type program :: {:program, [statement()], position()}
+
+  @typedoc """
+  Program parser result.
+  """
+  @type program_result ::
+          {:ok, program()} | {:error, binary(), pos_integer(), pos_integer()}
+
+  @typedoc """
   A node's trailing source metadata.
 
   A `t:Predicator.Types.position/0` by default - the `{line, column}` of the
@@ -273,6 +306,223 @@ defmodule Predicator.Parser do
         {:error, message, line, col}
     end
   end
+
+  @doc """
+  Parses a list of tokens into a statement sequence.
+
+  Implements `program := statement (";" statement)* [";"]`, where a statement
+  is either an assignment (`location "=" expression`) or an ordinary
+  expression. `parse/2` and `parse_program/2` are separate entry points
+  because the mode - expression or statement - belongs to the entry point, not
+  to the token stream (`docs/isa.md` section 2): `parse/2` never returns a
+  `t:program/0`, and `parse_program/2` always returns one, even for a single
+  statement.
+
+  ## Parameters
+
+  - `tokens` - List of tokens from the lexer
+  - `opts` - Options: `:spans`, with the same meaning as `parse/2`
+
+  ## Returns
+
+  - `{:ok, program}` - Successfully parsed statement sequence
+  - `{:error, message, line, column}` - Parse error with position
+
+  ## Examples
+
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("a = 1; b = a + 1")
+      iex> {:ok, {:program, statements, _pos}} = Predicator.Parser.parse_program(tokens)
+      iex> statements
+      [
+        {:assignment, {:identifier, "a", {1, 1}}, {:literal, 1, {1, 5}}, {1, 3}},
+        {:assignment, {:identifier, "b", {1, 8}}, {:arithmetic, :add, {:identifier, "a", {1, 12}}, {:literal, 1, {1, 16}}, {1, 14}}, {1, 10}}
+      ]
+
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("42 = 1")
+      iex> Predicator.Parser.parse_program(tokens)
+      {:error, "Left side of '=' must be an assignable location - an identifier, a property access, or a bracket access.", 1, 4}
+  """
+  @spec parse_program([Lexer.token()], keyword()) :: program_result()
+  def parse_program(tokens, opts \\ []) when is_list(tokens) do
+    state = %{tokens: tokens, position: 0, spans?: Keyword.get(opts, :spans, false) == true}
+    start_point = program_start_point(state)
+
+    case parse_statement(state) do
+      {:ok, first, next_state} ->
+        case parse_program_rest(next_state, [first]) do
+          {:ok, statements, final_state} ->
+            finish_program(state, start_point, statements, final_state)
+
+          {:error, _message, _line, _col} = error ->
+            error
+        end
+
+      {:error, _message, _line, _col} = error ->
+        error
+    end
+  end
+
+  # The program's point position, in position mode, is the {line, column} of
+  # its very first token - captured before any statement is parsed, because a
+  # statement's own trailing slot may point at an interior token (a
+  # comparison points at its operator, not its leftmost operand) rather than
+  # the statement's start.
+  @spec program_start_point(parser_state()) :: Predicator.Types.position()
+  defp program_start_point(state) do
+    case peek_token(state) do
+      nil -> {1, 1}
+      token -> token_start(token)
+    end
+  end
+
+  # Applies the same "did we consume everything" gate parse/2 uses, then
+  # builds the program node.
+  @spec finish_program(
+          parser_state(),
+          Predicator.Types.position(),
+          [statement()],
+          parser_state()
+        ) :: program_result()
+  defp finish_program(state, start_point, statements, final_state) do
+    case peek_token(final_state) do
+      {:eof, _line, _col, _len, _value} ->
+        {:ok, {:program, statements, program_loc(state, start_point, statements)}}
+
+      nil ->
+        {:ok, {:program, statements, program_loc(state, start_point, statements)}}
+
+      {type, line, col, _len, value} ->
+        {:error, "Unexpected token #{format_token(type, value)} after statement", line, col}
+    end
+  end
+
+  # The program's span excludes a trailing ";" - punctuation the node does not
+  # own - so it is built from the statement list alone, never from
+  # final_state.
+  @spec program_loc(parser_state(), Predicator.Types.position(), [statement()]) :: position()
+  defp program_loc(state, start_point, statements) do
+    loc(state, start_point, fn ->
+      {node_start(List.first(statements)), node_end(List.last(statements))}
+    end)
+  end
+
+  # Consumes a ";" and, unless it is the grammar's single optional trailing
+  # one, parses another statement and recurses. A ";" immediately followed by
+  # another ";" is not consumed here - it falls through to parse_statement/1,
+  # which reports it as an ordinary unexpected-token error: empty statements
+  # are not allowed.
+  @spec parse_program_rest(parser_state(), [statement()]) ::
+          {:ok, [statement()], parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_program_rest(state, acc) do
+    case peek_token(state) do
+      {:semicolon, _line, _col, _len, _value} ->
+        after_semicolon = advance(state)
+
+        case peek_token(after_semicolon) do
+          {:eof, _line, _col, _len, _value} ->
+            {:ok, Enum.reverse(acc), after_semicolon}
+
+          nil ->
+            {:ok, Enum.reverse(acc), after_semicolon}
+
+          _more_tokens ->
+            case parse_statement(after_semicolon) do
+              {:ok, statement, new_state} ->
+                parse_program_rest(new_state, [statement | acc])
+
+              {:error, _message, _line, _col} = error ->
+                error
+            end
+        end
+
+      _not_semicolon ->
+        {:ok, Enum.reverse(acc), state}
+    end
+  end
+
+  # A statement is an assignment, if the leading tokens are location-shaped
+  # and followed by "=", or an ordinary expression otherwise.
+  @spec parse_statement(parser_state()) ::
+          {:ok, statement(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_statement(state) do
+    case try_parse_assignment(state) do
+      {:ok, _ast, _state} = ok -> ok
+      {:error, _message, _line, _col} = error -> error
+      :not_assignment -> parse_expression(state)
+    end
+  end
+
+  # Probes for an assignment by parsing an `addition`-level candidate - one
+  # level below where parse_comparison/1 intercepts a bare "=" - and looking
+  # at the next token. `parser_state` is a plain immutable map, so a discarded
+  # probe costs nothing beyond the re-parse.
+  #
+  # A candidate-parse error is treated the same as "no candidate": falling
+  # through to parse_expression/1 from the original state re-derives the
+  # identical error, since an invalid leading token fails the same way
+  # wherever the expression grammar meets it first.
+  @spec try_parse_assignment(parser_state()) ::
+          {:ok, assignment(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer()}
+          | :not_assignment
+  defp try_parse_assignment(state) do
+    case parse_addition(state) do
+      {:ok, candidate, after_candidate} ->
+        case peek_token(after_candidate) do
+          {:eq, eq_line, eq_col, _len, _value} ->
+            build_assignment(state, candidate, {eq_line, eq_col}, advance(after_candidate))
+
+          _not_eq ->
+            :not_assignment
+        end
+
+      {:error, _message, _line, _col} ->
+        :not_assignment
+    end
+  end
+
+  # Commits to an assignment when `lhs` is location-shaped; otherwise reports
+  # the location-shape error rather than falling through, since the caller has
+  # already committed to seeing an assignment's "=".
+  @spec build_assignment(
+          parser_state(),
+          ast(),
+          Predicator.Types.position(),
+          parser_state()
+        ) ::
+          {:ok, assignment(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer()}
+  defp build_assignment(state, lhs, {eq_line, eq_col} = point, rhs_state) do
+    if assignable_location?(lhs) do
+      case parse_expression(rhs_state) do
+        {:ok, rhs, final_state} ->
+          {:ok, {:assignment, lhs, rhs, binary_loc(state, point, lhs, rhs)}, final_state}
+
+        {:error, _message, _line, _col} = error ->
+          error
+      end
+    else
+      {:error,
+       "Left side of '=' must be an assignable location - an identifier, a property " <>
+         "access, or a bracket access.", eq_line, eq_col}
+    end
+  end
+
+  # An assignable location is an identifier, optionally wrapped in any number
+  # of property or bracket accessors. Parenthesized expressions need no clause
+  # here - parens are already transparent in the AST parse_postfix/1 builds,
+  # so `(a)` parses to the same `{:identifier, ...}` node as `a`.
+  @spec assignable_location?(ast()) :: boolean()
+  defp assignable_location?({:identifier, _name, _pos}), do: true
+
+  defp assignable_location?({:property_access, inner, _property, _pos}),
+    do: assignable_location?(inner)
+
+  defp assignable_location?({:bracket_access, inner, _key, _pos}),
+    do: assignable_location?(inner)
+
+  defp assignable_location?(_other), do: false
 
   # Parse expression (top level)
   @spec parse_expression(parser_state()) ::

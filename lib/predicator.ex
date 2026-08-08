@@ -446,6 +446,38 @@ defmodule Predicator do
   end
 
   @doc """
+  Parses a statement-sequence string into a `t:Predicator.Parser.program/0`.
+
+  Implements `program := statement (";" statement)* [";"]`, where a statement
+  is either an assignment (`location "=" expression`) or an ordinary
+  expression. This is a separate entry point from `parse/2`, not an option on
+  it: `parse/2` never returns a program, and `parse_program/2` always returns
+  one, even for a single statement.
+
+  ## Examples
+
+      iex> Predicator.parse_program("a = 1; b = a + 1")
+      {:ok,
+       {:program,
+        [
+          {:assignment, {:identifier, "a", {1, 1}}, {:literal, 1, {1, 5}}, {1, 3}},
+          {:assignment, {:identifier, "b", {1, 8}},
+           {:arithmetic, :add, {:identifier, "a", {1, 12}}, {:literal, 1, {1, 16}}, {1, 14}},
+           {1, 10}}
+        ], {1, 1}}}
+
+      iex> Predicator.parse_program("42 = 1")
+      {:error, "Left side of '=' must be an assignable location - an identifier, a property access, or a bracket access.", 1, 4}
+  """
+  @spec parse_program(binary(), keyword()) :: Parser.program_result()
+  def parse_program(source, opts \\ []) when is_binary(source) do
+    case Lexer.tokenize(source) do
+      {:ok, tokens} -> Parser.parse_program(tokens, opts)
+      {:error, message, line, column} -> {:error, message, line, column}
+    end
+  end
+
+  @doc """
   Converts an AST back to a string representation.
 
   This function takes an Abstract Syntax Tree and generates a readable string
