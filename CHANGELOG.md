@@ -317,6 +317,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bracket_access`'s key rule. `Predicator.Errors.TypeMismatchError.unary/5` is
   the new constructor that separates the message text from the `expected` atom.
 
+- **A store failure blames the exact failing location segment.** Building on
+  the fix above, the compiler now emits a per-store side table mapping each
+  `["store", n]` instruction's index to one source annotation per location
+  segment, and the evaluator joins it with the failing segment's path index.
+  `Predicator.execute(~s(a = {"b": 1}; a.b.c = 2), %{})` reports
+  `position: {1, 16}` - the `.b` that held a scalar - instead of `{1, 15}`, the
+  location's root; `Predicator.execute("a[true] = 1", %{"a" => %{}})` reports
+  `{1, 3}`, the offending key, instead of `{1, 1}`. Under `spans: true` the
+  underline narrows to the failing segment (`a.b`) instead of covering the whole
+  statement; the caret is unchanged, because a chain node's span already started
+  at the chain root. `Predicator.Compiled` gains a `segment_positions` field and
+  `Predicator.Compiled.new/3`, `Predicator.Compiler` gains
+  `to_instructions_with_segment_positions/2`, and
+  `Predicator.Evaluator.evaluate/3` accepts a `:segment_positions` option - all
+  additive. A run without the table (a bare instruction list, a stored program)
+  positions a store failure exactly as it did before, at the location's root.
+  Every emitted instruction list is byte-identical; no ISA version, error type,
+  reason, `expected`, or `{:error, error, context}` shape moves.
+
 ### Changed
 
 - `Predicator.compile_with_positions/1` now returns `{:ok, %Predicator.Compiled{}}`
