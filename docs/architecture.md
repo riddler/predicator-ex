@@ -20,11 +20,15 @@ Expression String → Lexer → Parser → Compiler → Instructions → Evaluat
 ### Grammar with Operator Precedence
 
 ```text
+program      → statement ( ";" statement )* ( ";" )?
+statement    → assignment | expression
+assignment   → location "=" expression
+location     → IDENTIFIER ( "." IDENTIFIER | "[" expression "]" )*
 expression   → logical_or
 logical_or   → logical_and ( ("OR" | "or") logical_and )*
 logical_and  → logical_not ( ("AND" | "and") logical_not )*
 logical_not  → ("NOT" | "not") logical_not | comparison
-comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" (deprecated) | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
+comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
@@ -39,11 +43,20 @@ duration     → NUMBER UNIT+
 relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
 ```
 
-`=` in the `comparison` production is **deprecated** as of 3.8. It still parses
-and still compiles to `["compare", "EQ"]`, but parsing one emits a deprecation
-warning (`px-8um.5`). 4.0 removes it from this production - see "The `=`
-grammar break (4.0)" under Cross-Language Siblings for the rule that replaces
-it and what it means for the Ruby and JavaScript implementations, and
+`=` is assignment, not equality. It is valid only at the start of a statement,
+and only with an assignable left side - an identifier optionally followed by
+`.name` and `[key]` accessors. A bare `=` in expression position is a parse
+error naming `==` as the fix; there is no context where `=` silently means
+equality. `==` and `===` are the only equality operators.
+
+The two grammars above are reached by two separate entry points:
+`Predicator.Parser.parse/2` parses the `expression` production alone and
+rejects a top-level `=`, while `Predicator.Parser.parse_program/2` parses the
+`program` production and is the only place `assignment` is legal. This is the
+parser-level form of [`docs/isa.md`](isa.md) §2's rule that execution mode is
+carried by the entry point, not by the artifact. See "The `=` grammar break
+(4.0)" under Cross-Language Siblings for what this means for the Ruby and
+JavaScript implementations, and
 [ADR-0002](adr/0002-the-equals-grammar-break.md) for the alternatives it was
 weighed against and the known-consumer survey behind the one-release notice
 period.
@@ -117,10 +130,11 @@ corpus over time.
 
 ### The `=` grammar break (4.0)
 
-4.0 makes `=` assignment-only and valid only in statement position; `==` and
+`=` is assignment-only and valid only in statement position; `==` and
 `===` are the only equality operators, and `=` in expression position is a
-parse error. 3.8 warns first, so consumers get one release of notice. See
-[ADR-0002](adr/0002-the-equals-grammar-break.md) for the decision record.
+parse error. 3.8 warned first, so consumers got one release of notice before
+4.0 landed the break. See [ADR-0002](adr/0002-the-equals-grammar-break.md) for
+the decision record.
 
 The siblings' lexers still tokenize `=` as an equality operator
 (`impl/rb/lib/predicator/lexer.rex` line 21, `impl/ts/src/tokens.js` line 70),
@@ -421,6 +435,44 @@ are unchanged either way.
 `Predicator.evaluate/3` takes `spans: true` for string input. For
 instruction-list input it is a no-op - there is no source to span - and such a
 caller passes `positions:` from `compile_with_spans/1` instead.
+
+### The statement grammar and the `=` break (v4.0.0, unreleased)
+
+- **`Predicator.Parser.parse_program/2`** and **`Predicator.parse_program/2`**
+  parse `program := statement (";" statement)* [";"]`, a new entry point
+  alongside `parse/2`. A statement is either an assignment
+  (`location "=" expression`, the left side an identifier optionally followed
+  by `.name` and `[key]` accessors) or an ordinary expression. Both accept
+  `spans: true`, threaded the same way `parse/2` does.
+- **Two new node types**, deliberately not members of `Parser.ast/0`:
+  `{:program, [statement], pos}` and `{:assignment, lhs, rhs, pos}`. `lhs` is
+  the raw access chain `parse_postfix/1` already builds - kept unflattened
+  because a bracket key may be a computed expression that only resolves
+  against a context - and its chain depth is the segment count `["store", n]`
+  will need (ADR-0001). The point position is the `=` token; the span runs
+  from the lhs start to the rhs end. See "Source Positions" above for both
+  nodes' place in the inventory.
+- **`=` left the expression grammar.** `==` and `===` are the only equality
+  operators; a bare `=` in expression position - through `parse/2`,
+  `Predicator.evaluate/3`, or nested inside a statement (`a = (b = 1)`,
+  `a = b = 1`) - is a parse error naming `==`. A non-assignable left side
+  (`42 = 1`, `len(x) = 1`) gets a different, dedicated error naming what an
+  assignable location is. The 3.8.0 deprecation warning and its
+  `deprecation_warnings` config switch are gone; there is nothing left to warn
+  about; see "The `=` grammar break (4.0)" below and
+  [ADR-0002](adr/0002-the-equals-grammar-break.md).
+- **`StringVisitor` round-trips both new nodes** (`"; "`-joined statements,
+  `"lhs = rhs"` for an assignment) and renders `:eq` as `"=="` instead of
+  `"="`, so a hand-built `{:comparison, :eq, ...}` node decompiles to source
+  that re-parses under the new grammar. `Compiler.to_string/2` and
+  `Predicator.decompile/2` widen their spec to accept a program alongside an
+  expression.
+- **Scope.** No compiler or evaluator support: `Compiler.to_instructions/2`
+  and `InstructionsVisitor.visit/2` do not yet handle a program or assignment
+  node, and `ContextLocation.resolve/2` reaches its catch-all for both,
+  reading as `invalid_node` - all pinned by guard tests. Running a parsed
+  program needs the `store` and `pop` opcodes and `Predicator.execute/2`,
+  which is `px-tbv.2`'s.
 
 ### `Predicator.Context` Struct (v3.8.0, unreleased)
 
