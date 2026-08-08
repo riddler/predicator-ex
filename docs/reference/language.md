@@ -37,7 +37,7 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 
 ### What `+` does with mixed operands
 
-`+` is overloaded across four operand-type combinations:
+`+` is overloaded across these operand-type combinations:
 
 | Left | Right | Result |
 |---|---|---|
@@ -45,6 +45,11 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 | String | String | String concatenation |
 | String | Number | String concatenation (number stringified) |
 | Number | String | String concatenation (number stringified) |
+| List | List | List concatenation |
+
+Every other pairing is a `TypeMismatchError`, a list against a scalar
+included: the stringifying coercion applies only when one operand is a
+string and the other a number.
 
 ```elixir
 iex> Predicator.evaluate("'Hello' + ' World'", %{})
@@ -52,11 +57,7 @@ iex> Predicator.evaluate("'Hello' + ' World'", %{})
 
 iex> Predicator.evaluate("'Count: ' + 42", %{})
 {:ok, "Count: 42"}
-```
 
-`+` also concatenates two lists:
-
-```elixir
 iex> Predicator.evaluate("[1, 2] + [3]", %{})
 {:ok, [1, 2, 3]}
 ```
@@ -210,10 +211,12 @@ iex> Predicator.evaluate("concat([1, 2], [3])", %{})
 {:ok, [1, 2, 3]}
 ```
 
-`+` also concatenates two lists (see "What `+` does with mixed operands"
-above), but additionally coerces a string or number operand into
-concatenation. `concat` is list-only: given a non-list argument, it returns
-an `EvaluationError` rather than falling back to `+`'s coercion.
+`+` concatenates two lists as well (see "What `+` does with mixed operands"
+above). On two lists the two are interchangeable; they differ only in what
+else each accepts. `+` also joins strings and numbers, which `concat`
+rejects with an `EvaluationError`. Neither one mixes a list with a scalar -
+`concat([1, 2], 3)` is an `EvaluationError` and `[1, 2] + 3` is a
+`TypeMismatchError`, so there is no coercion to fall back to.
 
 ## Decompiling and Formatting Options
 
