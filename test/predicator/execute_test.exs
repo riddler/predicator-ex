@@ -30,6 +30,14 @@ defmodule Predicator.ExecuteTest do
         Predicator.execute(compiled, %{}, positions: %{})
       end
     end
+
+    test "%Compiled{} + :segment_positions raises ArgumentError" do
+      {:ok, compiled} = Predicator.compile_program_with_positions("x = 1")
+
+      assert_raise ArgumentError, fn ->
+        Predicator.execute(compiled, %{}, segment_positions: %{})
+      end
+    end
   end
 
   describe "execute/2,3 - context shapes" do
@@ -167,6 +175,14 @@ defmodule Predicator.ExecuteTest do
       assert {:ok, %Compiled{} = compiled} = Predicator.compile_program_with_positions("x = 1")
       assert compiled.instructions == [["lit", "x"], ["lit", 1], ["store", 1]]
       assert compiled.positions != %{}
+    end
+
+    test "compile_program_with_positions/1 also carries a non-empty segment_positions table" do
+      assert {:ok, %Compiled{} = compiled} = Predicator.compile_program_with_positions("a.b = 1")
+
+      assert compiled.instructions == [["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]]
+      assert compiled.positions != %{}
+      assert compiled.segment_positions == %{3 => [{1, 1}, {1, 2}]}
     end
   end
 end

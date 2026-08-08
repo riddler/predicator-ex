@@ -148,6 +148,22 @@ defmodule Predicator.Types do
   @type span_table :: %{non_neg_integer() => span()}
 
   @typedoc """
+  Maps a `["store", n]` instruction's 0-based index to one source annotation
+  per location segment in the assignment's lhs chain, root-first.
+
+  A segment's annotation is `nil` when the node that produced it carried none;
+  otherwise it is a `t:position/0` or a `t:span/0`, matching whichever mode
+  `t:position_table/0` or `t:span_table/0` is in for the same compile. Produced
+  by `Predicator.Compiler.to_instructions_with_segment_positions/2` and carried
+  as `compiled.segment_positions` on the `t:Predicator.Compiled.t/0` that
+  returns it. Like `position_table/0` this is never part of the instruction
+  list, so interchange and stored compiled artifacts are unaffected.
+  """
+  @type segment_position_table :: %{
+          non_neg_integer() => [position() | span() | nil]
+        }
+
+  @typedoc """
   The result of evaluating a predicate from public API functions.
 
   Returns:

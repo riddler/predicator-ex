@@ -648,15 +648,15 @@ with an assertion that the returned `%Compiled{}` carries a non-empty
 
 #### Automated Verification
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] Every `instructions ==` and existing `positions ==` assertion in
+- [x] Full quality gate passes: `mix quality`
+- [x] Every `instructions ==` and existing `positions ==` assertion in
       `instructions_visitor_positions_test.exs` passes **unmodified**
-- [ ] The whole suite passes with no behavioural test edited - this phase adds a
+- [x] The whole suite passes with no behavioural test edited - this phase adds a
       carrier and changes no error
-- [ ] The new doctests on `visit_with_segment_positions/2` and
+- [x] The new doctests on `visit_with_segment_positions/2` and
       `to_instructions_with_segment_positions/2` pass
-- [ ] Dialyzer is clean on the widened `annotated` type
-- [ ] Coverage above 90% for `instructions_visitor.ex`, `compiler.ex`,
+- [x] Dialyzer is clean on the widened `annotated` type
+- [x] Coverage above 90% for `instructions_visitor.ex`, `compiler.ex`,
       `compiled.ex`
 
 #### Manual Verification
@@ -1134,3 +1134,11 @@ to confirm out of band. None are checked off by an implementing agent.
 - [ ] `ContextLocation.put(%{"a" => %{"b" => 1}}, ["a", "b", "c"], 2)` reports
       `details.path_index == 1` and its `message` is unchanged
 - [ ] No error message string anywhere in the suite changed wording
+
+### Phase 2
+
+- [ ] `Predicator.compile_program_with_positions("a.b.c = 1")` returns a
+      `%Compiled{}` whose `segment_positions` is `%{4 => [{1,1},{1,2},{1,4}]}`
+      and whose `instructions` and `positions` are identical to what the same
+      call returned before this phase
+- [ ] `Predicator.compile_program("a.b.c = 1")` is byte-identical to before

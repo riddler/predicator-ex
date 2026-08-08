@@ -262,6 +262,21 @@ defmodule Predicator.CompilerTest do
     end
   end
 
+  describe "to_instructions_with_segment_positions/2" do
+    test "returns the same instructions and positions to_instructions_with_positions/2 does, plus a segment table" do
+      {:ok, ast} = Predicator.parse_program("a.b = 1")
+
+      {instructions, positions} = Compiler.to_instructions_with_positions(ast)
+
+      {segment_instructions, segment_positions, segment_table} =
+        Compiler.to_instructions_with_segment_positions(ast)
+
+      assert segment_instructions == instructions
+      assert segment_positions == positions
+      assert segment_table == %{3 => [{1, 1}, {1, 2}]}
+    end
+  end
+
   describe "to_instructions/2 and to_string/2 with a hand-built AST" do
     test "a positioned AST compiles and renders the same as a nil-slotted one" do
       {:ok, positioned} = Predicator.parse("score > 85")

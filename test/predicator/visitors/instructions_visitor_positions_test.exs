@@ -353,6 +353,95 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
     end
   end
 
+  describe "visit_with_segment_positions/2" do
+    defp segment_table(source, opts \\ []) do
+      {:ok, program} = Predicator.parse_program(source, opts)
+      InstructionsVisitor.visit_with_segment_positions(program)
+    end
+
+    test "a simple assignment keys the store index to a one-element list" do
+      {instructions, positions, segment_positions} = segment_table("x = 1")
+
+      assert instructions == [["lit", "x"], ["lit", 1], ["store", 1]]
+      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 1}}
+      assert segment_positions == %{2 => [{1, 1}]}
+    end
+
+    test "a deep chain lists one annotation per segment, root-first" do
+      {instructions, positions, segment_positions} = segment_table("a.b.c = 1")
+
+      assert instructions == [
+               ["lit", "a"],
+               ["lit", "b"],
+               ["lit", "c"],
+               ["lit", 1],
+               ["store", 3]
+             ]
+
+      assert positions == %{0 => {1, 1}, 1 => {1, 2}, 2 => {1, 4}, 3 => {1, 9}, 4 => {1, 1}}
+      assert segment_positions == %{4 => [{1, 1}, {1, 2}, {1, 4}]}
+    end
+
+    test "a bracket key segment's annotation is the key's own token position" do
+      {instructions, _positions, segment_positions} = segment_table("a[true] = 1")
+
+      assert instructions == [["lit", "a"], ["lit", true], ["lit", 1], ["store", 2]]
+      assert segment_positions == %{3 => [{1, 1}, {1, 3}]}
+    end
+
+    test "a computed bracket key's segment list stays one entry per segment, not per instruction" do
+      {instructions, _positions, segment_positions} = segment_table("u.x[k+1].z = 2")
+
+      assert instructions == [
+               ["lit", "u"],
+               ["lit", "x"],
+               ["load", "k"],
+               ["lit", 1],
+               ["add"],
+               ["lit", "z"],
+               ["lit", 2],
+               ["store", 4]
+             ]
+
+      assert segment_positions == %{7 => [{1, 1}, {1, 2}, {1, 6}, {1, 9}]}
+    end
+
+    test "span mode gives each segment a span, not a point" do
+      {instructions, _positions, segment_positions} = segment_table("a.b = 1", spans: true)
+
+      assert instructions == [["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]]
+
+      assert segment_positions == %{
+               3 => [{{1, 1}, {1, 2}}, {{1, 1}, {1, 4}}]
+             }
+    end
+
+    test "only a store-indexed instruction gets a segment entry - a bare expression's pop does not" do
+      {instructions, _positions, segment_positions} = segment_table("x = 1; y + 1")
+
+      assert instructions == [
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["load", "y"],
+               ["lit", 1],
+               ["add"],
+               ["pop"]
+             ]
+
+      assert segment_positions == %{2 => [{1, 1}]}
+    end
+
+    test "the computed-key segment list's length equals the store's own depth operand" do
+      {instructions, _positions, segment_positions} = segment_table("u.x[k+1].z = 2")
+
+      [["store", n]] = Enum.filter(instructions, &match?(["store", _depth], &1))
+      store_index = Enum.find_index(instructions, &match?(["store", _depth], &1))
+
+      assert length(segment_positions[store_index]) == n
+    end
+  end
+
   describe "invariants over the corpus" do
     test "visit/2 returns exactly the instruction list visit_with_positions/2 returns" do
       for expression <- @corpus do

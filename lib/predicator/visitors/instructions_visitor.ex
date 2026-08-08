@@ -49,8 +49,16 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
   @typedoc """
   One instruction paired with the source position of the node that emitted it.
+
+  Every clause but one produces the two-element form. A `["store", n]`
+  instruction produces the three-element form instead, whose third element is
+  `location_segment_annotations/1`'s list - one annotation per lhs segment,
+  root-first. Nothing else in this module ever emits or reads a third element.
   """
-  @type annotated :: {[binary() | term()], Types.position() | Types.span() | nil}
+  @type annotated ::
+          {[binary() | term()], Types.position() | Types.span() | nil}
+          | {[binary() | term()], Types.position() | Types.span() | nil,
+             [Types.position() | Types.span() | nil]}
 
   @doc """
   Visits an AST node and returns stack machine instructions.
@@ -72,7 +80,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   def visit(ast_node, opts \\ []) do
     ast_node
     |> visit_annotated(opts)
-    |> Enum.map(fn {instruction, _position} -> instruction end)
+    |> Enum.map(&elem(&1, 0))
   end
 
   @doc """
@@ -95,18 +103,62 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   @spec visit_with_positions(Parser.ast() | Parser.program(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}
   def visit_with_positions(ast_node, opts \\ []) do
-    annotated = visit_annotated(ast_node, opts)
+    {instructions, positions, _segment_positions} = tables(visit_annotated(ast_node, opts))
+    {instructions, positions}
+  end
+
+  @doc """
+  Returns the instruction list, the position table `visit_with_positions/2`
+  returns, and a per-store segment-position table.
+
+  The segment table maps each `["store", n]` instruction's 0-based index to
+  the list `location_segment_annotations/1` built for its lhs chain - one
+  annotation per location segment, root-first, whatever `n` counts as depth
+  (`location_depth/1`). Every other instruction contributes no entry. The
+  instruction list and the position table are identical to what
+  `visit_with_positions/2` returns for the same AST - this function differs
+  only in returning the third table alongside them.
+
+  ## Examples
+
+      iex> {:ok, program} = Predicator.parse_program("a.b = 1", spans: false)
+      iex> Predicator.Visitors.InstructionsVisitor.visit_with_segment_positions(program)
+      {[["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]],
+       %{0 => {1, 1}, 1 => {1, 2}, 2 => {1, 7}, 3 => {1, 1}},
+       %{3 => [{1, 1}, {1, 2}]}}
+  """
+  @spec visit_with_segment_positions(Parser.ast() | Parser.program(), keyword()) ::
+          {[[binary() | term()]], Types.position_table() | Types.span_table(),
+           Types.segment_position_table()}
+  def visit_with_segment_positions(ast_node, opts \\ []) do
+    tables(visit_annotated(ast_node, opts))
+  end
+
+  # One walk of the annotated list builds all three tables together, so the
+  # position table and the segment table cannot disagree about an index.
+  @spec tables([annotated()]) ::
+          {[[binary() | term()]], Types.position_table() | Types.span_table(),
+           Types.segment_position_table()}
+  defp tables(annotated) do
+    indexed = Enum.with_index(annotated)
 
     positions =
-      annotated
-      |> Enum.with_index()
+      indexed
       |> Enum.flat_map(fn
-        {{_instruction, nil}, _index} -> []
-        {{_instruction, position}, index} -> [{index, position}]
+        {entry, _index} when elem(entry, 1) == nil -> []
+        {entry, index} -> [{index, elem(entry, 1)}]
       end)
       |> Map.new()
 
-    {Enum.map(annotated, fn {instruction, _position} -> instruction end), positions}
+    segment_positions =
+      indexed
+      |> Enum.flat_map(fn
+        {{_instruction, _position, segments}, index} -> [{index, segments}]
+        {_entry, _index} -> []
+      end)
+      |> Map.new()
+
+    {Enum.map(annotated, &elem(&1, 0)), positions, segment_positions}
   end
 
   # Each clause pairs the instructions the node emits *itself* with that node's
@@ -288,7 +340,10 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
     segments ++
       visit_annotated(rhs, opts) ++
-      [{["store", depth], store_annotation(position, root_annotation)}]
+      [
+        {["store", depth], store_annotation(position, root_annotation),
+         location_segment_annotations(lhs)}
+      ]
   end
 
   # Which token a store failure blames. The assignment node's own point
@@ -319,14 +374,15 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   end
 
   defp visit_statement(expression, opts) do
-    visit_annotated(expression, opts) ++ [{["pop"], statement_position(expression)}]
+    visit_annotated(expression, opts) ++ [{["pop"], node_annotation(expression)}]
   end
 
   # Every AST node's trailing element is its position slot, whatever the
   # node's arity - reach it structurally rather than adding a clause per node
-  # type.
-  @spec statement_position(Parser.ast()) :: Types.position() | Types.span() | nil
-  defp statement_position(node), do: elem(node, tuple_size(node) - 1)
+  # type. Used both for a bare statement's `pop` and, via
+  # `location_segment_annotations/1`, for a location segment's own annotation.
+  @spec node_annotation(Parser.ast()) :: Types.position() | Types.span() | nil
+  defp node_annotation(node), do: elem(node, tuple_size(node) - 1)
 
   # Walks an assignment's lhs chain root-to-leaf, emitting one `["lit", ...]`
   # segment per accessor. A bracket key is an arbitrary expression, so its
@@ -339,6 +395,28 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
   defp location_segments({:bracket_access, object, key, _position}, opts),
     do: location_segments(object, opts) ++ visit_annotated(key, opts)
+
+  # One annotation per location segment, root-first - the segment-level echo
+  # of `location_segments/2`, whose list a computed bracket key inflates
+  # (`a[k+1]` is one segment in several instructions). Its length is
+  # `location_depth/1` by construction, which is what makes `["store", n]`'s
+  # operand an index bound for this list.
+  #
+  # A segment's annotation is the annotation of the node that produced its
+  # *value*: the identifier for the root, the `property_access` node for a
+  # dotted segment (its point position is the `.`, its span runs from the
+  # chain root - docs/reference/ast.md), and the *key expression* for a
+  # bracket segment, since the key is what a bad or out-of-range segment value
+  # came from.
+  @spec location_segment_annotations(Parser.ast()) ::
+          [Types.position() | Types.span() | nil]
+  defp location_segment_annotations({:identifier, _name, annotation}), do: [annotation]
+
+  defp location_segment_annotations({:property_access, object, _property, annotation}),
+    do: location_segment_annotations(object) ++ [annotation]
+
+  defp location_segment_annotations({:bracket_access, object, key, _annotation}),
+    do: location_segment_annotations(object) ++ [node_annotation(key)]
 
   # `["store", n]`'s `n` is the chain's segment DEPTH, not the number of
   # instructions the segments compiled to - counted structurally here rather

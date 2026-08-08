@@ -92,6 +92,32 @@ defmodule Predicator.Compiler do
   end
 
   @doc """
+  Converts an AST to stack machine instructions, a source-position side table,
+  and a per-store segment-position side table.
+
+  The instruction list and position table are identical to what
+  `to_instructions_with_positions/2` returns for the same AST - this function
+  adds a third table mapping each `["store", n]` instruction's 0-based index
+  to one source annotation per location segment in its lhs chain, root-first
+  (`t:Predicator.Types.segment_position_table/0`). An assignment-free AST
+  contributes no entry, so an expression compiles to an empty segment table.
+
+  ## Examples
+
+      iex> {:ok, program} = Predicator.parse_program("a.b = 1", spans: false)
+      iex> Predicator.Compiler.to_instructions_with_segment_positions(program)
+      {[["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]],
+       %{0 => {1, 1}, 1 => {1, 2}, 2 => {1, 7}, 3 => {1, 1}},
+       %{3 => [{1, 1}, {1, 2}]}}
+  """
+  @spec to_instructions_with_segment_positions(Parser.ast() | Parser.program(), keyword()) ::
+          {[[binary() | term()]], Types.position_table() | Types.span_table(),
+           Types.segment_position_table()}
+  def to_instructions_with_segment_positions(ast, opts \\ []) do
+    InstructionsVisitor.visit_with_segment_positions(ast, opts)
+  end
+
+  @doc """
   Converts an AST to a string representation.
 
   Uses the StringVisitor to generate a readable string representation

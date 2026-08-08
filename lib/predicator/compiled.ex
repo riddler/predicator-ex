@@ -12,9 +12,15 @@ defmodule Predicator.Compiled do
   This struct is an in-memory Elixir value and is **not** a wire format. A
   consumer that persists a compiled program stores `compiled.instructions` - a
   bare JSON array, byte-identical to what `Predicator.compile/1` emits for the
-  same source. Do not serialize the struct: `positions` holds offsets into the
-  source string the program was compiled from, and they are meaningless to
-  anything that does not also hold that string.
+  same source. Do not serialize the struct: `positions` and `segment_positions`
+  both hold offsets into the source string the program was compiled from, and
+  they are meaningless to anything that does not also hold that string.
+  `segment_positions` is a second Elixir-side derived table, present for the
+  same reason and with the same storage advice as `positions` - it is empty
+  for a program compiling no assignment. An expression compiles no `store`, so
+  `compile_with_positions/1` and `compile_with_spans/1` always return an empty
+  one; `compile_program_with_positions/1` populates it whenever the program
+  contains an assignment.
 
   A program loaded back from storage as a bare list evaluates fine and reports
   `position: nil` on runtime errors, which is correct - the source is gone.
@@ -69,33 +75,59 @@ defmodule Predicator.Compiled do
   instruction list by `Predicator.Instructions.required_isa/1`, and a stored
   copy of a derived fact can disagree with the list it claims to describe
   (ADR-0003, ADR-0009).
+
+  `segment_positions` is a **new** field (px-ids), added rather than folded
+  into `positions`: ADR-0009 treats adding a field to this struct as additive
+  and reshaping `positions`'s meaning as not, so the per-store segment table
+  gets its own field rather than changing what `positions` holds.
   """
   @type t :: %__MODULE__{
           instructions: Types.instruction_list(),
-          positions: Types.position_table() | Types.span_table()
+          positions: Types.position_table() | Types.span_table(),
+          segment_positions: Types.segment_position_table()
         }
 
-  defstruct instructions: [], positions: %{}
+  defstruct instructions: [], positions: %{}, segment_positions: %{}
 
   @doc """
-  Pairs an instruction list with a source-location table.
+  Pairs an instruction list with a source-location table and, optionally, a
+  segment-position table.
 
-  For a caller who stored a bare instruction list and kept its table
-  separately - `Predicator.compile_with_positions/1` and
-  `Predicator.compile_with_spans/1` build the struct themselves.
+  For a caller who stored a bare instruction list and kept its tables
+  separately - `Predicator.compile_with_positions/1`,
+  `Predicator.compile_with_spans/1`, and `Predicator.compile_program_with_positions/1`
+  build the struct themselves.
 
   ## Examples
 
       iex> compiled = Predicator.Compiled.new([["lit", 42]], %{0 => {1, 1}})
       iex> compiled.positions
       %{0 => {1, 1}}
+      iex> compiled.segment_positions
+      %{}
 
       iex> Predicator.Compiled.new([["lit", 42]]).positions
       %{}
+
+      iex> compiled = Predicator.Compiled.new(
+      ...>   [["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]],
+      ...>   %{0 => {1, 1}, 1 => {1, 2}, 2 => {1, 7}, 3 => {1, 1}},
+      ...>   %{3 => [{1, 1}, {1, 2}]}
+      ...> )
+      iex> compiled.segment_positions
+      %{3 => [{1, 1}, {1, 2}]}
   """
-  @spec new(Types.instruction_list(), Types.position_table() | Types.span_table()) :: t()
-  def new(instructions, positions \\ %{})
-      when is_list(instructions) and is_map(positions) do
-    %__MODULE__{instructions: instructions, positions: positions}
+  @spec new(
+          Types.instruction_list(),
+          Types.position_table() | Types.span_table(),
+          Types.segment_position_table()
+        ) :: t()
+  def new(instructions, positions \\ %{}, segment_positions \\ %{})
+      when is_list(instructions) and is_map(positions) and is_map(segment_positions) do
+    %__MODULE__{
+      instructions: instructions,
+      positions: positions,
+      segment_positions: segment_positions
+    }
   end
 end
