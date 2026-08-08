@@ -262,6 +262,9 @@ loop) avoids re-merging the function maps on every evaluation.
 Predicator treats missing data as a first-class value, `:undefined`, rather
 than raising immediately. What a predicate does with it depends on where the
 `:undefined` came from and which operator touches it next.
+`Predicator.Undefined` is the one public module that owns the sentinel -
+`value/0`, `undefined?/1`, and `to_nil/1`/`from_nil/1` for a JSON-shaped
+boundary - and `Predicator.Types.undefined?/1` delegates to it.
 
 ### Where `:undefined` comes from
 
