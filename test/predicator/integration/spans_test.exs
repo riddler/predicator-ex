@@ -1,6 +1,8 @@
 defmodule Predicator.Integration.SpansTest do
   use ExUnit.Case, async: true
 
+  alias Predicator.Compiled
+
   @corpus [
     "42",
     "'hello'",
@@ -96,15 +98,19 @@ defmodule Predicator.Integration.SpansTest do
     test "compile_with_spans/1 emits exactly what compile/1 emits" do
       for source <- @corpus do
         assert {:ok, plain} = Predicator.compile(source)
-        assert {:ok, spanned, _table} = Predicator.compile_with_spans(source)
+        assert {:ok, %Compiled{instructions: spanned}} = Predicator.compile_with_spans(source)
         assert plain == spanned, "instruction list diverged for #{inspect(source)}"
       end
     end
 
     test "the span table is the only difference from compile_with_positions/1" do
       for source <- @corpus do
-        assert {:ok, instructions, positions} = Predicator.compile_with_positions(source)
-        assert {:ok, ^instructions, spans} = Predicator.compile_with_spans(source)
+        assert {:ok, %Compiled{instructions: instructions, positions: positions}} =
+                 Predicator.compile_with_positions(source)
+
+        assert {:ok, %Compiled{instructions: ^instructions, positions: spans}} =
+                 Predicator.compile_with_spans(source)
+
         assert Map.keys(positions) == Map.keys(spans)
       end
     end
@@ -113,18 +119,19 @@ defmodule Predicator.Integration.SpansTest do
   describe "table completeness" do
     test "every instruction index has a span entry" do
       for source <- @corpus do
-        assert {:ok, instructions, spans} = Predicator.compile_with_spans(source)
+        assert {:ok, compiled} = Predicator.compile_with_spans(source)
 
-        assert Map.keys(spans) |> Enum.sort() == Enum.to_list(0..(length(instructions) - 1)),
+        assert Map.keys(compiled.positions) |> Enum.sort() ==
+                 Enum.to_list(0..(length(compiled.instructions) - 1)),
                "incomplete span table for #{inspect(source)}"
       end
     end
 
     test "every entry's start precedes or equals its end in reading order" do
       for source <- @corpus do
-        assert {:ok, _instructions, spans} = Predicator.compile_with_spans(source)
+        assert {:ok, compiled} = Predicator.compile_with_spans(source)
 
-        for {index, {start, finish}} <- spans do
+        for {index, {start, finish}} <- compiled.positions do
           assert start <= finish,
                  "instruction #{index} of #{inspect(source)} has a reversed span"
         end
@@ -158,20 +165,19 @@ defmodule Predicator.Integration.SpansTest do
 
     test "an unbound load under on_unbound: :error slices to the variable" do
       source = "missing + 1"
-      {:ok, instructions, spans} = Predicator.compile_with_spans(source)
+      {:ok, compiled} = Predicator.compile_with_spans(source)
 
-      assert {:error, error} =
-               Predicator.evaluate(instructions, %{}, positions: spans, on_unbound: :error)
+      assert {:error, error} = Predicator.evaluate(compiled, %{}, on_unbound: :error)
 
       assert slice(source, error.span) == "missing"
     end
 
     test "an unbound load under the default policy slices to the variable" do
       source = "1 + missing"
-      {:ok, instructions, spans} = Predicator.compile_with_spans(source)
+      {:ok, compiled} = Predicator.compile_with_spans(source)
 
       assert {:error, %Predicator.Errors.UndefinedVariableError{} = error} =
-               Predicator.evaluate(instructions, %{}, positions: spans)
+               Predicator.evaluate(compiled, %{})
 
       assert slice(source, error.span) == "missing"
       assert error.position == {1, 5}

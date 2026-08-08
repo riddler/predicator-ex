@@ -75,6 +75,7 @@ defmodule Predicator do
   """
 
   alias Predicator.{
+    Compiled,
     Compiler,
     Context,
     ContextLocation,
@@ -97,19 +98,22 @@ defmodule Predicator do
 
   ## Parameters
 
-  - `input` - String expression or instruction list to evaluate
+  - `input` - String expression, instruction list, or a `t:Predicator.Compiled.t/0`
+    from `compile_with_positions/1` or `compile_with_spans/1`, whose table is
+    threaded automatically
   - `context` - Optional context map with variable bindings (default: `%{}`)
   - `opts` - Optional keyword list of options:
     - `:functions` - Map of custom functions to make available during evaluation
-    - `:positions` - Source-position side table from
-      `compile_with_positions/1`, or a source-span table from
-      `compile_with_spans/1`, used to populate `:position` (and `:span`) on
+    - `:positions` - the table from `compiled.positions`, for a caller passing a
+      **bare** instruction list, used to populate `:position` (and `:span`) on
       runtime errors. String input threads its own table automatically; an
-      instruction-list caller who omits this sees `position: nil`.
+      instruction-list caller who omits this sees `position: nil`. Passing it
+      alongside a `%Compiled{}` raises `ArgumentError`.
     - `:spans` - when `true`, string input compiles with spans instead of point
       positions, so runtime errors carry `:span` and `:position` names the
       span's start. Ignored for instruction-list input, which has no source;
-      such a caller passes `positions:` from `compile_with_spans/1` instead.
+      such a caller passes `compile_with_spans/1`'s struct, or `positions:`
+      from `compiled.positions`.
 
   ## Returns
 
@@ -155,11 +159,21 @@ defmodule Predicator do
       true
   """
   @spec evaluate(
-          binary() | Types.instruction_list(),
+          binary() | Types.instruction_list() | Compiled.t(),
           Types.context() | Context.t(),
           keyword()
         ) :: {:ok, Types.value()} | {:error, struct()}
   def evaluate(input, context \\ %{}, opts \\ [])
+
+  def evaluate(%Compiled{} = compiled, context, opts) when is_map(context) do
+    opts = reject_positions_option!(opts)
+
+    evaluate_instructions(
+      compiled.instructions,
+      context,
+      Keyword.put(opts, :positions, compiled.positions)
+    )
+  end
 
   def evaluate(expression, context, opts) when is_binary(expression) and is_map(context) do
     case Lexer.tokenize(expression) do
@@ -208,6 +222,30 @@ defmodule Predicator do
     evaluate_instructions(instructions, Context.new(context, opts), opts)
   end
 
+  # A %Compiled{} already carries its table, so an explicit :positions option
+  # alongside it is a contradiction with no correct resolution: whichever side
+  # won, the caller would not be told the other was discarded - which is the
+  # silent loss the envelope exists to remove (ADR-0009). This is a caller bug
+  # written in the host's own source, not something a predicate author can
+  # reach, so it raises rather than becoming a value; ADR-0004's "errors are
+  # values" is about predicate-derived failure. Predicator.Context.new/2 draws
+  # the same line for a malformed :on_unbound.
+  @spec reject_positions_option!(keyword()) :: keyword()
+  defp reject_positions_option!(opts) do
+    reject_positions_option!(opts, Keyword.has_key?(opts, :positions))
+  end
+
+  @spec reject_positions_option!(keyword(), boolean()) :: keyword()
+  defp reject_positions_option!(opts, false), do: opts
+
+  defp reject_positions_option!(_opts, true) do
+    raise ArgumentError,
+          "Predicator.evaluate/3 was given a %Predicator.Compiled{}, which already " <>
+            "carries its own position table, and an explicit :positions option. Pass " <>
+            "one or the other: drop the option to use compiled.positions, or pass " <>
+            "compiled.instructions with the option."
+  end
+
   @doc """
   Evaluates a predicate expression or instruction list, raising on errors.
 
@@ -227,11 +265,16 @@ defmodule Predicator do
       iex> Predicator.evaluate!("double(21)", %{}, functions: custom_functions)
       42
 
+      # A pre-compiled %Predicator.Compiled{}
+      iex> {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+      iex> Predicator.evaluate!(compiled, %{"score" => 90})
+      true
+
       # This would raise an exception:
       # Predicator.evaluate!("score >", %{})
   """
   @spec evaluate!(
-          binary() | Types.instruction_list(),
+          binary() | Types.instruction_list() | Compiled.t(),
           Types.context(),
           keyword()
         ) :: Types.value()
@@ -362,29 +405,30 @@ defmodule Predicator do
   end
 
   @doc """
-  Compiles a string expression to an instruction list plus a source-position
-  side table.
+  Compiles a string expression to a `t:Predicator.Compiled.t/0` - the
+  instruction list plus a source-position side table, as one value.
 
-  The instruction list is identical to `compile/1`'s; the table maps each
-  instruction's 0-based index to the `{line, column}` of the AST node that
-  emitted it. Pass it to `evaluate/3` as `positions:` to get positions on
-  runtime errors from a pre-compiled program.
+  `compiled.instructions` is identical to `compile/1`'s output;
+  `compiled.positions` maps each instruction's 0-based index to the
+  `{line, column}` of the AST node that emitted it. Pass the struct straight
+  to `evaluate/3`, which threads the table itself.
+
+  Store `compiled.instructions`, not the struct - see `Predicator.Compiled`.
 
   ## Examples
 
-      iex> {:ok, instructions, positions} = Predicator.compile_with_positions("score > 85")
-      iex> instructions
+      iex> {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+      iex> compiled.instructions
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
-      iex> positions
+      iex> compiled.positions
       %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
   """
-  @spec compile_with_positions(binary()) ::
-          {:ok, Types.instruction_list(), Types.position_table()} | {:error, binary()}
+  @spec compile_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
   def compile_with_positions(expression) when is_binary(expression) do
     case parse(expression) do
       {:ok, ast} ->
         {instructions, positions} = Compiler.to_instructions_with_positions(ast)
-        {:ok, instructions, positions}
+        {:ok, Compiled.new(instructions, positions)}
 
       {:error, message, line, column} ->
         {:error, "#{message} at line #{line}, column #{column}"}
@@ -392,29 +436,30 @@ defmodule Predicator do
   end
 
   @doc """
-  Compiles a string expression to an instruction list plus a source-span side
-  table.
+  Compiles a string expression to a `t:Predicator.Compiled.t/0` - the
+  instruction list plus a source-span side table, as one value.
 
-  The instruction list is identical to `compile/1`'s; the table maps each
-  instruction's 0-based index to the `t:Predicator.Types.span/0` of the AST node
-  that emitted it. Pass it to `evaluate/3` as `positions:` to get spans on
-  runtime errors from a pre-compiled program.
+  `compiled.instructions` is identical to `compile/1`'s output;
+  `compiled.positions` maps each instruction's 0-based index to the
+  `t:Predicator.Types.span/0` of the AST node that emitted it. Pass the struct
+  straight to `evaluate/3`, which threads the table itself.
+
+  Store `compiled.instructions`, not the struct - see `Predicator.Compiled`.
 
   ## Examples
 
-      iex> {:ok, instructions, spans} = Predicator.compile_with_spans("score > 85")
-      iex> instructions
+      iex> {:ok, compiled} = Predicator.compile_with_spans("score > 85")
+      iex> compiled.instructions
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
-      iex> spans
+      iex> compiled.positions
       %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
   """
-  @spec compile_with_spans(binary()) ::
-          {:ok, Types.instruction_list(), Types.span_table()} | {:error, binary()}
+  @spec compile_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
   def compile_with_spans(expression) when is_binary(expression) do
     case parse(expression, spans: true) do
       {:ok, ast} ->
         {instructions, spans} = Compiler.to_instructions_with_positions(ast)
-        {:ok, instructions, spans}
+        {:ok, Compiled.new(instructions, spans)}
 
       {:error, message, line, column} ->
         {:error, "#{message} at line #{line}, column #{column}"}

@@ -194,10 +194,11 @@ defmodule PredicatorTest do
   end
 
   describe "compile_with_positions/1" do
-    test "returns the instruction list and a side table" do
-      assert {:ok, instructions, positions} = Predicator.compile_with_positions("score > 85")
-      assert instructions == [["load", "score"], ["lit", 85], ["compare", "GT"]]
-      assert positions == %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
+    test "returns a %Predicator.Compiled{} with the instruction list and a side table" do
+      assert {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+      assert %Predicator.Compiled{} = compiled
+      assert compiled.instructions == [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      assert compiled.positions == %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
     end
 
     test "the instruction list is identical to compile/1's" do
@@ -210,7 +211,10 @@ defmodule PredicatorTest do
             "-x % 3 == 0"
           ] do
         assert {:ok, plain} = Predicator.compile(expression)
-        assert {:ok, positioned, _table} = Predicator.compile_with_positions(expression)
+
+        assert {:ok, %Predicator.Compiled{instructions: positioned}} =
+                 Predicator.compile_with_positions(expression)
+
         assert plain == positioned
       end
     end
@@ -238,10 +242,13 @@ defmodule PredicatorTest do
   end
 
   describe "compile_with_spans/1" do
-    test "returns the instruction list and a span table" do
-      assert {:ok, instructions, spans} = Predicator.compile_with_spans("score > 85")
-      assert instructions == [["load", "score"], ["lit", 85], ["compare", "GT"]]
-      assert spans == %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
+    test "returns a %Predicator.Compiled{} with the instruction list and a span table" do
+      assert {:ok, compiled} = Predicator.compile_with_spans("score > 85")
+      assert %Predicator.Compiled{} = compiled
+      assert compiled.instructions == [["load", "score"], ["lit", 85], ["compare", "GT"]]
+
+      assert compiled.positions ==
+               %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
     end
 
     test "the instruction list is identical to compile/1's" do
@@ -254,7 +261,10 @@ defmodule PredicatorTest do
             "-x % 3 == 0"
           ] do
         assert {:ok, plain} = Predicator.compile(expression)
-        assert {:ok, spanned, _table} = Predicator.compile_with_spans(expression)
+
+        assert {:ok, %Predicator.Compiled{instructions: spanned}} =
+                 Predicator.compile_with_spans(expression)
+
         assert plain == spanned
       end
     end
@@ -375,9 +385,13 @@ defmodule PredicatorTest do
     end
 
     test "a caller-supplied span table decorates a pre-compiled program" do
-      {:ok, instructions, spans} = Predicator.compile_with_spans("a * true")
+      {:ok, compiled} = Predicator.compile_with_spans("a * true")
 
-      assert {:error, error} = Predicator.evaluate(instructions, %{"a" => 1}, positions: spans)
+      assert {:error, error} =
+               Predicator.evaluate(compiled.instructions, %{"a" => 1},
+                 positions: compiled.positions
+               )
+
       assert error.span == {{1, 1}, {1, 9}}
       assert error.position == {1, 1}
     end
@@ -397,10 +411,12 @@ defmodule PredicatorTest do
     end
 
     test "an instruction list with a caller-supplied table populates :position" do
-      {:ok, instructions, positions} = Predicator.compile_with_positions("a * true")
+      {:ok, compiled} = Predicator.compile_with_positions("a * true")
 
       assert {:error, error} =
-               Predicator.evaluate(instructions, %{"a" => 1}, positions: positions)
+               Predicator.evaluate(compiled.instructions, %{"a" => 1},
+                 positions: compiled.positions
+               )
 
       assert error.position == {1, 3}
     end
@@ -409,6 +425,68 @@ defmodule PredicatorTest do
       context = Predicator.Context.new(%{"a" => 1})
 
       assert {:error, error} = Predicator.evaluate("a * true", context)
+      assert error.position == {1, 3}
+    end
+  end
+
+  describe "evaluate/3 with a %Predicator.Compiled{}" do
+    test "threads a position table without any keyword" do
+      {:ok, compiled} = Predicator.compile_with_positions("a * true")
+
+      assert {:error, error} = Predicator.evaluate(compiled, %{"a" => 1})
+      assert error.position == {1, 3}
+    end
+
+    test "threads a span table, setting both :span and :position" do
+      {:ok, compiled} = Predicator.compile_with_spans("a * true")
+
+      assert {:error, error} = Predicator.evaluate(compiled, %{"a" => 1})
+      assert error.span == {{1, 1}, {1, 9}}
+      assert error.position == {1, 1}
+    end
+
+    test "works with a %Predicator.Context{} as the second argument" do
+      {:ok, compiled} = Predicator.compile_with_positions("a * true")
+      context = Predicator.Context.new(%{"a" => 1})
+
+      assert {:error, error} = Predicator.evaluate(compiled, context)
+      assert error.position == {1, 3}
+    end
+
+    test "raises ArgumentError when also given an explicit :positions option" do
+      {:ok, compiled} = Predicator.compile_with_positions("a * true")
+
+      assert_raise ArgumentError, ~r/already carries/, fn ->
+        Predicator.evaluate(compiled, %{"a" => 1}, positions: compiled.positions)
+      end
+    end
+
+    test "an unbound variable's own position is reported through the envelope" do
+      {:ok, compiled} = Predicator.compile_with_positions("missing OR true")
+
+      assert {:error, error} =
+               Predicator.evaluate(compiled, %{}, on_unbound: :error)
+
+      assert error.variable == "missing"
+      assert error.position == {1, 1}
+    end
+
+    test "evaluate!/3 accepts a %Predicator.Compiled{}" do
+      {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+
+      assert Predicator.evaluate!(compiled, %{"score" => 90}) == true
+    end
+  end
+
+  describe "evaluate/3 with a bare instruction list and :positions" do
+    test "still works alongside the option" do
+      {:ok, compiled} = Predicator.compile_with_positions("a * true")
+
+      assert {:error, error} =
+               Predicator.evaluate(compiled.instructions, %{"a" => 1},
+                 positions: compiled.positions
+               )
+
       assert error.position == {1, 3}
     end
   end
