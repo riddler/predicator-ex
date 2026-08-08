@@ -85,12 +85,12 @@ defmodule Predicator.Visitors.StringVisitor do
     - `:verbose` - extra spacing: "score  >  85"
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.ast(), keyword()) :: binary()
+  @spec visit(Parser.ast() | Parser.program(), keyword()) :: binary()
   def visit(ast_node, opts \\ []) do
     do_visit(ast_node, opts)
   end
 
-  @spec do_visit(Parser.ast(), keyword()) :: binary()
+  @spec do_visit(Parser.ast() | Parser.program() | Parser.statement(), keyword()) :: binary()
   defp do_visit(ast_node, opts)
 
   defp do_visit({:literal, value, _position}, _opts) when is_integer(value) do
@@ -262,6 +262,14 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
+  defp do_visit({:program, statements, _position}, opts) do
+    Enum.map_join(statements, "; ", &do_visit(&1, opts))
+  end
+
+  defp do_visit({:assignment, lhs, rhs, _position}, opts) do
+    "#{do_visit(lhs, opts)} = #{do_visit(rhs, opts)}"
+  end
+
   # Helper functions
 
   @spec format_operator(
@@ -273,7 +281,7 @@ defmodule Predicator.Visitors.StringVisitor do
   defp format_operator(:lt), do: "<"
   defp format_operator(:gte), do: ">="
   defp format_operator(:lte), do: "<="
-  defp format_operator(:eq), do: "="
+  defp format_operator(:eq), do: "=="
   defp format_operator(:equal_equal), do: "=="
   defp format_operator(:ne), do: "!="
   defp format_operator(:strict_eq), do: "==="

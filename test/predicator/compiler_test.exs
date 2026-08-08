@@ -140,7 +140,7 @@ defmodule Predicator.CompilerTest do
         :lt => "<",
         :gte => ">=",
         :lte => "<=",
-        :eq => "=",
+        :eq => "==",
         :ne => "!="
       }
 
@@ -170,7 +170,7 @@ defmodule Predicator.CompilerTest do
       ast = {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil}
       result = Compiler.to_string(ast)
 
-      assert result == ~s(name = "John")
+      assert result == ~s(name == "John")
     end
 
     test "converts boolean literals correctly" do
