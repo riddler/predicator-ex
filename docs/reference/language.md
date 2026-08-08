@@ -30,7 +30,7 @@ precedence, see [Architecture](../architecture.md).
 | `+`      | Addition | `score + bonus`, `2 + 3 * 4` |
 | `-`      | Subtraction | `total - discount`, `100 - 25` |
 | `*`      | Multiplication | `price * quantity`, `3 * 4` |
-| `/`      | Division (integer) | `total / count`, `10 / 3` |
+| `/`      | Division (truncating if both operands are integers; float if either is a float) | `total / count`, `10 / 3`, `10 / 3.0` |
 | `%`      | Modulo | `id % 2`, `17 % 5` |
 | `-`      | Unary minus | `-amount`, `-(x + y)` |
 
@@ -171,6 +171,164 @@ iex> {:ok, ast} = Predicator.parse("score > 85")
 iex> Predicator.decompile(ast, parentheses: :explicit)
 "(score > 85)"
 ```
+
+## Undefined and Sparse Data
+
+Predicator treats missing data as a first-class value, `:undefined`, rather
+than raising immediately. What a predicate does with it depends on where the
+`:undefined` came from and which operator touches it next.
+
+### Where `:undefined` comes from
+
+- **A bare unbound identifier** - a variable not present in the context at
+  all - loads as `:undefined`.
+- **A missing nested path** - dot access (`user.age`) or bracket access
+  (`items[99]`) on a value that does not have the requested key or index -
+  also evaluates to `:undefined`, never an error, regardless of whether the
+  root itself is bound.
+
+  ```elixir
+  iex> Predicator.evaluate("user.age", %{"user" => %{}})
+  {:ok, :undefined}
+  ```
+
+Both cases produce the same value in isolation, but they are **not** treated
+the same at the top level - see "Unbound roots vs. missing paths" below.
+
+### Mismatched comparisons
+
+`1 > "a"` is not an error. A type-mismatched pair under a non-strict
+comparison operator (`>`, `<`, `>=`, `<=`, `==`, `!=`) evaluates to
+`:undefined`:
+
+```elixir
+iex> Predicator.evaluate("1 > 'a'", %{})
+{:ok, :undefined}
+iex> Predicator.evaluate("true == 1", %{})
+{:ok, :undefined}
+```
+
+`===` and `!==` (strict equal/not-equal) never produce `:undefined` from a
+type mismatch: they compare without coercion and simply return `false` or
+`true` for two values of different types, `:undefined` included.
+
+Numbers are the one place the two equality families disagree: integer and
+float are the *same* type for `==`, so `1 == 1.0` is `true`, while
+`1 === 1.0` is `false` because strict equality does not bridge integer and
+float.
+
+### AND/OR falsiness
+
+At a jump, only `false` and `:undefined` count as falsy; `true` is the only
+truthy value. `AND`/`OR` do not use symmetric three-valued (Kleene) logic -
+they short-circuit ECMAScript-style, and the two are deliberately asymmetric:
+
+- **`AND`** evaluates its left operand. If it is falsy (`false` or
+  `:undefined`), that value is the result and the right side is never
+  evaluated. If the left operand is `true`, the right operand's value is the
+  result.
+- **`OR`** evaluates its left operand. If it is `true`, that value is the
+  result and the right side is never evaluated. If the left is falsy, the
+  right operand's value is the result.
+
+```elixir
+iex> functions = %{"boom" => {0, fn [], _ctx -> raise "never runs" end}}
+iex> Predicator.evaluate("false AND boom()", %{}, functions: functions)
+{:ok, false}
+iex> Predicator.evaluate("user.missing OR true", %{"user" => %{}})
+{:ok, true}
+iex> Predicator.evaluate("user.missing AND true", %{"user" => %{}})
+{:ok, :undefined}
+```
+
+The asymmetry: an `:undefined` left operand short-circuits `AND` to
+`:undefined` without touching the right side, while the same `:undefined` on
+`OR`'s left falls through and the right side's value wins instead.
+
+`NOT` is different from both: it requires a boolean operand, so `:undefined`
+is a type mismatch under `NOT`, not a falsy value - see the table below.
+
+### Reject vs. propagate, per operator
+
+Some operators treat an `:undefined` operand as a value that flows through;
+others treat it as a type error.
+
+| Operator family | `:undefined` operand | Result |
+|---|---|---|
+| Arithmetic (`+`, `-`, `*`, `/`, `%`, unary `-`) | rejected | error (type mismatch) |
+| Comparison, non-strict (`>`, `<`, `>=`, `<=`, `==`, `!=`) | propagated | `:undefined` |
+| Comparison, strict (`===`, `!==`) | handled, not rejected | ordinary `true`/`false` |
+| `AND`, `OR` | propagated, treated as falsy | short-circuits or falls through |
+| `NOT` | rejected | error (type mismatch) |
+| `in`, `contains` | propagated | `:undefined` |
+
+Dot access, bracket access, and function arguments are not in this table
+because they don't reject or propagate an *incoming* `:undefined` the way an
+operator does: a missing key or index always produces `:undefined` rather
+than erroring (see "Where `:undefined` comes from" above), and a function
+receives whatever `:undefined`-or-not value its arguments evaluated to - a
+custom function decides for itself what to do with one.
+
+### Unbound roots vs. missing paths, and `on_unbound`
+
+Not every `:undefined` stays silent at the top level. `Predicator.evaluate/3`
+distinguishes an `:undefined` that traces back to a genuinely unbound root
+variable from one that is just a legitimately absent nested value, and
+reports the former as an error even without opting into anything:
+
+```elixir
+iex> {:error, err} = Predicator.evaluate("missing", %{})
+iex> err.variable
+"missing"
+
+iex> {:error, err} = Predicator.evaluate("missing == 5", %{})
+iex> err.variable
+"missing"
+
+iex> {:error, err} = Predicator.evaluate("not missing", %{})
+iex> err.variable
+"missing"
+
+iex> Predicator.evaluate("user.age", %{"user" => %{}})
+{:ok, :undefined}
+```
+
+The rule: if the final result is `:undefined`, or an operator rejected an
+`:undefined` operand with a type-mismatch error, and that `:undefined`
+traces back to a root variable this evaluation actually loaded and did not
+find bound, Predicator reports `Predicator.Errors.UndefinedVariableError`
+naming that variable instead of the bare `:undefined` or the type-mismatch
+error. A missing nested path (`user.age` where `user` has no `age`) never
+triggers this - only a bare unbound root does.
+
+Short-circuiting still wins over this rule, and so does an operator that
+*absorbs* the `:undefined` into a defined result - neither reports an error:
+
+```elixir
+iex> Predicator.evaluate("missing OR true", %{})
+{:ok, true}
+iex> Predicator.evaluate("false AND missing", %{})
+{:ok, false}
+iex> Predicator.evaluate("[missing]", %{})
+{:ok, [:undefined]}
+```
+
+Set `on_unbound: :error` to make every load of an unbound root fail
+immediately - including the cases just above, which the default behavior
+would have absorbed into a defined result:
+
+```elixir
+iex> {:error, err} = Predicator.evaluate("missing OR true", %{}, on_unbound: :error)
+iex> err.variable
+"missing"
+```
+
+`on_unbound` accepts `:undefined` (the default) or `:error`. It is a keyword
+option on `Predicator.evaluate/3` and `Predicator.Context.new/2` (which
+validates it strictly - any other value raises `ArgumentError`). It only
+affects a root `load`: a missing nested path stays `:undefined` under either
+policy, since `access` and `bracket_access` never consult `on_unbound` - and
+it never fires on a load a short-circuited branch skipped.
 
 ## Error Shapes
 

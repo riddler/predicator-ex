@@ -146,6 +146,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **`docs/reference/language.md` documents `:undefined` and sparse-data
+  semantics.** A new "Undefined and Sparse Data" section covers where
+  `:undefined` comes from (unbound roots, missing nested paths), mismatched
+  non-strict comparisons, `AND`/`OR` falsiness and its ECMAScript-style
+  asymmetry, a per-operator reject-vs-propagate table, and the `on_unbound`
+  option, including the API-layer rule that reports a genuinely unbound root
+  as `UndefinedVariableError` even under the default policy. The Arithmetic
+  Operators table's `/` row is corrected: it previously read "Division
+  (integer)" for every case, when a float operand actually produces float
+  division. **No behavior changed**; this is a documentation-only addition.
+
 - **`docs/isa.md` reserves `pop` and specifies the statement-mode halt
   contract.** `["pop"]` joins `["store"]` as a reserved tier-6 name for the
   future 4.0 statement layer - not implemented, not accepted by any current
