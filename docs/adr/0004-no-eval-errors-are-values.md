@@ -163,11 +163,10 @@ its own version (see Consequences).
   interpolates into code - is refused by this ADR without needing a fresh
   argument each time. Granting one means superseding this ADR, not adding an
   option beside it.
-
-### Open questions
-
-- `docs/architecture.md` ("Key Design Decisions", Error Handling) still
-  describes the error contract as `{:ok, result} | {:error, message, line,
-  col}`, which is the pre-struct shape; the actual public surface is
-  `{:ok, value} | {:error, struct}`. Correcting that line is documentation
-  drift outside this ADR's scope and is left for a follow-up bead.
+- **One document already states the error contract wrongly, and that is now
+  tracked work.** `docs/architecture.md` ("Key Design Decisions", Error
+  Handling) still describes it as `{:ok, result} | {:error, message, line,
+  col}`, the pre-struct shape, while the public surface has been
+  `{:ok, value} | {:error, struct}` since the error structs landed. Writing the
+  contract down here makes the drift a discrepancy against a record rather than
+  a matter of opinion; px-mis corrects it.
