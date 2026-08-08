@@ -37,10 +37,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `t:Predicator.Types.span/0` and `t:Predicator.Types.span_table/0`.
 
 - `Predicator.compile_with_spans/1`, the span-mode sibling of
-  `compile_with_positions/1`. Its instruction list is byte-identical to
-  `compile/1`'s; the side table maps each instruction index to a span. Pass it
-  to `evaluate/3` as `positions:` to get spans on errors from a pre-compiled
-  program.
+  `compile_with_positions/1`. Returns `{:ok, %Predicator.Compiled{}}` whose
+  `positions` holds a span table mapping each instruction index to a span;
+  `instructions` is byte-identical to `compile/1`'s output. Pass the struct
+  straight to `evaluate/3`, which threads the table itself.
+
+- **`Predicator.Compiled`**, a two-field struct pairing an instruction list
+  (`instructions`) with its source-location table (`positions`), plus a
+  doctested `new/2` for a caller who stored the two separately and wants them
+  back as one value. Returned by `compile_with_positions/1` and
+  `compile_with_spans/1` and accepted directly by `evaluate/3`. It is an
+  in-memory Elixir value, not a wire format - see ADR-0009.
 
 - `:span` on `Predicator.Errors.EvaluationError`,
   `Predicator.Errors.TypeMismatchError`, and
@@ -235,6 +242,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `positions:` still sees `nil`.
 
 ### Changed
+
+- `Predicator.compile_with_positions/1` now returns `{:ok, %Predicator.Compiled{}}`
+  instead of `{:ok, instructions, position_table}`. The envelope carries the
+  instruction list and its source-location table as one value, so the table
+  cannot be silently dropped between compilation and evaluation;
+  `Predicator.evaluate/3` accepts a `%Predicator.Compiled{}` directly and
+  threads the table itself. Read `compiled.instructions` and
+  `compiled.positions` for the old tuple elements; `evaluate/3`'s `:positions`
+  option still works for a bare instruction list. `Predicator.compile/1` and
+  `Predicator.compile!/1` are unchanged and still return a bare instruction
+  list, which remains what a consumer serializes and stores. No instruction
+  changed and the ISA stays at version 3, so stored artifacts need no
+  migration. See [ADR-0009](docs/adr/0009-the-compiled-envelope-carries-the-position-table.md).
 
 - `Predicator.decompile/2` renders a `{:comparison, :eq, ...}` node as `==`
   rather than `=`, so decompiled output always re-parses under the 4.0 grammar.
