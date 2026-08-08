@@ -128,8 +128,7 @@ skills dispatch to: `codebase-locator` (where things live), `codebase-analyzer`
 `thoughts-locator` and `thoughts-analyzer` (prior research, plans, ADRs, and
 `docs/architecture.md`), and `web-search-researcher`. They are **documentarians,
 not critics**: they describe what exists and do not propose changes, which is
-what keeps a research pass from quietly becoming a design pass. `code-quality-
-enforcer` is separate and is not one of them.
+what keeps a research pass from quietly becoming a design pass.
 
 ### Area labels
 
