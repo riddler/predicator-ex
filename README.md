@@ -72,6 +72,8 @@ different source's instructions.
   set per evaluation
 - [Location expressions](docs/guides/location-expressions.md) - SCXML
   assignment targets and writing into a context
+- [Porting Predicator](docs/guides/porting.md) - implementing the instruction
+  set in another language and verifying it against the conformance corpus
 - [Architecture and language reference](docs/architecture.md) - the grammar
   with precedence, the compilation pipeline, and the component map
 - [Architecture decision records](docs/adr/README.md) - the reasoning behind
@@ -103,6 +105,8 @@ JSON corpus, tiered so a v1-only implementation runs a smaller, complete slice
 rather than skipping its way through the whole thing. This is the
 versioned-contract framing ADR-0003 asks for - a sibling behind the current
 ISA version is expected and documented, not a parity deficit to apologize for.
+If you are that implementer, [Porting Predicator](docs/guides/porting.md)
+walks the path from picking a version to recording a conformance claim.
 
 ## Development
 
