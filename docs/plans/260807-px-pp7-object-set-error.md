@@ -672,35 +672,62 @@ of these prevents implementation; each has a stated default that the plan takes.
 
 ## Deferred Manual Verification
 
+All 11 items walked with JohnnyT on 2026-08-07. Nine passed as written; the
+two Phase 3 prose items failed and were fixed in `cb1527d`.
+
 ### Phase 1
 
-- [ ] `mix run -e 'IO.inspect(Predicator.Evaluator.evaluate([["lit", 5], ["lit", 1], ["object_set", "k"]], %{}))'`
-      prints an `{:error, %EvaluationError{}}` tuple and does not raise
-- [ ] The message reads naturally next to `relative_date`'s
-      ("Relative date operation requires a duration on the stack, got: ...")
-- [ ] A compiled object literal (`Predicator.evaluate("{a: 1}.a", %{})`) is
-      unaffected
+- [x] `mix run -e 'IO.inspect(Predicator.Evaluator.evaluate([["lit", 5], ["lit", 1], ["object_set", "k"]], %{}))'`
+      prints an `{:error, %EvaluationError{}}` tuple and does not raise -
+      returns reason `"invalid_stack_value"`, operation `:object_set`, message
+      "Object set requires a map on the stack, got: 5". `position` is `nil`,
+      which is correct: a hand-built list has no source span.
+- [x] The message reads naturally next to `relative_date`'s
+      ("Relative date operation requires a duration on the stack, got: ...") -
+      same frame, same `got:` suffix.
+- [x] A compiled object literal (`Predicator.evaluate("{a: 1}.a", %{})`) is
+      unaffected - still `{:ok, 1}`.
 
 ### Phase 2
 
-- [ ] The rewritten bullet reads as a peer of the `relative_date` and `duration`
-      bullets, not as a changelog entry
-- [ ] No remaining sentence in `docs/isa.md` tells a sibling that any
-      `object_set` shape is undefined
+- [x] The rewritten bullet reads as a peer of the `relative_date` and `duration`
+      bullets, not as a changelog entry - matches `relative_date`'s bullet down
+      to the house convention of backticking `"invalid_stack_value"` while
+      leaving "insufficient operands" as bare prose.
+- [x] No remaining sentence in `docs/isa.md` tells a sibling that any
+      `object_set` shape is undefined - the only surviving "unspecified" is
+      line 301, on ordering comparisons between two maps, which is unrelated.
 
 ### Phase 3
 
-- [ ] The generated tier-4 line's `expected_error` reads
+- [x] The generated tier-4 line's `expected_error` reads
       `{"type":"EvaluationError","reason":"invalid_stack_value"}` - i.e. the
       generator agreed with the authored assertion rather than overwriting a
-      different one
-- [ ] `conformance/README.md`'s "Also out of scope" section still reads as
-      coherent prose after the deletion
-- [ ] No sibling-facing document still describes this shape as uncovered
+      different one. Confirmed; the generated key order is alphabetical, which
+      is the generator's own JSON sorting and not a content difference.
+- [x] `conformance/README.md`'s "Also out of scope" section still reads as
+      coherent prose after the deletion - **failed, fixed in `cb1527d`.**
+      Removing the only bullet spliced the intro sentence onto the trailing
+      one, leaving "structurally rather than as an exclusion list" contrasting
+      with a list that no longer existed. Rewritten as a single sentence and
+      rewrapped.
+- [x] No sibling-facing document still describes this shape as uncovered -
+      `docs/architecture.md`'s two `object_set` mentions are about compilation
+      strategy, not coverage.
+- [x] *(added during the walk)* `opcode_coverage_test.exs`'s comment on
+      `@excluded_opcodes` - **failed, fixed in `cb1527d`.** The whole comment
+      was about the `object_set` carve-out, so the surviving fragment
+      ("docs/isa.md section 5 / plan Open Question #2.") sat above
+      `~w(relative_date)` reading as a rationale for an exclusion it never
+      described. Replaced with the real reason: `relative_date` reads the
+      system clock, so no case can pin an expected value.
 
 ### Phase 4
 
-- [ ] `git diff CHANGELOG.md` shows a single added hunk with no incidental
-      whitespace or reflow changes anywhere else in the file
-- [ ] The bullet tells a sibling implementer what they now owe, which is the
-      point of the entry
+- [x] `git diff CHANGELOG.md` shows a single added hunk with no incidental
+      whitespace or reflow changes anywhere else in the file - one 11-line
+      pure insertion at the end of `### Changed`, so the px-bay rebase stays
+      trivial.
+- [x] The bullet tells a sibling implementer what they now owe, which is the
+      point of the entry - states it directly: "a sibling implementation must
+      now produce this error to claim tier 4."
