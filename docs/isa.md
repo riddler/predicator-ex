@@ -146,10 +146,9 @@ statement alongside the context. That is a host-API convenience, not an ISA
 guarantee - the statement boundary's `pop` discards it as far as the VM is
 concerned.
 
-Statement mode is specified here, ahead of the opcodes that reach it, so the
-statement layer arrives as two opcodes plus an entry point rather than as a
-change to this specification. No evaluator yet exposes a statement entry
-point, so no program is a statement program yet.
+Statement mode was specified here, ahead of the opcodes that reach it, so the
+statement layer arrived as two opcodes plus an entry point rather than as a
+change to this specification. `Predicator.execute/2` is that entry point.
 
 ## 3. Value types
 
@@ -461,9 +460,6 @@ reference survives an edit above it.
 
 What a reader might expect to find here and will not:
 
-- A statement entry point. §2's "Two execution modes" specifies statement
-  mode's halt contract, but no current evaluator exposes one, so every program
-  any implementation runs today is an expression program.
 - Source positions and spans - these travel in an Elixir-side side table,
   never serialized as part of the instruction list. See
   `docs/reference/ast.md` for the blame-token and span tables, and

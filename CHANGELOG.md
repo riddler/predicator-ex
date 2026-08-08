@@ -18,8 +18,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `{:assignment, lhs, rhs, position}`; both carry positions or spans like every
   other node, and both round-trip through `Predicator.decompile/2`. The
   expression grammar is otherwise unchanged, and `Predicator.parse/2` still
-  returns a bare expression AST. Compiling and running a program arrives with
-  the `store` and `pop` opcodes and `Predicator.execute/2`.
+  returns a bare expression AST. Compiling and running a program is the
+  `store` and `pop` opcodes and `Predicator.execute/2`, below.
+
+- **The `store` and `pop` opcodes; compiling and running a program.** ISA v3
+  gains two tier-6 opcodes: `["store", n]` pops a value and the `n` location
+  segments beneath it and writes `path -> value` into the evaluator's
+  context - the only opcode that does - and `["pop"]` discards the stack top.
+  `docs/isa.md` §5 has the full stack discipline and error shapes. **No
+  existing instruction list changes meaning**: this is additive on top of a
+  retirement (`and`, `or`) that v3 has never shipped, so every instruction
+  list valid before this change stays valid and means the same thing after
+  it. `Compiler.to_instructions/2` and `to_instructions_with_positions/2` now
+  accept a `Parser.program()` as well as an expression AST, compiling
+  `{:program, ...}` and `{:assignment, ...}` per `docs/reference/ast.md`'s
+  "Statement nodes" section. `Predicator.compile_program/1` and
+  `compile_program_with_positions/1` are the program-shaped echoes of
+  `compile/1` and `compile_with_positions/1`. `Predicator.execute/1,2,3` is
+  the statement-mode entry point: `execute(program_or_source, context \\ %{},
+  opts \\ [])` accepts source, an instruction list, or a `%Compiled{}`, and
+  returns `{:ok, %Context{}} | {:error, error, %Context{}}`. On error the
+  third element is the context as of the last statement that completed
+  successfully - prior writes survive a later failure, and whether to keep or
+  discard them is the caller's policy, not the engine's: a caller wanting
+  all-or-nothing drops the third element and keeps the context it already
+  had. `Predicator.Evaluator.run_state/1`, the state-preserving runner
+  statement mode needs, is now public.
 
 - **Source spans.** A point position tells an editor where to put a caret; a
   span tells it what to underline. `Predicator.Parser.parse/2`,

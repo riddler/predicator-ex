@@ -92,6 +92,17 @@ an arbitrary expression that only resolves against a context at runtime;
 position is the `=` token; the span (under `spans: true`) runs from the `lhs`
 start to the `rhs` end.
 
+`InstructionsVisitor` compiles both nodes. A `{:program, statements, pos}`
+compiles each statement in order, concatenating the results. An
+`{:assignment, lhs, rhs, pos}` compiles to the `lhs` chain's segments
+(root-to-leaf), then `rhs`, then `["store", n]`, where `n` is the chain's
+segment depth; any other statement compiles to its own instructions followed
+by `["pop"]`. That trailing `["pop"]` is emitted uniformly, including after
+the program's last statement, so the stack is empty at every statement
+boundary. `docs/isa.md` §5 is the normative statement of `store`'s and `pop`'s
+stack discipline and error shapes; this page only says what AST shape feeds
+them.
+
 ## Which token a node blames
 
 Leaves point at their own token. Everything else points at the token that
