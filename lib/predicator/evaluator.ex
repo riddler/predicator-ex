@@ -32,6 +32,7 @@ defmodule Predicator.Evaluator do
           context: Types.context(),
           functions: %{binary() => {function_arity(), function()}},
           positions: Types.position_table() | Types.span_table(),
+          segment_positions: Types.segment_position_table(),
           halted: boolean(),
           unbound_loads: [unbound_load()],
           on_unbound: Predicator.Context.on_unbound(),
@@ -60,6 +61,7 @@ defmodule Predicator.Evaluator do
     context: %{},
     functions: %{},
     positions: %{},
+    segment_positions: %{},
     halted: false,
     unbound_loads: [],
     on_unbound: :undefined
@@ -208,6 +210,14 @@ defmodule Predicator.Evaluator do
       from `compiled.positions`, where `compiled` is what
       `Predicator.compile_with_spans/1` returned, works here too: such an
       error carries the span as `:span` and the span's start as `:position`.
+    - `:segment_positions` - the per-store segment-position side table from
+      `compiled.segment_positions`, as produced by
+      `Predicator.Compiler.to_instructions_with_segment_positions/2`. Read only
+      by `store`, to blame the exact failing location segment rather than the
+      store instruction's own `positions` entry (the lhs root). A run carrying
+      no table - or none for the failing store - positions a store failure
+      exactly as `:positions` alone would; passing this option changes no
+      other opcode's behavior.
     - `:on_unbound` - `:undefined` (default) or `:error`. Under `:error`, a
       `["load", name]` whose `name` is not present in `context` returns
       `{:error, %Predicator.Errors.UndefinedVariableError{}}` instead of
@@ -237,6 +247,7 @@ defmodule Predicator.Evaluator do
       context: context,
       functions: merge_functions(opts),
       positions: Keyword.get(opts, :positions, %{}),
+      segment_positions: Keyword.get(opts, :segment_positions, %{}),
       on_unbound: Keyword.get(opts, :on_unbound, :undefined)
     })
   end

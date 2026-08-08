@@ -108,7 +108,9 @@ defmodule Predicator do
       **bare** instruction list, used to populate `:position` (and `:span`) on
       runtime errors. String input threads its own table automatically; an
       instruction-list caller who omits this sees `position: nil`. Passing it
-      alongside a `%Compiled{}` raises `ArgumentError`.
+      alongside a `%Compiled{}` raises `ArgumentError`. `evaluate/3` compiles
+      no `store`, so the companion `:segment_positions` table (see
+      `execute/3`) is always empty here and has no observable effect.
     - `:spans` - when `true`, string input compiles with spans instead of point
       positions, so runtime errors carry `:span` and `:position` names the
       span's start. Ignored for instruction-list input, which has no source;
@@ -171,7 +173,9 @@ defmodule Predicator do
     evaluate_instructions(
       compiled.instructions,
       context,
-      Keyword.put(opts, :positions, compiled.positions)
+      opts
+      |> Keyword.put(:positions, compiled.positions)
+      |> Keyword.put(:segment_positions, compiled.segment_positions)
     )
   end
 
@@ -181,7 +185,14 @@ defmodule Predicator do
         case Parser.parse(tokens, opts) do
           {:ok, ast} ->
             {instructions, positions} = Compiler.to_instructions_with_positions(ast)
-            evaluate_instructions(instructions, context, Keyword.put(opts, :positions, positions))
+
+            evaluate_instructions(
+              instructions,
+              context,
+              opts
+              |> Keyword.put(:positions, positions)
+              |> Keyword.put(:segment_positions, %{})
+            )
 
           {:error, message, line, column} ->
             {:error, ParseError.new(message, line, column)}
@@ -203,6 +214,7 @@ defmodule Predicator do
       context: context.data,
       functions: context.functions,
       positions: Keyword.get(opts, :positions, %{}),
+      segment_positions: Keyword.get(opts, :segment_positions, %{}),
       on_unbound: context.on_unbound
     }
 
@@ -222,17 +234,20 @@ defmodule Predicator do
     evaluate_instructions(instructions, Context.new(context, opts), opts)
   end
 
-  # A %Compiled{} already carries its table, so an explicit :positions option
-  # alongside it is a contradiction with no correct resolution: whichever side
-  # won, the caller would not be told the other was discarded - which is the
-  # silent loss the envelope exists to remove (ADR-0009). This is a caller bug
-  # written in the host's own source, not something a predicate author can
-  # reach, so it raises rather than becoming a value; ADR-0004's "errors are
-  # values" is about predicate-derived failure. Predicator.Context.new/2 draws
-  # the same line for a malformed :on_unbound.
+  # A %Compiled{} already carries its tables, so an explicit :positions or
+  # :segment_positions option alongside it is a contradiction with no correct
+  # resolution: whichever side won, the caller would not be told the other was
+  # discarded - which is the silent loss the envelope exists to remove
+  # (ADR-0009). This is a caller bug written in the host's own source, not
+  # something a predicate author can reach, so it raises rather than becoming
+  # a value; ADR-0004's "errors are values" is about predicate-derived
+  # failure. Predicator.Context.new/2 draws the same line for a malformed
+  # :on_unbound.
   @spec reject_positions_option!(keyword()) :: keyword()
   defp reject_positions_option!(opts) do
-    reject_positions_option!(opts, Keyword.has_key?(opts, :positions))
+    opts
+    |> reject_positions_option!(Keyword.has_key?(opts, :positions))
+    |> reject_segment_positions_option!(Keyword.has_key?(opts, :segment_positions))
   end
 
   @spec reject_positions_option!(keyword(), boolean()) :: keyword()
@@ -244,6 +259,17 @@ defmodule Predicator do
             "carries its own position table, and an explicit :positions option. Pass " <>
             "one or the other: drop the option to use compiled.positions, or pass " <>
             "compiled.instructions with the option."
+  end
+
+  @spec reject_segment_positions_option!(keyword(), boolean()) :: keyword()
+  defp reject_segment_positions_option!(opts, false), do: opts
+
+  defp reject_segment_positions_option!(_opts, true) do
+    raise ArgumentError,
+          "Predicator.evaluate/3 was given a %Predicator.Compiled{}, which already " <>
+            "carries its own segment-position table, and an explicit :segment_positions " <>
+            "option. Pass one or the other: drop the option to use " <>
+            "compiled.segment_positions, or pass compiled.instructions with the option."
   end
 
   @doc """
@@ -305,8 +331,12 @@ defmodule Predicator do
     from `compile_program_with_positions/1`
   - `context` - a bare map or a `t:Predicator.Context.t/0` (default `%{}`)
   - `opts` - same options `evaluate/3` accepts (`:functions`, `:positions`,
-    `:on_unbound`); `:positions` alongside a `%Compiled{}` raises `ArgumentError`,
-    same as `evaluate/3`
+    `:segment_positions`, `:on_unbound`); `:positions` or `:segment_positions`
+    alongside a `%Compiled{}` raises `ArgumentError`, same as `evaluate/3`.
+    Unlike `evaluate/3`, a program can compile a `store`, so
+    `:segment_positions` - the table from `compiled.segment_positions` - can
+    change a store failure's reported position here; see
+    `Predicator.Evaluator.evaluate/3`'s option list.
 
   ## Returns
 
@@ -348,7 +378,9 @@ defmodule Predicator do
     execute_instructions(
       compiled.instructions,
       context,
-      Keyword.put(opts, :positions, compiled.positions)
+      opts
+      |> Keyword.put(:positions, compiled.positions)
+      |> Keyword.put(:segment_positions, compiled.segment_positions)
     )
   end
 
@@ -357,8 +389,16 @@ defmodule Predicator do
       {:ok, tokens} ->
         case Parser.parse_program(tokens, opts) do
           {:ok, ast} ->
-            {instructions, positions} = Compiler.to_instructions_with_positions(ast)
-            execute_instructions(instructions, context, Keyword.put(opts, :positions, positions))
+            {instructions, positions, segment_positions} =
+              Compiler.to_instructions_with_segment_positions(ast)
+
+            execute_instructions(
+              instructions,
+              context,
+              opts
+              |> Keyword.put(:positions, positions)
+              |> Keyword.put(:segment_positions, segment_positions)
+            )
 
           {:error, message, line, column} ->
             {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
@@ -389,6 +429,7 @@ defmodule Predicator do
       context: context.data,
       functions: context.functions,
       positions: Keyword.get(opts, :positions, %{}),
+      segment_positions: Keyword.get(opts, :segment_positions, %{}),
       on_unbound: context.on_unbound
     }
 
@@ -629,8 +670,10 @@ defmodule Predicator do
           | {:error, binary(), pos_integer(), pos_integer()}
         ) :: {:ok, Compiled.t()} | {:error, binary()}
   defp build_compiled_result({:ok, ast}) do
-    {instructions, positions} = Compiler.to_instructions_with_positions(ast)
-    {:ok, Compiled.new(instructions, positions)}
+    {instructions, positions, segment_positions} =
+      Compiler.to_instructions_with_segment_positions(ast)
+
+    {:ok, Compiled.new(instructions, positions, segment_positions)}
   end
 
   defp build_compiled_result({:error, message, line, column}) do
