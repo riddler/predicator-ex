@@ -368,13 +368,13 @@ a would-be implementer at the guide. Do not restructure that section.
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] `docs/guides/porting.md` exists and is non-empty
-- [ ] `mix.exs`'s `extras:` contains `"docs/guides/porting.md"`
-- [ ] `README.md` contains `docs/guides/porting.md`
-- [ ] Every relative link target in the new file resolves on disk:
+- [x] `docs/guides/porting.md` exists and is non-empty
+- [x] `mix.exs`'s `extras:` contains `"docs/guides/porting.md"`
+- [x] `README.md` contains `docs/guides/porting.md`
+- [x] Every relative link target in the new file resolves on disk:
       `grep -o '](\.\./[^)]*)' docs/guides/porting.md` and check each path
-- [ ] Full gate passes: `mix quality`
-- [ ] `mix docs` completes with no new warnings
+- [x] Full gate passes: `mix quality`
+- [x] `mix docs` completes with no new warnings
 
 #### Manual Verification:
 - [ ] The guide reads as a how-to: goal-framed sections, imperative steps, no
@@ -691,3 +691,16 @@ only if a reviewer disagrees.
 - `README.md:51-105`, `CHANGELOG.md:8`, `test/docs_examples_test.exs:12-18`
 - Existing guides for house style: `docs/guides/custom-functions.md`,
   `docs/guides/location-expressions.md`, `docs/guides/nested-data-access.md`
+
+## Deferred Manual Verification
+
+### Phase 1
+
+- [ ] The guide reads as a how-to: goal-framed sections, imperative steps, no
+      paragraph that re-argues ADR-0003 or reproduces the opcode table
+- [ ] Both surfaces are named, and the evaluator-first recommendation states
+      *why* (no parser needed; tier 1 is complete on its own)
+- [ ] No tier's opcode list, and no sibling support matrix, is restated in the
+      guide
+- [ ] Typography matches the neighboring guides (hyphens, no em dashes)
+- [ ] `doc/index.html` from `mix docs` shows the guide under Guides
