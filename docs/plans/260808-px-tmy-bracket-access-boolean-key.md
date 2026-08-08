@@ -585,19 +585,41 @@ One, recorded rather than blocking, with a default already chosen:
 
 ### Phase 1
 
-- [ ] `Predicator.evaluate("xs[flag]", %{"xs" => ["a"], "flag" => true})`
+- [x] `Predicator.evaluate("xs[flag]", %{"xs" => ["a"], "flag" => true})`
       returns an error tuple in `iex` and does not raise - the bead's exact
-      reproduction
-- [ ] The message for `xs['k']` reads sensibly (names an integer index, does
-      not tell the user a string key is required while rejecting their string)
+      reproduction. Verified: returns `{:error, %TypeMismatchError{expected:
+      :integer, got: :boolean, operation: :bracket_access, position: {1, 3}}}`.
+- [x] The message for `xs['k']` reads sensibly (names an integer index, does
+      not tell the user a string key is required while rejecting their string).
+      Verified: `"Bracket access on a list requires an integer index, got \"k\"
+      (string)"`, and the struct's `expected: :integer` agrees with the prose.
 
 ### Phase 2
 
-- [ ] The bullet is readable by someone implementing in JavaScript: it never
-      requires knowing what an Elixir atom is to determine the behavior
-- [ ] No em dashes introduced; file house style matched
+- [x] The bullet is readable by someone implementing in JavaScript: it never
+      requires knowing what an Elixir atom is to determine the behavior. The
+      normative sentences are all type-name-based and the `is_atom/1`
+      parenthetical translates itself for a sibling without atoms. One gap
+      found and closed while checking this off: the map bullet's normative
+      sentence named string, integer, and boolean but omitted `:undefined`,
+      which the parenthetical implied and the code accepts (`m[o.missing]` is
+      `{:ok, :undefined}`, an ordinary miss). A sibling reading only the
+      normative sentence could have made it a type error and diverged, so the
+      bullet now names `:undefined` outright and contrasts it with the list
+      case.
+- [x] No em dashes introduced; file house style matched. Verified by grepping
+      the added lines of `docs/isa.md` and `CHANGELOG.md` for em and en
+      dashes: zero hits.
 
 ### Phase 3
 
-- [ ] The two new cases validate against `conformance/schema/case.json`
-- [ ] `bd update px-tmy` has added `area:conformance`
+- [x] The two new cases validate against `conformance/schema/case.json`.
+      Verified by test rather than by eye:
+      `test/predicator/conformance/schema_validation_test.exs:56` walks every
+      case in `conformance/cases/*.json` against the schema. The conformance
+      and mix-task suites run 154 tests, 29 doctests, 0 failures. Both cases
+      are in `conformance/corpus/tier-3.json` (case_count 25) and
+      `manifest.json` still reads `"isa_version": 3`, so the no-bump
+      conclusion holds in the generated artifact and not only in this plan.
+- [x] `bd update px-tmy` has added `area:conformance`. Verified:
+      `LABELS: area:conformance, area:docs, area:evaluator`.
