@@ -245,6 +245,19 @@ When something isn't working as expected:
 Use sub-agents sparingly - mainly for targeted debugging or exploring
 unfamiliar territory.
 
+### A red `corpus_freshness_test.exs`
+
+The message `conformance/ is stale - run \`mix corpus.generate\` and review the
+diff:` names the case ids whose exported behavior moved. The fix is always
+`mix corpus.generate` plus a read of the resulting diff; it is never an edit to
+a file under `conformance/corpus/` or to `conformance/manifest.json`, which are
+generated output (CLAUDE.md, Conventions).
+
+If the diff surprises you - cases moved that the plan's phase did not intend to
+touch - that is a finding, not a chore. Stop and report it. A regeneration
+committed without reading it is how an unintended semantic change reaches the
+siblings looking like housekeeping.
+
 ## Wrapping Up
 
 - When all phases are complete and the full `mix quality` gate is green, report

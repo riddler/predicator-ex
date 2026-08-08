@@ -438,11 +438,11 @@ siblings looking like housekeeping.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] The diff touches only `CLAUDE.md` and
+- [x] The diff touches only `CLAUDE.md` and
       `.claude/skills/implement-plan/SKILL.md`
-- [ ] `grep -n "corpus.generate" CLAUDE.md .claude/skills/implement-plan/SKILL.md`
+- [x] `grep -n "corpus.generate" CLAUDE.md .claude/skills/implement-plan/SKILL.md`
       shows the rule in both
-- [ ] No Elixir file touched; Step 0 carve-out applies and is stated in the
+- [x] No Elixir file touched; Step 0 carve-out applies and is stated in the
       report
 
 #### Manual Verification:
@@ -675,3 +675,10 @@ and no coverage to move. The equivalent verification is threefold:
 - [ ] The PR-body bullet reads as something a reviewer wants, not as boilerplate
       an author will paste an empty version of
 - [ ] Nothing added reads as a new gate step
+
+### Phase 2
+
+- [ ] The CLAUDE.md bullet reads in the register of its neighbours and does not
+      duplicate the `area:conformance` prose
+- [ ] `/implement-plan`'s addition would actually be read at the moment it is
+      needed - it sits where a stuck agent looks, not in an introduction
