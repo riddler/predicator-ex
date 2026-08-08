@@ -199,7 +199,8 @@ for the checks, `mix.exs` for the Dialyzer PLT.
 
 - Comprehensive error messages with line/column positions
 - Graceful error propagation through pipeline stages
-- Type-safe error handling with `{:ok, result} | {:error, message, line, col}` tuples
+- Type-safe error handling with `{:ok, value} | {:error, struct}` tuples, where the
+  struct comes from the `Predicator.Errors` family
 
 ### Performance
 
