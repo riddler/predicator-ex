@@ -573,10 +573,10 @@ appear under Guides in the expected order; walk the links in both new files.
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] `CHANGELOG.md` names both new guide paths under `## [Unreleased]`
-- [ ] Full gate passes: `mix quality`
-- [ ] `mix docs` completes with no new warnings
-- [ ] No file under `lib/` differs from `origin/main`:
+- [x] `CHANGELOG.md` names both new guide paths under `## [Unreleased]`
+- [x] Full gate passes: `mix quality`
+- [x] `mix docs` completes with no new warnings
+- [x] No file under `lib/` differs from `origin/main`:
       `git diff --stat origin/main -- lib/` is empty
 
 #### Manual Verification:
@@ -715,3 +715,13 @@ only if a reviewer disagrees.
 - [ ] No section drifts into reference (no opcode table, no full restatement of
       `upgrade/1`'s three divergences) or explanation (no re-argued ADR-0009)
 - [ ] Typography matches the neighboring guides
+
+### Phase 3
+
+- [ ] Both guides appear under Guides in the generated sidebar, ordered
+      nested-data-access, custom-functions, location-expressions, embedding,
+      porting
+- [ ] Every link in both guides resolves - relative ones inside the generated
+      docs, absolute GitHub ones in a browser
+- [ ] The PR body flags the `mix.exs` and `test/docs_examples_test.exs` edits as
+      touching areas outside the bead's `area:docs` label
