@@ -103,7 +103,27 @@ boundary. In point mode the compiled `["store", n]` instruction is annotated
 with the `lhs` root segment's own position rather than the assignment node's
 `=`, so a store failure's caret lands on the location being written; under
 `spans: true` it keeps the assignment's span, whose start is already that same
-token. `docs/isa.md` §5 is the normative statement of `store`'s and `pop`'s
+token.
+
+Alongside that per-instruction position table, compiling an assignment also
+produces a per-*segment* table: one source annotation per `lhs` location
+segment, root-first, keyed by the `["store", n]` instruction's own index. A
+segment's annotation is the annotation of the node that produced its value -
+the `{:identifier, ...}` node for the root, the `{:property_access, ...}` node
+for a dotted segment, and the key expression for a bracket segment, since the
+key is what a bad or out-of-range segment value came from. The list's length
+is the chain's segment depth, which is exactly `["store", n]`'s own operand,
+so `n` bounds the index into it. Because a `property_access` node's point
+position is the `.` (see "Which token a node blames" below), a dotted
+segment's point position names the accessor rather than the property name -
+for `a.b.c`, the segment for `.b` points at column 16 in `a = {"b": 1};
+a.b.c = 2`, the `.` before `b`, not column 17, `b` itself. And because a
+`property_access` node's span starts at the chain root (see "Which characters
+a node covers" below), narrowing a store failure to one segment's span moves
+only the underline, never the caret - the segment for `.b` in that same
+source spans `a.b`, whose start is still `a`.
+
+`docs/isa.md` §5 is the normative statement of `store`'s and `pop`'s
 stack discipline and error shapes; this page only says what AST shape feeds
 them.
 

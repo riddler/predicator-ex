@@ -942,8 +942,8 @@ on it.
 
 #### Automated Verification
 
-- [ ] `mix quality` still green (this is the pre-commit run for the branch)
-- [ ] `git diff --stat` for this phase touches only `CHANGELOG.md` and
+- [x] `mix quality` still green (this is the pre-commit run for the branch)
+- [x] `git diff --stat` for this phase touches only `CHANGELOG.md` and
       `docs/reference/ast.md`
 
 #### Manual Verification
@@ -1152,3 +1152,11 @@ to confirm out of band. None are checked off by an implementing agent.
       `position: {1, 8}` with `span: {{1, 8}, {1, 9}}`, and a human agrees the
       narrower underline is an improvement (decision D1)
 - [ ] Every error `message` string is unchanged from before the branch
+
+### Phase 4
+
+- [ ] The changelog entry names the old and new positions concretely and states
+      the degradation behaviour
+- [ ] `bd show px-ids` lists `area:api`, `area:docs`, `area:evaluator`,
+      `area:visitors`
+- [ ] The follow-up bead exists and names the AST point-position change
