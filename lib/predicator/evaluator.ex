@@ -1359,6 +1359,11 @@ defmodule Predicator.Evaluator do
   # `bracket_access`'s key rule (docs/isa.md §5) - a boolean, a float, or
   # `:undefined` (an unbound computed bracket key) is a `TypeMismatchError`
   # rather than reaching `ContextLocation.put/3` with an out-of-domain path.
+  # The expected-type text is passed explicitly (`unary/5`) rather than derived
+  # from `expected`: `expected` is the normative field a consumer matches on and
+  # stays `:string`, but an integer segment is equally valid (it indexes a
+  # list), so the message names both instead of claiming `store` requires a
+  # string alone.
   @spec validate_store_segments([term()]) :: :ok | {:error, TypeMismatchError.t()}
   defp validate_store_segments(segments) do
     case Enum.find(segments, fn segment -> not (is_binary(segment) or is_integer(segment)) end) do
@@ -1367,7 +1372,13 @@ defmodule Predicator.Evaluator do
 
       bad_segment ->
         {:error,
-         TypeMismatchError.unary(:store, :string, get_value_type(bad_segment), bad_segment)}
+         TypeMismatchError.unary(
+           :store,
+           :string,
+           get_value_type(bad_segment),
+           bad_segment,
+           "a string or an integer"
+         )}
     end
   end
 

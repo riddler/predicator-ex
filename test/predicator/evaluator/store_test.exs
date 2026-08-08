@@ -109,6 +109,15 @@ defmodule Predicator.Evaluator.StoreTest do
       assert {:error, %TypeMismatchError{operation: :store, expected: :string}} =
                Evaluator.run(%Evaluator{instructions: instructions, context: %{}})
     end
+
+    test "the message names both accepted segment types" do
+      instructions = [["lit", true], ["lit", 1], ["store", 1]]
+
+      assert {:error, %TypeMismatchError{message: message}} =
+               Evaluator.run(%Evaluator{instructions: instructions, context: %{}})
+
+      assert message == "Store requires a string or an integer, got true (boolean)"
+    end
   end
 
   describe "store: malformed operands fall to unknown_instruction" do
