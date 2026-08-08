@@ -286,14 +286,22 @@ defmodule Predicator.Evaluator do
     end
   end
 
-  # The same loop as run/1, keeping the state a failing step would otherwise
-  # discard. `evaluator` is the pre-step state, so it holds every unbound load
-  # recorded before the failing instruction - which is all of them, since a
-  # ["load", _] instruction never errors.
-  @spec run_state(t()) :: {:ok, t()} | {:error, struct(), t()}
-  defp run_state(%__MODULE__{halted: true} = evaluator), do: {:ok, evaluator}
+  @doc """
+  Runs an already-built evaluator to halt, returning the final state on both
+  paths.
 
-  defp run_state(%__MODULE__{} = evaluator) do
+  This is statement mode's entry point (`docs/isa.md` section 2): unlike
+  `run_prepared/1` it applies no expression-mode result rule, so an empty
+  stack at halt is a normal halt rather than `empty_stack`. On error the state
+  returned is the pre-step one, holding every write the statements before the
+  failing instruction performed - a `["load", _]` instruction never errors,
+  so the pre-step state holds every unbound load recorded before the failing
+  instruction too, which is all of them.
+  """
+  @spec run_state(t()) :: {:ok, t()} | {:error, struct(), t()}
+  def run_state(%__MODULE__{halted: true} = evaluator), do: {:ok, evaluator}
+
+  def run_state(%__MODULE__{} = evaluator) do
     case step(evaluator) do
       {:ok, new_evaluator} -> run_state(new_evaluator)
       {:error, error_struct} when is_struct(error_struct) -> {:error, error_struct, evaluator}

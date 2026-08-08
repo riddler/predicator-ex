@@ -285,6 +285,126 @@ defmodule Predicator do
     end
   end
 
+  @doc """
+  Runs a statement program - a source string, an instruction list, or a
+  `t:Predicator.Compiled.t/0` - and returns the resulting context.
+
+  This is statement mode's entry point (`docs/isa.md` section 2), the sibling
+  of `evaluate/3` for the `{:program, ...}` / `{:assignment, ...}` grammar
+  `parse_program/2` produces. Where `evaluate/3` returns the value an
+  expression reduces to, `execute/3` returns the **context** a program's
+  writes produced - a program halts with an empty stack by design, so there
+  is no expression result to return.
+
+  ## Parameters
+
+  Same shape as `evaluate/3`:
+
+  - `program_or_source` - a source string (parsed with `parse_program/2`, not
+    `parse/2`), a pre-compiled instruction list, or a `t:Predicator.Compiled.t/0`
+    from `compile_program_with_positions/1`
+  - `context` - a bare map or a `t:Predicator.Context.t/0` (default `%{}`)
+  - `opts` - same options `evaluate/3` accepts (`:functions`, `:positions`,
+    `:on_unbound`); `:positions` alongside a `%Compiled{}` raises `ArgumentError`,
+    same as `evaluate/3`
+
+  ## Returns
+
+  - `{:ok, context}` - every statement ran; `context.data` holds every write
+  - `{:error, error_struct, context}` - execution stopped at the failing
+    statement. `context` is the context **as of the last successfully
+    completed statement** - every earlier write survives, the failing
+    statement's write does not happen, and no later statement runs. Handing
+    back this partial context costs nothing (contexts are immutable) and
+    commit-or-discard is left to the caller: a caller wanting all-or-nothing
+    drops the third element and keeps the context it already had.
+
+        case Predicator.execute(program, ctx) do
+          {:ok, ctx} -> ctx
+          {:error, _error, _partial} -> ctx    # all-or-nothing is a caller policy
+        end
+
+  ## Examples
+
+      iex> {:ok, ctx} = Predicator.execute("x = 1; y = x + 2", %{})
+      iex> ctx.data
+      %{"x" => 1, "y" => 3}
+
+      iex> {:error, %Predicator.Errors.EvaluationError{reason: "not_a_container"}, ctx} =
+      ...>   Predicator.execute("a = 1; a.b = 2; c = 3", %{})
+      iex> ctx.data
+      %{"a" => 1}
+  """
+  @spec execute(
+          binary() | Types.instruction_list() | Compiled.t(),
+          Types.context() | Context.t(),
+          keyword()
+        ) :: {:ok, Context.t()} | {:error, struct(), Context.t()}
+  def execute(program_or_source, context \\ %{}, opts \\ [])
+
+  def execute(%Compiled{} = compiled, context, opts) when is_map(context) do
+    opts = reject_positions_option!(opts)
+
+    execute_instructions(
+      compiled.instructions,
+      context,
+      Keyword.put(opts, :positions, compiled.positions)
+    )
+  end
+
+  def execute(source, context, opts) when is_binary(source) and is_map(context) do
+    case Lexer.tokenize(source) do
+      {:ok, tokens} ->
+        case Parser.parse_program(tokens, opts) do
+          {:ok, ast} ->
+            {instructions, positions} = Compiler.to_instructions_with_positions(ast)
+            execute_instructions(instructions, context, Keyword.put(opts, :positions, positions))
+
+          {:error, message, line, column} ->
+            {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
+        end
+
+      {:error, message, line, column} ->
+        {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
+    end
+  end
+
+  def execute(instructions, context, opts) when is_list(instructions) and is_map(context) do
+    execute_instructions(instructions, context, opts)
+  end
+
+  # A parse failure never built an evaluator, so there is no run to have
+  # written anything - the "partial context" on this path is just the input,
+  # normalized the same way a successful run's would be.
+  @spec normalize_context(Types.context() | Context.t(), keyword()) :: Context.t()
+  defp normalize_context(%Context{} = context, _opts), do: context
+  defp normalize_context(context, opts) when is_map(context), do: Context.new(context, opts)
+
+  # Helper function to run a statement program's instructions and convert
+  # errors to the evaluate/3 shapes, keeping the partial context on both
+  # paths.
+  defp execute_instructions(instructions, %Context{} = context, opts) do
+    evaluator = %Evaluator{
+      instructions: instructions,
+      context: context.data,
+      functions: context.functions,
+      positions: Keyword.get(opts, :positions, %{}),
+      on_unbound: context.on_unbound
+    }
+
+    case Evaluator.run_state(evaluator) do
+      {:ok, final} ->
+        {:ok, %{context | data: final.context}}
+
+      {:error, error_struct, final} ->
+        {:error, unbound_or_type_mismatch(error_struct, final), %{context | data: final.context}}
+    end
+  end
+
+  defp execute_instructions(instructions, context, opts) when is_map(context) do
+    execute_instructions(instructions, Context.new(context, opts), opts)
+  end
+
   # An :undefined result is ambiguous on its own: it's either a genuinely
   # unbound root variable or a value that legitimately evaluates to
   # :undefined (a missing nested path, an out-of-bounds index, a type
@@ -425,14 +545,7 @@ defmodule Predicator do
   """
   @spec compile_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
   def compile_with_positions(expression) when is_binary(expression) do
-    case parse(expression) do
-      {:ok, ast} ->
-        {instructions, positions} = Compiler.to_instructions_with_positions(ast)
-        {:ok, Compiled.new(instructions, positions)}
-
-      {:error, message, line, column} ->
-        {:error, "#{message} at line #{line}, column #{column}"}
-    end
+    expression |> parse() |> build_compiled_result()
   end
 
   @doc """
@@ -456,14 +569,72 @@ defmodule Predicator do
   """
   @spec compile_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
   def compile_with_spans(expression) when is_binary(expression) do
-    case parse(expression, spans: true) do
+    expression |> parse(spans: true) |> build_compiled_result()
+  end
+
+  @doc """
+  Compiles a statement-sequence string to an instruction list.
+
+  The program-shaped echo of `compile/1`: parses with `parse_program/2`
+  instead of `parse/2`, then compiles the resulting `t:Predicator.Parser.program/0`
+  with `Compiler.to_instructions/2`, which already accepts one. Returns the
+  same `{:error, binary()}` shape `compile/1` does - not `parse_program/2`'s
+  raw 4-tuple.
+
+  ## Examples
+
+      iex> {:ok, instructions} = Predicator.compile_program("x = 1; x + 1")
+      iex> instructions
+      [["lit", "x"], ["lit", 1], ["store", 1], ["load", "x"], ["lit", 1], ["add"], ["pop"]]
+
+      iex> Predicator.compile_program("x =")
+      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 4"}
+  """
+  @spec compile_program(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
+  def compile_program(source) when is_binary(source) do
+    case parse_program(source) do
       {:ok, ast} ->
-        {instructions, spans} = Compiler.to_instructions_with_positions(ast)
-        {:ok, Compiled.new(instructions, spans)}
+        instructions = Compiler.to_instructions(ast)
+        {:ok, instructions}
 
       {:error, message, line, column} ->
         {:error, "#{message} at line #{line}, column #{column}"}
     end
+  end
+
+  @doc """
+  Compiles a statement-sequence string to a `t:Predicator.Compiled.t/0` - the
+  instruction list plus a source-position side table, as one value.
+
+  The program-shaped echo of `compile_with_positions/1`. Pass the struct
+  straight to `execute/3`, which threads the table itself.
+
+  ## Examples
+
+      iex> {:ok, compiled} = Predicator.compile_program_with_positions("x = 1")
+      iex> compiled.instructions
+      [["lit", "x"], ["lit", 1], ["store", 1]]
+  """
+  @spec compile_program_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
+  def compile_program_with_positions(source) when is_binary(source) do
+    source |> parse_program() |> build_compiled_result()
+  end
+
+  # Shared by compile_with_positions/1, compile_with_spans/1, and
+  # compile_program_with_positions/1: each differs only in how it parses (an
+  # expression vs a program, point positions vs spans), never in how the
+  # parse result becomes a %Compiled{} or a binary error.
+  @spec build_compiled_result(
+          {:ok, Parser.ast() | Parser.program()}
+          | {:error, binary(), pos_integer(), pos_integer()}
+        ) :: {:ok, Compiled.t()} | {:error, binary()}
+  defp build_compiled_result({:ok, ast}) do
+    {instructions, positions} = Compiler.to_instructions_with_positions(ast)
+    {:ok, Compiled.new(instructions, positions)}
+  end
+
+  defp build_compiled_result({:error, message, line, column}) do
+    {:error, "#{message} at line #{line}, column #{column}"}
   end
 
   @doc """
