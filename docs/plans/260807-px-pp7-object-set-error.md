@@ -526,8 +526,8 @@ Draft text (hyphens, matching the file's house style):
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full gate passes: `mix quality`
-- [ ] `git diff --stat CHANGELOG.md` shows insertions only, and only in one hunk
+- [x] Full gate passes: `mix quality`
+- [x] `git diff --stat CHANGELOG.md` shows insertions only, and only in one hunk
 
 #### Manual Verification:
 - [ ] `git diff CHANGELOG.md` shows a single added hunk with no incidental
@@ -697,3 +697,10 @@ of these prevents implementation; each has a stated default that the plan takes.
 - [ ] `conformance/README.md`'s "Also out of scope" section still reads as
       coherent prose after the deletion
 - [ ] No sibling-facing document still describes this shape as uncovered
+
+### Phase 4
+
+- [ ] `git diff CHANGELOG.md` shows a single added hunk with no incidental
+      whitespace or reflow changes anywhere else in the file
+- [ ] The bullet tells a sibling implementer what they now owe, which is the
+      point of the entry
