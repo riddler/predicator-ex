@@ -24,8 +24,8 @@ than re-arguing it.
   library's semver. All three ISA v2 opcodes shipped in 3.7.0; 3.8.0 then
   refined v2 semantics without adding an opcode (it made every arithmetic and
   legacy logical opcode report an unbound root rather than a type mismatch).
-  ISA v3 minted no opcode at all: it retired `and` and `or`, shipping in
-  4.0.0 as the first version the integer moves for without a new opcode.
+  ISA v3 both retired `and`/`or` and introduced `store`/`pop`, the two
+  opcodes the statement layer needed, shipping in 4.0.0.
 - An opcode's semantics never change under its own name. A change to what an
   opcode does is a new name at a new version. This is what makes "scan the
   opcode names in a list" a sound answer to "what version does this list
@@ -148,8 +148,8 @@ concerned.
 
 Statement mode is specified here, ahead of the opcodes that reach it, so the
 statement layer arrives as two opcodes plus an entry point rather than as a
-change to this specification. Until `store` and `pop` exist (§6), no evaluator
-has a statement entry point and no program is a statement program.
+change to this specification. No evaluator yet exposes a statement entry
+point, so no program is a statement program yet.
 
 ## 3. Value types
 
@@ -178,7 +178,8 @@ distinct error paths, more than a cell can carry cleanly. See the per-opcode
 subsections below the table.
 
 Every opcode is **ISA v1** except `jump_if_falsy_or_pop`,
-`jump_if_true_or_pop`, and `make_list`, which are **v2** (ADR-0001).
+`jump_if_true_or_pop`, and `make_list`, which are **v2** (ADR-0001), and
+`store` and `pop`, which are **v3**.
 
 ### Tiers
 
@@ -194,7 +195,7 @@ row's tier does not depend on the value types the expression happens to use
 | 3 | access | `in`, `contains`, `access`, `bracket_access`, `make_list` |
 | 4 | rich types | `object_new`, `object_set`, `duration`, `relative_date` |
 | 5 | functions | `call` |
-| 6 | statements | (none yet - reserved for `store` and `pop`) |
+| 6 | statements | `store`, `pop` |
 
 Tiers are defined by opcode, not by value. A date comparison
 (`[["lit", Date], ["lit", Date], ["compare", "GT"]]`) is tier 1 by opcode,
@@ -231,6 +232,8 @@ feature tags, not by tiers.
 | `jump_if_true_or_pop` | offset (int > 0) | 0 or 1 | 0 | v2 | 1 | yes | - |
 | `duration` | units (list of `[int, string]`) | 0 | 1 | v1 | 4 | yes | - |
 | `relative_date` | direction (string) | 1 | 1 | v1 | 4 | yes | - |
+| `store` | n (int >= 0) | n + 1 | 0 | v3 | 6 | yes | - |
+| `pop` | - | 1 | 0 | v3 | 6 | yes | - |
 
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` pop 0 or 1 values and push
 0: on the taken branch they leave the value on the stack (net 0 change), and
@@ -430,21 +433,34 @@ reference survives an edit above it.
   `EvaluationError` insufficient operands. **The result depends on the
   current time** - it reads the system clock at evaluation time - so a
   conformance case exercising it cannot pin an exact expected value.
+- **`store`** (`execute_store/2`) - pops the value from the stack top, then
+  `n` location segments beneath it, and reverses those `n` into root-first
+  path order: the compiler pushes segments root-to-leaf followed by the
+  value, so the stack holds the segments deepest-first, exactly as
+  `make_list` does. Writes `path -> value` into the evaluator's context via
+  the same write algorithm `Predicator.ContextLocation.put/3` implements: a
+  missing or `:undefined` interior slot is auto-vivified as a list when the
+  next segment is an integer and a map otherwise, an integer past a list's
+  end pads with `:undefined`, and the leaf is always overwritten. **Pushes
+  nothing.** Fewer than `n + 1` values on the stack is `EvaluationError`
+  insufficient operands. A segment that is neither a string nor an integer
+  is `TypeMismatchError` (operation `store`, expected `string`), the mirror
+  of `bracket_access`'s key rule. A write that cannot be performed is
+  `EvaluationError` with reason `not_assignable` (empty path, only reachable
+  from a hand-built `["store", 0]`), `not_a_container` (an interior segment
+  holds a scalar), or `invalid_index` (a negative list index). This is the
+  only opcode that writes the context.
+- **`pop`** (`execute_pop/1`) - discards the stack top and pushes nothing.
+  The statement-boundary opcode: the compiler emits it after every
+  expression statement so the next statement starts from a clean stack. An
+  empty stack is `EvaluationError` insufficient operands. It is unrelated to
+  `jump_if_falsy_or_pop`/`jump_if_true_or_pop`, which pop conditionally as
+  part of a jump.
 
 ## 6. Not in the ISA
 
 What a reader might expect to find here and will not:
 
-- `["store", n]` - specified by ADR-0001 for the 4.0 statement layer, not
-  implemented and not accepted by any current evaluator clause. Reserved
-  name, tier 6.
-- `["pop"]` - the statement-boundary opcode of the same 4.0 statement layer:
-  it discards an expression statement's value so the next statement begins
-  from a clean stack. Not implemented and not accepted by any current
-  evaluator clause. Reserved name, tier 6, beside `store`. It is **not**
-  related to `jump_if_falsy_or_pop` / `jump_if_true_or_pop`, which are live
-  ISA v2 opcodes that pop conditionally as part of a jump; the shared word in
-  their names is the only thing the three have in common.
 - A statement entry point. §2's "Two execution modes" specifies statement
   mode's halt contract, but no current evaluator exposes one, so every program
   any implementation runs today is an expression program.
@@ -470,12 +486,12 @@ What a reader might expect to find here and will not:
 |---|---|---|---|
 | v1 | everything not listed below | - | up to 3.6.x |
 | v2 | `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list` | - | 3.7.0 |
-| v3 | - | `and`, `or` | 4.0.0 |
+| v3 | `store`, `pop` | `and`, `or` | 4.0.0 |
 
 This table records the release each opcode was *introduced* in, and, now that
 an opcode has been retired, the release each was *removed* in - both ends of
 the interval §1 defines. A version whose only change is a retirement still
-gets a row here, as v3 does. A version's semantics can also be refined in a
+gets a row here. A version's semantics can also be refined in a
 later release without a new opcode and without a new ISA version - 3.8.0 did
 exactly that to v2, as noted in §1.
 

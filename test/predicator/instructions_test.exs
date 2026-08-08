@@ -68,12 +68,13 @@ defmodule Predicator.InstructionsTest do
       assert MapSet.size(Instructions.opcode_set(2)) == 25
     end
 
-    test "opcode_set(2) equals Map.keys(opcodes()) - both and/or are still members of v2's set" do
-      assert Instructions.opcode_set(2) == MapSet.new(Map.keys(Instructions.opcodes()))
+    test "opcode_set(2) equals Map.keys(opcodes()) minus the v3-only opcodes - and/or are still members of v2's set" do
+      assert Instructions.opcode_set(2) ==
+               MapSet.new(Map.keys(Instructions.opcodes()) -- ["store", "pop"])
     end
 
-    test "opcode_set(3) has 23 members" do
-      assert MapSet.size(Instructions.opcode_set(3)) == 23
+    test "opcode_set(3) has 25 members - and/or retired, store/pop added" do
+      assert MapSet.size(Instructions.opcode_set(3)) == 25
     end
 
     test "opcode_set(3) excludes and/or" do
@@ -204,21 +205,18 @@ defmodule Predicator.InstructionsTest do
       assert String.contains?(error.message, "ISA v#{Instructions.isa_version()}")
     end
 
-    # "store" is the reserved v-next opcode name (docs/isa.md section 6) and
-    # is not in the map yet - px-tbv.2 adds it, at which point this
-    # expectation flips intentionally rather than by accident.
-    test "store is currently an unknown opcode" do
-      assert {:error, %EvaluationError{reason: "unknown_opcode"}} =
-               Instructions.required_isa([["store", 0]])
+    # px-tbv.2 registered "store" as an ISA v3 tier-6 opcode (docs/isa.md
+    # section 4); this used to assert it was an unknown opcode.
+    test "store is an ISA v3 tier-6 opcode" do
+      assert {:ok, 3} = Instructions.required_isa([["store", 0]])
+      assert {:ok, 6} = Instructions.tier("store")
     end
 
-    # "pop" is the statement-boundary opcode reserved beside "store"
-    # (docs/isa.md section 6) and is not in the map yet - px-tbv.2 adds it,
-    # at which point this expectation flips intentionally rather than by
-    # accident.
-    test "pop is currently an unknown opcode" do
-      assert {:error, %EvaluationError{reason: "unknown_opcode"}} =
-               Instructions.required_isa([["pop"]])
+    # px-tbv.2 registered "pop" as an ISA v3 tier-6 opcode (docs/isa.md
+    # section 4); this used to assert it was an unknown opcode.
+    test "pop is an ISA v3 tier-6 opcode" do
+      assert {:ok, 3} = Instructions.required_isa([["pop"]])
+      assert {:ok, 6} = Instructions.tier("pop")
     end
 
     test "the first bad opcode wins when there are two" do

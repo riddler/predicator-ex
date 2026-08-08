@@ -27,7 +27,7 @@ defmodule Predicator.IsaSyncTest do
   # that surface shrinks on retirement while the table does not. Both parsing
   # tests guard against a regex that silently matches nothing - and passes
   # vacuously - by asserting this literal count rather than only "non-empty".
-  @opcode_count 25
+  @opcode_count 27
 
   describe "docs/isa.md section 4 table versus the opcode map" do
     setup do
@@ -254,11 +254,13 @@ defmodule Predicator.IsaSyncTest do
 
   # Matches rows of the tier *names* table (docs/isa.md:130-137), e.g.:
   #   | 1 | core | `lit`, `load`, `compare`, ... |
-  # Column 1 is the tier number, column 3 is the opcode list. Tier 6's list
-  # column is prose - "(none yet - reserved for `store`)" - rather than a
-  # comma-separated backtick list, so a cell starting with "(" is treated as
-  # an empty opcode list instead of scanning it for backtick spans (which
-  # would wrongly pick up `store`, an opcode that does not exist yet).
+  # Column 1 is the tier number, column 3 is the opcode list. A cell starting
+  # with "(" is treated as an empty opcode list instead of scanning it for
+  # backtick spans - a general rule for a tier whose opcode list is still
+  # reserved-but-unfilled prose rather than a comma-separated backtick list.
+  # No tier's cell is in that state today (tier 6 filled in with `store` and
+  # `pop` at px-tbv.2), but the branch stays: it is what the *next* reserved
+  # tier's cell needs, not a tier-6-specific workaround.
   @tier_table_row_regex ~r/^\|\s*(\d+)\s*\|[^|]*\|\s*(.+?)\s*\|\s*$/m
   @tier_table_opcode_regex ~r/`([a-z_]+)`/
 
