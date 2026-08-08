@@ -586,13 +586,10 @@ defmodule Predicator.Evaluator do
 
   # Execute property access: pop object from stack, access property, push result
   defp execute_access(%__MODULE__{stack: [object | rest]} = evaluator, property) do
-    case access_value(object, property) do
-      {:ok, value} ->
-        {:ok, %__MODULE__{evaluator | stack: [value | rest]}}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    # access never errors (docs/isa.md section 5); access_value/3 with
+    # :access always returns {:ok, _}.
+    {:ok, value} = access_value(object, property, :access)
+    {:ok, %__MODULE__{evaluator | stack: [value | rest]}}
   end
 
   defp execute_access(%__MODULE__{stack: stack}, _property) do
@@ -1027,7 +1024,7 @@ defmodule Predicator.Evaluator do
   # Bracket access operations - access object[key] or array[index]
   @spec execute_bracket_access(t()) :: {:ok, t()} | {:error, term()}
   defp execute_bracket_access(%__MODULE__{stack: [key, object | rest]} = evaluator) do
-    case access_value(object, key) do
+    case access_value(object, key, :bracket_access) do
       {:ok, value} ->
         {:ok, %__MODULE__{evaluator | stack: [value | rest]}}
 
@@ -1040,52 +1037,66 @@ defmodule Predicator.Evaluator do
     {:error, EvaluationError.insufficient_operands(:bracket_access, length(stack), 2)}
   end
 
-  # Access a value from an object or array using a key or index
-  @spec access_value(Types.value(), Types.value()) :: {:ok, Types.value()} | {:error, term()}
-  defp access_value(object, key) when is_map(object) and is_binary(key) do
-    # Map access with string key. Atom keys never reach here: Context.new/2
-    # and bind/3 normalize them away at the edge (px-8um.2), so a plain
-    # string lookup - defaulting to :undefined when absent - is complete.
+  # Access a value from an object or array using a key or index.
+  @spec access_value(Types.value(), Types.value(), :access | :bracket_access) ::
+          {:ok, Types.value()} | {:error, TypeMismatchError.t()}
+  # A map takes a string, an integer, or an atom key. `true`, `false`, and
+  # `:undefined` are atoms in Elixir and are accepted deliberately: Context
+  # normalization leaves boolean map keys unstringified precisely so this
+  # lookup works (lib/predicator/context.ex, px-8um.2). A miss is :undefined,
+  # not an error.
+  defp access_value(object, key, _operation)
+       when is_map(object) and (is_binary(key) or is_integer(key) or is_atom(key)) do
     {:ok, Map.get(object, key, Undefined.value())}
   end
 
-  defp access_value(object, key) when is_map(object) and is_atom(key) do
-    # Map access with atom key
-    {:ok, Map.get(object, key, Undefined.value())}
+  defp access_value(array, index, _operation)
+       when is_list(array) and is_integer(index) and index >= 0 do
+    if index < length(array), do: {:ok, Enum.at(array, index)}, else: {:ok, Undefined.value()}
   end
 
-  defp access_value(object, key) when is_map(object) and is_integer(key) do
-    # Map access with integer key (maps can have integer keys too)
-    {:ok, Map.get(object, key, Undefined.value())}
-  end
-
-  defp access_value(array, index) when is_list(array) and is_integer(index) and index >= 0 do
-    # Array access with integer index
-    if index < length(array) do
-      {:ok, Enum.at(array, index)}
-    else
-      {:ok, Undefined.value()}
-    end
-  end
-
-  defp access_value(array, index) when is_list(array) and is_integer(index) and index < 0 do
-    # Negative index not supported, return undefined
+  # Negative indices do not count from the end; they miss.
+  defp access_value(array, index, _operation) when is_list(array) and is_integer(index) do
     {:ok, Undefined.value()}
   end
 
-  defp access_value(object, _key) when not is_map(object) and not is_list(object) do
-    # Can't access properties of non-object/non-array values
+  # A target that is neither map nor list has nothing to index, whatever the key.
+  defp access_value(object, _key, _operation) when not is_map(object) and not is_list(object) do
     {:ok, Undefined.value()}
   end
 
-  defp access_value(_object, key)
-       when not is_binary(key) and not is_integer(key) and not is_atom(key) do
-    # Invalid key type - create a custom error message for bracket access key types
+  # Everything left is a map or list target whose key it cannot index.
+  # `access` never errors (docs/isa.md section 5); `bracket_access` does.
+  defp access_value(_object, _key, :access), do: {:ok, Undefined.value()}
+
+  defp access_value(object, key, :bracket_access) do
+    {:error, bracket_key_error(object, key)}
+  end
+
+  # Builds the TypeMismatchError for a bracket_access key that cannot index
+  # its target. Target-aware, because "requires a string, integer, or atom
+  # key" is a nonsense message to hand a caller who indexed a list.
+  @spec bracket_key_error(Types.value(), Types.value()) :: TypeMismatchError.t()
+  defp bracket_key_error(target, key) when is_list(target) do
     key_type = get_value_type(key)
     operation_name = Predicator.Errors.operation_display_name(:bracket_access)
     key_text = Predicator.Errors.type_name_with_value(key_type, key)
 
-    error_struct = %TypeMismatchError{
+    %TypeMismatchError{
+      message: "#{operation_name} on a list requires an integer index, got #{key_text}",
+      expected: :integer,
+      got: key_type,
+      values: key,
+      operation: :bracket_access
+    }
+  end
+
+  defp bracket_key_error(_target, key) do
+    key_type = get_value_type(key)
+    operation_name = Predicator.Errors.operation_display_name(:bracket_access)
+    key_text = Predicator.Errors.type_name_with_value(key_type, key)
+
+    %TypeMismatchError{
       message: "#{operation_name} requires a string, integer, or atom key, got #{key_text}",
       # Primary expected type
       expected: :string,
@@ -1093,8 +1104,6 @@ defmodule Predicator.Evaluator do
       values: key,
       operation: :bracket_access
     }
-
-    {:error, error_struct}
   end
 
   @spec execute_function_call(t(), binary(), non_neg_integer()) :: {:ok, t()} | {:error, term()}

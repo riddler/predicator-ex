@@ -96,7 +96,7 @@ defmodule Predicator.Evaluator.StoreTest do
   end
 
   describe "store: a non-scalar segment is a TypeMismatchError" do
-    test "a boolean segment is rejected the way bracket_access rejects a boolean key" do
+    test "a boolean segment is rejected: a path segment must be a string or an integer" do
       instructions = [["lit", true], ["lit", 1], ["store", 1]]
 
       assert {:error, %TypeMismatchError{operation: :store, expected: :string, got: :boolean}} =

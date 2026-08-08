@@ -348,10 +348,10 @@ they are code references rather than prose.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] The pre-existing `test/predicator_test.exs:1958` boolean-key test passes
+- [x] Full quality gate passes: `mix quality`
+- [x] The pre-existing `test/predicator_test.exs:1958` boolean-key test passes
       untouched
-- [ ] Coverage stays above the 90% floor in `coveralls.json`; every new
+- [x] Coverage stays above the 90% floor in `coveralls.json`; every new
       `access_value/3` clause has a test that reaches it
 
 #### Manual Verification:
@@ -580,3 +580,13 @@ One, recorded rather than blocking, with a default already chosen:
 - `docs/adr/0003-the-elixir-implementation-leads-the-isa.md` - governs the
   versioning conclusion
 - `CLAUDE.md` - area labels, quality gate, errors-as-values rule
+
+## Deferred Manual Verification
+
+### Phase 1
+
+- [ ] `Predicator.evaluate("xs[flag]", %{"xs" => ["a"], "flag" => true})`
+      returns an error tuple in `iex` and does not raise - the bead's exact
+      reproduction
+- [ ] The message for `xs['k']` reads sensibly (names an integer index, does
+      not tell the user a string key is required while rejecting their string)
