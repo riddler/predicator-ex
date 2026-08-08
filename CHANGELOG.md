@@ -216,6 +216,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `Predicator.decompile/2` under the default `parentheses: :minimal` now adds
+  parentheses when a child subexpression binds looser than its parent, or
+  ties with it in a position where left-associativity would otherwise regroup
+  it. Previously `:minimal` added no parentheses at all, so
+  `{:arithmetic, :multiply, {:arithmetic, :add, 1, 2}, 3}` rendered as
+  `"1 + 2 * 3"`, which re-parses as `1 + (2 * 3)` - a different AST and a
+  different value than the one decompiled. `parentheses: :explicit` and
+  `parentheses: :none` are unchanged.
+
 - `Predicator.Errors.UndefinedVariableError` now carries a `:position` (and a
   `:span` under `spans: true`) on every path. The evaluator records each unbound
   load's source location alongside its name, so the error `Predicator.evaluate/3`

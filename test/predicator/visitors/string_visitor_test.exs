@@ -692,7 +692,9 @@ defmodule Predicator.Visitors.StringVisitorTest do
       ast = {:arithmetic, :multiply, inner_add, {:identifier, "c", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "a + b * c"
+      # The `+` binds looser than `*`, so the left child needs parens or the
+      # string would re-parse as a + (b * c) - a different AST (px-ek5).
+      assert result == "(a + b) * c"
     end
 
     test "converts arithmetic with explicit parentheses mode" do
@@ -822,7 +824,9 @@ defmodule Predicator.Visitors.StringVisitorTest do
       ast = {:unary, :bang, equality, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "!x + y == 10"
+      # Comparison binds looser than unary `!`, so the operand needs parens
+      # or the string would re-parse as (!x) + y == 10 (px-ek5).
+      assert result == "!(x + y == 10)"
     end
   end
 
@@ -915,6 +919,163 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       assert {:ok, {:comparison, :equal_equal, _left, _right, _pos}} =
                Predicator.parse(decompiled)
+    end
+  end
+
+  # px-ek5: :minimal defaulted to emitting no parentheses at all, so a string
+  # like "1 + 2 * 3" from {:arithmetic, :multiply, {:arithmetic, :add, 1, 2}, 3}
+  # re-parsed to a different AST (1 + (2 * 3)) than the one it came from. These
+  # tests cover the precedence-aware fix: a child needs parens exactly when
+  # rendering it bare would change how the string re-parses.
+  describe "visit/2 - :minimal adds parens exactly when precedence requires it" do
+    test "parenthesizes a looser left child of a tighter parent" do
+      # (1 + 2) * 3
+      inner = {:arithmetic, :add, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:arithmetic, :multiply, inner, {:literal, 3, nil}, nil}
+
+      assert StringVisitor.visit(ast, []) == "(1 + 2) * 3"
+    end
+
+    test "parenthesizes a looser right child of a tighter parent" do
+      # 3 * (1 + 2)
+      inner = {:arithmetic, :add, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:arithmetic, :multiply, {:literal, 3, nil}, inner, nil}
+
+      assert StringVisitor.visit(ast, []) == "3 * (1 + 2)"
+    end
+
+    test "does not parenthesize when precedence already holds the shape" do
+      # 1 + 2 * 3, unambiguous as-is
+      inner = {:arithmetic, :multiply, {:literal, 2, nil}, {:literal, 3, nil}, nil}
+      ast = {:arithmetic, :add, {:literal, 1, nil}, inner, nil}
+
+      assert StringVisitor.visit(ast, []) == "1 + 2 * 3"
+    end
+
+    test "parenthesizes a same-precedence right child to preserve left-associativity" do
+      # 1 - (2 - 3): without parens this would re-parse as (1 - 2) - 3
+      inner = {:arithmetic, :subtract, {:literal, 2, nil}, {:literal, 3, nil}, nil}
+      ast = {:arithmetic, :subtract, {:literal, 1, nil}, inner, nil}
+
+      assert StringVisitor.visit(ast, []) == "1 - (2 - 3)"
+    end
+
+    test "does not parenthesize a same-precedence left child (matches left-associativity)" do
+      # (1 - 2) - 3 renders as "1 - 2 - 3", which re-parses to the same AST
+      inner = {:arithmetic, :subtract, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:arithmetic, :subtract, inner, {:literal, 3, nil}, nil}
+
+      assert StringVisitor.visit(ast, []) == "1 - 2 - 3"
+    end
+
+    test "parenthesizes a looser logical_or child under logical_and" do
+      # (a OR b) AND c
+      inner_or =
+        {:logical_or, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
+
+      ast = {:logical_and, inner_or, {:identifier, "c", nil}, nil}
+
+      assert StringVisitor.visit(ast, []) == "(a OR b) AND c"
+    end
+
+    test "does not parenthesize logical_and under logical_or (already correct shape)" do
+      # a AND b OR c, unambiguous as-is
+      inner_and =
+        {:logical_and, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
+
+      ast = {:logical_or, inner_and, {:identifier, "c", nil}, nil}
+
+      assert StringVisitor.visit(ast, []) == "a AND b OR c"
+    end
+
+    test "parenthesizes a looser operand under NOT" do
+      # NOT (a AND b)
+      inner_and =
+        {:logical_and, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
+
+      ast = {:logical_not, inner_and, nil}
+
+      assert StringVisitor.visit(ast, []) == "NOT (a AND b)"
+    end
+
+    test "parenthesizes a looser operand under unary minus" do
+      # -(1 + 2)
+      inner = {:arithmetic, :add, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:unary, :minus, inner, nil}
+
+      assert StringVisitor.visit(ast, []) == "-(1 + 2)"
+    end
+
+    test "parenthesizes a looser operand under unary bang" do
+      # !(a AND b)
+      inner_and =
+        {:logical_and, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
+
+      ast = {:unary, :bang, inner_and, nil}
+
+      assert StringVisitor.visit(ast, []) == "!(a AND b)"
+    end
+
+    test "does not add parens in :none mode even when precedence would otherwise require them" do
+      inner = {:arithmetic, :add, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:arithmetic, :multiply, inner, {:literal, 3, nil}, nil}
+
+      assert StringVisitor.visit(ast, parentheses: :none) == "1 + 2 * 3"
+    end
+
+    test "spacing mode does not suppress the parentheses" do
+      inner = {:arithmetic, :add, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:arithmetic, :multiply, inner, {:literal, 3, nil}, nil}
+
+      assert StringVisitor.visit(ast, spacing: :compact) == "(1+2)*3"
+      assert StringVisitor.visit(ast, spacing: :verbose) == "(1  +  2)  *  3"
+    end
+
+    test "the expression-layer round-trip: (1 + 2) * 3" do
+      {:ok, ast} = Predicator.parse("(1 + 2) * 3")
+      decompiled = Predicator.decompile(ast)
+
+      assert Predicator.parse(decompiled) == {:ok, ast}
+    end
+
+    test "the statement-layer round-trip: x = (1 + 2) * 3" do
+      {:ok, ast} = Predicator.parse_program("x = (1 + 2) * 3")
+      decompiled = Predicator.decompile(ast)
+
+      assert Predicator.parse_program(decompiled) == {:ok, ast}
+    end
+
+    @precedence_corpus [
+      "1 + 2 * 3",
+      "(1 + 2) * 3",
+      "3 * (1 + 2)",
+      "1 - 2 - 3",
+      "1 - (2 - 3)",
+      "10 / 2 / 5",
+      "a AND b OR c",
+      "(a OR b) AND c",
+      "NOT (a AND b)",
+      "NOT a AND b",
+      "-(1 + 2)",
+      "!(a AND b)",
+      "a > 1 AND b < 2 OR c == 3",
+      "(a > 1 AND b < 2) OR c == 3",
+      "a > 1 AND (b < 2 OR c == 3)",
+      "1 + 2 * 3 - 4 / 2",
+      "x = (1 + 2) * 3",
+      "x = 1 + 2 * 3"
+    ]
+
+    test "a corpus of precedence-sensitive expressions round-trips under default :minimal" do
+      for source <- @precedence_corpus do
+        {:ok, ast} = Predicator.parse_program(source)
+        decompiled = Predicator.decompile(ast)
+
+        assert {:ok, reparsed} = Predicator.parse_program(decompiled)
+
+        assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast),
+               "Failed round-trip for: #{source} -> #{decompiled}"
+      end
     end
   end
 end

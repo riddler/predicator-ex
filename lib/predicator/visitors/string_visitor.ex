@@ -58,6 +58,26 @@ defmodule Predicator.Visitors.StringVisitor do
 
   alias Predicator.Parser
 
+  # Precedence levels, loosest to tightest, matching the grammar in
+  # docs/architecture.md's "Grammar with Operator Precedence" section:
+  #
+  #   logical_or < logical_and < logical_not < comparison/membership
+  #     < addition < multiplication < unary < postfix/primary
+  #
+  # `:minimal` parentheses mode uses these to decide whether a child
+  # subexpression needs wrapping: a child binds looser than its parent, or
+  # ties with it in a position where associativity would otherwise regroup
+  # it (see `maybe_wrap_child/4`).
+  @level_logical_or 1
+  @level_logical_and 2
+  @level_logical_not 3
+  @level_comparison 4
+  @level_addition 5
+  @level_multiplication 6
+  @level_unary 7
+  @level_primary 8
+  @level_statement 0
+
   @doc """
   Visits an AST node and returns its string representation.
 
@@ -142,48 +162,36 @@ defmodule Predicator.Visitors.StringVisitor do
   end
 
   defp do_visit({:comparison, op, left, right, _position}, opts) do
-    format_binary_operator(op, left, right, opts)
+    format_binary(left, right, format_operator(op), opts, @level_comparison, :none)
   end
 
   defp do_visit({:logical_and, left, right, _position}, opts) do
-    left_str = do_visit(left, opts)
-    right_str = do_visit(right, opts)
-    spacing = get_spacing(opts)
-
-    case get_parentheses_mode(opts) do
-      :explicit -> "(#{left_str}#{spacing}AND#{spacing}#{right_str})"
-      _other -> "#{left_str}#{spacing}AND#{spacing}#{right_str}"
-    end
+    format_binary(left, right, "AND", opts, @level_logical_and, :left)
   end
 
   defp do_visit({:logical_or, left, right, _position}, opts) do
-    left_str = do_visit(left, opts)
-    right_str = do_visit(right, opts)
-    spacing = get_spacing(opts)
-
-    case get_parentheses_mode(opts) do
-      :explicit -> "(#{left_str}#{spacing}OR#{spacing}#{right_str})"
-      _other -> "#{left_str}#{spacing}OR#{spacing}#{right_str}"
-    end
+    format_binary(left, right, "OR", opts, @level_logical_or, :left)
   end
 
   defp do_visit({:logical_not, operand, _position}, opts) do
-    operand_str = do_visit(operand, opts)
     spacing = get_spacing(opts)
+    mode = get_parentheses_mode(opts)
+    operand_str = maybe_wrap_child(do_visit(operand, opts), operand, @level_logical_not, mode)
 
-    case get_parentheses_mode(opts) do
+    case mode do
       :explicit -> "(NOT#{spacing}#{operand_str})"
-      :none -> "NOT#{spacing}#{operand_str}"
-      :minimal -> "NOT#{spacing}#{operand_str}"
+      _other -> "NOT#{spacing}#{operand_str}"
     end
   end
 
   defp do_visit({:arithmetic, op, left, right, _position}, opts) do
-    format_binary_operator(op, left, right, opts)
+    {level, assoc} = arithmetic_precedence(op)
+    format_binary(left, right, format_operator(op), opts, level, assoc)
   end
 
   defp do_visit({:unary, op, operand, _position}, opts) do
-    operand_str = do_visit(operand, opts)
+    mode = get_parentheses_mode(opts)
+    operand_str = maybe_wrap_child(do_visit(operand, opts), operand, @level_unary, mode)
     op_str = format_operator(op)
 
     # Unary operators typically don't use spacing
@@ -211,15 +219,7 @@ defmodule Predicator.Visitors.StringVisitor do
   end
 
   defp do_visit({:membership, op, left, right, _position}, opts) do
-    left_str = do_visit(left, opts)
-    right_str = do_visit(right, opts)
-    op_str = format_membership_operator(op)
-    spacing = get_spacing(opts)
-
-    case get_parentheses_mode(opts) do
-      :explicit -> "(#{left_str}#{spacing}#{op_str}#{spacing}#{right_str})"
-      _other -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
-    end
+    format_binary(left, right, format_membership_operator(op), opts, @level_comparison, :none)
   end
 
   defp do_visit({:function_call, function_name, arguments, _position}, opts) do
@@ -298,27 +298,97 @@ defmodule Predicator.Visitors.StringVisitor do
   defp format_membership_operator(:in), do: "IN"
   defp format_membership_operator(:contains), do: "CONTAINS"
 
-  # Helper function to format binary operators (comparison, equality, arithmetic)
-  @spec format_binary_operator(
-          Parser.comparison_op()
-          | Parser.arithmetic_op(),
+  # Renders a binary infix node ("left <op_str> right"), wrapping either
+  # child in parentheses when :minimal mode requires it for precedence, and
+  # wrapping the whole result when mode is :explicit. :none never wraps -
+  # unchanged from before this module tracked precedence.
+  @spec format_binary(
           Parser.ast(),
           Parser.ast(),
-          keyword()
-        ) :: binary()
-  defp format_binary_operator(op, left, right, opts) do
-    left_str = do_visit(left, opts)
-    right_str = do_visit(right, opts)
-    op_str = format_operator(op)
-
+          binary(),
+          keyword(),
+          non_neg_integer(),
+          :left | :none
+        ) ::
+          binary()
+  defp format_binary(left, right, op_str, opts, level, assoc) do
     spacing = get_spacing(opts)
+    mode = get_parentheses_mode(opts)
 
-    case get_parentheses_mode(opts) do
-      :explicit -> "(#{left_str}#{spacing}#{op_str}#{spacing}#{right_str})"
-      :none -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
-      :minimal -> "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
+    left_str = maybe_wrap_child(do_visit(left, opts), left, level, assoc, :left, mode)
+    right_str = maybe_wrap_child(do_visit(right, opts), right, level, assoc, :right, mode)
+
+    joined = "#{left_str}#{spacing}#{op_str}#{spacing}#{right_str}"
+
+    case mode do
+      :explicit -> "(#{joined})"
+      _other -> joined
     end
   end
+
+  @spec arithmetic_precedence(Parser.arithmetic_op()) :: {non_neg_integer(), :left}
+  defp arithmetic_precedence(op) when op in [:add, :subtract], do: {@level_addition, :left}
+  defp arithmetic_precedence(_op), do: {@level_multiplication, :left}
+
+  # Whether `child` needs parentheses when rendered at `position` (:left or
+  # :right) under a parent node with precedence `level` and associativity
+  # `assoc` (`:left` for the left-associative binary operators, `:none` for
+  # the non-associative comparison/membership level). Only :minimal mode
+  # wraps; :explicit and :none leave the child's own rendering untouched -
+  # :explicit already self-wraps recursively, :none never wraps at all.
+  @spec maybe_wrap_child(
+          binary(),
+          Parser.ast() | Parser.statement(),
+          non_neg_integer(),
+          :left | :none,
+          :left | :right,
+          :minimal | :explicit | :none
+        ) :: binary()
+  defp maybe_wrap_child(str, child, level, assoc, position, :minimal) do
+    child_level = precedence(child)
+    looser? = child_level < level
+    ties_and_regroups? = child_level == level and (assoc == :none or position == :right)
+
+    if looser? or ties_and_regroups? do
+      "(#{str})"
+    else
+      str
+    end
+  end
+
+  defp maybe_wrap_child(str, _child, _level, _assoc, _position, _other_mode), do: str
+
+  @spec maybe_wrap_child(
+          binary(),
+          Parser.ast() | Parser.statement(),
+          non_neg_integer(),
+          :minimal | :explicit | :none
+        ) :: binary()
+  defp maybe_wrap_child(str, child, level, mode),
+    do: maybe_wrap_child(str, child, level, :left, :left, mode)
+
+  # The precedence level of a node, for comparison against a prospective
+  # parent's level (see `maybe_wrap_child/6`). Every clause in `do_visit/2`
+  # has a corresponding clause here. Atoms and postfix/primary forms bind
+  # tightest and never need parentheses; `:program` and `:assignment` are
+  # statement-layer nodes that are never wrapped by a parent, so their level
+  # is nominal.
+  @spec precedence(Parser.ast() | Parser.program() | Parser.statement()) :: non_neg_integer()
+  defp precedence({:logical_or, _left, _right, _position}), do: @level_logical_or
+  defp precedence({:logical_and, _left, _right, _position}), do: @level_logical_and
+  defp precedence({:logical_not, _operand, _position}), do: @level_logical_not
+  defp precedence({:comparison, _op, _left, _right, _position}), do: @level_comparison
+  defp precedence({:membership, _op, _left, _right, _position}), do: @level_comparison
+
+  defp precedence({:arithmetic, op, _left, _right, _position}) do
+    {level, _assoc} = arithmetic_precedence(op)
+    level
+  end
+
+  defp precedence({:unary, _op, _operand, _position}), do: @level_unary
+  defp precedence({:program, _statements, _position}), do: @level_statement
+  defp precedence({:assignment, _lhs, _rhs, _position}), do: @level_statement
+  defp precedence(_atom_or_postfix_node), do: @level_primary
 
   @spec get_spacing(keyword()) :: binary()
   defp get_spacing(opts) do
