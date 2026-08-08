@@ -107,6 +107,18 @@ the `headRefOid` GitHub actually merged.
 `mix hex.publish`. Not gated, not delegable, and no instruction in a session
 grants it.
 
+**The criterion applies to the observable outcome, not to the internal state
+change.** An action a third party can see is rung 2 - "visible to other people
+and other machines" - whether or not the actor can technically retract it
+afterwards. Deleting a posted comment does not unsend it; the reader has already
+read it, and the CI job or notification it triggered has already run. So a
+technically-undoable-but-socially-not action needs no fifth rung: the existing
+table's own logic places it on rung 2, and it takes an explicit human ask like
+every other row there. This is not hypothetical. `gh pr comment` and
+`gh issue comment` are reachable from this workflow today through the same `gh`
+CLI the merge-verification rows depend on, so the case is present already rather
+than waiting to arrive.
+
 ### Why `mix hex.publish` has no trigger, rather than a strict one
 
 Every other row on the ladder has a trigger, and the reason is not that those
@@ -214,12 +226,3 @@ a bad release without changing anything about the instruction set itself.
   it and must stop and report. That is the intended behavior, and the
   alternative - letting an agent decide that this particular push is obviously
   fine - is the blast-radius rule wearing a different hat.
-
-### Open questions
-
-- The criterion is stated in terms of *technical* reversibility, and every row
-  in the table currently agrees with a social reading as well. An action that
-  is technically undoable but socially not - a comment posted to a third party,
-  a message sent - has no row today, because none exists in this workflow.
-  Whether such an action is rung 2 (visible to others, so an explicit ask) or a
-  fifth case is left open until one arrives.

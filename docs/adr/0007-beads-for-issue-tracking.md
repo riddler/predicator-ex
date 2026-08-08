@@ -178,6 +178,16 @@ reference.
 issue filed by an outside contributor is a report to be triaged into a bead; it
 is not itself the tracked work, and no skill in `.claude/skills/` reads it.
 
+**The hand-off is a written policy, not automation.** The maintainer triages an
+inbound GitHub issue into a bead with `/create-issue`; the GitHub issue stays
+open as the reporter's thread and is closed when the bead's PR merges. That is
+deliberately a policy rather than an intake skill: inbound volume on a
+solo-maintained library does not justify one, and a skill that runs a few times
+a year would rot unread between uses - it would be describing a `bd` command
+surface and a triage flow that had both moved under it since the last time
+anyone looked. A written rule that a human reads at the moment of use cannot go
+stale in the same silent way.
+
 ### This decision does not move the instruction set
 
 **No ISA change. No opcode is added, removed, renamed, or given different
@@ -206,7 +216,9 @@ findable. That is a property of the record, not of the instruction set.
 - **External contributions arrive on a surface that is not the record.** A
   GitHub issue or PR from outside has to be triaged into a bead by someone with
   the tool, and until that happens it is not visible to `bd ready` and cannot
-  be scheduled by `/next-issues`. Nothing automates that hand-off today.
+  be scheduled by `/next-issues`. That hand-off is manual by decision, not by
+  omission, and the reporter's thread stays open on GitHub until the bead's PR
+  merges so the latency is at least visible to the person who filed it.
 - **The reasoning behind a change is split across three places.** Beads carry
   the immediate why and the acceptance criteria, `docs/research/` carries the
   investigation, `docs/plans/` carries the intended sequence, and ADRs carry
@@ -235,15 +247,14 @@ findable. That is a property of the record, not of the instruction set.
   durable, and reversible-for-routine-writes, rather than by re-arguing
   tracker preferences. Changing the tracker supersedes this ADR; adding a field,
   a label vocabulary, or a workflow on top of `bd` does not.
-
-### Open questions
-
-- **Nothing records how an inbound GitHub issue becomes a bead**, or who is
-  responsible for doing it, or what the reporter is told in the meantime. The
-  decision names GitHub Issues as an intake surface but no skill implements
-  that hand-off, and whether it should be automated is left open.
-- **Whether any subset of the tracker should be published in readable form** -
-  a generated roadmap, or beads mirrored into the repo as text - is
-  undecided. It would address the visibility cost directly, at the price of a
-  second copy that can drift, which is the same objection that keeps the
-  command reference out of `CLAUDE.md`.
+- **Publishing a readable subset of the tracker was considered and rejected.**
+  A generated roadmap, or beads mirrored into the repo as text, would address
+  the visibility cost directly - and it loses to the same drift objection that
+  keeps the `bd` command reference out of `CLAUDE.md`, in a stronger form. That
+  reference is written once and re-read by a human who can notice it is wrong;
+  a mirror regenerates continuously against a database that changes dozens of
+  times per bead, and nothing in the workflow detects that a stale copy has
+  been committed. The visibility it would buy is also already partly paid for
+  by `CHANGELOG.md` and by merged PR history, both public and both accurate by
+  construction rather than by a job having run. Reversing this means
+  superseding this ADR, not adding a mirror beside it.

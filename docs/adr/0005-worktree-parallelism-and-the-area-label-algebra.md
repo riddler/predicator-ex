@@ -87,6 +87,19 @@ rules:
    built on was wrong**, worth noticing at merge time rather than silently
    accepting.
 
+**A wrong label on a merged bead is noted, not rewritten.** The label's only
+operational job is batching, and that job is finished the moment the bead
+merges; what survives afterwards is its value as *evidence* that a split was
+miscalibrated. Retroactively correcting it destroys exactly that evidence, so
+merge-time drift is recorded on the bead - a note saying which areas the branch
+actually touched - and the label itself is left standing. This is what
+`CLAUDE.md` means by drift being "worth noticing at merge time, not silently
+accepting": noticing is the whole of the required response. The one exception is
+a change to the **label vocabulary itself**, where the old term no longer means
+what it meant when the bead was filed. Relabeling is then migrating a record,
+not correcting a mistake, and the bead was never wrong under the vocabulary it
+was written against.
+
 **`CLAUDE.md` is the enforcement of this ADR, not a copy of it.** The live
 vocabulary - which paths each label covers, and the `upstream` case for beads
 that change no files here - lives in `CLAUDE.md`'s "Area labels" section and is
@@ -142,7 +155,10 @@ none of that is owed here.
   `docs/research/260807-px-phw-conformance-area-label.md`. That correction is
   this ADR's proof that the algebra is falsifiable: the rule is coarse, so it
   will misclassify, and the response is to fix the vocabulary rather than to
-  make the rule negotiable case by case.
+  make the rule negotiable case by case. Relabeling px-q1f and px-1ka after
+  they had merged is the vocabulary exception above, not a counterexample to
+  it: both were correctly labeled under the vocabulary that existed when they
+  were filed, and the pass migrated a record whose term had changed meaning.
 - **Exclusivity does not spread by subject.** A conformance bead that also
   edits `mix.exs` or `coveralls.json` carries **both** labels, and
   `area:build`'s exclusivity re-triggers in full - that bead lands alone. The
@@ -166,11 +182,3 @@ none of that is owed here.
   disjoint, that is information about the labels that produced the batch. The
   labels are predictions; a conflict is a prediction that failed, and the
   response is to fix the label or the vocabulary.
-
-### Open questions
-
-- Nothing here records *when* a wrong label should be corrected on a bead that
-  has already merged. The `area:conformance` correction relabeled px-q1f and
-  px-1ka after the fact for record accuracy, but that was a judgment made in
-  that research pass, not a standing rule. Whether merge-time area drift should
-  routinely amend the bead's labels is left open.

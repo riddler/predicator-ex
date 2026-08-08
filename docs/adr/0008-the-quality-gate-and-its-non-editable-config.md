@@ -221,26 +221,46 @@ is protecting; it does not make the gate part of the instruction set.
   tempted to move the line is the one running with nobody watching, so that is
   the case where the loop stops.
 
-### Open questions
+- **The prohibition gets a mechanism as well as a rule.** Until now nothing
+  structurally prevented an agent from editing `.quality.exs`, `.credo.exs`, or
+  `coveralls.json`; the files are writable and the only check was that a human
+  read the diff, which is the same review this ADR argues is insufficient one
+  layer up. px-rfn adds a `deny` permission rule covering `Edit`, `Write`, and
+  `NotebookEdit` on those three paths - the repo has no `.claude/settings.json`
+  today, so px-rfn creates one. `deny` rather than `ask` is deliberate: an `ask`
+  rule prompts on every call *including* inside `--auto` seeded worktree
+  sessions, where nobody is there to answer and the session simply stalls,
+  whereas a `deny` fails cleanly and the agent reports it, which is exactly what
+  this ADR already prescribes. The friction on legitimate work is acceptable
+  because a deliberate gate change carries `area:build`, is exclusive under
+  ADR-0005, lands alone, and is human-reviewed already: the maintainer edits
+  those three files directly, or lifts the rule for that bead. The limit is
+  worth stating rather than hiding - a deny on `Edit`/`Write` does not cover
+  `Bash`, so `sed -i` or a `>` redirect still gets through, and closing that
+  would need Bash pattern matching, which is leaky and would catch legitimate
+  commands. This is a speed bump on the honest path, not a sandbox. It earns its
+  place by making a gate-config edit unmistakably deliberate in a diff, which is
+  the property this ADR actually needs.
 
-- **The prohibition is a rule, not a mechanism.** Nothing mechanically prevents
-  an agent from editing `.quality.exs`, `.credo.exs`, or `coveralls.json` - the
-  files are writable, and the check is that a human reads the diff. A hook or a
-  permissions deny-rule could enforce it structurally, which would make this ADR
-  self-consistent (a rule the constrained party cannot move) rather than
-  relying on the same review it argues is insufficient elsewhere. Whether that
-  is worth the friction on legitimate `area:build` work is undecided.
+- **`.claude/agents/code-quality-enforcer.md` is retired rather than
+  rewritten.** It describes formatting and linting in language-neutral terms,
+  does not mention `mix quality`, `.quality.exs`, or the non-editability rule,
+  and is not in the enforcement path - `/commit` and `/implement-plan` run the
+  gate directly. Rewriting it against this ADR would produce a third description
+  of the gate alongside `CLAUDE.md` and this document, with nothing keeping the
+  three in sync; that is the drift objection ADR-0007 uses against mirroring the
+  tracker, applied here. px-62v removes it. If a use for such an agent
+  reappears, this ADR is the spec to write it against.
 
-- **`.claude/agents/code-quality-enforcer.md` is generic and predates this
-  record.** It describes formatting and linting in language-neutral terms and
-  does not mention `mix quality`, `.quality.exs`, or the non-editability rule.
-  It is not part of the enforcement path today - `/commit` and
-  `/implement-plan` run the gate directly - and whether it should be rewritten
-  against this ADR or retired is left open.
-
-- **Nothing records what to do when the gate is red for a reason outside the
-  branch** - a dependency advisory published upstream, or a new credo check
-  arriving with a version bump. Under the rule as written the agent reports and
-  a human decides, which is probably right, but it means an unrelated upstream
-  event can block every in-flight worktree at once, and no mitigation is
-  written down.
+- **A gate red for a reason outside the branch is one `area:build` bead, and
+  the agent that hit it does not repair it.** A dependency advisory published
+  upstream, or a new credo check arriving with a version bump, turns every
+  in-flight worktree red at once; the machinery for that already exists and was
+  simply not written down. The response is a single `area:build` bead that lands
+  alone under ADR-0005, after which `/refresh-worktree` rebases the surviving
+  worktrees and confirms each is green again. The prohibition that goes with it:
+  **an agent that hits an unrelated red gate must not fix it inside its own
+  branch.** Doing so is an `area:build` change smuggled into unrelated work,
+  which is precisely the side-effect edit this ADR forbids - it arrives in a
+  diff about something else and is reviewed, if at all, as noise. The agent
+  reports and stops.
