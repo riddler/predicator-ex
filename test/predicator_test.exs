@@ -17,21 +17,21 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("x < 5", context) == {:ok, false}
       assert Predicator.evaluate("x >= 10", context) == {:ok, true}
       assert Predicator.evaluate("x <= 10", context) == {:ok, true}
-      assert Predicator.evaluate("x = 10", context) == {:ok, true}
+      assert Predicator.evaluate("x == 10", context) == {:ok, true}
       assert Predicator.evaluate("x != 5", context) == {:ok, true}
     end
 
     test "evaluates string comparisons" do
       context = %{"name" => "John"}
 
-      assert Predicator.evaluate("name = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("name == \"John\"", context) == {:ok, true}
       assert Predicator.evaluate("name != \"Jane\"", context) == {:ok, true}
     end
 
     test "evaluates boolean comparisons" do
       context = %{"active" => true}
 
-      assert Predicator.evaluate("active = true", context) == {:ok, true}
+      assert Predicator.evaluate("active == true", context) == {:ok, true}
       assert Predicator.evaluate("active != false", context) == {:ok, true}
     end
 
@@ -136,7 +136,7 @@ defmodule PredicatorTest do
         {"x < 5", [["load", "x"], ["lit", 5], ["compare", "LT"]]},
         {"x >= 5", [["load", "x"], ["lit", 5], ["compare", "GTE"]]},
         {"x <= 5", [["load", "x"], ["lit", 5], ["compare", "LTE"]]},
-        {"x = 5", [["load", "x"], ["lit", 5], ["compare", "EQ"]]},
+        {"x == 5", [["load", "x"], ["lit", 5], ["compare", "EQ"]]},
         {"x != 5", [["load", "x"], ["lit", 5], ["compare", "NE"]]}
       ]
 
@@ -147,7 +147,7 @@ defmodule PredicatorTest do
     end
 
     test "compiles string expressions" do
-      {:ok, instructions} = Predicator.compile("name = \"John\"")
+      {:ok, instructions} = Predicator.compile("name == \"John\"")
 
       expected = [
         ["load", "name"],
@@ -159,7 +159,7 @@ defmodule PredicatorTest do
     end
 
     test "compiles boolean expressions" do
-      {:ok, instructions} = Predicator.compile("active = true")
+      {:ok, instructions} = Predicator.compile("active == true")
 
       expected = [
         ["load", "active"],
@@ -496,53 +496,55 @@ defmodule PredicatorTest do
     end
 
     test "evaluates logical OR with true results" do
-      assert Predicator.evaluate(~s(role = "admin" OR role = "manager"), %{"role" => "admin"}) ==
+      assert Predicator.evaluate(~s(role == "admin" OR role == "manager"), %{"role" => "admin"}) ==
                {:ok, true}
 
-      assert Predicator.evaluate(~s(role = "admin" OR role = "manager"), %{"role" => "manager"}) ==
+      assert Predicator.evaluate(~s(role == "admin" OR role == "manager"), %{
+               "role" => "manager"
+             }) ==
                {:ok, true}
     end
 
     test "evaluates logical OR with false results" do
-      assert Predicator.evaluate(~s(role = "admin" OR role = "manager"), %{"role" => "user"}) ==
+      assert Predicator.evaluate(~s(role == "admin" OR role == "manager"), %{"role" => "user"}) ==
                {:ok, false}
     end
 
     test "evaluates logical NOT with boolean variables" do
-      assert Predicator.evaluate("NOT expired = true", %{"expired" => false}) == {:ok, true}
+      assert Predicator.evaluate("NOT expired == true", %{"expired" => false}) == {:ok, true}
 
-      assert Predicator.evaluate("NOT expired = true", %{"expired" => true}) == {:ok, false}
+      assert Predicator.evaluate("NOT expired == true", %{"expired" => true}) == {:ok, false}
     end
 
     test "evaluates complex logical expressions" do
-      # (score > 85 AND age >= 18) OR admin = true
+      # (score > 85 AND age >= 18) OR admin == true
       context1 = %{"score" => 90, "age" => 20, "admin" => false}
 
-      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin = true", context1) ==
+      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin == true", context1) ==
                {:ok, true}
 
       context2 = %{"score" => 80, "age" => 16, "admin" => false}
 
-      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin = true", context2) ==
+      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin == true", context2) ==
                {:ok, false}
 
       context3 = %{"score" => 80, "age" => 16, "admin" => true}
 
-      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin = true", context3) ==
+      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin == true", context3) ==
                {:ok, true}
     end
 
     test "evaluates nested NOT expressions" do
-      assert Predicator.evaluate("NOT NOT active = true", %{"active" => true}) == {:ok, true}
+      assert Predicator.evaluate("NOT NOT active == true", %{"active" => true}) == {:ok, true}
 
-      assert Predicator.evaluate("NOT NOT active = true", %{"active" => false}) == {:ok, false}
+      assert Predicator.evaluate("NOT NOT active == true", %{"active" => false}) == {:ok, false}
     end
 
     test "evaluates operator precedence correctly" do
       # NOT false OR false AND true should be: (NOT false) OR (false AND true) = true OR false = true
       result =
         Predicator.evaluate(
-          "NOT expired = false OR role = \"user\" AND score > 85",
+          "NOT expired == false OR role == \"user\" AND score > 85",
           %{"expired" => true, "role" => "user", "score" => 90}
         )
 
@@ -551,7 +553,7 @@ defmodule PredicatorTest do
       # Same expression with different values - should be: false OR true = true
       result =
         Predicator.evaluate(
-          "NOT expired = false OR role = \"user\" AND score > 85",
+          "NOT expired == false OR role == \"user\" AND score > 85",
           %{"expired" => false, "role" => "user", "score" => 90}
         )
 
@@ -560,7 +562,7 @@ defmodule PredicatorTest do
       # Same expression with different values - should be: false OR false = false
       result =
         Predicator.evaluate(
-          "NOT expired = false OR role = \"user\" AND score > 85",
+          "NOT expired == false OR role == \"user\" AND score > 85",
           %{"expired" => false, "role" => "user", "score" => 80}
         )
 
@@ -568,32 +570,32 @@ defmodule PredicatorTest do
     end
 
     test "evaluates parenthesized logical expressions" do
-      # (active = true OR role = \"admin\") AND score > 85
+      # (active == true OR role == \"admin\") AND score > 85
       context1 = %{"active" => true, "role" => "user", "score" => 90}
 
       result1 =
-        Predicator.evaluate("(active = true OR role = \"admin\") AND score > 85", context1)
+        Predicator.evaluate("(active == true OR role == \"admin\") AND score > 85", context1)
 
       assert result1 == {:ok, true}
 
       context2 = %{"active" => false, "role" => "admin", "score" => 90}
 
       result2 =
-        Predicator.evaluate("(active = true OR role = \"admin\") AND score > 85", context2)
+        Predicator.evaluate("(active == true OR role == \"admin\") AND score > 85", context2)
 
       assert result2 == {:ok, true}
 
       context3 = %{"active" => false, "role" => "user", "score" => 90}
 
       result3 =
-        Predicator.evaluate("(active = true OR role = \"admin\") AND score > 85", context3)
+        Predicator.evaluate("(active == true OR role == \"admin\") AND score > 85", context3)
 
       assert result3 == {:ok, false}
 
       context4 = %{"active" => true, "role" => "admin", "score" => 80}
 
       result4 =
-        Predicator.evaluate("(active = true OR role = \"admin\") AND score > 85", context4)
+        Predicator.evaluate("(active == true OR role == \"admin\") AND score > 85", context4)
 
       assert result4 == {:ok, false}
     end
@@ -601,9 +603,9 @@ defmodule PredicatorTest do
     test "compiles and decompiles logical expressions correctly" do
       original_expressions = [
         "score > 85 AND age >= 18",
-        "role = \"admin\" OR role = \"manager\"",
-        "NOT expired = true",
-        "score > 85 AND age >= 18 OR admin = true",
+        "role == \"admin\" OR role == \"manager\"",
+        "NOT expired == true",
+        "score > 85 AND age >= 18 OR admin == true",
         "NOT false OR true AND false"
       ]
 
@@ -623,10 +625,10 @@ defmodule PredicatorTest do
       {:ok, ast} = parse_positionless("score > 85 AND age >= 18")
       assert match?({:logical_and, _, _}, ast)
 
-      {:ok, ast} = parse_positionless(~s(role = "admin" OR role = "manager"))
+      {:ok, ast} = parse_positionless(~s(role == "admin" OR role == "manager"))
       assert match?({:logical_or, _, _}, ast)
 
-      {:ok, ast} = parse_positionless("NOT expired = true")
+      {:ok, ast} = parse_positionless("NOT expired == true")
       assert match?({:logical_not, _}, ast)
     end
 
@@ -645,7 +647,7 @@ defmodule PredicatorTest do
       result = Predicator.evaluate!("score > 85 AND age >= 18", %{"score" => 90, "age" => 25})
       assert result == true
 
-      result = Predicator.evaluate!("NOT expired = true", %{"expired" => false})
+      result = Predicator.evaluate!("NOT expired == true", %{"expired" => false})
       assert result == true
     end
 
@@ -664,7 +666,7 @@ defmodule PredicatorTest do
     test "works with atom keys in context" do
       assert Predicator.evaluate("score > 85 AND age >= 18", %{score: 90, age: 25}) == {:ok, true}
 
-      assert Predicator.evaluate("NOT expired = true", %{expired: false}) == {:ok, true}
+      assert Predicator.evaluate("NOT expired == true", %{expired: false}) == {:ok, true}
     end
 
     test "works with mixed string and atom keys in context" do
@@ -672,7 +674,7 @@ defmodule PredicatorTest do
                {:ok, true}
 
       result =
-        Predicator.evaluate("role = \"admin\" OR active = true", %{
+        Predicator.evaluate("role == \"admin\" OR active == true", %{
           "active" => false,
           role: "admin"
         })
@@ -823,7 +825,7 @@ defmodule PredicatorTest do
       context = %{"expired" => true, "role" => "user", "score" => 90}
 
       result =
-        Predicator.evaluate("not expired = false or role = \"user\" and score > 85", context)
+        Predicator.evaluate("not expired == false or role == \"user\" and score > 85", context)
 
       assert result == {:ok, true}
     end
@@ -871,13 +873,13 @@ defmodule PredicatorTest do
     test "works with complex expressions" do
       context = %{"user" => "admin", "active" => true, "score" => 95, "verified" => false}
 
-      assert Predicator.evaluate("user = \"admin\" and active and score > 90", context) ==
+      assert Predicator.evaluate("user == \"admin\" and active and score > 90", context) ==
                {:ok, true}
 
       result = Predicator.evaluate("not verified or (active and score > 85)", context)
       assert result == {:ok, true}
 
-      assert Predicator.evaluate("verified and active or user = \"admin\"", context) ==
+      assert Predicator.evaluate("verified and active or user == \"admin\"", context) ==
                {:ok, true}
     end
   end
@@ -1179,7 +1181,7 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("#2024-01-15# < #2024-01-10#", %{}) == {:ok, false}
       assert Predicator.evaluate("#2024-01-15# >= #2024-01-15#", %{}) == {:ok, true}
       assert Predicator.evaluate("#2024-01-15# <= #2024-01-15#", %{}) == {:ok, true}
-      assert Predicator.evaluate("#2024-01-15# = #2024-01-15#", %{}) == {:ok, true}
+      assert Predicator.evaluate("#2024-01-15# == #2024-01-15#", %{}) == {:ok, true}
       assert Predicator.evaluate("#2024-01-15# != #2024-01-10#", %{}) == {:ok, true}
     end
 
@@ -1201,7 +1203,7 @@ defmodule PredicatorTest do
       assert Predicator.evaluate("#{dt1} < #{dt2}", %{}) == {:ok, false}
       assert Predicator.evaluate("#{dt1} >= #{dt3}", %{}) == {:ok, true}
       assert Predicator.evaluate("#{dt1} <= #{dt3}", %{}) == {:ok, true}
-      assert Predicator.evaluate("#{dt1} = #{dt3}", %{}) == {:ok, true}
+      assert Predicator.evaluate("#{dt1} == #{dt3}", %{}) == {:ok, true}
       assert Predicator.evaluate("#{dt1} != #{dt2}", %{}) == {:ok, true}
     end
 
@@ -1250,7 +1252,7 @@ defmodule PredicatorTest do
         "later_offset" => later_offset
       }
 
-      assert Predicator.evaluate("utc = same_instant_offset", context) == {:ok, true}
+      assert Predicator.evaluate("utc == same_instant_offset", context) == {:ok, true}
       assert Predicator.evaluate("utc != same_instant_offset", context) == {:ok, false}
       assert Predicator.evaluate("utc < later_offset", context) == {:ok, true}
       assert Predicator.evaluate("later_offset > utc", context) == {:ok, true}
@@ -1260,7 +1262,7 @@ defmodule PredicatorTest do
       # The Date coerces to 00:00:00 UTC of that day
       assert Predicator.evaluate("#2024-01-15# > #2024-01-15T10:00:00Z#", %{}) == {:ok, false}
       assert Predicator.evaluate("#2024-01-15# < #2024-01-15T10:00:00Z#", %{}) == {:ok, true}
-      assert Predicator.evaluate("#2024-01-15# = #2024-01-15T00:00:00Z#", %{}) == {:ok, true}
+      assert Predicator.evaluate("#2024-01-15# == #2024-01-15T00:00:00Z#", %{}) == {:ok, true}
     end
 
     test "combines with logical operators" do
@@ -1377,23 +1379,23 @@ defmodule PredicatorTest do
     test "simple nested access with string expressions" do
       context = %{"user" => %{"name" => %{"first" => "John", "last" => "Doe"}, "age" => 47}}
 
-      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, true}
-      assert Predicator.evaluate("user.name.last = \"Doe\"", context) == {:ok, true}
-      assert Predicator.evaluate("user.age = 47", context) == {:ok, true}
-      assert Predicator.evaluate("user.name.middle = \"X\"", context) == {:ok, :undefined}
+      assert Predicator.evaluate("user.name.first == \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.name.last == \"Doe\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.age == 47", context) == {:ok, true}
+      assert Predicator.evaluate("user.name.middle == \"X\"", context) == {:ok, :undefined}
     end
 
     test "nested access with atom keys" do
       context = %{user: %{name: %{first: "John"}, age: 47}}
 
-      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.name.first == \"John\"", context) == {:ok, true}
       assert Predicator.evaluate("user.age > 18", context) == {:ok, true}
     end
 
     test "nested access with mixed key types" do
       context = %{"user" => %{profile: %{"name" => "John"}, age: 47}}
 
-      assert Predicator.evaluate("user.profile.name = \"John\"", context) == {:ok, true}
+      assert Predicator.evaluate("user.profile.name == \"John\"", context) == {:ok, true}
       assert Predicator.evaluate("user.age >= 47", context) == {:ok, true}
     end
 
@@ -1405,7 +1407,7 @@ defmodule PredicatorTest do
 
       assert Predicator.evaluate("user.age > 18 AND config.enabled", context) == {:ok, true}
 
-      assert Predicator.evaluate("user.name = \"John\" OR config.level > 5", context) ==
+      assert Predicator.evaluate("user.name == \"John\" OR config.level > 5", context) ==
                {:ok, true}
 
       assert Predicator.evaluate("user.age < 18 AND config.enabled", context) == {:ok, false}
@@ -1414,10 +1416,10 @@ defmodule PredicatorTest do
     test "nested access with missing paths returns :undefined" do
       context = %{"user" => %{"name" => "John"}}
 
-      assert Predicator.evaluate("user.profile.settings.theme = \"dark\"", context) ==
+      assert Predicator.evaluate("user.profile.settings.theme == \"dark\"", context) ==
                {:ok, :undefined}
 
-      assert Predicator.evaluate("missing.path.here = \"value\"", context) ==
+      assert Predicator.evaluate("missing.path.here == \"value\"", context) ==
                {:error,
                 Predicator.Errors.put_position(UndefinedVariableError.new("missing"), {1, 1})}
     end
@@ -1426,7 +1428,7 @@ defmodule PredicatorTest do
       context = %{"user" => %{"name" => "John Doe"}}
 
       # "name" is a string, not a map, so "user.name.first" should be :undefined
-      assert Predicator.evaluate("user.name.first = \"John\"", context) == {:ok, :undefined}
+      assert Predicator.evaluate("user.name.first == \"John\"", context) == {:ok, :undefined}
     end
 
     test "deeply nested structures" do
@@ -1445,10 +1447,10 @@ defmodule PredicatorTest do
         }
       }
 
-      assert Predicator.evaluate("app.database.config.host = \"localhost\"", context) ==
+      assert Predicator.evaluate("app.database.config.host == \"localhost\"", context) ==
                {:ok, true}
 
-      assert Predicator.evaluate("app.database.config.port = 5432", context) == {:ok, true}
+      assert Predicator.evaluate("app.database.config.port == 5432", context) == {:ok, true}
       assert Predicator.evaluate("app.database.config.settings.ssl", context) == {:ok, true}
 
       assert Predicator.evaluate("app.database.config.settings.timeout > 25", context) ==
@@ -1478,21 +1480,21 @@ defmodule PredicatorTest do
     test "evaluates single quoted string comparisons" do
       context = %{"name" => "John"}
 
-      assert Predicator.evaluate("name = 'John'", context) == {:ok, true}
-      assert Predicator.evaluate("name = 'Jane'", context) == {:ok, false}
+      assert Predicator.evaluate("name == 'John'", context) == {:ok, true}
+      assert Predicator.evaluate("name == 'Jane'", context) == {:ok, false}
     end
 
     test "handles mixed single and double quotes" do
       context = %{"quote" => "don't", "apostrophe" => "he said \"hello\""}
 
-      assert Predicator.evaluate("quote = 'don\\'t'", context) == {:ok, true}
-      assert Predicator.evaluate("apostrophe = 'he said \"hello\"'", context) == {:ok, true}
+      assert Predicator.evaluate("quote == 'don\\'t'", context) == {:ok, true}
+      assert Predicator.evaluate("apostrophe == 'he said \"hello\"'", context) == {:ok, true}
     end
 
     test "preserves quote type in round trip compilation" do
       # Test that single quotes are preserved through parsing and decompilation
-      single_quoted = "name = 'John'"
-      double_quoted = "name = \"John\""
+      single_quoted = "name == 'John'"
+      double_quoted = "name == \"John\""
 
       {:ok, single_ast} = Predicator.parse(single_quoted)
       {:ok, double_ast} = Predicator.parse(double_quoted)
@@ -1500,15 +1502,17 @@ defmodule PredicatorTest do
       single_decompiled = Predicator.decompile(single_ast)
       double_decompiled = Predicator.decompile(double_ast)
 
-      assert single_decompiled == "name = 'John'"
-      assert double_decompiled == "name = \"John\""
+      assert single_decompiled == "name == 'John'"
+      assert double_decompiled == "name == \"John\""
     end
 
     test "single quoted strings in complex expressions" do
       context = %{"status" => "active", "role" => "admin"}
 
-      assert Predicator.evaluate("status = 'active' AND role = 'admin'", context) == {:ok, true}
-      assert Predicator.evaluate("status = 'inactive' OR role = 'admin'", context) == {:ok, true}
+      assert Predicator.evaluate("status == 'active' AND role == 'admin'", context) == {:ok, true}
+
+      assert Predicator.evaluate("status == 'inactive' OR role == 'admin'", context) ==
+               {:ok, true}
     end
 
     test "single quoted strings in lists and membership" do

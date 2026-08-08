@@ -28,7 +28,7 @@ defmodule Predicator.ContextIntegrationTest do
   describe "statifier macrostep/microstep usage" do
     test "build once, rebind _event across microsteps, evaluate a guard after each" do
       context = Context.new(%{})
-      {:ok, guard} = Predicator.compile("_event.name = 'go'")
+      {:ok, guard} = Predicator.compile("_event.name == 'go'")
 
       context_a = Context.bind(context, "_event", %{"name" => "go"})
       context_b = Context.bind(context, "_event", %{"name" => "stop"})

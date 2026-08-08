@@ -195,10 +195,10 @@ defmodule Predicator.CompilerTest do
       original_expressions = [
         "score > 85",
         "age >= 18",
-        ~s(name = "John"),
+        ~s(name == "John"),
         "active != true",
         "count <= 100",
-        "status = \"active\""
+        "status == \"active\""
       ]
 
       for original <- original_expressions do
@@ -232,7 +232,7 @@ defmodule Predicator.CompilerTest do
 
   describe "to_instructions_with_positions/2" do
     test "returns the same instruction list to_instructions/2 does" do
-      {:ok, ast} = Predicator.parse("score > 85 AND name = 'John'")
+      {:ok, ast} = Predicator.parse("score > 85 AND name == 'John'")
 
       {instructions, _positions} = Compiler.to_instructions_with_positions(ast)
 

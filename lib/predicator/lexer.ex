@@ -133,12 +133,12 @@ defmodule Predicator.Lexer do
         {:eof, 1, 10, 0, nil}
       ]}
 
-      iex> Predicator.Lexer.tokenize("name = \\"John\\"")
+      iex> Predicator.Lexer.tokenize("name == \\"John\\"")
       {:ok, [
         {:identifier, 1, 1, 4, "name"},
-        {:eq, 1, 6, 1, "="},
-        {:string, 1, 8, 6, "John", :double},
-        {:eof, 1, 14, 0, nil}
+        {:equal_equal, 1, 6, 2, "=="},
+        {:string, 1, 9, 6, "John", :double},
+        {:eof, 1, 15, 0, nil}
       ]}
 
       iex> Predicator.Lexer.tokenize("score > 85 AND age >= 18")

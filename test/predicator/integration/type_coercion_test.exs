@@ -141,8 +141,8 @@ defmodule Predicator.TypeCoercionTest do
     test "compares numbers of different types" do
       assert {:ok, true} = Predicator.evaluate("3.5 > 3", %{})
       assert {:ok, false} = Predicator.evaluate("3 > 3.5", %{})
-      assert {:ok, true} = Predicator.evaluate("3.0 = 3", %{})
-      assert {:ok, true} = Predicator.evaluate("3 = 3.0", %{})
+      assert {:ok, true} = Predicator.evaluate("3.0 == 3", %{})
+      assert {:ok, true} = Predicator.evaluate("3 == 3.0", %{})
     end
 
     test "float comparisons" do
@@ -163,9 +163,9 @@ defmodule Predicator.TypeCoercionTest do
     end
 
     test "conditional with string concatenation" do
-      assert {:ok, true} = Predicator.evaluate("('Hello' + 'World') = 'HelloWorld'", %{})
-      assert {:ok, true} = Predicator.evaluate("('Count: ' + 5) = 'Count: 5'", %{})
-      assert {:ok, false} = Predicator.evaluate("(3 + ' items') = '4 items'", %{})
+      assert {:ok, true} = Predicator.evaluate("('Hello' + 'World') == 'HelloWorld'", %{})
+      assert {:ok, true} = Predicator.evaluate("('Count: ' + 5) == 'Count: 5'", %{})
+      assert {:ok, false} = Predicator.evaluate("(3 + ' items') == '4 items'", %{})
     end
 
     test "arithmetic with variables of different types" do

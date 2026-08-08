@@ -48,7 +48,7 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "string comparison" do
-      input = "name = \"John\""
+      input = "name == \"John\""
       context = %{"name" => "John"}
 
       {:ok, tokens} = Lexer.tokenize(input)
@@ -66,7 +66,7 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "boolean comparison" do
-      input = "active = true"
+      input = "active == true"
       context = %{"active" => true}
 
       {:ok, tokens} = Lexer.tokenize(input)
@@ -105,8 +105,8 @@ defmodule Predicator.IntegrationTest do
         {"x >= 5", %{"x" => 4}, false},
         {"x <= 5", %{"x" => 5}, true},
         {"x <= 5", %{"x" => 6}, false},
-        {"x = 5", %{"x" => 5}, true},
-        {"x = 5", %{"x" => 6}, false},
+        {"x == 5", %{"x" => 5}, true},
+        {"x == 5", %{"x" => 6}, false},
         {"x != 5", %{"x" => 6}, true},
         {"x != 5", %{"x" => 5}, false}
       ]
@@ -135,7 +135,7 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "nested context access integration" do
-      input = "user.name.first = \"John\""
+      input = "user.name.first == \"John\""
       context = %{"user" => %{"name" => %{"first" => "John", "last" => "Doe"}, "age" => 47}}
 
       {:ok, tokens} = Lexer.tokenize(input)
@@ -174,7 +174,7 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "nested context access with missing path" do
-      input = "user.profile.name = \"John\""
+      input = "user.profile.name == \"John\""
       context = %{"user" => %{"name" => "John", "age" => 47}}
 
       {:ok, tokens} = Lexer.tokenize(input)
@@ -194,7 +194,7 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "nested context access in complex expressions" do
-      input = "user.name.first = \"John\" AND user.age >= 18"
+      input = "user.name.first == \"John\" AND user.age >= 18"
       context = %{"user" => %{"name" => %{"first" => "John"}, "age" => 47}}
 
       {:ok, tokens} = Lexer.tokenize(input)
@@ -206,7 +206,7 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "mixed nested and simple context access" do
-      input = "score > 85 AND user.name.first = \"John\""
+      input = "score > 85 AND user.name.first == \"John\""
       context = %{"score" => 90, "user" => %{"name" => %{"first" => "John"}}}
 
       {:ok, tokens} = Lexer.tokenize(input)

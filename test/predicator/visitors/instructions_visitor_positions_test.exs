@@ -37,7 +37,7 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
     "2w from now",
     "next 1d",
     "last 1d",
-    "a > 1 AND b < 2 OR c = 3"
+    "a > 1 AND b < 2 OR c == 3"
   ]
 
   defp table(expression) do

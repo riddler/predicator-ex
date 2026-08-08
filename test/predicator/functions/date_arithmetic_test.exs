@@ -174,8 +174,8 @@ defmodule Predicator.DateArithmeticTest do
       # Test date arithmetic within comparisons
       context = %{"deadline" => ~D[2024-01-20]}
 
-      assert {:ok, true} = Predicator.evaluate("deadline - 3d = #2024-01-17#", context)
-      assert {:ok, false} = Predicator.evaluate("deadline - 3d = #2024-01-18#", context)
+      assert {:ok, true} = Predicator.evaluate("deadline - 3d == #2024-01-17#", context)
+      assert {:ok, false} = Predicator.evaluate("deadline - 3d == #2024-01-18#", context)
 
       # Greater than with date arithmetic
       assert {:ok, true} = Predicator.evaluate("deadline + 1d > #2024-01-20#", context)
