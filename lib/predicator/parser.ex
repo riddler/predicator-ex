@@ -13,6 +13,10 @@ defmodule Predicator.Parser do
 
   The parser implements this grammar with proper operator precedence:
 
+      program      → statement ( ";" statement )* ( ";" )?
+      statement    → assignment | expression
+      assignment   → location "=" expression
+      location     → IDENTIFIER ( "." IDENTIFIER | "[" expression "]" )*
       expression   → logical_or
       logical_or   → logical_and ( "OR" | "||" logical_and )*
       logical_and  → logical_not ( "AND" | "&&" logical_not )*
@@ -30,6 +34,18 @@ defmodule Predicator.Parser do
       object_key   → IDENTIFIER | STRING
       duration     → NUMBER UNIT+
       relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
+
+  Two entry points reach those two grammars. `parse/2` parses the `expression`
+  production alone and rejects a top-level `=`; `parse_program/2` parses the
+  `program` production and is the only place `assignment` is legal. The mode -
+  expression or statement - belongs to the entry point rather than to anything
+  in the token stream, which is the same split `docs/isa.md` draws between
+  `Predicator.evaluate/2,3` and `Predicator.execute/2`.
+
+  `=` is assignment, not equality: it is valid only at the start of a statement
+  and only with an assignable left side. A bare `=` in expression position is a
+  parse error naming `==` as the fix. `==` and `===` are the only equality
+  operators.
 
   ## Source positions
 
