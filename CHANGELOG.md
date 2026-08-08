@@ -300,6 +300,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   correction, not a behavior change: no ISA version change and no existing
   instruction list changes meaning.
 
+- **A store failure blames the location, not the `=`.** In point-position mode
+  the `["store", n]` instruction is now annotated with the lhs root segment's
+  position rather than the assignment node's operator token, so
+  `Predicator.execute("a = 1; a.b = 2", %{})` reports `position: {1, 8}` (the
+  `a` being written) instead of `{1, 12}` (the `=`). Span mode is unchanged -
+  the assignment's span already started at the lhs root, and this makes the two
+  modes agree. Every emitted instruction list is byte-identical; no ISA version,
+  error type, reason, or `{:error, error, context}` shape moves.
+
+- **The store segment-type message names both accepted types.** An out-of-domain
+  location segment now reports `Store requires a string or an integer, got true
+  (boolean)` rather than `Store requires a string`, which was false about what
+  `store` accepts - integer segments index lists. The normative
+  `expected: :string` field is unchanged, matching how `docs/isa.md` states
+  `bracket_access`'s key rule. `Predicator.Errors.TypeMismatchError.unary/5` is
+  the new constructor that separates the message text from the `expected` atom.
+
 ### Changed
 
 - `Predicator.compile_with_positions/1` now returns `{:ok, %Predicator.Compiled{}}`
