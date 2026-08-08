@@ -28,9 +28,17 @@ defmodule Predicator.Instructions do
   minted: retiring an opcode at a later version does not change what an
   earlier version's set was. `in_isa?/2`, `opcode_set/1`, and `retired_in/1`
   are the queries built on that interval.
+
+  ## Migration
+
+  Retiring an opcode requires an upgrade path (ADR-0003), so a stored
+  artifact holding a retired opcode is never simply stranded: `upgrade/1`
+  rewrites it onto the current instruction set. See its `@doc` for the
+  guarantee, the divergences it documents, and worked examples.
   """
 
   alias Predicator.Errors.EvaluationError
+  alias Predicator.Instructions.Upgrade
   alias Predicator.Types
 
   # The ISA version this build emits and can run (docs/isa.md, section 1).
@@ -313,4 +321,73 @@ defmodule Predicator.Instructions do
        :required_isa
      )}
   end
+
+  @doc """
+  Rewrites a pre-3.7 instruction list containing the retired `"and"`/`"or"`
+  opcodes into current jump form.
+
+  **Identity guarantee**: a list containing neither retired opcode is
+  returned unchanged. A consumer can therefore call `upgrade/1`
+  unconditionally over every stored artifact instead of pre-filtering for
+  the ones that need it.
+
+  Returns `{:error, %EvaluationError{reason: "unsupported_upgrade"}}`,
+  `operation: :upgrade`, rather than a wrong answer, when the list is not
+  something `upgrade/1` can safely rewrite: it mixes a v2 opcode with a
+  retired opcode (a genuine pre-3.7 artifact cannot be in that state), it
+  underflows its own stack, it contains an opcode `upgrade/1` does not
+  recognize (including a `"call"` whose count operand is not a
+  non-negative integer), or it contains a malformed element.
+
+  ## Semantic divergences
+
+  The rewritten list is not answer-preserving against the legacy opcodes -
+  by design, per ADR-0001's Consequences, which already calls the
+  short-circuit change on 3.7.0's compiler-emitted jumps "a bugfix" that
+  breaks a consumer relying on the old behavior. `upgrade/1` moves a stored
+  artifact onto the same semantics every source-compiled expression has had
+  since 3.7.0. Against the legacy opcodes, the upgraded list differs when
+  and only when:
+
+  1. **Short-circuiting.** The right operand is no longer evaluated once the
+     left operand decides the result. Observable when the right operand
+     would have errored or loaded an unbound variable: legacy raised: the
+     upgraded form returns the left value without touching the right.
+  2. **`:undefined` operands.** Legacy raises a `TypeMismatchError`.
+     Upgraded: `undefined and x` is `:undefined`; `undefined or x` is `x`'s
+     value (ECMAScript-aligned, ADR-0001).
+  3. **A non-boolean *right* operand the left operand did not decide.**
+     `true and 1` was a `TypeMismatchError` and is now `1`. A non-boolean
+     **left** operand is still a `TypeMismatchError` at the jump, since the
+     guard sits on the operand the expression actually depends on, which is
+     unchanged.
+
+  ## Examples
+
+      iex> Predicator.Instructions.upgrade([["lit", 1], ["lit", 2], ["add"]])
+      {:ok, [["lit", 1], ["lit", 2], ["add"]]}
+
+      iex> Predicator.Instructions.upgrade([["lit", true], ["lit", false], ["and"]])
+      {:ok, [["lit", true], ["jump_if_falsy_or_pop", 2], ["lit", false]]}
+
+      iex> instructions = [
+      ...>   ["lit", true], ["lit", false], ["and"],
+      ...>   ["lit", true], ["or"]
+      ...> ]
+      iex> Predicator.Instructions.upgrade(instructions)
+      {:ok,
+       [
+         ["lit", true],
+         ["jump_if_falsy_or_pop", 2],
+         ["lit", false],
+         ["jump_if_true_or_pop", 2],
+         ["lit", true]
+       ]}
+
+      iex> Predicator.Instructions.upgrade([["and"]])
+      {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_upgrade", message: "Cannot upgrade: stack underflow at index 0 ([\\"and\\"]) - needs 2 value(s), only 0 available", operation: :upgrade}}
+  """
+  @spec upgrade(Types.instruction_list()) ::
+          {:ok, Types.instruction_list()} | {:error, EvaluationError.t()}
+  def upgrade(instructions) when is_list(instructions), do: Upgrade.upgrade(instructions)
 end
