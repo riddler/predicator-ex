@@ -98,9 +98,10 @@ The ISA is versioned, and each sibling declares the version it supports and
 adopts a newer one on its own schedule. **A sibling running behind the current
 ISA version is an expected, documented state - not a defect.** ADR-0001 added
 four opcodes (`jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`,
-`store`) to the ISA, of which `store` is not yet implemented by any evaluator,
-Elixir or sibling - see [`docs/isa.md`](isa.md)'s "Not in the ISA" section; the
-siblings do not yet implement the other three either. The Elixir side ships
+`store`) to the ISA; the Elixir side now ships all four, and their `pop`
+companion, as of 4.0.0, but no sibling implements any of the four yet - see
+[`docs/isa.md`](isa.md)'s "Not in the ISA" section for what a sibling still
+has to add. The Elixir side ships
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` as of 3.7.0, so `AND` and `OR`
 short-circuit here, and a compiled instruction list containing either will not
 run on a sibling that hasn't adopted them. See
@@ -111,9 +112,11 @@ the opcodes themselves, and [`docs/isa.md`](isa.md) for the specification each
 ISA version refers to.
 
 ISA versions are integers and do not track this library's version: v2 has been
-landing across 3.7.0 and 3.8.0. v3 is minted by 4.0.0 and is the first version
-whose only change is a retirement (`and`, `or`), which is why the integer
-moved without a new opcode. An additive ISA version ships in a minor release;
+landing across 3.7.0 and 3.8.0. v3 is minted by 4.0.0 and both retires
+(`and`, `or`) and introduces (`store`, `pop`) opcodes in the same version -
+no sibling, consumer, or stored artifact has ever seen v3, so widening its
+set before release changes nothing observable. An additive ISA version ships
+in a minor release;
 retiring an opcode invalidates stored artifacts and takes a major one.
 
 As of 2026-08-06 both siblings are ISA v1 implementations. That is a snapshot,
