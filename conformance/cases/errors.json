@@ -50,5 +50,13 @@
     "expected": {
       "error": { "type": "EvaluationError", "reason": "insufficient_operands" }
     }
+  },
+  {
+    "id": "errors/object-set-non-map-target",
+    "instructions": [["lit", 5], ["lit", 1], ["object_set", "key"]],
+    "expected": {
+      "error": { "type": "EvaluationError", "reason": "invalid_stack_value" }
+    },
+    "notes": "docs/isa.md section 5: object_set's target must be a map. Reachable only from a hand-built instruction list - the compiler always emits object_new immediately before object_set - but specified, not undefined. Shares the invalid_stack_value reason with relative_date's non-duration case."
   }
 ]

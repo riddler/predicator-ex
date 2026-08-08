@@ -261,17 +261,8 @@ above.
 ### Also out of scope
 
 These are not opcode-coverage exclusions - the opcodes involved are covered
-in their ordinary form - but specific shapes this corpus does not exercise:
-
-- `object_set` on a non-map target - the Elixir evaluator crashes rather than
-  returning a well-formed error here (`docs/isa.md` section 5 calls it
-  unspecified behavior, reachable only from a hand-built instruction list,
-  since the compiler only ever emits `object_set` immediately after
-  `object_new`). `object_set` in its ordinary post-`object_new` form **is**
-  covered - this is about the one unreachable-from-source shape, not the
-  opcode itself.
-
-Also out of scope, structurally rather than as an exclusion list: ordering
+in their ordinary form - but specific shapes this corpus does not exercise,
+structurally rather than as an exclusion list: ordering
 comparisons (`GT`/`LT`/`GTE`/`LTE`, not `EQ`/`NE`/`STRICT_EQ`/`STRICT_NE`)
 between two plain maps (`docs/isa.md` section 5 - the Elixir reference orders
 these by an internal term order a sibling should not try to reproduce), and
