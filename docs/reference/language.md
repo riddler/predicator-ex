@@ -2,7 +2,8 @@
 
 The complete Predicator expression language: data types, operators, builtin
 functions, decompile formatting, and error shapes. For the grammar with
-precedence, see [Architecture](../architecture.md).
+precedence, see [Architecture](../architecture.md); for the tree shape those
+expressions parse into, see the node inventory in `docs/reference/ast.md`.
 
 ## Data Types
 
