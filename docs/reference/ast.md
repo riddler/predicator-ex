@@ -99,7 +99,11 @@ compiles each statement in order, concatenating the results. An
 segment depth; any other statement compiles to its own instructions followed
 by `["pop"]`. That trailing `["pop"]` is emitted uniformly, including after
 the program's last statement, so the stack is empty at every statement
-boundary. `docs/isa.md` §5 is the normative statement of `store`'s and `pop`'s
+boundary. In point mode the compiled `["store", n]` instruction is annotated
+with the `lhs` root segment's own position rather than the assignment node's
+`=`, so a store failure's caret lands on the location being written; under
+`spans: true` it keeps the assignment's span, whose start is already that same
+token. `docs/isa.md` §5 is the normative statement of `store`'s and `pop`'s
 stack discipline and error shapes; this page only says what AST shape feeds
 them.
 

@@ -114,9 +114,20 @@ defmodule Predicator.ExecuteTest do
       refute Map.has_key?(ctx.data, "c")
     end
 
-    test "the wrapped store error names the failing instruction's position" do
-      assert {:error, %Errors.EvaluationError{position: {1, _column}}, _ctx} =
-               Predicator.execute("a = 1; a.b = 2", %{})
+    test "a store failure blames the lhs root, not the `=`" do
+      # `a` is at column 8; the `=` this used to report is at column 12.
+      assert {:error, %Errors.EvaluationError{reason: "not_a_container", position: {1, 8}}, _ctx} =
+               Predicator.execute("a = 1; a.b = 2; d = 3", %{})
+    end
+
+    test "an invalid list index blames the lhs root" do
+      assert {:error, %Errors.EvaluationError{reason: "invalid_index", position: {1, 13}}, _ctx} =
+               Predicator.execute("xs = [1,2]; xs[0-1] = 9", %{})
+    end
+
+    test "span mode is unchanged: the caret is the lhs root, the underline the statement" do
+      assert {:error, %Errors.EvaluationError{position: {1, 8}, span: {{1, 8}, {1, 15}}}, _ctx} =
+               Predicator.execute("a = 1; a.b = 2; d = 3", %{}, spans: true)
     end
   end
 

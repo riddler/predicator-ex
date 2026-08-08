@@ -127,10 +127,13 @@ defmodule Predicator.Evaluator.StoreTest do
     end
   end
 
-  describe "store: a wrapped LocationError carries the failing instruction's position" do
+  describe "store: a wrapped LocationError reads the position table at the store's own instruction index" do
     test "not_a_container carries the [\"store\", n] instruction's position" do
       instructions = [["lit", "a"], ["lit", "b"], ["lit", 2], ["store", 2]]
-      # ["store", 2] is instruction index 3.
+      # This list is hand-built, so this pins the evaluator-side lookup (a
+      # store error reads the table at the store's own index, here 3) and not
+      # the compiler's choice of blame token, which
+      # instructions_visitor_positions_test.exs pins.
       positions = %{3 => {5, 9}}
 
       assert {:error, error} =
@@ -141,6 +144,18 @@ defmodule Predicator.Evaluator.StoreTest do
                })
 
       assert %EvaluationError{reason: "not_a_container", position: {5, 9}} = error
+    end
+
+    test "insufficient_operands reads the same table entry" do
+      instructions = [["lit", "a"], ["store", 2]]
+      positions = %{1 => {7, 3}}
+
+      assert {:error, %EvaluationError{reason: "insufficient_operands", position: {7, 3}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 positions: positions
+               })
     end
   end
 
