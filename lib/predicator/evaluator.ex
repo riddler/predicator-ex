@@ -15,8 +15,14 @@ defmodule Predicator.Evaluator do
   """
 
   alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
-  alias Predicator.{Duration, Instructions, Types, Undefined}
-  alias Predicator.Errors.{EvaluationError, TypeMismatchError, UndefinedVariableError}
+  alias Predicator.{ContextLocation, Duration, Instructions, Types, Undefined}
+
+  alias Predicator.Errors.{
+    EvaluationError,
+    LocationError,
+    TypeMismatchError,
+    UndefinedVariableError
+  }
 
   @typedoc "Internal evaluator state"
   @type t :: %__MODULE__{
@@ -498,6 +504,17 @@ defmodule Predicator.Evaluator do
   defp execute_instruction(%__MODULE__{} = evaluator, ["relative_date", direction])
        when is_binary(direction) do
     execute_relative_date(evaluator, direction)
+  end
+
+  # Store instruction: writes a value at a location path into the context
+  defp execute_instruction(%__MODULE__{} = evaluator, ["store", n])
+       when is_integer(n) and n >= 0 do
+    execute_store(evaluator, n)
+  end
+
+  # Statement-boundary instruction: discards the stack top, pushes nothing
+  defp execute_instruction(%__MODULE__{} = evaluator, ["pop"]) do
+    execute_pop(evaluator)
   end
 
   # A retired opcode has no clause of its own (docs/isa.md section 4, "Retired
@@ -1282,6 +1299,91 @@ defmodule Predicator.Evaluator do
     else
       {:error, EvaluationError.insufficient_operands(:make_list, length(popped), count)}
     end
+  end
+
+  # `store` pops the value (stack top), then `n` location segments beneath
+  # it, reverses the segments back into root-first path order (they were
+  # pushed root-to-leaf, so the stack holds them deepest-first - the same
+  # convention `execute_make_list/2` uses), and writes `path -> value` into
+  # the context via `Predicator.ContextLocation.put/3`, the shared write
+  # algorithm (docs/isa.md §5). Pushes nothing: this is the only opcode that
+  # writes the context.
+  @spec execute_store(__MODULE__.t(), non_neg_integer()) ::
+          {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_store(%__MODULE__{stack: stack} = evaluator, n) do
+    {taken, rest} = Enum.split(stack, n + 1)
+
+    if length(taken) == n + 1 do
+      [value | reversed_segments] = taken
+      path = Enum.reverse(reversed_segments)
+
+      case validate_store_segments(path) do
+        :ok -> do_store(evaluator, path, value, rest)
+        {:error, _error} = error -> error
+      end
+    else
+      {:error, EvaluationError.insufficient_operands(:store, length(taken), n + 1)}
+    end
+  end
+
+  @spec do_store(__MODULE__.t(), ContextLocation.location_path(), Types.value(), [Types.value()]) ::
+          {:ok, __MODULE__.t()} | {:error, term()}
+  defp do_store(%__MODULE__{} = evaluator, path, value, rest) do
+    case ContextLocation.put(evaluator.context, path, value) do
+      {:ok, new_context} ->
+        {:ok, %__MODULE__{evaluator | context: new_context, stack: rest}}
+
+      {:error, %LocationError{} = location_error} ->
+        {:error, wrap_location_error(location_error)}
+    end
+  end
+
+  # A location segment must be a binary or an integer, the mirror of
+  # `bracket_access`'s key rule (docs/isa.md §5) - a boolean, a float, or
+  # `:undefined` (an unbound computed bracket key) is a `TypeMismatchError`
+  # rather than reaching `ContextLocation.put/3` with an out-of-domain path.
+  @spec validate_store_segments([term()]) :: :ok | {:error, TypeMismatchError.t()}
+  defp validate_store_segments(segments) do
+    case Enum.find(segments, fn segment -> not (is_binary(segment) or is_integer(segment)) end) do
+      nil ->
+        :ok
+
+      bad_segment ->
+        {:error,
+         TypeMismatchError.unary(:store, :string, get_value_type(bad_segment), bad_segment)}
+    end
+  end
+
+  # `put/3`'s `LocationError` carries no `:position`/`:span` (Q4,
+  # `docs/isa.md` §5), so it is wrapped in an `EvaluationError` here - the
+  # only place a `LocationError` can escape into the VM - which does carry
+  # both and gets them stamped by `attach_position/2` like any other
+  # evaluator error. The `LocationError`'s message is carried through
+  # verbatim (messages are non-normative); its `type` becomes the normative
+  # `reason`.
+  @spec wrap_location_error(LocationError.t()) :: EvaluationError.t()
+  defp wrap_location_error(%LocationError{type: :not_assignable, message: message}) do
+    EvaluationError.new(message, "not_assignable", :store)
+  end
+
+  defp wrap_location_error(%LocationError{type: :not_a_container, message: message}) do
+    EvaluationError.new(message, "not_a_container", :store)
+  end
+
+  defp wrap_location_error(%LocationError{type: :invalid_index, message: message}) do
+    EvaluationError.new(message, "invalid_index", :store)
+  end
+
+  # `pop` is the statement-boundary opcode: it discards the stack top and
+  # pushes nothing, so the next statement starts from a clean stack
+  # (docs/isa.md §5).
+  @spec execute_pop(__MODULE__.t()) :: {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_pop(%__MODULE__{stack: [_value | rest]} = evaluator) do
+    {:ok, %__MODULE__{evaluator | stack: rest}}
+  end
+
+  defp execute_pop(%__MODULE__{stack: []}) do
+    {:error, EvaluationError.insufficient_operands(:pop, 0, 1)}
   end
 
   @spec execute_jump_if_falsy_or_pop(__MODULE__.t(), pos_integer()) ::

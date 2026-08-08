@@ -86,7 +86,9 @@ defmodule Predicator.Instructions do
     "relative_date" => %{isa: 1, tier: 4},
     "make_list" => %{isa: 2, tier: 3},
     "jump_if_falsy_or_pop" => %{isa: 2, tier: 1},
-    "jump_if_true_or_pop" => %{isa: 2, tier: 1}
+    "jump_if_true_or_pop" => %{isa: 2, tier: 1},
+    "store" => %{isa: 3, tier: 6},
+    "pop" => %{isa: 3, tier: 6}
   }
 
   @doc """

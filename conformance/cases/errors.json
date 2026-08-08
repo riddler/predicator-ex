@@ -34,7 +34,7 @@
     "expected": {
       "error": { "type": "EvaluationError", "reason": "empty_stack" }
     },
-    "notes": "docs/isa.md: the one error that belongs to no instruction and therefore carries no source position - only reachable via an empty hand-built instruction list"
+    "notes": "docs/isa.md: empty_stack is an expression-mode rule (section 2) - the one error that belongs to no instruction and therefore carries no source position, only reachable via an empty hand-built instruction list. In statement mode an empty stack at halt is the normal outcome (a well-formed statement program ends each statement with a store or a pop), not this error."
   },
   {
     "id": "errors/insufficient-operands-compare",
