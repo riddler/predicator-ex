@@ -84,10 +84,12 @@ defmodule Predicator.Types do
 
   No instruction carries a source position. Positions travel in a separate
   `t:position_table/0`, produced alongside the instruction list by
-  `Predicator.Compiler.to_instructions_with_positions/2`, so the instruction
-  format stays exactly what the Ruby and JavaScript siblings interchange
-  (ADR-0001). That side table holds `t:span/0` values instead when the AST was
-  parsed with `spans: true`; the instruction format is unaffected either way.
+  `Predicator.Compiler.to_instructions_with_positions/2` and available as
+  `compiled.positions` on the `t:Predicator.Compiled.t/0` that
+  `Predicator.compile_with_positions/1` returns, so the instruction format
+  stays exactly what the Ruby and JavaScript siblings interchange (ADR-0001).
+  That side table holds `t:span/0` values instead when the AST was parsed with
+  `spans: true`; the instruction format is unaffected either way.
 
   ## Examples
 
@@ -112,9 +114,10 @@ defmodule Predicator.Types do
 
   @typedoc """
   Maps a 0-based instruction index to the source position of the AST node that
-  emitted it. Produced by `Predicator.Compiler.to_instructions_with_positions/2`;
-  never part of the instruction list itself, so interchange and stored compiled
-  artifacts are unaffected.
+  emitted it. Produced by `Predicator.Compiler.to_instructions_with_positions/2`
+  and carried as `compiled.positions` on the `t:Predicator.Compiled.t/0` that
+  `Predicator.compile_with_positions/1` returns; never part of the instruction
+  list itself, so interchange and stored compiled artifacts are unaffected.
   """
   @type position_table :: %{non_neg_integer() => position()}
 
@@ -137,8 +140,10 @@ defmodule Predicator.Types do
 
   The span-mode counterpart of `t:position_table/0`, produced by
   `Predicator.Compiler.to_instructions_with_positions/2` from an AST parsed with
-  `spans: true`. Like the position table it is never part of the instruction
-  list, so interchange and stored compiled artifacts are unaffected.
+  `spans: true`, and carried as `compiled.positions` on the
+  `t:Predicator.Compiled.t/0` that `Predicator.compile_with_spans/1` returns.
+  Like the position table it is never part of the instruction list, so
+  interchange and stored compiled artifacts are unaffected.
   """
   @type span_table :: %{non_neg_integer() => span()}
 

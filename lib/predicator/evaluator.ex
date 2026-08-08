@@ -159,7 +159,8 @@ defmodule Predicator.Evaluator do
   it names the *variable's* token - not the operator that later rejected its
   `:undefined`. It is `nil` when the run carried no table (an instruction-list
   caller who passed no `positions:`), a `{line, column}` under point positions, and
-  a span under a table from `Predicator.compile_with_spans/1`.
+  a span under a table from `compiled.positions`, where `compiled` is the
+  `t:Predicator.Compiled.t/0` `Predicator.compile_with_spans/1` returned.
   `Predicator.evaluate/3` uses this to position the `UndefinedVariableError` it
   builds after the run.
 
@@ -195,9 +196,11 @@ defmodule Predicator.Evaluator do
     - `:functions` - Map of custom functions `%{name => {arity, function}}`
     - `:positions` - Side table mapping a 0-based instruction index to the
       `{line, column}` of the AST node that emitted it, as produced by
-      `Predicator.Compiler.to_instructions_with_positions/2`. Runtime errors
-      raised by an instruction with a table entry carry it as `:position`. A
-      span table from `Predicator.compile_with_spans/1` works here too: such an
+      `Predicator.Compiler.to_instructions_with_positions/2` and carried in a
+      `t:Predicator.Compiled.t/0`'s `positions` field. Runtime errors raised by
+      an instruction with a table entry carry it as `:position`. A span table
+      from `compiled.positions`, where `compiled` is what
+      `Predicator.compile_with_spans/1` returned, works here too: such an
       error carries the span as `:span` and the span's start as `:position`.
     - `:on_unbound` - `:undefined` (default) or `:error`. Under `:error`, a
       `["load", name]` whose `name` is not present in `context` returns

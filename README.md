@@ -42,7 +42,18 @@ true
 
 iex> Predicator.evaluate("score > 85", %{"score" => 92})
 {:ok, true}
+
+iex> {:ok, compiled} = Predicator.compile_with_positions("score > threshold")
+iex> Predicator.evaluate(compiled, %{"score" => 95, "threshold" => 80})
+{:ok, true}
 ```
+
+`compile_with_positions/1` and `compile_with_spans/1` return a
+`%Predicator.Compiled{}` carrying the instructions and their source-location
+table as one value, so runtime errors keep their positions without the caller
+re-attaching anything. Persist `compiled.instructions`, not the struct - the
+instruction list is the portable artifact; the table holds offsets into the
+source string and is meaningless without it.
 
 ## Documentation
 

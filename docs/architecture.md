@@ -279,15 +279,22 @@ reports column 3, not column 1:
 
 A new node type follows this rule: point it at the token a reader would blame.
 
-**The side table.** `Compiler.to_instructions_with_positions/2` (and
-`Predicator.compile_with_positions/1`) returns `{instructions, table}` where the
-table maps a 0-based instruction index to the position of the node that emitted
-it. It is an **Elixir-side companion value**: no instruction gains an element,
-no opcode is added, and the table is never serialized into the instruction list.
-The cross-language interchange format specified by ADR-0001 is therefore
-unchanged, as are any compiled artifacts consumers have already stored. The Ruby
-and JavaScript siblings need no work, and may adopt an equivalent table
-independently.
+**The side table.** `Compiler.to_instructions_with_positions/2` returns
+`{instructions, table}` where the table maps a 0-based instruction index to the
+position of the node that emitted it. It is an **Elixir-side companion
+value**: no instruction gains an element, no opcode is added, and the table is
+never serialized into the instruction list. The cross-language interchange
+format specified by ADR-0001 is therefore unchanged, as are any compiled
+artifacts consumers have already stored. The Ruby and JavaScript siblings need
+no work, and may adopt an equivalent table independently.
+
+`Predicator.compile_with_positions/1` returns that same pair as one value
+instead - a `%Predicator.Compiled{instructions: instructions, positions:
+table}` rather than a tuple (ADR-0009), so the table cannot be dropped between
+compilation and evaluation by accident. `Compiler.to_instructions_with_positions/2`
+itself is unchanged and still returns the tuple; the envelope is a façade
+concept above it. What a consumer persists is `compiled.instructions`, never
+the struct.
 
 A node with a `nil` position contributes no table entry, so a position-free AST
 compiles to an empty table.
@@ -416,12 +423,14 @@ back can recover by trimming the balanced parens off the ends of the slice it
 already has.
 
 **The side table.** `Predicator.compile_with_spans/1` is the span-mode sibling
-of `compile_with_positions/1`, returning a `t:Predicator.Types.span_table/0`.
-The instruction list it returns is byte-identical to `compile/1`'s. Like the
-position table, the span table is an **Elixir-side companion value**: no opcode
-is added, no instruction gains an element, and nothing is serialized, so
-ADR-0001's interchange guarantee and any stored compiled artifacts are
-untouched.
+of `compile_with_positions/1`, returning a `%Predicator.Compiled{}` whose
+`positions` field holds a `t:Predicator.Types.span_table/0` (ADR-0009). The
+instruction list at `compiled.instructions` is byte-identical to `compile/1`'s.
+Like the position table, the span table is an **Elixir-side companion value**:
+no opcode is added, no instruction gains an element, and nothing is
+serialized, so ADR-0001's interchange guarantee and any stored compiled
+artifacts are untouched - what a consumer persists is `compiled.instructions`,
+never the struct.
 
 **Runtime errors.** `EvaluationError`, `TypeMismatchError`, and
 `UndefinedVariableError` gained an optional `:span` alongside `:position`.
@@ -435,7 +444,12 @@ are unchanged either way.
 
 `Predicator.evaluate/3` takes `spans: true` for string input. For
 instruction-list input it is a no-op - there is no source to span - and such a
-caller passes `positions:` from `compile_with_spans/1` instead.
+caller passes `positions:` from `compiled.positions` instead.
+`Predicator.evaluate/3` also accepts a `%Predicator.Compiled{}` directly,
+threading its table without either option; the `positions:` option remains for
+a bare instruction list, and passing both together raises `ArgumentError`,
+since whichever side lost would be a silent loss of exactly the kind the
+envelope exists to prevent (ADR-0009).
 
 ### The statement grammar and the `=` break (v4.0.0, unreleased)
 
@@ -474,6 +488,33 @@ caller passes `positions:` from `compile_with_spans/1` instead.
   reading as `invalid_node` - all pinned by guard tests. Running a parsed
   program needs the `store` and `pop` opcodes and `Predicator.execute/2`,
   which is `px-tbv.2`'s.
+
+### The compiled envelope (v4.0.0, unreleased)
+
+- **`Predicator.Compiled`** is a new public struct with two fields,
+  `instructions` and `positions`, and a doctested `new/2`
+  ([ADR-0009](adr/0009-the-compiled-envelope-carries-the-position-table.md)).
+  `Predicator.compile_with_positions/1` and `Predicator.compile_with_spans/1`
+  return `{:ok, %Predicator.Compiled{}}` instead of a three-element tuple, so
+  the instruction list and its source-location table travel as one value
+  instead of two the caller has to keep paired by hand.
+- **`Predicator.evaluate/3` accepts the struct directly**, threading
+  `compiled.positions` itself - no `positions:` keyword required. The
+  `positions:` option is unchanged for a bare instruction list; passing both a
+  `%Compiled{}` and an explicit `positions:` option raises `ArgumentError`,
+  since resolving the conflict silently would reintroduce, one layer up,
+  exactly the silent table loss the envelope exists to remove.
+- **`Predicator.compile/1` and `Predicator.compile!/1` are untouched** and
+  keep returning a bare instruction list - the envelope exists because there
+  is a second value to carry, not for uniformity, so where there is no second
+  value there is no envelope.
+- **The envelope is in-memory only**, not a wire format: no `isa_version`
+  field (a cached copy of a derived fact could disagree with the instruction
+  list it claims to describe; `Predicator.Instructions.required_isa/1` is the
+  one authoritative answer) and no `Jason.Encoder`. What a consumer persists
+  is `compiled.instructions`, byte-identical to `compile/1`'s output; spans
+  are offsets into a source string and are meaningless to anything that does
+  not also hold it.
 
 ### `Predicator.Context` Struct (v3.8.0, unreleased)
 
