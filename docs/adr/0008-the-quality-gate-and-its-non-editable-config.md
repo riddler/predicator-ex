@@ -1,6 +1,6 @@
 # ADR-0008: `mix quality` is the gate, and its config is not agent-editable
 
-Status: proposed (2026-08-07)
+Status: accepted (2026-08-07)
 
 ## Context
 

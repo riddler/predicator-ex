@@ -1,6 +1,6 @@
 # ADR-0005: Worktree parallelism and the area-label algebra
 
-Status: proposed (2026-08-07)
+Status: accepted (2026-08-07)
 
 ## Context
 

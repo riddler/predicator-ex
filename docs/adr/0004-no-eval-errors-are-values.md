@@ -1,6 +1,6 @@
 # ADR-0004: No eval, ever; errors are values
 
-Status: proposed (2026-08-07)
+Status: accepted (2026-08-07)
 
 ## Context
 

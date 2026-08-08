@@ -1,6 +1,6 @@
 # ADR-0006: Irreversibility places the human gates
 
-Status: proposed (2026-08-07)
+Status: accepted (2026-08-07)
 
 ## Context
 
