@@ -121,9 +121,10 @@ a green gate that never ran.
      computes - it is the exported specification siblings verify against
      (ADR-0003) - so it is never incidental. Name the cause in the message: the
      authored case that was added, or the evaluator/compiler change whose
-     semantics moved and the case ids that moved with it. A corpus diff nobody
-     can explain from the message is a semantic change nobody meant to make, and
-     it should stop the commit until it is understood.
+     semantics moved and the case ids that moved with it. If you cannot name the
+     cause, the message is not ready to write yet - go understand the diff
+     first. That is an authoring instruction, not a gate: there is no check to
+     add here, and the suite already proves the corpus is fresh.
 
 ### Step 1.5: Detect Related Beads Issue
 

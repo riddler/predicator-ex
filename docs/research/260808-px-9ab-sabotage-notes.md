@@ -80,6 +80,17 @@ the trade being made deliberately."
 Adopt, narrowly. Sabotage notes are required on the seven binding-test files
 enumerated above, and on nothing else.
 
+The practice on those seven: break what the test covers with one plausible
+mutation, confirm it goes red for the right reason, revert, and record the
+mutation in one line above the `test`:
+
+```elixir
+# sabotage: manifest tier table drops tier 3 -> red
+```
+
+A binding test that stays green under every plausible mutation is a finding,
+not a note to skip.
+
 The reasoning, in descending weight:
 
 1. **The premise moved, and what is left is narrow and enumerable.** The
@@ -139,10 +150,10 @@ wrong shape, not the rule.
 ## What was changed
 
 - `CLAUDE.md` - a "Binding tests carry a sabotage note" bullet in Conventions,
-  enumerating the seven files and pointing at this note for the reasoning.
-- A follow-on bead, filed and linked as a dependency of px-9ab, to retrofit
-  sabotage notes onto the seven existing binding tests - out of scope here
-  because it touches `test/predicator/conformance/**` and
+  pointing at this note for the file list and the reasoning.
+- A follow-on bead, px-suw, which depends on px-9ab and so is blocked until it
+  lands, to retrofit sabotage notes onto the seven existing binding tests -
+  out of scope here because it touches `test/predicator/conformance/**` and
   `test/predicator/isa_sync_test.exs`, outside px-9ab's predicted
   `.claude/**` + `CLAUDE.md` + `docs/` blast radius.
 
