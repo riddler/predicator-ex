@@ -521,13 +521,13 @@ it has no `iex>` blocks.
 ### Success Criteria
 
 #### Automated Verification:
-- [ ] `docs/guides/embedding.md` exists and is non-empty
-- [ ] `mix.exs`'s `extras:` contains both new guide paths
-- [ ] `README.md` links both new guides
-- [ ] Full gate passes: `mix quality` - which executes the new guide's
+- [x] `docs/guides/embedding.md` exists and is non-empty
+- [x] `mix.exs`'s `extras:` contains both new guide paths
+- [x] `README.md` links both new guides
+- [x] Full gate passes: `mix quality` - which executes the new guide's
       doctests through `Predicator.DocsExamplesTest`
-- [ ] `mix test test/docs_examples_test.exs` passes on its own
-- [ ] `mix docs` completes with no new warnings
+- [x] `mix test test/docs_examples_test.exs` passes on its own
+- [x] `mix docs` completes with no new warnings
 
 #### Manual Verification:
 - [ ] The `required_isa/1` versus `isa_version/0` walk is end to end: get the
@@ -704,3 +704,14 @@ only if a reviewer disagrees.
       guide
 - [ ] Typography matches the neighboring guides (hyphens, no em dashes)
 - [ ] `doc/index.html` from `mix docs` shows the guide under Guides
+
+### Phase 2
+
+- [ ] The `required_isa/1` versus `isa_version/0` walk is end to end: get the
+      requirement, perform the membership check, and act on each failure branch
+- [ ] The bare-`<=` caveat is present and reads as a correction, not a footnote
+- [ ] The storage advice matches `Predicator.Compiled`'s moduledoc in substance,
+      including the no-integrity-check hazard
+- [ ] No section drifts into reference (no opcode table, no full restatement of
+      `upgrade/1`'s three divergences) or explanation (no re-argued ADR-0009)
+- [ ] Typography matches the neighboring guides
