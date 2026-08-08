@@ -142,9 +142,17 @@ defmodule Predicator.Errors.LocationError do
 
   Used when a location path traverses a value that is neither a map nor a list,
   so intermediate structure cannot be created without destroying existing data.
+
+  `path_index` is the failing segment's 0-based index in the root-first location
+  path, or `nil` when the caller cannot identify one. `Predicator.Evaluator`'s
+  `store` path joins it with the run's segment-position table to point a store
+  failure at the segment that failed rather than at the location's root (px-ids).
+  It is deliberately a `details` key rather than a struct field: this struct is
+  shared with `Predicator.ContextLocation.resolve/2` and
+  `Predicator.Context.assign/3`, which have no path to index.
   """
-  @spec not_a_container(binary(), term(), term()) :: t()
-  def not_a_container(location, segment, value) do
+  @spec not_a_container(binary(), term(), term(), non_neg_integer() | nil) :: t()
+  def not_a_container(location, segment, value, path_index \\ nil) do
     %__MODULE__{
       type: :not_a_container,
       message: "Cannot assign through non-container value at '#{location}'",
@@ -152,20 +160,28 @@ defmodule Predicator.Errors.LocationError do
         location: location,
         segment: segment,
         value: value,
-        value_type: get_type_name(value)
+        value_type: get_type_name(value),
+        path_index: path_index
       }
     }
   end
 
   @doc """
   Creates a LocationError for an out-of-range list index in a location path.
+
+  `path_index` is the failing segment's 0-based index in the root-first location
+  path, or `nil` when the caller cannot identify one - see `not_a_container/4`.
+  It is unrelated to `index`: `index` is the out-of-range *list* index the
+  segment held, `path_index` is where that segment sits in the path itself, and
+  the two are different integers that happen to share a neighborhood in
+  `details`.
   """
-  @spec invalid_index(binary(), integer()) :: t()
-  def invalid_index(location, index) do
+  @spec invalid_index(binary(), integer(), non_neg_integer() | nil) :: t()
+  def invalid_index(location, index, path_index \\ nil) do
     %__MODULE__{
       type: :invalid_index,
       message: "Invalid list index #{index} at '#{location}'",
-      details: %{location: location, index: index}
+      details: %{location: location, index: index, path_index: path_index}
     }
   end
 

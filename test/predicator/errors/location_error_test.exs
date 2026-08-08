@@ -154,6 +154,12 @@ defmodule Predicator.Errors.LocationErrorTest do
       assert error.details.segment == "name"
       assert error.details.value_type == "list"
     end
+
+    test "defaults path_index to nil when called with the arity-3 form" do
+      error = LocationError.not_a_container("user", "user", 5)
+
+      assert error.details.path_index == nil
+    end
   end
 
   describe "invalid_index/2" do
@@ -164,6 +170,12 @@ defmodule Predicator.Errors.LocationErrorTest do
       assert error.message == "Invalid list index -1 at 'items[-1]'"
       assert error.details.location == "items[-1]"
       assert error.details.index == -1
+    end
+
+    test "defaults path_index to nil when called with the arity-2 form" do
+      error = LocationError.invalid_index("items[-1]", -1)
+
+      assert error.details.path_index == nil
     end
   end
 end
