@@ -43,7 +43,19 @@ iex> Predicator.evaluate("scores[1] > 90", context)
 iex> context = %{"scores" => [85, 92, 78, 96], "index" => 2}
 iex> Predicator.evaluate("scores[index] > 80", context)
 {:ok, false}
+
+iex> context = %{"items" => ["a", "b", "c"], "i" => 1}
+iex> Predicator.evaluate("items[i + 1]", context)
+{:ok, "c"}
+
+iex> context = %{"items" => ["a", "b"]}
+iex> Predicator.evaluate("items[5] == 'z'", context)
+{:ok, :undefined}
 ```
+
+Bracket keys accept any expression, not just a bare variable - `items[i + 1]`
+computes the index before indexing. An out-of-bounds index returns
+`:undefined` rather than raising, the same as a missing map key.
 
 ## Mixed notation
 
@@ -79,9 +91,13 @@ iex> Predicator.evaluate("user.profile.email == 'test'", context)
 {:ok, :undefined}
 ```
 
-## Atom-keyed contexts
+## Atom keys in the context you pass in
 
-Nested access works with atom keys as well as string keys:
+A context built with atom keys still works, but not because nested access
+reads atom keys directly - `Predicator.evaluate/3` normalizes a bare map
+through `Predicator.Context.new/2` before evaluation, which converts atom
+keys to string keys deeply and eagerly. By the time access runs, only string
+keys remain:
 
 ```elixir
 iex> atom_context = %{user: %{name: %{first: "Jane"}}}
@@ -104,7 +120,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 - **Array indexing**: `items[0]`, `scores[index]` for list access
 - **Mixed styles**: `user.settings['theme']` combining both notations
 - **Unlimited nesting depth**: `app.database.config.settings.ssl`
-- **Mixed key types**: works with string keys, atom keys, or both
+- **Dynamic and expression keys**: `items[index]`, `items[i + 1]`
 - **Graceful fallback**: returns `:undefined` for missing paths or
   out-of-bounds access
 - **Type preservation**: maintains original data types (strings, numbers,

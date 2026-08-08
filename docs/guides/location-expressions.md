@@ -51,6 +51,21 @@ iex> err.type
 - Comparison results: `score > 85`, `name == "John"`
 - Any computed expression that cannot serve as a memory location
 
+## LocationError types
+
+`Predicator.Errors.LocationError` carries one of seven `type` values, one per
+error-construction site in `Predicator.ContextLocation`:
+
+| Type | Fires when |
+|---|---|
+| `:not_assignable` | The expression itself is a literal, function call, arithmetic, comparison, logical, or unary expression, or a list literal - anything that is not an identifier or an access chain |
+| `:invalid_node` | The AST node is not one `ContextLocation` recognizes - a catch-all for an unknown node type |
+| `:undefined_variable` | A bracket key is an identifier for a variable that is not present in the context |
+| `:invalid_key` | A bracket key resolves to a value that is neither a string nor an integer |
+| `:computed_key` | A bracket key is a computed expression - arithmetic, a function call, and so on - rather than a literal or a variable reference |
+| `:not_a_container` | `put/3` traverses a value that is neither a map nor a list |
+| `:invalid_index` | `put/3` traverses or writes at a negative list index |
+
 ## Location path format
 
 Location paths are returned as lists representing the navigation path to a
@@ -134,3 +149,10 @@ Two rules worth knowing:
   deeply and eagerly, so `data` has no atom keys left by the time `assign/3`
   calls in. It matters only for a caller invoking `ContextLocation.put/3`
   directly on a hand-built, unnormalized map.
+
+`ContextLocation.put/3` is the contract-stable primitive that later releases
+write through: `Predicator.Context.assign/3` and `Predicator.context_assign/4`
+both call it directly rather than duplicating the write logic. Its signature
+and the auto-vivification semantics documented above are frozen for that
+reason - a change to either would move silently underneath every caller of
+`assign/3` and `context_assign/4`.
