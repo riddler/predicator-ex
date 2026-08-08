@@ -18,6 +18,23 @@ a stub; the authority rules below are the part that is specific to this repo.
 Note for `bd` maintainers: `bd integrate --update` will want to expand this into
 the full managed block. It is redundant here - keep the stub.
 
+### Beads that span repositories
+
+Three trackers touch this project: `px-` here, `st-` in statifier-ex, and none
+at all in the `riddler/predicator` monorepo. The reasoning behind the rules
+below is recorded in
+[ADR-0010](docs/adr/0010-tracker-authority-and-the-mirror-obligation.md); this
+is their enforcement.
+
+| Situation | Rule |
+|---|---|
+| A decision is recorded in two trackers and they disagree | The repository whose files change owns the decision, and its bead is authoritative. For the language, the ISA, the compiled format, the corpus, and predicator's release schedule that is this repo (ADR-0003); for how statifier consumes any of it, statifier's bead is authoritative and this one defers |
+| A bead pairs with one in statifier-ex | Both halves carry `mirrors: <id>` as the first line of the description - in the description, never in `external_ref`, which is single-valued and unsearchable |
+| A dated `mirrors:` reconciliation note is old | Not a defect. Age is its normal state, and no repo owes the other an outward update on any schedule |
+| You are about to schedule, claim, plan against, add a dependency on, or cite the status of a mirrored bead | Re-read the other tracker and write a new dated note **first**, leaving the old note above it. Acting on an unrefreshed note is the defect |
+| A `mirrors:` line names an id that no longer resolves (`st2-` is the known case; the prefix is now `st-`) | Fix it with one `bd update` the moment you notice, in whichever repo you are standing in. Closed beads are history and are left alone |
+| Work happens in the `riddler/predicator` monorepo | It stays an `upstream` bead here, with the GitHub issue in `bd update <id> --external-ref <url>`. Paths, extra issues, and prose stay in the description. An empty `external_ref` means the issue has not been raised - opening it is a human act under ADR-0006, so never invent a value |
+
 ## Agent authority in this repo
 
 **This repository opts into the team-maintainer profile** described by `bd prime`.
