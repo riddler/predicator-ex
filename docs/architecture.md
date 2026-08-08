@@ -231,6 +231,16 @@ trailing position:
 {:object_key, value, style, pos}
 ```
 
+**Statement-grammar nodes.** `{:program, statements, pos}` and
+`{:assignment, lhs, rhs, pos}` are produced only by `Parser.parse_program/2`,
+the statement entry point added alongside `parse/2` - neither is a member of
+`Parser.ast/0`, and `parse/2` never returns one:
+
+```elixir
+{:program, [statement], pos}
+{:assignment, lhs, rhs, pos}
+```
+
 Object keys have their own node - `{:object_key, value, style, pos}`, where
 `style` is `:identifier`, `:double`, or `:single`. They do not reuse the
 expression tags, so nothing tells a key from an expression by tuple arity, and
