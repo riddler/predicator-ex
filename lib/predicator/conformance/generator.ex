@@ -110,8 +110,9 @@ defmodule Predicator.Conformance.Generator do
 
   # The opcodes this build's Instructions table knows about but this build's
   # ISA version no longer includes (docs/isa.md section 1's half-open
-  # interval). Empty today - no opcode carries :removed_in yet - so
-  # generate/1 and generate/2 with no :retired_opcodes agree.
+  # interval). `and` and `or` are the only members since ISA v3 retired them
+  # (px-tbv.9); generate/2 with an explicit :retired_opcodes of that same set
+  # agrees with generate/1's default.
   @spec default_retired_opcodes() :: MapSet.t(String.t())
   defp default_retired_opcodes do
     all_opcodes = Instructions.opcodes() |> Map.keys() |> MapSet.new()

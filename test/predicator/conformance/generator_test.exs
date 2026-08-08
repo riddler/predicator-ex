@@ -40,12 +40,13 @@ defmodule Predicator.Conformance.GeneratorTest do
     end
 
     test "an evaluator-only case (instructions, no source) is absent \"source\": nil" do
-      cases = [%{"id" => "t/legacy", "instructions" => [["lit", true], ["lit", true], ["and"]]}]
+      cases = [
+        %{"id" => "t/hand-built", "instructions" => [["lit", 1], ["lit", 2], ["compare", "LT"]]}
+      ]
 
       assert {:ok, %{tiers: %{1 => [completed]}}} = Generator.generate(cases)
       assert completed["source"] == nil
       assert completed["expected_result"] == true
-      assert "legacy_logical" in completed["features"]
     end
 
     test "context is decoded through the tagged codec and used for evaluation" do
@@ -330,10 +331,11 @@ defmodule Predicator.Conformance.GeneratorTest do
   end
 
   # `and` is picked here only as a stand-in opcode to inject via
-  # `:retired_opcodes` - no real opcode carries `removed_in` yet
-  # (docs/plans/260807-px-t2v-isa-retirement-mechanics.md Phase 3). These
-  # tests exercise the classification path itself, independent of which
-  # opcode is actually retired someday.
+  # `:retired_opcodes`, exercising the classification path itself
+  # independent of which opcode is actually retired. `and` (with `or`) is
+  # now genuinely retired at ISA v3 (px-tbv.9); these tests still pass an
+  # explicit set rather than relying on the default, so they keep testing
+  # the mechanism rather than duplicating the default-set test above.
   describe "generate/2 - the retired-opcode path" do
     test "a frozen result case takes the authored expected verbatim, tier and legacy_logical intact" do
       cases = [
@@ -410,10 +412,11 @@ defmodule Predicator.Conformance.GeneratorTest do
       refute "retired" in completed["features"]
     end
 
-    test "the default :retired_opcodes is empty today, so generate/1 and generate/2 agree" do
-      cases = "conformance/cases/core.json" |> File.read!() |> JSON.decode!()
+    test "the default :retired_opcodes is exactly and/or, so generate/1 agrees with generate/2 given that explicit set" do
+      cases = "conformance/cases/legacy.json" |> File.read!() |> JSON.decode!()
 
-      assert Generator.generate(cases) == Generator.generate(cases, [])
+      assert Generator.generate(cases) ==
+               Generator.generate(cases, retired_opcodes: MapSet.new(["and", "or"]))
     end
   end
 end

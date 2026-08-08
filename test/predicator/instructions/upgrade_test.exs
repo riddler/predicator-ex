@@ -7,10 +7,9 @@ defmodule Predicator.Instructions.UpgradeTest do
   alias Predicator.Instructions.Upgrade
 
   # --------------------------------------------------------------------
-  # Equivalence: legacy and/or vs. their upgraded jump form, over the
-  # boolean-only inputs where the two semantics agree. This is only
-  # checkable while the legacy evaluator clauses still exist (Phase 1);
-  # Phase 2 removes them.
+  # Equivalence, cashed in from Phase 1: the legacy list is now refused as a
+  # retired opcode (Phase 2), and the upgraded form is checked against the
+  # boolean answer the two semantics agreed on while both paths still ran.
   # --------------------------------------------------------------------
 
   describe "equivalence with the legacy evaluator (boolean-only inputs)" do
@@ -18,7 +17,11 @@ defmodule Predicator.Instructions.UpgradeTest do
       for left <- [true, false], right <- [true, false] do
         legacy = [["lit", left], ["lit", right], ["and"]]
         assert {:ok, upgraded} = Upgrade.upgrade(legacy)
-        assert Evaluator.evaluate(legacy) == Evaluator.evaluate(upgraded)
+
+        assert {:error, %EvaluationError{reason: "retired_opcode"}} =
+                 Evaluator.evaluate(legacy)
+
+        assert Evaluator.evaluate(upgraded) == (left and right)
       end
     end
 
@@ -26,7 +29,11 @@ defmodule Predicator.Instructions.UpgradeTest do
       for left <- [true, false], right <- [true, false] do
         legacy = [["lit", left], ["lit", right], ["or"]]
         assert {:ok, upgraded} = Upgrade.upgrade(legacy)
-        assert Evaluator.evaluate(legacy) == Evaluator.evaluate(upgraded)
+
+        assert {:error, %EvaluationError{reason: "retired_opcode"}} =
+                 Evaluator.evaluate(legacy)
+
+        assert Evaluator.evaluate(upgraded) == (left or right)
       end
     end
 
@@ -41,7 +48,11 @@ defmodule Predicator.Instructions.UpgradeTest do
         ]
 
         assert {:ok, upgraded} = Upgrade.upgrade(legacy)
-        assert Evaluator.evaluate(legacy) == Evaluator.evaluate(upgraded)
+
+        assert {:error, %EvaluationError{reason: "retired_opcode"}} =
+                 Evaluator.evaluate(legacy)
+
+        assert Evaluator.evaluate(upgraded) == ((a and b) or c)
       end
     end
 
@@ -67,7 +78,12 @@ defmodule Predicator.Instructions.UpgradeTest do
             %{"score" => 10, "age" => 10, "admin" => false}
           ] do
         assert {:ok, upgraded} = Upgrade.upgrade(legacy)
-        assert Evaluator.evaluate(legacy, context) == Evaluator.evaluate(upgraded, context)
+
+        assert {:error, %EvaluationError{reason: "retired_opcode"}} =
+                 Evaluator.evaluate(legacy, context)
+
+        expected = (context["score"] > 85 and context["age"] >= 18) or context["admin"] == true
+        assert Evaluator.evaluate(upgraded, context) == expected
       end
     end
   end
@@ -79,6 +95,12 @@ defmodule Predicator.Instructions.UpgradeTest do
   # --------------------------------------------------------------------
 
   describe "divergence 1: short-circuiting" do
+    # The legacy list here still fails before it ever reaches the retired
+    # ["and"]/["or"] instruction: "load missing" under on_unbound: :error
+    # raises UndefinedVariableError at the load itself, since the legacy
+    # opcode is non-short-circuiting and both operands are already loaded
+    # onto the stack before it runs. This is the divergence being pinned,
+    # not a case that exercises the retired_opcode refusal.
     test "and: a falsy left skips a right that would have raised" do
       legacy = [["lit", false], ["load", "missing"], ["and"]]
       upgraded_legacy = [["lit", false], ["jump_if_falsy_or_pop", 2], ["load", "missing"]]
@@ -108,7 +130,7 @@ defmodule Predicator.Instructions.UpgradeTest do
       legacy = [["lit", :undefined], ["lit", true], ["and"]]
 
       assert {:ok, upgraded} = Upgrade.upgrade(legacy)
-      assert {:error, %Predicator.Errors.TypeMismatchError{}} = Evaluator.evaluate(legacy)
+      assert {:error, %EvaluationError{reason: "retired_opcode"}} = Evaluator.evaluate(legacy)
       assert Evaluator.evaluate(upgraded) == :undefined
     end
 
@@ -116,7 +138,7 @@ defmodule Predicator.Instructions.UpgradeTest do
       legacy = [["lit", :undefined], ["lit", 42], ["or"]]
 
       assert {:ok, upgraded} = Upgrade.upgrade(legacy)
-      assert {:error, %Predicator.Errors.TypeMismatchError{}} = Evaluator.evaluate(legacy)
+      assert {:error, %EvaluationError{reason: "retired_opcode"}} = Evaluator.evaluate(legacy)
       assert Evaluator.evaluate(upgraded) == 42
     end
   end
@@ -126,7 +148,7 @@ defmodule Predicator.Instructions.UpgradeTest do
       legacy = [["lit", true], ["lit", 1], ["and"]]
 
       assert {:ok, upgraded} = Upgrade.upgrade(legacy)
-      assert {:error, %Predicator.Errors.TypeMismatchError{}} = Evaluator.evaluate(legacy)
+      assert {:error, %EvaluationError{reason: "retired_opcode"}} = Evaluator.evaluate(legacy)
       assert Evaluator.evaluate(upgraded) == 1
     end
 
@@ -134,7 +156,7 @@ defmodule Predicator.Instructions.UpgradeTest do
       legacy = [["lit", 1], ["lit", true], ["and"]]
 
       assert {:ok, upgraded} = Upgrade.upgrade(legacy)
-      assert {:error, %Predicator.Errors.TypeMismatchError{}} = Evaluator.evaluate(legacy)
+      assert {:error, %EvaluationError{reason: "retired_opcode"}} = Evaluator.evaluate(legacy)
       assert {:error, %Predicator.Errors.TypeMismatchError{}} = Evaluator.evaluate(upgraded)
     end
   end

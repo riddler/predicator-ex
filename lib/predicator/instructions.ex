@@ -42,7 +42,7 @@ defmodule Predicator.Instructions do
   alias Predicator.Types
 
   # The ISA version this build emits and can run (docs/isa.md, section 1).
-  @isa_version 2
+  @isa_version 3
 
   @typedoc """
   One opcode's table entry: the ISA version that introduced it, its conformance
@@ -66,8 +66,8 @@ defmodule Predicator.Instructions do
     "load" => %{isa: 1, tier: 1},
     "access" => %{isa: 1, tier: 3},
     "compare" => %{isa: 1, tier: 1},
-    "and" => %{isa: 1, tier: 1},
-    "or" => %{isa: 1, tier: 1},
+    "and" => %{isa: 1, tier: 1, removed_in: 3},
+    "or" => %{isa: 1, tier: 1, removed_in: 3},
     "not" => %{isa: 1, tier: 1},
     "in" => %{isa: 1, tier: 3},
     "contains" => %{isa: 1, tier: 3},
@@ -281,7 +281,7 @@ defmodule Predicator.Instructions do
       {:ok, 1}
 
       iex> Predicator.Instructions.required_isa([["nope"]])
-      {:error, %Predicator.Errors.EvaluationError{reason: "unknown_opcode", message: "Unknown opcode \\"nope\\"; this build supports ISA v2", operation: :required_isa}}
+      {:error, %Predicator.Errors.EvaluationError{reason: "unknown_opcode", message: "Unknown opcode \\"nope\\"; this build supports ISA v3", operation: :required_isa}}
   """
   @spec required_isa(Types.instruction_list()) ::
           {:ok, pos_integer()} | {:error, EvaluationError.t()}

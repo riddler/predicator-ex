@@ -4,7 +4,7 @@
     "instructions": [["lit", true], ["lit", true], ["and"]],
     "expected": { "result": true },
     "features": ["legacy_logical"],
-    "notes": "the bare and/or opcodes (ADR-0001): accepted by the evaluator forever but never emitted by the compiler, which always compiles source-level and/or to jump_if_falsy_or_pop/jump_if_true_or_pop instead (see short_circuit.json). Tier 1 by opcode; a v1 sibling must still run these."
+    "notes": "the bare and/or opcodes (ADR-0001): retired at ISA v3 (4.0.0), so this build refuses them with a retired_opcode error, but never emitted by the compiler, which always compiles source-level and/or to jump_if_falsy_or_pop/jump_if_true_or_pop instead (see short_circuit.json). The case stays in the corpus with its expectation frozen, not recomputed, because a sibling claiming ISA v1 or v2 must still run it. Tier 1 by opcode; a v1 sibling must still run these."
   },
   {
     "id": "legacy/or-false-true",

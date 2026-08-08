@@ -7,13 +7,15 @@ defmodule Predicator.Evaluator do
 
   The instruction set - every opcode this module accepts, its operands, stack
   effect, and error semantics - is specified in
-  [`docs/isa.md`](../../docs/isa.md), not here. That includes opcodes the
-  compiler no longer emits (`and`, `or`) but this module still runs, for
-  stored artifacts and v1 siblings (ADR-0001).
+  [`docs/isa.md`](../../docs/isa.md), not here. `and` and `or` were retired at
+  ISA v3: a stored pre-3.7 artifact containing either is refused with a
+  message naming the removing version and pointing at
+  `Predicator.Instructions.upgrade/1`, though the ISA table (`docs/isa.md` §4)
+  keeps their rows.
   """
 
   alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
-  alias Predicator.{Duration, Types, Undefined}
+  alias Predicator.{Duration, Instructions, Types, Undefined}
   alias Predicator.Errors.{EvaluationError, TypeMismatchError, UndefinedVariableError}
 
   @typedoc "Internal evaluator state"
@@ -399,16 +401,6 @@ defmodule Predicator.Evaluator do
     execute_compare(evaluator, operator)
   end
 
-  # Logical AND instruction
-  defp execute_instruction(%__MODULE__{} = evaluator, ["and"]) do
-    execute_logical_and(evaluator)
-  end
-
-  # Logical OR instruction
-  defp execute_instruction(%__MODULE__{} = evaluator, ["or"]) do
-    execute_logical_or(evaluator)
-  end
-
   # Logical NOT instruction
   defp execute_instruction(%__MODULE__{} = evaluator, ["not"]) do
     execute_logical_not(evaluator)
@@ -505,8 +497,38 @@ defmodule Predicator.Evaluator do
     execute_relative_date(evaluator, direction)
   end
 
+  # A retired opcode has no clause of its own (docs/isa.md section 4, "Retired
+  # opcodes") and lands here. It is not an *unknown* instruction - the ISA
+  # still has its row - so it gets the refusal ADR-0003 promises: a message
+  # naming the ISA version that removed it and the upgrade path. The lookup
+  # costs nothing on the happy path, because this clause is reached only after
+  # an instruction has already failed to match.
+  defp execute_instruction(%__MODULE__{}, [opcode | _operands] = unknown)
+       when is_binary(opcode) do
+    case Instructions.retired_in(opcode) do
+      {:ok, version} when is_integer(version) -> retired_opcode_error(opcode, version)
+      _live_or_unknown -> unknown_instruction_error(unknown)
+    end
+  end
+
   # Unknown instruction - catch-all clause
   defp execute_instruction(%__MODULE__{}, unknown) do
+    unknown_instruction_error(unknown)
+  end
+
+  @spec retired_opcode_error(String.t(), pos_integer()) :: {:error, EvaluationError.t()}
+  defp retired_opcode_error(opcode, version) do
+    {:error,
+     EvaluationError.new(
+       "Instruction #{inspect([opcode])} was retired at ISA v#{version}. " <>
+         "Run Predicator.Instructions.upgrade/1 over this instruction list to migrate it.",
+       "retired_opcode",
+       :evaluate
+     )}
+  end
+
+  @spec unknown_instruction_error(Types.instruction()) :: {:error, EvaluationError.t()}
+  defp unknown_instruction_error(unknown) do
     {:error,
      EvaluationError.new(
        "Unknown instruction: #{inspect(unknown)}",
@@ -637,54 +659,6 @@ defmodule Predicator.Evaluator do
   @spec push_stack(t(), Types.value()) :: t()
   defp push_stack(%__MODULE__{stack: stack} = evaluator, value) do
     %__MODULE__{evaluator | stack: [value | stack]}
-  end
-
-  @spec execute_logical_and(t()) :: {:ok, t()} | {:error, term()}
-  defp execute_logical_and(%__MODULE__{stack: [right | [left | rest]]} = evaluator)
-       when is_boolean(left) and is_boolean(right) do
-    result = left and right
-    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
-  end
-
-  defp execute_logical_and(%__MODULE__{stack: [right | [left | _rest]]}) do
-    left_type = get_value_type(left)
-    right_type = get_value_type(right)
-
-    {:error,
-     TypeMismatchError.binary(
-       :logical_and,
-       :boolean,
-       {left_type, right_type},
-       {left, right}
-     )}
-  end
-
-  defp execute_logical_and(%__MODULE__{stack: stack}) do
-    {:error, EvaluationError.insufficient_operands(:logical_and, length(stack), 2)}
-  end
-
-  @spec execute_logical_or(t()) :: {:ok, t()} | {:error, term()}
-  defp execute_logical_or(%__MODULE__{stack: [right | [left | rest]]} = evaluator)
-       when is_boolean(left) and is_boolean(right) do
-    result = left or right
-    {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
-  end
-
-  defp execute_logical_or(%__MODULE__{stack: [right | [left | _rest]]}) do
-    left_type = get_value_type(left)
-    right_type = get_value_type(right)
-
-    {:error,
-     TypeMismatchError.binary(
-       :logical_or,
-       :boolean,
-       {left_type, right_type},
-       {left, right}
-     )}
-  end
-
-  defp execute_logical_or(%__MODULE__{stack: stack}) do
-    {:error, EvaluationError.insufficient_operands(:logical_or, length(stack), 2)}
   end
 
   @spec execute_logical_not(t()) :: {:ok, t()} | {:error, term()}

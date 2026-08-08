@@ -7,8 +7,8 @@ defmodule Predicator.InstructionsTest do
   alias Predicator.Instructions
 
   describe "isa_version/0" do
-    test "returns 2" do
-      assert Instructions.isa_version() == 2
+    test "returns 3" do
+      assert Instructions.isa_version() == 3
     end
 
     test "returns an integer, not a string or a Version struct" do
@@ -68,16 +68,34 @@ defmodule Predicator.InstructionsTest do
       assert MapSet.size(Instructions.opcode_set(2)) == 25
     end
 
-    test "opcode_set(2) equals Map.keys(opcodes()) today - nothing is retired yet" do
+    test "opcode_set(2) equals Map.keys(opcodes()) - both and/or are still members of v2's set" do
       assert Instructions.opcode_set(2) == MapSet.new(Map.keys(Instructions.opcodes()))
+    end
+
+    test "opcode_set(3) has 23 members" do
+      assert MapSet.size(Instructions.opcode_set(3)) == 23
+    end
+
+    test "opcode_set(3) excludes and/or" do
+      set = Instructions.opcode_set(3)
+      refute MapSet.member?(set, "and")
+      refute MapSet.member?(set, "or")
     end
   end
 
   describe "retired_in/1" do
     test "every live opcode returns {:ok, nil}" do
-      for opcode <- Map.keys(Instructions.opcodes()) do
+      for {opcode, _info} <- Instructions.opcodes(), opcode not in ["and", "or"] do
         assert Instructions.retired_in(opcode) == {:ok, nil}
       end
+    end
+
+    test "and returns {:ok, 3}" do
+      assert Instructions.retired_in("and") == {:ok, 3}
+    end
+
+    test "or returns {:ok, 3}" do
+      assert Instructions.retired_in("or") == {:ok, 3}
     end
 
     test "an unrecognized opcode returns an unknown_opcode error" do
@@ -91,13 +109,16 @@ defmodule Predicator.InstructionsTest do
     end
   end
 
-  # No opcode currently carries :removed_in - px-tbv.9 flips this
-  # intentionally when it retires "and"/"or", the mirror of the "store is
+  # px-tbv.9 retired "and"/"or" at ISA v3, the mirror of the "store is
   # currently an unknown opcode" test above.
-  test "no opcode currently carries :removed_in" do
-    refute Enum.any?(Instructions.opcodes(), fn {_opcode, info} ->
-             Map.has_key?(info, :removed_in)
-           end)
+  test "exactly and/or carry :removed_in, and no other opcode does" do
+    retired =
+      Instructions.opcodes()
+      |> Enum.filter(fn {_opcode, info} -> Map.has_key?(info, :removed_in) end)
+      |> Enum.map(fn {opcode, _info} -> opcode end)
+      |> Enum.sort()
+
+    assert retired == ["and", "or"]
   end
 
   describe "required_isa/1 - happy paths" do
