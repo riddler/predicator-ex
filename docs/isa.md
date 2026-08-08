@@ -366,13 +366,15 @@ reference survives an edit above it.
   the operation name carried on the error.
 - **`bracket_access`** (`execute_bracket_access/1`, `access_value/3`) - pops
   the key (stack top), then the target.
-  - **Against a map**: a string, an integer, or a boolean key indexes it. (The
-    reference implementation writes this as one Elixir clause on `is_atom/1`,
-    which is also true of `true`, `false`, and `:undefined`; a sibling with no
-    atom type implements the clause as string, integer, and boolean.) A key of
-    any other type - float, list, map, date, duration - is `TypeMismatchError`
-    (operation `bracket_access`, expected `string`). A missing key pushes
-    `:undefined`.
+  - **Against a map**: a string, an integer, a boolean, or `:undefined`
+    indexes it. (The reference implementation writes this as one Elixir clause
+    on `is_atom/1`, which is also true of `true`, `false`, and `:undefined`; a
+    sibling with no atom type implements the clause as string, integer,
+    boolean, and its own undefined value.) A key of any other type - float,
+    list, map, date, duration - is `TypeMismatchError` (operation
+    `bracket_access`, expected `string`). A missing key pushes `:undefined`,
+    and an `:undefined` key is an ordinary miss on any map that does not carry
+    one, not a type error - unlike the list case below.
   - **Boolean keys are data, not a type error.** A map may legitimately be
     keyed by `true`/`false` (`config[true]`); the reference implementation's
     context normalization preserves boolean keys for exactly this reason.
