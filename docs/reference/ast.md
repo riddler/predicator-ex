@@ -101,7 +101,7 @@ column 1:
 
 | Node | Defining token |
 |---|---|
-| literals, identifiers, object keys | own token |
+| `literal`, `string_literal`, `identifier`, `object_key` | own token |
 | `comparison`, `arithmetic`, `membership`, `logical_and`, `logical_or` | the operator |
 | `unary`, `logical_not` | the operator |
 | `list`, `object`, `bracket_access` | the opening bracket or brace |
