@@ -379,14 +379,12 @@ reference survives an edit above it.
   path.
 - **`object_set`** (`execute_object_set/2`) - pops the value (stack top) and
   the object beneath it, pushes the object with `key` set to that value. Fewer
-  than two values on the stack is `EvaluationError`. **The non-map case is
-  unspecified behavior**: the Elixir evaluator does not return a well-formed
-  error there today - it crashes rather than returning `{:error, _}` - which
-  is a known defect tracked separately, not part of this specification. The
-  compiler only ever emits `object_set` immediately after `object_new`, so
-  the non-map case is reachable only from a hand-built instruction list; a
-  sibling should treat it as undefined behavior rather than replicate the
-  exact failure mode.
+  than two values on the stack is `EvaluationError` insufficient operands. A
+  non-map beneath the value is `EvaluationError` `"invalid_stack_value"`,
+  checked after the stack-depth check. The compiler only ever emits
+  `object_set` immediately after `object_new`, so the non-map case is
+  reachable only from a hand-built instruction list - but it is specified, not
+  undefined: a sibling implements it to claim tier 4.
 - **`make_list`** (`execute_make_list/2`) - pops `count` values and pushes
   them as a list **in source order**: the stack holds them reversed, deepest
   first, and this opcode reverses them back. Fewer than `count` values on

@@ -363,9 +363,9 @@ version-history table is unchanged. See ISA Impact for why.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full gate passes: `mix quality` (`isa_sync_test.exs` and the doc tests
+- [x] Full gate passes: `mix quality` (`isa_sync_test.exs` and the doc tests
       still pass)
-- [ ] `grep -n "unspecified" docs/isa.md` no longer returns an `object_set` hit
+- [x] `grep -n "unspecified" docs/isa.md` no longer returns an `object_set` hit
 
 #### Manual Verification:
 - [ ] The rewritten bullet reads as a peer of the `relative_date` and `duration`
@@ -680,3 +680,10 @@ of these prevents implementation; each has a stated default that the plan takes.
       ("Relative date operation requires a duration on the stack, got: ...")
 - [ ] A compiled object literal (`Predicator.evaluate("{a: 1}.a", %{})`) is
       unaffected
+
+### Phase 2
+
+- [ ] The rewritten bullet reads as a peer of the `relative_date` and `duration`
+      bullets, not as a changelog entry
+- [ ] No remaining sentence in `docs/isa.md` tells a sibling that any
+      `object_set` shape is undefined
