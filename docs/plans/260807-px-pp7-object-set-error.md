@@ -458,14 +458,14 @@ it.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix corpus.generate` succeeds and writes a diff to
+- [x] `mix corpus.generate` succeeds and writes a diff to
       `conformance/corpus/tier-4.json` and `conformance/manifest.json`
-- [ ] Full gate passes: `mix quality` - in particular
+- [x] Full gate passes: `mix quality` - in particular
       `corpus_freshness_test.exs` (checked-in corpus byte-matches a
       regeneration), `opcode_coverage_test.exs` (all three assertions), and
       `generator_test.exs`
-- [ ] `mix corpus.generate --check` exits zero
-- [ ] `conformance/manifest.json` shows `"isa_version":2` unchanged and tier-4
+- [x] `mix corpus.generate --check` exits zero
+- [x] `conformance/manifest.json` shows `"isa_version":2` unchanged and tier-4
       `case_count` 15
 
 #### Manual Verification:
@@ -687,3 +687,13 @@ of these prevents implementation; each has a stated default that the plan takes.
       bullets, not as a changelog entry
 - [ ] No remaining sentence in `docs/isa.md` tells a sibling that any
       `object_set` shape is undefined
+
+### Phase 3
+
+- [ ] The generated tier-4 line's `expected_error` reads
+      `{"type":"EvaluationError","reason":"invalid_stack_value"}` - i.e. the
+      generator agreed with the authored assertion rather than overwriting a
+      different one
+- [ ] `conformance/README.md`'s "Also out of scope" section still reads as
+      coherent prose after the deletion
+- [ ] No sibling-facing document still describes this shape as uncovered

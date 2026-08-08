@@ -25,10 +25,7 @@ defmodule Predicator.Conformance.OpcodeCoverageTest do
   alias Predicator.Conformance.Generator
   alias Predicator.Instructions
 
-  # docs/isa.md section 5 / plan Open Question #2. object_set on a non-map
-  # is a separate, non-opcode exclusion (object_set itself is covered via its
-  # normal post-object_new form) - see conformance/README.md's "Also out of
-  # scope" section, which is deliberately not parsed by this test.
+  # docs/isa.md section 5 / plan Open Question #2.
   @excluded_opcodes ~w(relative_date)
 
   test "every opcode except the documented exclusions appears in at least one case" do
