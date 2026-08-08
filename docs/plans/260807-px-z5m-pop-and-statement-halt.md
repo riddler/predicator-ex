@@ -577,18 +577,18 @@ all three of ADR-0003's questions is "nothing is owed".
 
 ## Deferred Manual Verification
 
-- [ ] The tier-6 cell still begins with `(` - read the literal line
-- [ ] §2 reads coherently top to bottom: a reader arriving at the mode-scoped
+- [x] The tier-6 cell still begins with `(` - read the literal line
+- [x] §2 reads coherently top to bottom: a reader arriving at the mode-scoped
       result bullet finds "Two execution modes" where the cross-reference sends
       them
-- [ ] A sibling implementer reading §2 and §6 cold can answer "what does my
+- [x] A sibling implementer reading §2 and §6 cold can answer "what does my
       `execute` return, and what happens on an error partway through" without
       opening a bead
-- [ ] Section numbering is unchanged: §1 through §8, same titles
+- [x] Section numbering is unchanged: §1 through §8, same titles
 
 Phase 2:
 
-- [ ] The CHANGELOG entry is written for a consumer of the library, not as a
+- [x] The CHANGELOG entry is written for a consumer of the library, not as a
       summary of this plan
-- [ ] px-tbv.2's note is specific enough that its implementer flips both
+- [x] px-tbv.2's note is specific enough that its implementer flips both
       reservation guards and does not re-open the mode question

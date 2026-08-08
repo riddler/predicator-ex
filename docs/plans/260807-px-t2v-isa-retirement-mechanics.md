@@ -882,21 +882,21 @@ retirement.
 
 ## Deferred Manual Verification
 
-- (Phase 1) In `iex`, `Instructions.opcode_set(1)` and `opcode_set(2)` differ by
+- [x] (Phase 1) In `iex`, `Instructions.opcode_set(1)` and `opcode_set(2)` differ by
   exactly `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`
-- (Phase 1) `retired_in("and")` reads as `{:ok, nil}`, not an error
-- (Phase 2) §1 reads as a rule a sibling implementer can apply without reading
+- [x] (Phase 1) `retired_in("and")` reads as `{:ok, nil}`, not an error
+- [x] (Phase 2) §1 reads as a rule a sibling implementer can apply without reading
   this plan: what mints a version, and what version *v* comprises
-- (Phase 2) Temporarily setting `"and" => %{isa: 1, tier: 1, removed_in: 3}` in
+- [x] (Phase 2) Temporarily setting `"and" => %{isa: 1, tier: 1, removed_in: 3}` in
   `@opcodes` produces a red suite that names the *doc column* disagreement
   and the *evaluator clause still present* disagreement - then revert
-- (Phase 2) The §4 table still renders as a table in a markdown preview with 8
+- [x] (Phase 2) The §4 table still renders as a table in a markdown preview with 8
   columns
-- (Phase 3) Read `conformance/README.md`'s new subsection as a sibling
+- [x] (Phase 3) Read `conformance/README.md`'s new subsection as a sibling
   implementer: it says what to do with a `retired`-tagged case at each
   version claim
-- (Phase 3) `RATCHET.md`'s paragraph makes clear no ratchet rule changed
-- (Phase 4) The CHANGELOG entry describes the change from a consumer's point of
+- [x] (Phase 3) `RATCHET.md`'s paragraph makes clear no ratchet rule changed
+- [x] (Phase 4) The CHANGELOG entry describes the change from a consumer's point of
   view, not the plan's
-- (Phase 4) px-tbv.9's note is specific enough that its implementer does not
+- [x] (Phase 4) px-tbv.9's note is specific enough that its implementer does not
   have to re-derive any of the three decisions
