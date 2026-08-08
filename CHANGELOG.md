@@ -289,10 +289,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   opcode); the upgraded list short-circuits and follows the
   ECMAScript-aligned `:undefined` rules that ADR-0001 documented for 3.7.0,
   so a right operand that errored or was `:undefined` can now produce a
-  value where it previously produced a `TypeMismatchError`. `and` and `or`
-  keep their rows in the ISA table - `required_isa/1` and `tier/1` still
-  answer for them - and the conformance corpus still carries all five legacy
-  cases.
+  value where it previously produced a `TypeMismatchError`. Because jumps are
+  ISA v2 opcodes, upgrading also raises the list's `required_isa/1` answer
+  from `1` to `2`, so an artifact shared with an implementation still on ISA
+  v1 - which both siblings are - should be upgraded in step with those
+  consumers rather than ahead of them. `and` and `or` keep their rows in the
+  ISA table - `required_isa/1` and `tier/1` still answer for them - and the
+  conformance corpus still carries all five legacy cases.
 
 - **Breaking: the `jason` runtime dependency.**
   `Predicator.Functions.JSONFunctions` now uses Elixir 1.18's built-in `JSON`
