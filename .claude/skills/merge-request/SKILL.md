@@ -129,9 +129,13 @@ trailers on the branch's own commits, falling back to the branch prefix
    the gate - no lowered coverage threshold, no disabled check, no `@tag :skip`.
 
    **Carve-out**, matching `/commit` Step 0: if the diff touches nothing under
-   `lib/`, `test/`, or `src/`, and neither `mix.exs` nor `mix.lock`, there is no
-   gate to run. Skip it and say so in the PR body and the final report, so a
-   skipped gate is never mistaken for a green one.
+   `lib/`, `test/`, `src/`, or `conformance/`, and neither `mix.exs` nor
+   `mix.lock`, there is no gate to run. `conformance/` is in that list because a
+   conformance-only diff touches no Elixir file, so the unamended carve-out
+   would skip `test/predicator/conformance/corpus_freshness_test.exs` - this
+   narrows an existing skip, it is not a new gate step. Skip it and say so in
+   the PR body and the final report, so a skipped gate is never mistaken for a
+   green one.
 
 5. **Check for a changelog entry.** Only when the diff changes observable
    behavior - the public API under `lib/`, or what a predicate source string
@@ -211,6 +215,13 @@ trailers on the branch's own commits, falling back to the branch prefix
      explicitly and name the version it lands at, plus its `docs/isa.md` entry
      and any migration note (ADR-0003). A sibling that has not adopted that
      version is not a blocker on the PR.
+   - **Corpus** - if `conformance/corpus/*.json` or `conformance/manifest.json`
+     moved, say why in the body, naming the cause and the case ids that moved.
+     The corpus is the exported specification siblings verify against
+     (ADR-0003), so a corpus diff a reviewer cannot account for from the PR body
+     is the single most reviewable form of an unintended semantic change - and
+     the reviewer is the only one positioned to catch it, because the suite
+     confirms the corpus is *fresh*, never that the change was *wanted*.
    - The bead references: `Closes px-xxx` for **every** bead the branch's
      trailers name, one per line (and the epic, if they share one)
 
@@ -244,6 +255,10 @@ trailers on the branch's own commits, falling back to the branch prefix
 
 ## Guidelines
 
+- **The generated corpus is never hand-edited.** `conformance/corpus/*.json`
+  and `conformance/manifest.json` are written only by `mix corpus.generate`;
+  the authored source is `conformance/cases/*.json`. See `/commit`'s
+  "Important Context" for the full rule.
 - **The repo allows rebase merging only.** Do not offer or perform a squash
   merge, and do not restructure the branch's commits on the assumption they will
   be squashed. Rebase replays each commit onto `main` with its message intact,

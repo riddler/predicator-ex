@@ -356,15 +356,15 @@ green; that hides the finding instead of recording it.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `git diff main...HEAD --name-only` shows only `.claude/skills/commit/SKILL.md`
+- [x] `git diff main...HEAD --name-only` shows only `.claude/skills/commit/SKILL.md`
       and `.claude/skills/merge-request/SKILL.md`, so the Step 0 carve-out
       genuinely applies to this phase's own commit
-- [ ] No Elixir file is touched, so there is no gate to run - the commit report
+- [x] No Elixir file is touched, so there is no gate to run - the commit report
       says "docs only, no quality gate applicable" rather than implying green
-- [ ] `grep -n "conformance" .claude/skills/commit/SKILL.md
+- [x] `grep -n "conformance" .claude/skills/commit/SKILL.md
       .claude/skills/merge-request/SKILL.md` shows the carve-out list, the
       analysis/body item, and the never-hand-edited rule in both files
-- [ ] `grep -c "ratchet" .claude/skills/commit/SKILL.md
+- [x] `grep -c "ratchet" .claude/skills/commit/SKILL.md
       .claude/skills/merge-request/SKILL.md` returns 0 in both
 
 #### Manual Verification:
@@ -662,3 +662,16 @@ and no coverage to move. The equivalent verification is threefold:
 - statifier-ex `docs/testing.md:78-134` and `CLAUDE.md:125-129` - the sabotage
   practice as written, including its generated-corpus exemption and its stated
   cost
+
+## Deferred Manual Verification
+
+### Phase 1
+
+- [ ] Read Step 0's amended carve-out cold: is it obvious that adding
+      `conformance/` narrows a skip rather than adding a check?
+- [ ] The two skills' statements of the never-hand-edited rule do not
+      contradict `conformance/README.md`'s "How to add a case" - a contributor
+      editing `conformance/cases/*.json` is doing the right thing
+- [ ] The PR-body bullet reads as something a reviewer wants, not as boilerplate
+      an author will paste an empty version of
+- [ ] Nothing added reads as a new gate step

@@ -52,6 +52,12 @@ and what would clear it.
 - User-facing changes get an entry under `## [Unreleased]` in `CHANGELOG.md`
   (Step 1.6). This repo edits that file directly; it has no `changelog.d/`
   fragment directory, so do not import that workflow from other projects.
+- `conformance/corpus/*.json` and `conformance/manifest.json` are **generated
+  output**, written only by `mix corpus.generate`. They are never hand-edited -
+  not to fix a failing test, not to tidy a diff. The authored source is
+  `conformance/cases/*.json`, which *is* hand-edited; that is how a case is
+  added (`conformance/README.md`). A regenerated corpus is committed alongside
+  the change that moved it, in the same commit.
 
 ## CRITICAL OVERRIDE INSTRUCTIONS
 
@@ -82,9 +88,15 @@ is genuinely wrong for this repo is reported to the user, not suppressed.
 
 **Carve-out: a change touching no Elixir code has no gate to run.** If
 `git diff main...HEAD --name-only` (plus unstaged files) touches nothing under
-`lib/`, `test/`, or `src/`, and neither `mix.exs` nor `mix.lock`, the gate has
-nothing to measure - skills, docs, ADRs, and beads exports cannot break a
-build. Skip `mix quality` and review the diff instead.
+`lib/`, `test/`, `src/`, or `conformance/`, and neither `mix.exs` nor
+`mix.lock`, the gate has nothing to measure - skills, docs, ADRs, and beads
+exports cannot break a build. Skip `mix quality` and review the diff instead.
+
+`conformance/` is in that list because a change to `conformance/cases/*.json`
+and its regenerated output touches no Elixir file at all, so the unamended
+carve-out would skip the one test that checks it -
+`test/predicator/conformance/corpus_freshness_test.exs`. This is not a new gate
+step; it stops an existing skip from covering the case the gate exists for.
 
 This carve-out is narrow and it is not a judgment call: one Elixir file in the
 diff and the full gate runs. When it applies, say so in the Step 4 report
@@ -104,6 +116,14 @@ a green gate that never ran.
    - What was refactored or improved internally
    - Whether the ISA moved, and to what version - a bump belongs in the message
      (ADR-0003)
+   - Whether `conformance/corpus/*.json` or `conformance/manifest.json` moved,
+     and **why**. A corpus diff is a change in what the reference implementation
+     computes - it is the exported specification siblings verify against
+     (ADR-0003) - so it is never incidental. Name the cause in the message: the
+     authored case that was added, or the evaluator/compiler change whose
+     semantics moved and the case ids that moved with it. A corpus diff nobody
+     can explain from the message is a semantic change nobody meant to make, and
+     it should stop the commit until it is understood.
 
 ### Step 1.5: Detect Related Beads Issue
 
@@ -214,6 +234,7 @@ Refs: px-xxx
 - Title: simple present tense, s-form ("Adds ...", "Fixes ...", "Implements ...")
 - Body: active voice, same tense as the title ("Adds", not "Added"),
   functional changes highlighted
+- **A corpus diff is named in the body**, with its cause. See Step 1.
 
 **HARD limits** - verify each before presenting the message, and rewrite until
 all three hold. These are requirements, not guidelines:
@@ -388,6 +409,15 @@ means the change is not finished, and quietly repairing it turns one reviewable
 commit into a commit plus an unreviewed fix. Report the failing stages with
 their `file:line` findings and stop. The exception is a formatting-only failure,
 which the gate's own Format stage resolves without changing behavior.
+
+### If the corpus is stale
+
+`conformance/ is stale - run \`mix corpus.generate\` and review the diff:`
+means the checked-in corpus no longer matches what the current code produces.
+Run `mix corpus.generate`, then **read the diff before staging it** - it says,
+case by case, what the change did to the exported specification. Never edit a
+file under `conformance/corpus/` or `conformance/manifest.json` to make this
+green; that hides the finding instead of recording it.
 
 ### If Files Are Missing After Commit
 
