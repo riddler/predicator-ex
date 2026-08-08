@@ -55,7 +55,27 @@ defmodule Predicator.Errors.TypeMismatchError do
   """
   @spec unary(atom(), atom(), atom(), any()) :: t()
   def unary(operation, expected, got, value) do
-    expected_text = Predicator.Errors.expected_type_name(expected)
+    unary(operation, expected, got, value, Predicator.Errors.expected_type_name(expected))
+  end
+
+  @doc """
+  Creates a type mismatch error for a unary operation that accepts more than one
+  type, spelling the accepted set out in the message while `expected` stays the
+  single normative atom a consumer matches on.
+
+  `store` accepts a string or an integer segment but reports `expected: :string`,
+  the mirror of `bracket_access`'s key rule (`docs/isa.md` section 5); a message
+  built from the atom alone would tell a user something false about what the
+  opcode accepts.
+
+  ## Examples
+
+      iex> error = Predicator.Errors.TypeMismatchError.unary(:store, :string, :boolean, true, "a string or an integer")
+      iex> {error.expected, error.message}
+      {:string, "Store requires a string or an integer, got true (boolean)"}
+  """
+  @spec unary(atom(), atom(), atom(), any(), String.t()) :: t()
+  def unary(operation, expected, got, value, expected_text) do
     got_text = Predicator.Errors.type_name_with_value(got, value)
     operation_name = Predicator.Errors.operation_display_name(operation)
 

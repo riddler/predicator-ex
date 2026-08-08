@@ -129,6 +129,15 @@ defmodule Predicator.ExecuteTest do
       assert {:error, %Errors.EvaluationError{position: {1, 8}, span: {{1, 8}, {1, 15}}}, _ctx} =
                Predicator.execute("a = 1; a.b = 2; d = 3", %{}, spans: true)
     end
+
+    test "a bad segment blames the lhs root and names both accepted types" do
+      assert {:error,
+              %Errors.TypeMismatchError{
+                expected: :string,
+                position: {1, 1},
+                message: "Store requires a string or an integer, got true (boolean)"
+              }, _ctx} = Predicator.execute("a[true] = 1", %{"a" => %{}})
+    end
   end
 
   describe "execute/2,3 - halt shapes" do

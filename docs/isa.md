@@ -467,8 +467,9 @@ reference survives an edit above it.
   end pads with `:undefined`, and the leaf is always overwritten. **Pushes
   nothing.** Fewer than `n + 1` values on the stack is `EvaluationError`
   insufficient operands. A segment that is neither a string nor an integer
-  is `TypeMismatchError` (operation `store`, expected `string`), the mirror
-  of `bracket_access`'s key rule. A write that cannot be performed is
+  is `TypeMismatchError` (operation `store`, expected `string`, the message
+  naming string and integer as the accepted segment types), the mirror of
+  `bracket_access`'s key rule. A write that cannot be performed is
   `EvaluationError` with reason `not_assignable` (empty path, only reachable
   from a hand-built `["store", 0]`), `not_a_container` (an interior segment
   holds a scalar), or `invalid_index` (a negative list index). This is the
