@@ -51,9 +51,14 @@ iex> Predicator.evaluate(compiled, %{"score" => 95, "threshold" => 80})
 `compile_with_positions/1` and `compile_with_spans/1` return a
 `%Predicator.Compiled{}` carrying the instructions and their source-location
 table as one value, so runtime errors keep their positions without the caller
-re-attaching anything. Persist `compiled.instructions`, not the struct - the
-instruction list is the portable artifact; the table holds offsets into the
-source string and is meaningless without it.
+re-attaching anything.
+
+Persist `compiled.instructions`, not the struct - the instruction list is the
+portable artifact; the table holds offsets into the source string and is
+meaningless without it. Want positions back after a round trip? Persist the
+source too and recompile with `compile_with_positions/1` on load, rather than
+storing the table - a table compiled from one source silently mismatches a
+different source's instructions.
 
 ## Documentation
 
