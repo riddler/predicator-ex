@@ -77,22 +77,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Predicator.Errors.TypeMismatchError`, and
   `Predicator.Errors.UndefinedVariableError`, defaulting to `nil`.
 
-### Fixed
-
-- **`bracket_access` on a list with a non-integer key no longer crashes.**
-  `xs[flag]` against a list target with a boolean (or any other non-integer)
-  key raised `FunctionClauseError` from ordinary user-authored source instead
-  of returning an error value; it now returns `{:error,
-  %Predicator.Errors.TypeMismatchError{}}` with `expected: :integer`. The same
-  crash via `.property` (the `access` opcode) against a list target now pushes
-  `:undefined`, matching that opcode's existing "never an error" contract.
-- **`docs/isa.md`'s `bracket_access` bullet corrected**: a boolean key against
-  a map target has always been an accepted key, not a `TypeMismatchError` -
-  the bullet previously left a reader to guess whether a boolean fell on the
-  atom side or the rejected side of that line. This is a documentation
-  correction, not a behavior change: no ISA version change and no existing
-  instruction list changes meaning.
-
 - `Predicator.Errors.put_position/2` accepts a span: it sets `:span` to the span
   and `:position` to the span's start, so a caller reading only `:position`
   still gets a usable caret under `spans: true`.
@@ -300,6 +284,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   at the variable's own token. It was the one runtime error type whose
   `:position` was always `nil`. An instruction-list caller who passes no
   `positions:` still sees `nil`.
+
+- **`bracket_access` on a list with a non-integer key no longer crashes.**
+  `xs[flag]` against a list target with a boolean (or any other non-integer)
+  key raised `FunctionClauseError` from ordinary user-authored source instead
+  of returning an error value; it now returns `{:error,
+  %Predicator.Errors.TypeMismatchError{}}` with `expected: :integer`. The same
+  crash via `.property` (the `access` opcode) against a list target now pushes
+  `:undefined`, matching that opcode's existing "never an error" contract.
+
+- **`docs/isa.md`'s `bracket_access` bullet corrected**: a boolean key against
+  a map target has always been an accepted key, not a `TypeMismatchError` -
+  the bullet previously left a reader to guess whether a boolean fell on the
+  atom side or the rejected side of that line. This is a documentation
+  correction, not a behavior change: no ISA version change and no existing
+  instruction list changes meaning.
 
 ### Changed
 
