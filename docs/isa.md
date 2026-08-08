@@ -450,7 +450,9 @@ What a reader might expect to find here and will not:
   any implementation runs today is an expression program.
 - Source positions and spans - these travel in an Elixir-side side table,
   never serialized as part of the instruction list. See
-  `docs/architecture.md`'s Source Positions and Source Spans sections.
+  `docs/reference/ast.md` for the blame-token and span tables, and
+  `docs/reference/language.md`'s "Error Shapes" for how they surface on an
+  error.
 - Surface syntax, including the `=` grammar break
   ([ADR-0002](adr/0002-the-equals-grammar-break.md)). Both `=` and `==`
   compile to `["compare", "EQ"]`, so no instruction-level divergence exists
