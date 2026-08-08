@@ -173,7 +173,19 @@ out below.
   `compiled.instructions`, not the struct. Without it the envelope invites
   exactly the mistake it was built to prevent, in mirror image: a consumer that
   serializes the whole struct writes source offsets into a stored artifact where
-  they will outlive the source they index into.
+  they will outlive the source they index into. That advice also has to answer
+  the round-trip question it otherwise leaves open: a consumer who wants
+  positions back later persists the *source* alongside the instructions and
+  recompiles with `compile_with_positions/1` (or `compile_with_spans/1`) on
+  load, rather than persisting the table. Recompiling the same source is
+  deterministic, so this is drift-proof, where persisting the table is not - a
+  table is a fact derived from the source it was compiled from, the same
+  reasoning this ADR already applies to reject an `isa_version` field, and
+  nothing checks that a persisted table still matches the instruction list it
+  is attached to. A table compiled from one source attached to a different
+  source's instructions produces no error, just a confidently wrong position,
+  which is strictly worse than the honest `position: nil` a bare instruction
+  list reports.
 - **The silent-loss failure mode does not disappear, it moves and shrinks.** A
   consumer who deliberately unwraps the envelope, stores the bare list, and
   evaluates that later still gets `position: nil`, and correctly so - the source
@@ -202,7 +214,12 @@ Recorded rather than settled; none of them block the implementation.
   because it changes the value's size class and its privacy profile (the source
   is user-authored text, which a caller may not want retained), and because no
   current call site needs it. If a consumer turns up that does, it is an
-  additive field.
+  additive field. The storage advice above answers the persistence half of this
+  question without adding the field: a consumer that wants positions back after
+  a round trip persists the source *itself*, outside the envelope, and
+  recompiles on load - which is available today, with no struct change, and
+  sidesteps the privacy objection by leaving the choice to store the source at
+  all in the consumer's hands rather than the library's.
 - **Does `Predicator.Compiled` want a public constructor** (`new/2`) for a
   consumer who stored a bare list and wants to re-attach a table it kept
   separately? Probably yes, and it is cheap, but nothing in this repo needs it

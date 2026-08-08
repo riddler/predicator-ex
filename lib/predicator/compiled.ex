@@ -19,6 +19,18 @@ defmodule Predicator.Compiled do
   A program loaded back from storage as a bare list evaluates fine and reports
   `position: nil` on runtime errors, which is correct - the source is gone.
 
+  A consumer that wants positions back after a round trip should persist the
+  *source*, not the table, and recompile with `compile_with_positions/1` (or
+  `compile_with_spans/1`) on load - recompiling the same source is
+  deterministic and yields an identical table every time. The table itself is
+  a derived fact, the same reasoning ADR-0009 already applied to reject an
+  `isa_version` field: a cached copy of a derived fact can disagree with the
+  thing it claims to describe. Nothing checks that a `positions` table
+  actually came from the `instructions` list it is attached to, so a table
+  compiled from one source and attached to another source's instructions
+  produces no error - just a confidently wrong position, which is worse than
+  the honest `position: nil` an unpaired instruction list reports.
+
   ## Examples
 
       iex> compiled = Predicator.Compiled.new(
@@ -29,6 +41,14 @@ defmodule Predicator.Compiled do
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
       iex> compiled.positions
       %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
+
+  Recompiling the same source is deterministic, which is what makes
+  "persist the source, recompile on load" a sound way to get positions back:
+
+      iex> {:ok, first} = Predicator.compile_with_positions("score > 85")
+      iex> {:ok, second} = Predicator.compile_with_positions("score > 85")
+      iex> first == second
+      true
   """
 
   alias Predicator.Types

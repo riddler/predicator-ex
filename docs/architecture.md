@@ -294,7 +294,14 @@ table}` rather than a tuple (ADR-0009), so the table cannot be dropped between
 compilation and evaluation by accident. `Compiler.to_instructions_with_positions/2`
 itself is unchanged and still returns the tuple; the envelope is a façade
 concept above it. What a consumer persists is `compiled.instructions`, never
-the struct.
+the struct - a consumer that wants positions back after a round trip persists
+the source alongside it and recompiles with `compile_with_positions/1` on
+load, rather than storing the table itself. Recompiling the same source is
+deterministic, so this is drift-proof; the table is a fact derived from the
+source (the same reasoning ADR-0009 gives for omitting an `isa_version`
+field), and nothing checks that a stored table still matches the instruction
+list it is attached to, so a mismatched pair produces a confidently wrong
+position instead of an error.
 
 A node with a `nil` position contributes no table entry, so a position-free AST
 compiles to an empty table.
@@ -430,7 +437,12 @@ Like the position table, the span table is an **Elixir-side companion value**:
 no opcode is added, no instruction gains an element, and nothing is
 serialized, so ADR-0001's interchange guarantee and any stored compiled
 artifacts are untouched - what a consumer persists is `compiled.instructions`,
-never the struct.
+never the struct. A consumer that wants spans back after a round trip
+persists the source and recompiles with `compile_with_spans/1` on load
+instead of storing the table: recompiling the same source is deterministic,
+while a stored table has no integrity check against the instructions it is
+attached to, so a mismatched pair reports a confidently wrong span rather
+than the honest `nil` an unpaired instruction list gives.
 
 **Runtime errors.** `EvaluationError`, `TypeMismatchError`, and
 `UndefinedVariableError` gained an optional `:span` alongside `:position`.
@@ -515,6 +527,13 @@ envelope exists to prevent (ADR-0009).
   is `compiled.instructions`, byte-identical to `compile/1`'s output; spans
   are offsets into a source string and are meaningless to anything that does
   not also hold it.
+- **A consumer that wants positions or spans back after a round trip persists
+  the source, not the table**, and recompiles with `compile_with_positions/1`
+  or `compile_with_spans/1` on load. Recompiling the same source is
+  deterministic, so this is drift-proof; a persisted table has no integrity
+  check, so attaching a table compiled from one source to a different
+  source's instructions produces no error, just a confidently wrong position
+  - worse than the `position: nil` a bare instruction list honestly reports.
 
 ### `Predicator.Context` Struct (v3.8.0, unreleased)
 
