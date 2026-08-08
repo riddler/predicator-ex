@@ -497,14 +497,14 @@ defmodule PredicatorTest do
       ast = {:comparison, :eq, {:identifier, "active", nil}, {:literal, true, nil}, nil}
 
       # Test spacing options
-      assert Predicator.decompile(ast, spacing: :normal) == "active = true"
-      assert Predicator.decompile(ast, spacing: :compact) == "active=true"
-      assert Predicator.decompile(ast, spacing: :verbose) == "active  =  true"
+      assert Predicator.decompile(ast, spacing: :normal) == "active == true"
+      assert Predicator.decompile(ast, spacing: :compact) == "active==true"
+      assert Predicator.decompile(ast, spacing: :verbose) == "active  ==  true"
 
       # Test parentheses options
-      assert Predicator.decompile(ast, parentheses: :minimal) == "active = true"
-      assert Predicator.decompile(ast, parentheses: :explicit) == "(active = true)"
-      assert Predicator.decompile(ast, parentheses: :none) == "active = true"
+      assert Predicator.decompile(ast, parentheses: :minimal) == "active == true"
+      assert Predicator.decompile(ast, parentheses: :explicit) == "(active == true)"
+      assert Predicator.decompile(ast, parentheses: :none) == "active == true"
     end
 
     test "handles string literals correctly" do

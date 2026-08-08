@@ -90,7 +90,9 @@ defmodule Predicator.Compiler do
 
   ## Parameters
 
-  - `ast` - The Abstract Syntax Tree to convert
+  - `ast` - The Abstract Syntax Tree to convert - a bare expression, or a
+    `t:Predicator.Parser.program/0`, which renders as its statements joined by
+    `"; "`
   - `opts` - Optional formatting options:
     - `:parentheses` - `:minimal` (default) | `:explicit` | `:none`
     - `:spacing` - `:normal` (default) | `:compact` | `:verbose`
@@ -113,7 +115,7 @@ defmodule Predicator.Compiler do
       iex> Predicator.Compiler.to_string(ast, parentheses: :explicit)
       "(age > 21)"
   """
-  @spec to_string(Parser.ast(), keyword()) :: binary()
+  @spec to_string(Parser.ast() | Parser.program(), keyword()) :: binary()
   def to_string(ast, opts \\ []) do
     Visitor.accept(ast, StringVisitor, opts)
   end

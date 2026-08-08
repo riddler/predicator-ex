@@ -486,7 +486,9 @@ defmodule Predicator do
 
   ## Parameters
 
-  - `ast` - The Abstract Syntax Tree to convert
+  - `ast` - The Abstract Syntax Tree to convert - a bare expression, or a
+    `t:Predicator.Parser.program/0`, which renders as its statements joined by
+    `"; "`
   - `opts` - Optional formatting options:
     - `:parentheses` - `:minimal` (default) | `:explicit` | `:none`
     - `:spacing` - `:normal` (default) | `:compact` | `:verbose`
@@ -507,9 +509,9 @@ defmodule Predicator do
 
       iex> ast = {:comparison, :eq, {:identifier, "active", nil}, {:literal, true, nil}, nil}
       iex> Predicator.decompile(ast, parentheses: :explicit, spacing: :verbose)
-      "(active  =  true)"
+      "(active  ==  true)"
   """
-  @spec decompile(Parser.ast(), keyword()) :: binary()
+  @spec decompile(Parser.ast() | Parser.program(), keyword()) :: binary()
   def decompile(ast, opts \\ []) do
     Compiler.to_string(ast, opts)
   end

@@ -184,7 +184,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
       ast = {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == ~s(name = "John")
+      assert result == ~s(name == "John")
     end
 
     test "converts not equal comparison" do
@@ -205,14 +205,14 @@ defmodule Predicator.Visitors.StringVisitorTest do
       ast = {:comparison, :eq, {:identifier, "score", nil}, {:identifier, "threshold", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score = threshold"
+      assert result == "score == threshold"
     end
 
     test "converts boolean comparisons" do
       ast = {:comparison, :eq, {:identifier, "active", nil}, {:literal, true, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "active = true"
+      assert result == "active == true"
     end
   end
 
@@ -244,7 +244,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
         {:lt, "score  <  85"},
         {:gte, "score  >=  85"},
         {:lte, "score  <=  85"},
-        {:eq, "score  =  85"},
+        {:eq, "score  ==  85"},
         {:ne, "score  !=  85"}
       ]
 
@@ -428,7 +428,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       result = StringVisitor.visit(ast, [])
 
-      assert result == ~s(message = "He said \\"hello\\"")
+      assert result == ~s(message == "He said \\"hello\\"")
     end
 
     test "handles empty string comparisons" do
@@ -493,7 +493,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       result = StringVisitor.visit(ast, [])
 
-      assert result == ~s(role = "admin" OR role = "manager")
+      assert result == ~s(role == "admin" OR role == "manager")
     end
 
     test "formats logical NOT with comparison" do
@@ -503,7 +503,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       result = StringVisitor.visit(ast, [])
 
-      assert result == "NOT expired = true"
+      assert result == "NOT expired == true"
     end
 
     test "formats nested logical NOT" do
@@ -523,7 +523,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score > 85 AND age >= 18 OR admin = true"
+      assert result == "score > 85 AND age >= 18 OR admin == true"
     end
 
     test "formats logical operators with compact spacing" do
@@ -770,7 +770,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
       ast = {:comparison, :eq, {:identifier, "x", nil}, {:identifier, "y", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "x = y"
+      assert result == "x == y"
     end
 
     test "converts inequality (!=) with equality syntax" do
@@ -784,14 +784,14 @@ defmodule Predicator.Visitors.StringVisitorTest do
       ast = {:comparison, :eq, {:literal, 1, nil}, {:literal, 1, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit)
 
-      assert result == "(1 = 1)"
+      assert result == "(1 == 1)"
     end
 
     test "converts equality with compact spacing" do
       ast = {:comparison, :eq, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
       result = StringVisitor.visit(ast, spacing: :compact)
 
-      assert result == "a=b"
+      assert result == "a==b"
     end
   end
 
@@ -822,7 +822,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
       ast = {:unary, :bang, equality, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "!x + y = 10"
+      assert result == "!x + y == 10"
     end
   end
 
@@ -850,6 +850,71 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       double_key = {:object, [{{:object_key, "a b", :double, nil}, {:literal, 1, nil}}], nil}
       assert StringVisitor.visit(double_key, []) == ~s({"a b": 1})
+    end
+  end
+
+  describe "visit/2 - program and assignment round-trip" do
+    test "single-statement program round-trips" do
+      assert_program_round_trip("a = 1")
+    end
+
+    test "multi-statement program round-trips" do
+      assert_program_round_trip("a = 1; b = a + 1")
+    end
+
+    test "trailing semicolon normalizes away on re-parse" do
+      {:ok, ast} = Predicator.parse_program("a = 1;")
+      decompiled = Predicator.decompile(ast)
+
+      assert decompiled == "a = 1"
+      assert Predicator.parse_program(decompiled) == {:ok, ast}
+    end
+
+    test "assignment to a property/bracket chain round-trips" do
+      assert_program_round_trip("user.items[0].name = 'Ada'")
+    end
+
+    test "mixed assignment and expression statements round-trip" do
+      assert_program_round_trip("a = 1; b = a + 1; a > 0")
+    end
+
+    test "renders a program as its statements joined by \"; \"" do
+      {:ok, ast} = Predicator.parse_program("a = 1; b = 2; a > b")
+      assert StringVisitor.visit(ast, []) == "a = 1; b = 2; a > b"
+    end
+
+    test "renders an assignment as \"lhs = rhs\"" do
+      ast = {:assignment, {:identifier, "a", nil}, {:literal, 1, nil}, nil}
+      assert StringVisitor.visit(ast, []) == "a = 1"
+    end
+
+    test "statement separator and assignment spacing ignore the :spacing option" do
+      {:ok, ast} = Predicator.parse_program("a = 1; b = 2")
+      assert StringVisitor.visit(ast, spacing: :compact) == "a = 1; b = 2"
+      assert StringVisitor.visit(ast, spacing: :verbose) == "a = 1; b = 2"
+    end
+
+    defp assert_program_round_trip(source) do
+      {:ok, ast} = Predicator.parse_program(source)
+      decompiled = Predicator.decompile(ast)
+
+      assert Predicator.parse_program(decompiled) == {:ok, ast}
+    end
+  end
+
+  describe "visit/2 - :eq renders as valid 4.0 source" do
+    test "a hand-built :eq comparison renders \"==\"" do
+      ast = {:comparison, :eq, {:identifier, "a", nil}, {:literal, 1, nil}, nil}
+
+      assert StringVisitor.visit(ast, []) == "a == 1"
+    end
+
+    test "the rendered string re-parses to :equal_equal, not :eq" do
+      ast = {:comparison, :eq, {:identifier, "a", nil}, {:literal, 1, nil}, nil}
+      decompiled = StringVisitor.visit(ast, [])
+
+      assert {:ok, {:comparison, :equal_equal, _left, _right, _pos}} =
+               Predicator.parse(decompiled)
     end
   end
 end

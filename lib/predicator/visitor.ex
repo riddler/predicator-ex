@@ -62,7 +62,7 @@ defmodule Predicator.Visitor do
       iex> Predicator.Visitor.accept(ast, MyVisitor)
       42
   """
-  @spec accept(Parser.ast(), module(), keyword()) :: term()
+  @spec accept(Parser.ast() | Parser.program(), module(), keyword()) :: term()
   def accept(ast_node, visitor_module, opts \\ []) do
     visitor_module.visit(ast_node, opts)
   end
