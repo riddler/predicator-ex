@@ -41,9 +41,9 @@ defmodule Predicator.Integration.PositionsTest do
     test "the instruction lists are identical across the corpus" do
       for expression <- @corpus do
         assert {:ok, plain} = Predicator.compile(expression)
-        assert {:ok, positioned, _table} = Predicator.compile_with_positions(expression)
+        assert {:ok, compiled} = Predicator.compile_with_positions(expression)
 
-        assert plain == positioned,
+        assert plain == compiled.instructions,
                "instruction list moved for #{inspect(expression)}"
       end
     end
@@ -52,17 +52,18 @@ defmodule Predicator.Integration.PositionsTest do
   describe "table coverage" do
     test "every instruction index has an entry across the corpus" do
       for expression <- @corpus do
-        assert {:ok, instructions, table} = Predicator.compile_with_positions(expression)
-        expected = MapSet.new(0..(length(instructions) - 1)//1)
+        assert {:ok, compiled} = Predicator.compile_with_positions(expression)
+        expected = MapSet.new(0..(length(compiled.instructions) - 1)//1)
 
-        assert MapSet.new(Map.keys(table)) == expected,
+        assert MapSet.new(Map.keys(compiled.positions)) == expected,
                "table did not cover every index for #{inspect(expression)}"
       end
     end
 
     test "every position names a real line and column in the source" do
       for expression <- @corpus do
-        {:ok, _instructions, table} = Predicator.compile_with_positions(expression)
+        {:ok, compiled} = Predicator.compile_with_positions(expression)
+        table = compiled.positions
         lines = String.split(expression, "\n")
 
         for {index, {line, column}} <- table do
@@ -96,10 +97,9 @@ defmodule Predicator.Integration.PositionsTest do
       ]
 
       for {expression, expected_char} <- cases do
-        {:ok, instructions, positions} = Predicator.compile_with_positions(expression)
+        {:ok, compiled} = Predicator.compile_with_positions(expression)
 
-        assert {:error, error} =
-                 Predicator.evaluate(instructions, %{"name" => "text"}, positions: positions)
+        assert {:error, error} = Predicator.evaluate(compiled, %{"name" => "text"})
 
         {line, column} = error.position
         source_line = expression |> String.split("\n") |> Enum.at(line - 1)

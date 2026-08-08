@@ -4,13 +4,13 @@ defmodule Predicator.EvaluatorPositionsTest do
   alias Predicator.Evaluator
 
   defp error_for(expression, context \\ %{}, opts \\ []) do
-    {:ok, instructions, positions} = Predicator.compile_with_positions(expression)
+    {:ok, compiled} = Predicator.compile_with_positions(expression)
 
     assert {:error, error} =
              Predicator.evaluate(
-               instructions,
+               compiled.instructions,
                context,
-               Keyword.put_new(opts, :positions, positions)
+               Keyword.put_new(opts, :positions, compiled.positions)
              )
 
     error
@@ -150,13 +150,13 @@ defmodule Predicator.EvaluatorPositionsTest do
 
   describe "spans attached to runtime errors" do
     defp error_for_spans(expression, context \\ %{}, opts \\ []) do
-      {:ok, instructions, spans} = Predicator.compile_with_spans(expression)
+      {:ok, compiled} = Predicator.compile_with_spans(expression)
 
       assert {:error, error} =
                Predicator.evaluate(
-                 instructions,
+                 compiled.instructions,
                  context,
-                 Keyword.put_new(opts, :positions, spans)
+                 Keyword.put_new(opts, :positions, compiled.positions)
                )
 
       error
@@ -187,10 +187,13 @@ defmodule Predicator.EvaluatorPositionsTest do
     end
 
     test "the on_unbound: :error load site reports the variable's own span" do
-      {:ok, instructions, spans} = Predicator.compile_with_spans("missing + 1")
+      {:ok, compiled} = Predicator.compile_with_spans("missing + 1")
 
       assert {:error, error} =
-               Predicator.evaluate(instructions, %{}, positions: spans, on_unbound: :error)
+               Predicator.evaluate(compiled.instructions, %{},
+                 positions: compiled.positions,
+                 on_unbound: :error
+               )
 
       assert %Predicator.Errors.UndefinedVariableError{variable: "missing"} = error
       assert error.span == {{1, 1}, {1, 8}}
