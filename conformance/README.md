@@ -261,10 +261,9 @@ above.
 ### Also out of scope
 
 These are not opcode-coverage exclusions - the opcodes involved are covered
-in their ordinary form - but specific shapes this corpus does not exercise,
-structurally rather than as an exclusion list: ordering
-comparisons (`GT`/`LT`/`GTE`/`LTE`, not `EQ`/`NE`/`STRICT_EQ`/`STRICT_NE`)
-between two plain maps (`docs/isa.md` section 5 - the Elixir reference orders
-these by an internal term order a sibling should not try to reproduce), and
-the `on_unbound` evaluation option (`docs/isa.md` section 2 - not part of the
+in their ordinary form - but specific shapes this corpus does not exercise:
+ordering comparisons (`GT`/`LT`/`GTE`/`LTE`, not
+`EQ`/`NE`/`STRICT_EQ`/`STRICT_NE`) between two plain maps (`docs/isa.md`
+section 5 - the Elixir reference orders these by an internal term order a
+sibling should not try to reproduce), and the `on_unbound` evaluation option (`docs/isa.md` section 2 - not part of the
 ISA; every case in this corpus runs under the default option).
