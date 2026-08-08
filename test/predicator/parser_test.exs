@@ -77,16 +77,20 @@ defmodule Predicator.ParserTest do
     end
 
     test "parses equality comparison" do
-      {:ok, tokens} = Lexer.tokenize("name = \"John\"")
+      {:ok, tokens} = Lexer.tokenize("name == \"John\"")
 
-      expected = {:comparison, :eq, {:identifier, "name"}, {:string_literal, "John", :double}}
+      expected =
+        {:comparison, :equal_equal, {:identifier, "name"}, {:string_literal, "John", :double}}
+
       assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses equality comparison with single quotes" do
-      {:ok, tokens} = Lexer.tokenize("name = 'John'")
+      {:ok, tokens} = Lexer.tokenize("name == 'John'")
 
-      expected = {:comparison, :eq, {:identifier, "name"}, {:string_literal, "John", :single}}
+      expected =
+        {:comparison, :equal_equal, {:identifier, "name"}, {:string_literal, "John", :single}}
+
       assert parse_positionless(tokens) == {:ok, expected}
     end
 
@@ -107,9 +111,9 @@ defmodule Predicator.ParserTest do
     end
 
     test "parses boolean comparison" do
-      {:ok, tokens} = Lexer.tokenize("active = true")
+      {:ok, tokens} = Lexer.tokenize("active == true")
 
-      expected = {:comparison, :eq, {:identifier, "active"}, {:literal, true}}
+      expected = {:comparison, :equal_equal, {:identifier, "active"}, {:literal, true}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
   end
@@ -423,21 +427,23 @@ defmodule Predicator.ParserTest do
     test "parses simple OR expression" do
       tokens = [
         {:identifier, 1, 1, 4, "role"},
-        {:eq, 1, 6, 1, "="},
-        {:string, 1, 8, 7, "admin", :double},
-        {:or_op, 1, 16, 2, "OR"},
-        {:identifier, 1, 19, 4, "role"},
-        {:eq, 1, 24, 1, "="},
-        {:string, 1, 26, 9, "manager", :double},
-        {:eof, 1, 36, 0, nil}
+        {:equal_equal, 1, 6, 2, "=="},
+        {:string, 1, 9, 7, "admin", :double},
+        {:or_op, 1, 17, 2, "OR"},
+        {:identifier, 1, 20, 4, "role"},
+        {:equal_equal, 1, 25, 2, "=="},
+        {:string, 1, 28, 9, "manager", :double},
+        {:eof, 1, 38, 0, nil}
       ]
 
       result = parse_positionless(tokens)
 
       assert {:ok,
               {:logical_or,
-               {:comparison, :eq, {:identifier, "role"}, {:string_literal, "admin", :double}},
-               {:comparison, :eq, {:identifier, "role"}, {:string_literal, "manager", :double}}}} =
+               {:comparison, :equal_equal, {:identifier, "role"},
+                {:string_literal, "admin", :double}},
+               {:comparison, :equal_equal, {:identifier, "role"},
+                {:string_literal, "manager", :double}}}} =
                result
     end
 
@@ -445,14 +451,16 @@ defmodule Predicator.ParserTest do
       tokens = [
         {:not_op, 1, 1, 3, "NOT"},
         {:identifier, 1, 5, 7, "expired"},
-        {:eq, 1, 13, 1, "="},
-        {:boolean, 1, 15, 4, true},
-        {:eof, 1, 19, 0, nil}
+        {:equal_equal, 1, 13, 2, "=="},
+        {:boolean, 1, 16, 4, true},
+        {:eof, 1, 20, 0, nil}
       ]
 
       result = parse_positionless(tokens)
 
-      assert {:ok, {:logical_not, {:comparison, :eq, {:identifier, "expired"}, {:literal, true}}}} =
+      assert {:ok,
+              {:logical_not,
+               {:comparison, :equal_equal, {:identifier, "expired"}, {:literal, true}}}} =
                result
     end
 
@@ -619,7 +627,7 @@ defmodule Predicator.ParserTest do
     end
 
     test "complex mixed expression with comparisons and logical operators" do
-      # score > 85 AND age >= 18 OR admin = true
+      # score > 85 AND age >= 18 OR admin == true
       tokens = [
         {:identifier, 1, 1, 5, "score"},
         {:gt, 1, 7, 1, ">"},
@@ -630,9 +638,9 @@ defmodule Predicator.ParserTest do
         {:integer, 1, 23, 2, 18},
         {:or_op, 1, 26, 2, "OR"},
         {:identifier, 1, 29, 5, "admin"},
-        {:eq, 1, 35, 1, "="},
-        {:boolean, 1, 37, 4, true},
-        {:eof, 1, 41, 0, nil}
+        {:equal_equal, 1, 35, 2, "=="},
+        {:boolean, 1, 38, 4, true},
+        {:eof, 1, 42, 0, nil}
       ]
 
       result = parse_positionless(tokens)
@@ -641,7 +649,7 @@ defmodule Predicator.ParserTest do
               {:logical_or,
                {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
                 {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}},
-               {:comparison, :eq, {:identifier, "admin"}, {:literal, true}}}} = result
+               {:comparison, :equal_equal, {:identifier, "admin"}, {:literal, true}}}} = result
     end
   end
 

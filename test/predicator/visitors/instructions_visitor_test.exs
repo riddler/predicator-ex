@@ -324,7 +324,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     test "works with logical OR expression" do
       alias Predicator.Lexer
 
-      {:ok, tokens} = Lexer.tokenize(~s(role = "admin" OR role = "manager"))
+      {:ok, tokens} = Lexer.tokenize(~s(role == "admin" OR role == "manager"))
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
@@ -343,7 +343,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     test "works with logical NOT expression" do
       alias Predicator.Lexer
 
-      {:ok, tokens} = Lexer.tokenize("NOT expired = true")
+      {:ok, tokens} = Lexer.tokenize("NOT expired == true")
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])

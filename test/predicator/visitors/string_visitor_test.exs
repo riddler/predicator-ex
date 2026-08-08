@@ -311,7 +311,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
     test "round-trip with string comparison" do
       alias Predicator.Lexer
 
-      original = ~s(name = "John")
+      original = ~s(name == "John")
       {:ok, tokens} = Lexer.tokenize(original)
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
@@ -323,7 +323,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
     test "round-trip with boolean comparison" do
       alias Predicator.Lexer
 
-      original = "active = true"
+      original = "active == true"
       {:ok, tokens} = Lexer.tokenize(original)
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
@@ -340,7 +340,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
         "x < 5",
         "x >= 5",
         "x <= 5",
-        "x = 5",
+        "x == 5",
         "x != 5"
       ]
 
@@ -368,7 +368,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
     test "round-trip with chained property access" do
       alias Predicator.Lexer
 
-      original = ~s(user.profile.email = "test@example.com")
+      original = ~s(user.profile.email == "test@example.com")
       {:ok, tokens} = Lexer.tokenize(original)
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
@@ -619,7 +619,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
     test "round-trip with logical OR expression" do
       alias Predicator.Lexer
 
-      expression = ~s(role = "admin" OR role = "manager")
+      expression = ~s(role == "admin" OR role == "manager")
       {:ok, tokens} = Lexer.tokenize(expression)
       {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])
@@ -630,7 +630,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
     test "round-trip with logical NOT expression" do
       alias Predicator.Lexer
 
-      expression = "NOT expired = true"
+      expression = "NOT expired == true"
       {:ok, tokens} = Lexer.tokenize(expression)
       {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])
@@ -641,7 +641,7 @@ defmodule Predicator.Visitors.StringVisitorTest do
     test "round-trip with complex logical expression" do
       alias Predicator.Lexer
 
-      expression = "score > 85 AND age >= 18 OR admin = true"
+      expression = "score > 85 AND age >= 18 OR admin == true"
       {:ok, tokens} = Lexer.tokenize(expression)
       {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])

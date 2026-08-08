@@ -210,7 +210,6 @@ defmodule Predicator.StrictEqualityTest do
 
     test "preserves operator distinction in round-trip" do
       expressions = [
-        "x = y",
         "x == y",
         "x === y",
         "x != y",

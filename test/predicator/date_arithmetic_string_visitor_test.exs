@@ -60,12 +60,12 @@ defmodule Predicator.DateArithmeticStringVisitorTest do
   describe "date arithmetic in complex expressions" do
     test "date arithmetic in comparisons" do
       assert_round_trip("Date.now() + 1h > #2024-01-15#")
-      assert_round_trip("#2024-01-15# - 3d = #2024-01-12#")
+      assert_round_trip("#2024-01-15# - 3d == #2024-01-12#")
     end
 
     test "date arithmetic in logical expressions" do
-      assert_round_trip("#2024-01-15# + 1w > Date.now() AND status = 'active'")
-      assert_round_trip("deadline - 3d < Date.now() OR urgent = true")
+      assert_round_trip("#2024-01-15# + 1w > Date.now() AND status == 'active'")
+      assert_round_trip("deadline - 3d < Date.now() OR urgent == true")
     end
 
     test "simple nested expressions" do

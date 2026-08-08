@@ -147,7 +147,7 @@ defmodule Predicator.ObjectIntegrationTest do
       # Complex boolean with object comparisons
       result =
         Predicator.evaluate(
-          "(user1 == {role: \"admin\", active: true}) AND (user2.active = true)",
+          "(user1 == {role: \"admin\", active: true}) AND (user2.active == true)",
           context
         )
 
@@ -155,7 +155,7 @@ defmodule Predicator.ObjectIntegrationTest do
 
       result =
         Predicator.evaluate(
-          "(user1 != admin_role) OR (user2.role = \"admin\")",
+          "(user1 != admin_role) OR (user2.role == \"admin\")",
           context
         )
 
@@ -225,7 +225,7 @@ defmodule Predicator.ObjectIntegrationTest do
           score1_excellent: score1 >= excellent_score,
           score2_excellent: score2 >= excellent_score,
           better_score: score2 > score1,
-          scores_equal: score1 = score2
+          scores_equal: score1 == score2
         }|,
           context
         )

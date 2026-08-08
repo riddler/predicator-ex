@@ -25,9 +25,9 @@ defmodule Predicator.Visitors.StringVisitor do
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "score > 85"
 
-      iex> {:ok, ast} = Predicator.parse(~s(name = "John"))
+      iex> {:ok, ast} = Predicator.parse(~s(name == "John"))
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
-      ~s(name = "John")
+      ~s(name == "John")
 
       iex> ast = {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])

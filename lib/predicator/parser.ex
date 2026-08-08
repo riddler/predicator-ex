@@ -17,7 +17,7 @@ defmodule Predicator.Parser do
       logical_or   → logical_and ( "OR" | "||" logical_and )*
       logical_and  → logical_not ( "AND" | "&&" logical_not )*
       logical_not  → "NOT" | "!" logical_not | comparison
-      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "=" (deprecated) | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
+      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
       addition     → multiplication ( ( "+" | "-" ) multiplication )*
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
       unary        → ( "-" | "!" ) unary | postfix
@@ -30,13 +30,6 @@ defmodule Predicator.Parser do
       object_key   → IDENTIFIER | STRING
       duration     → NUMBER UNIT+
       relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
-
-  > #### Deprecated: `=` as equality {: .warning}
-  >
-  > Using `=` as an equality operator is deprecated. It still parses and still
-  > compiles to `["compare", "EQ"]`, but parsing one emits a deprecation
-  > warning, and Predicator 4.0 makes expression-position `=` a parse error.
-  > Use `==` instead.
 
   ## Source positions
 
@@ -89,8 +82,6 @@ defmodule Predicator.Parser do
   """
 
   alias Predicator.Lexer
-
-  require Logger
 
   @typedoc """
   A value that can appear in literals.
@@ -248,13 +239,13 @@ defmodule Predicator.Parser do
       iex> Predicator.Parser.parse(tokens)
       {:ok, {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
 
-      iex> {:ok, tokens} = Predicator.Lexer.tokenize("name = \\"John\\"")
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("name == \\"John\\"")
       iex> Predicator.Parser.parse(tokens)
-      {:ok, {:comparison, :eq, {:identifier, "name", {1, 1}}, {:string_literal, "John", :double, {1, 8}}, {1, 6}}}
+      {:ok, {:comparison, :equal_equal, {:identifier, "name", {1, 1}}, {:string_literal, "John", :double, {1, 9}}, {1, 6}}}
 
-      iex> {:ok, tokens} = Predicator.Lexer.tokenize("active = true")
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("active == true")
       iex> Predicator.Parser.parse(tokens)
-      {:ok, {:comparison, :eq, {:identifier, "active", {1, 1}}, {:literal, true, {1, 10}}, {1, 8}}}
+      {:ok, {:comparison, :equal_equal, {:identifier, "active", {1, 1}}, {:literal, true, {1, 11}}, {1, 8}}}
 
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("a * true")
       iex> Predicator.Parser.parse(tokens, spans: true)
@@ -262,8 +253,6 @@ defmodule Predicator.Parser do
   """
   @spec parse([Lexer.token()], keyword()) :: result()
   def parse(tokens, opts \\ []) when is_list(tokens) do
-    warn_deprecated_equals(tokens)
-
     state = %{tokens: tokens, position: 0, spans?: Keyword.get(opts, :spans, false) == true}
 
     case parse_expression(state) do
@@ -283,35 +272,6 @@ defmodule Predicator.Parser do
       {:error, message, line, col} ->
         {:error, message, line, col}
     end
-  end
-
-  # Emits a single deprecation warning if the token stream uses `=` as an
-  # equality operator. In 3.8 there is no assignment grammar, so every `:eq`
-  # token is expression-position; the statement grammar (px-tbv.1) must refine
-  # this check rather than inherit it.
-  @spec warn_deprecated_equals([Lexer.token()]) :: :ok
-  defp warn_deprecated_equals(tokens) do
-    if deprecation_warnings_enabled?() do
-      case Enum.find(tokens, &match?({:eq, _line, _col, _len, _value}, &1)) do
-        {:eq, line, col, _len, _value} ->
-          Logger.warning(
-            "[predicator] `=` as an equality operator is deprecated and becomes " <>
-              "a parse error in Predicator 4.0. Use `==` instead. " <>
-              "First occurrence at line #{line}, column #{col}. " <>
-              "Silence with `config :predicator, deprecation_warnings: false`."
-          )
-
-        nil ->
-          :ok
-      end
-    end
-
-    :ok
-  end
-
-  @spec deprecation_warnings_enabled?() :: boolean()
-  defp deprecation_warnings_enabled? do
-    Application.get_env(:predicator, :deprecation_warnings, true) != false
   end
 
   # Parse expression (top level)
@@ -463,6 +423,16 @@ defmodule Predicator.Parser do
     case parse_addition(state) do
       {:ok, left, new_state} ->
         case peek_token(new_state) do
+          # A bare `=` is never an equality operator in expression position -
+          # it is either assignment (only legal at the start of a statement,
+          # which is Predicator.Parser.parse_program/2's job, not parse/2's)
+          # or a mistake. Either way this is a hard parse error, not a silent
+          # reinterpretation (ADR-0002).
+          {:eq, op_line, op_col, _len, _value} ->
+            {:error,
+             "'=' is not an equality operator - use '==' for equality. " <>
+               "Assignment is only valid at the start of a statement.", op_line, op_col}
+
           # Comparison operators (including equality)
           {op_type, op_line, op_col, _len, _value}
           when op_type in [
@@ -470,7 +440,6 @@ defmodule Predicator.Parser do
                  :lt,
                  :gte,
                  :lte,
-                 :eq,
                  :equal_equal,
                  :ne,
                  :strict_equal,

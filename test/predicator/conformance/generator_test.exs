@@ -392,7 +392,7 @@ defmodule Predicator.Conformance.GeneratorTest do
       # authoring "source" at all for a retired-opcode case, not specific to
       # "and"/"or".
       cases = [
-        %{"id" => "t/retired-source", "source" => "1 = 1", "expected" => %{"result" => true}}
+        %{"id" => "t/retired-source", "source" => "1 == 1", "expected" => %{"result" => true}}
       ]
 
       assert {:error, [%{id: "t/retired-source", problem: problem}]} =

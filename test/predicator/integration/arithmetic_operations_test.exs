@@ -239,7 +239,7 @@ defmodule ArithmeticEvaluationTest do
     end
 
     test "modulo in boolean context" do
-      assert {:ok, result} = evaluate("num % 2 = 0", %{"num" => 14})
+      assert {:ok, result} = evaluate("num % 2 == 0", %{"num" => 14})
       assert result == true
     end
 

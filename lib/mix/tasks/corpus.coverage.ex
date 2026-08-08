@@ -63,8 +63,7 @@ defmodule Mix.Tasks.Corpus.Coverage do
   def run(_args) do
     sources = suite_sources()
 
-    suite_freqs =
-      with_deprecation_warnings_silenced(fn -> Coverage.suite_pattern_frequencies(sources) end)
+    suite_freqs = Coverage.suite_pattern_frequencies(sources)
 
     corpus_freqs = Coverage.corpus_pattern_frequencies(corpus_cases())
 
@@ -119,25 +118,5 @@ defmodule Mix.Tasks.Corpus.Coverage do
     |> File.read!()
     |> String.split("\n", trim: true)
     |> Enum.map(&JSON.decode!/1)
-  end
-
-  # Many suite sources deliberately use the deprecated `=` equality operator
-  # (ADR-0002); compiling ~500 of them at once is noisy without this. Purely
-  # cosmetic - it never changes what a source compiles to - so the previous
-  # setting is restored once this task's own compilation pass is done rather
-  # than left flipped for the rest of the VM.
-  @spec with_deprecation_warnings_silenced((-> result)) :: result when result: var
-  defp with_deprecation_warnings_silenced(fun) do
-    previous = Application.get_env(:predicator, :deprecation_warnings)
-    Application.put_env(:predicator, :deprecation_warnings, false)
-
-    try do
-      fun.()
-    after
-      case previous do
-        nil -> Application.delete_env(:predicator, :deprecation_warnings)
-        value -> Application.put_env(:predicator, :deprecation_warnings, value)
-      end
-    end
   end
 end

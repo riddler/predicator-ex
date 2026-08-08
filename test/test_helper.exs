@@ -269,7 +269,10 @@ end
 # This ensures system functions are registered and available
 Application.ensure_all_started(:predicator)
 
-# Predicates written with `=` emit a deprecation warning (px-8um.5), and the
-# suite is full of them. Capture log output so the runner stays readable;
-# tests that assert on the warning use ExUnit.CaptureLog explicitly.
+# Kept as a defensive default even though the `=` deprecation warning that
+# originally motivated it is gone (px-tbv.1) and nothing in lib/ logs today:
+# it keeps the runner readable against incidental logger noise - crash
+# reports from tests that intentionally trigger errors, or any future path
+# that logs - without every such test needing its own
+# `ExUnit.CaptureLog.capture_log/1`.
 ExUnit.start(capture_log: true)
