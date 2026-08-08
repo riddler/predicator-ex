@@ -1281,8 +1281,13 @@ defmodule Predicator.Evaluator do
     {:ok, %{evaluator | stack: [updated_object | rest]}}
   end
 
-  defp execute_object_set(%__MODULE__{stack: [_value, _non_object | _rest]} = _evaluator, _key) do
-    {:error, "Cannot set property on non-object value"}
+  defp execute_object_set(%__MODULE__{stack: [_value, non_object | _rest]}, _key) do
+    {:error,
+     EvaluationError.new(
+       "Object set requires a map on the stack, got: #{inspect(non_object)}",
+       "invalid_stack_value",
+       :object_set
+     )}
   end
 
   defp execute_object_set(%__MODULE__{stack: stack} = _evaluator, _key) when length(stack) < 2 do

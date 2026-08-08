@@ -1,6 +1,7 @@
 defmodule Predicator.EvaluatorEdgeCasesTest do
   use ExUnit.Case
 
+  alias Predicator.Errors.EvaluationError
   alias Predicator.Evaluator
   alias Predicator.Functions.SystemFunctions
 
@@ -78,6 +79,29 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
       instructions = [["lit", "not_an_object"], ["object_set", "key"]]
       result = Evaluator.evaluate(instructions, %{})
       assert match?({:error, _}, result)
+    end
+
+    test "object_set on a non-map target returns an EvaluationError, not a crash" do
+      instructions = [["lit", 5], ["lit", 1], ["object_set", "key"]]
+
+      assert {:error, %EvaluationError{reason: "invalid_stack_value", operation: :object_set}} =
+               Evaluator.evaluate(instructions, %{})
+    end
+
+    test "object_set with too few operands still reports insufficient_operands" do
+      instructions = [["lit", "not_an_object"], ["object_set", "key"]]
+
+      assert {:error, %EvaluationError{reason: "insufficient_operands", operation: :object_set}} =
+               Evaluator.evaluate(instructions, %{})
+    end
+
+    test "object_set's non-map error carries a source position when one is available" do
+      instructions = [["lit", 5], ["lit", 1], ["object_set", "key"]]
+
+      assert {:error, %EvaluationError{position: position}} =
+               Evaluator.evaluate(instructions, %{}, positions: %{2 => {1, 5}})
+
+      assert position != nil
     end
 
     test "handles contains operation with incompatible types" do

@@ -319,9 +319,9 @@ defmodule Predicator.Conformance.GeneratorTest do
   end
 
   describe "generate/1 - evaluation that raises is a generator error, not a crash" do
-    test "object_set on a non-map (docs/isa.md: unspecified, crashes) is caught and reported" do
+    test "unary_minus on an atom (not producible by any opcode) is caught and reported" do
       cases = [
-        %{"id" => "t/crash", "instructions" => [["lit", 1], ["lit", "x"], ["object_set", "x"]]}
+        %{"id" => "t/crash", "instructions" => [["lit", :foo], ["unary_minus"]]}
       ]
 
       assert {:error, [%{id: "t/crash", problem: problem}]} = Generator.generate(cases)
