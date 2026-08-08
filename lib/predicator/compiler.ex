@@ -30,7 +30,9 @@ defmodule Predicator.Compiler do
 
   ## Parameters
 
-  - `ast` - The Abstract Syntax Tree to compile
+  - `ast` - The Abstract Syntax Tree to compile - a bare expression, or a
+    `t:Predicator.Parser.program/0`, which compiles to a flat statement
+    program (each statement followed by a `store` or a `pop`)
   - `opts` - Optional compiler options
 
   ## Returns
@@ -46,8 +48,12 @@ defmodule Predicator.Compiler do
       iex> ast = {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil}
       iex> Predicator.Compiler.to_instructions(ast)
       [["load", "name"], ["lit", "John"], ["compare", "EQ"]]
+
+      iex> {:ok, program} = Predicator.parse_program("x = 1")
+      iex> Predicator.Compiler.to_instructions(program)
+      [["lit", "x"], ["lit", 1], ["store", 1]]
   """
-  @spec to_instructions(Parser.ast(), keyword()) :: [[binary() | term()]]
+  @spec to_instructions(Parser.ast() | Parser.program(), keyword()) :: [[binary() | term()]]
   def to_instructions(ast, opts \\ []) do
     Visitor.accept(ast, InstructionsVisitor, opts)
   end
@@ -74,8 +80,12 @@ defmodule Predicator.Compiler do
 
       iex> Predicator.Compiler.to_instructions_with_positions({:literal, 42, nil})
       {[["lit", 42]], %{}}
+
+      iex> {:ok, program} = Predicator.parse_program("x = 1", spans: false)
+      iex> Predicator.Compiler.to_instructions_with_positions(program)
+      {[["lit", "x"], ["lit", 1], ["store", 1]], %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 3}}}
   """
-  @spec to_instructions_with_positions(Parser.ast(), keyword()) ::
+  @spec to_instructions_with_positions(Parser.ast() | Parser.program(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}
   def to_instructions_with_positions(ast, opts \\ []) do
     InstructionsVisitor.visit_with_positions(ast, opts)

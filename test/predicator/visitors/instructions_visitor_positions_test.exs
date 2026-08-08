@@ -249,6 +249,74 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
     end
   end
 
+  describe "visit_with_positions/2 - statements" do
+    defp program_table(source) do
+      {:ok, program} = Predicator.parse_program(source)
+      InstructionsVisitor.visit_with_positions(program)
+    end
+
+    test "the store instruction carries the assignment node's own position" do
+      {instructions, positions} = program_table("x = 1")
+
+      assert instructions == [["lit", "x"], ["lit", 1], ["store", 1]]
+      # segment "x" at its own token, rhs "1" at its own token, store at "="
+      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 3}}
+    end
+
+    test "segment lit instructions carry their own accessor's position" do
+      {instructions, positions} = program_table(~s(user.name = 'Ada'))
+
+      assert instructions == [
+               ["lit", "user"],
+               ["lit", "name"],
+               ["lit", "Ada"],
+               ["store", 2]
+             ]
+
+      # "user" at its token, "name" at the dot-property token, "Ada" at its
+      # token, store at "="
+      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 13}, 3 => {1, 11}}
+    end
+
+    test "a bracket-access segment's key carries its own token's position" do
+      {instructions, positions} = program_table("a[0] = 1")
+
+      assert instructions == [["lit", "a"], ["lit", 0], ["lit", 1], ["store", 2]]
+      assert positions == %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 8}, 3 => {1, 6}}
+    end
+
+    test "a bare expression statement's pop takes the statement node's own position" do
+      {instructions, positions} = program_table("x + 1")
+
+      assert instructions == [["load", "x"], ["lit", 1], ["add"], ["pop"]]
+      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 3}, 3 => {1, 3}}
+    end
+
+    test "a mixed program keeps each statement's positions independent" do
+      {instructions, positions} = program_table("x = 1; y + 1")
+
+      assert instructions == [
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["load", "y"],
+               ["lit", 1],
+               ["add"],
+               ["pop"]
+             ]
+
+      assert positions == %{
+               0 => {1, 1},
+               1 => {1, 5},
+               2 => {1, 3},
+               3 => {1, 8},
+               4 => {1, 12},
+               5 => {1, 10},
+               6 => {1, 10}
+             }
+    end
+  end
+
   describe "invariants over the corpus" do
     test "visit/2 returns exactly the instruction list visit_with_positions/2 returns" do
       for expression <- @corpus do

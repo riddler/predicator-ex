@@ -1764,25 +1764,24 @@ defmodule Predicator.ParserTest do
   end
 
   describe "guard: the deliberate px-tbv.2 gaps" do
-    # A program AST is not taught to the compiler yet - px-tbv.2 adds `store`
-    # and `pop` and teaches InstructionsVisitor to emit them. Until then, this
-    # raises exactly as any other unhandled node does, mirroring the
-    # "pop is currently an unknown opcode" guard at
-    # test/predicator/instructions_test.exs:198-201.
-    test "Compiler.to_instructions/2 raises FunctionClauseError on a program AST" do
+    test "Compiler.to_instructions/2 compiles a program AST" do
       {:ok, program} = Predicator.parse_program("a = 1")
 
-      assert_raise FunctionClauseError, fn ->
-        Predicator.Compiler.to_instructions(program)
-      end
+      assert Predicator.Compiler.to_instructions(program) == [
+               ["lit", "a"],
+               ["lit", 1],
+               ["store", 1]
+             ]
     end
 
-    test "Compiler.to_instructions/2 raises FunctionClauseError on an assignment AST" do
+    test "Compiler.to_instructions/2 compiles an assignment AST" do
       {:ok, {:program, [assignment], _pos}} = Predicator.parse_program("a = 1")
 
-      assert_raise FunctionClauseError, fn ->
-        Predicator.Compiler.to_instructions(assignment)
-      end
+      assert Predicator.Compiler.to_instructions(assignment) == [
+               ["lit", "a"],
+               ["lit", 1],
+               ["store", 1]
+             ]
     end
 
     # ContextLocation.resolve/2 has a catch-all (context_location.ex:307-309)

@@ -853,4 +853,105 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
              ]
     end
   end
+
+  describe "visit/2 - assignment statements" do
+    test "a root-level assignment stores depth 1" do
+      {:ok, {:program, [assignment], _pos}} = Predicator.parse_program("x = 1")
+      result = InstructionsVisitor.visit(assignment, [])
+
+      assert result == [["lit", "x"], ["lit", 1], ["store", 1]]
+    end
+
+    test "a property-access assignment stores depth 2" do
+      {:ok, {:program, [assignment], _pos}} = Predicator.parse_program(~s(user.name = 'Ada'))
+      result = InstructionsVisitor.visit(assignment, [])
+
+      assert result == [["lit", "user"], ["lit", "name"], ["lit", "Ada"], ["store", 2]]
+    end
+
+    test "a bracket-access assignment with a literal key stores depth 2" do
+      {:ok, {:program, [assignment], _pos}} = Predicator.parse_program("a[0] = 1")
+      result = InstructionsVisitor.visit(assignment, [])
+
+      assert result == [["lit", "a"], ["lit", 0], ["lit", 1], ["store", 2]]
+    end
+
+    test "a computed bracket key proves n is depth, not instruction count" do
+      {:ok, {:program, [assignment], _pos}} = Predicator.parse_program("a[k + 1] = 1")
+      result = InstructionsVisitor.visit(assignment, [])
+
+      assert result == [
+               ["lit", "a"],
+               ["load", "k"],
+               ["lit", 1],
+               ["add"],
+               ["lit", 1],
+               ["store", 2]
+             ]
+    end
+
+    test "a mixed property/bracket chain stores depth 4" do
+      {:ok, {:program, [assignment], _pos}} =
+        Predicator.parse_program(~s(user.items[0].name = 'Ada'))
+
+      result = InstructionsVisitor.visit(assignment, [])
+
+      assert result == [
+               ["lit", "user"],
+               ["lit", "items"],
+               ["lit", 0],
+               ["lit", "name"],
+               ["lit", "Ada"],
+               ["store", 4]
+             ]
+    end
+  end
+
+  describe "visit/2 - programs" do
+    test "a bare expression statement gains a trailing pop" do
+      {:ok, program} = Predicator.parse_program("x + 1")
+      result = InstructionsVisitor.visit(program, [])
+
+      assert result == [["load", "x"], ["lit", 1], ["add"], ["pop"]]
+    end
+
+    test "an assignment statement gains no trailing pop" do
+      {:ok, program} = Predicator.parse_program("x = 1")
+      result = InstructionsVisitor.visit(program, [])
+
+      assert result == [["lit", "x"], ["lit", 1], ["store", 1]]
+    end
+
+    test "a multi-statement program of assignments concatenates them uniformly" do
+      {:ok, program} = Predicator.parse_program("x = 1; y = 2")
+      result = InstructionsVisitor.visit(program, [])
+
+      assert result == [
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["lit", "y"],
+               ["lit", 2],
+               ["store", 1]
+             ]
+    end
+
+    test "a mixed program of assignments and bare expressions compiles each in order" do
+      {:ok, program} = Predicator.parse_program("x = 1; y = 2; z + 1")
+      result = InstructionsVisitor.visit(program, [])
+
+      assert result == [
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["lit", "y"],
+               ["lit", 2],
+               ["store", 1],
+               ["load", "z"],
+               ["lit", 1],
+               ["add"],
+               ["pop"]
+             ]
+    end
+  end
 end
