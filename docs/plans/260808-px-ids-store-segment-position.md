@@ -490,9 +490,9 @@ end
 
 #### Manual Verification
 
-- [ ] `ContextLocation.put(%{"a" => %{"b" => 1}}, ["a", "b", "c"], 2)` reports
+- [x] `ContextLocation.put(%{"a" => %{"b" => 1}}, ["a", "b", "c"], 2)` reports
       `details.path_index == 1` and its `message` is unchanged
-- [ ] No error message string anywhere in the suite changed wording
+- [x] No error message string anywhere in the suite changed wording
 
 **Implementation Note**: use `mix quality --profile loop` between edits; full
 `mix quality` is the phase gate.
@@ -661,11 +661,11 @@ with an assertion that the returned `%Compiled{}` carries a non-empty
 
 #### Manual Verification
 
-- [ ] `Predicator.compile_program_with_positions("a.b.c = 1")` returns a
+- [x] `Predicator.compile_program_with_positions("a.b.c = 1")` returns a
       `%Compiled{}` whose `segment_positions` is `%{4 => [{1,1},{1,2},{1,4}]}`
       and whose `instructions` and `positions` are identical to what the same
       call returned before this phase
-- [ ] `Predicator.compile_program("a.b.c = 1")` is byte-identical to before
+- [x] `Predicator.compile_program("a.b.c = 1")` is byte-identical to before
 
 ---
 
@@ -845,13 +845,13 @@ Confirm with the gate rather than by assertion.
 
 #### Manual Verification
 
-- [ ] In `iex -S mix`, each line of "Desired End State" reproduces exactly,
+- [x] In `iex -S mix`, each line of "Desired End State" reproduces exactly,
       including `{1, 16}` (not `{1, 17}`) for
       `~s(a = {"b": 1}; a.b.c = 2)` - the documented precision limit
-- [ ] `Predicator.execute("a = 1; a.b = 2; d = 3", %{}, spans: true)` reports
+- [x] `Predicator.execute("a = 1; a.b = 2; d = 3", %{}, spans: true)` reports
       `position: {1, 8}` with `span: {{1, 8}, {1, 9}}`, and a human agrees the
       narrower underline is an improvement (decision D1)
-- [ ] Every error `message` string is unchanged from before the branch
+- [x] Every error `message` string is unchanged from before the branch
 
 ---
 
@@ -948,11 +948,11 @@ on it.
 
 #### Manual Verification
 
-- [ ] The changelog entry names the old and new positions concretely and states
+- [x] The changelog entry names the old and new positions concretely and states
       the degradation behaviour
-- [ ] `bd show px-ids` lists `area:api`, `area:docs`, `area:evaluator`,
+- [x] `bd show px-ids` lists `area:api`, `area:docs`, `area:evaluator`,
       `area:visitors`
-- [ ] The follow-up bead exists and names the AST point-position change
+- [x] The follow-up bead exists and names the AST point-position change
 
 ---
 
@@ -1131,32 +1131,32 @@ to confirm out of band. None are checked off by an implementing agent.
 
 ### Phase 1
 
-- [ ] `ContextLocation.put(%{"a" => %{"b" => 1}}, ["a", "b", "c"], 2)` reports
+- [x] `ContextLocation.put(%{"a" => %{"b" => 1}}, ["a", "b", "c"], 2)` reports
       `details.path_index == 1` and its `message` is unchanged
-- [ ] No error message string anywhere in the suite changed wording
+- [x] No error message string anywhere in the suite changed wording
 
 ### Phase 2
 
-- [ ] `Predicator.compile_program_with_positions("a.b.c = 1")` returns a
+- [x] `Predicator.compile_program_with_positions("a.b.c = 1")` returns a
       `%Compiled{}` whose `segment_positions` is `%{4 => [{1,1},{1,2},{1,4}]}`
       and whose `instructions` and `positions` are identical to what the same
       call returned before this phase
-- [ ] `Predicator.compile_program("a.b.c = 1")` is byte-identical to before
+- [x] `Predicator.compile_program("a.b.c = 1")` is byte-identical to before
 
 ### Phase 3
 
-- [ ] In `iex -S mix`, each line of "Desired End State" reproduces exactly,
+- [x] In `iex -S mix`, each line of "Desired End State" reproduces exactly,
       including `{1, 16}` (not `{1, 17}`) for
       `~s(a = {"b": 1}; a.b.c = 2)` - the documented precision limit
-- [ ] `Predicator.execute("a = 1; a.b = 2; d = 3", %{}, spans: true)` reports
+- [x] `Predicator.execute("a = 1; a.b = 2; d = 3", %{}, spans: true)` reports
       `position: {1, 8}` with `span: {{1, 8}, {1, 9}}`, and a human agrees the
       narrower underline is an improvement (decision D1)
-- [ ] Every error `message` string is unchanged from before the branch
+- [x] Every error `message` string is unchanged from before the branch
 
 ### Phase 4
 
-- [ ] The changelog entry names the old and new positions concretely and states
+- [x] The changelog entry names the old and new positions concretely and states
       the degradation behaviour
-- [ ] `bd show px-ids` lists `area:api`, `area:docs`, `area:evaluator`,
+- [x] `bd show px-ids` lists `area:api`, `area:docs`, `area:evaluator`,
       `area:visitors`
-- [ ] The follow-up bead exists and names the AST point-position change
+- [x] The follow-up bead exists and names the AST point-position change
