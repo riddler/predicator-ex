@@ -275,6 +275,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The instruction set is unchanged, so stored compiled artifacts and the
   cross-language interchange format are unaffected (ADR-0001).
 
+- **Breaking: the legacy `and`/`or` opcodes are retired from the evaluator.**
+  ISA v2 becomes v3 (`Predicator.isa_version/0` now returns `3`). This only
+  affects a consumer holding an instruction list that was compiled before
+  3.7.0 and stored somewhere; nothing compiled by 3.7.0 or later contains
+  these opcodes, since the compiler stopped emitting them then, so
+  recompiling from source and every surface `AND` / `OR` expression are
+  unaffected. Running such a stored list now returns an `EvaluationError` with
+  reason `"retired_opcode"`, naming ISA v3 and the upgrade path, instead of
+  being silently mis-run. The migration is
+  `Predicator.Instructions.upgrade/1`, run once over stored artifacts to
+  rewrite them into jump form (identity on anything containing neither
+  opcode); the upgraded list short-circuits and follows the
+  ECMAScript-aligned `:undefined` rules that ADR-0001 documented for 3.7.0,
+  so a right operand that errored or was `:undefined` can now produce a
+  value where it previously produced a `TypeMismatchError`. `and` and `or`
+  keep their rows in the ISA table - `required_isa/1` and `tier/1` still
+  answer for them - and the conformance corpus still carries all five legacy
+  cases.
+
 - **Breaking: the `jason` runtime dependency.**
   `Predicator.Functions.JSONFunctions` now uses Elixir 1.18's built-in `JSON`
   module, so **predicator has no runtime dependencies at all**. The error text
