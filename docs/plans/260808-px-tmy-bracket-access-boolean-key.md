@@ -483,12 +483,12 @@ itself the check that Phase 1 landed the intended behavior.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix corpus.generate` succeeds without reporting a disagreement
-- [ ] Full quality gate passes: `mix quality` (includes the corpus tests under
+- [x] `mix corpus.generate` succeeds without reporting a disagreement
+- [x] Full quality gate passes: `mix quality` (includes the corpus tests under
       `test/predicator/conformance/`)
-- [ ] `conformance/manifest.json`'s tier-3 `case_count` moved from 23 to 25 and
+- [x] `conformance/manifest.json`'s tier-3 `case_count` moved from 23 to 25 and
       `corpus_hash` changed
-- [ ] `conformance/manifest.json`'s `isa_version` is still `3`
+- [x] `conformance/manifest.json`'s `isa_version` is still `3`
 
 #### Manual Verification:
 - [ ] The two new cases validate against `conformance/schema/case.json`
@@ -596,3 +596,8 @@ One, recorded rather than blocking, with a default already chosen:
 - [ ] The bullet is readable by someone implementing in JavaScript: it never
       requires knowing what an Elixir atom is to determine the behavior
 - [ ] No em dashes introduced; file house style matched
+
+### Phase 3
+
+- [ ] The two new cases validate against `conformance/schema/case.json`
+- [ ] `bd update px-tmy` has added `area:conformance`

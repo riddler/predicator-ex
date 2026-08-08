@@ -53,6 +53,22 @@
     "notes": "a key that is not a string, integer, or atom is a TypeMismatchError - unlike a missing key or an out-of-range index, which are undefined"
   },
   {
+    "id": "access/bracket-list-non-integer-key",
+    "source": "items[flag]",
+    "context": { "items": [1, 2, 3], "flag": true },
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "bracket_access" }
+    },
+    "notes": "docs/isa.md: a list accepts only a non-negative integer index; every other key type, including boolean, is a TypeMismatchError rather than a miss"
+  },
+  {
+    "id": "access/bracket-map-boolean-key",
+    "source": "config[true]",
+    "context": { "config": { "a": 1 } },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "docs/isa.md: a boolean is an accepted map key type; a miss pushes :undefined rather than a TypeMismatchError. The hit case (a map with an actual boolean key) is not encodable here - JSON object keys are strings and the tagged-value encoding has no boolean-keyed map form - so it stays an Elixir-side test instead"
+  },
+  {
     "id": "access/make-list-source-order",
     "source": "[a, b, c]",
     "context": { "a": 1, "b": 2, "c": 3 },
