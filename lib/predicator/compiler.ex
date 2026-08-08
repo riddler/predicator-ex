@@ -83,7 +83,7 @@ defmodule Predicator.Compiler do
 
       iex> {:ok, program} = Predicator.parse_program("x = 1", spans: false)
       iex> Predicator.Compiler.to_instructions_with_positions(program)
-      {[["lit", "x"], ["lit", 1], ["store", 1]], %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 3}}}
+      {[["lit", "x"], ["lit", 1], ["store", 1]], %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 1}}}
   """
   @spec to_instructions_with_positions(Parser.ast() | Parser.program(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}

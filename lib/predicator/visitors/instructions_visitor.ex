@@ -283,11 +283,30 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   end
 
   defp visit_annotated({:assignment, lhs, rhs, position}, opts) do
-    segments = location_segments(lhs, opts)
+    [{_root_instruction, root_annotation} | _rest] = segments = location_segments(lhs, opts)
     depth = location_depth(lhs)
 
-    segments ++ visit_annotated(rhs, opts) ++ [{["store", depth], position}]
+    segments ++
+      visit_annotated(rhs, opts) ++
+      [{["store", depth], store_annotation(position, root_annotation)}]
   end
+
+  # Which token a store failure blames. The assignment node's own point
+  # position is the `=`, which names the operator that noticed the write
+  # rather than the location being written - the same complaint the unbound-load
+  # rewrite answers for `load` (`lib/predicator.ex:440-442`). The lhs root's
+  # position is used instead (px-tbv.11).
+  #
+  # A span is kept as-is: the assignment node's span already starts at the lhs
+  # root, so `Errors.put_position/2` already derives the same caret from it
+  # (`errors.ex:44-50`), and narrowing it to the root identifier would shrink
+  # the underline from the statement to a single token for no gain.
+  @spec store_annotation(
+          Types.position() | Types.span() | nil,
+          Types.position() | Types.span() | nil
+        ) :: Types.position() | Types.span() | nil
+  defp store_annotation({{_sl, _sc}, {_el, _ec}} = span, _root_annotation), do: span
+  defp store_annotation(_position, root_annotation), do: root_annotation
 
   # Compiles one statement of a program. An assignment compiles to its own
   # instructions (a store, never a pop - the assignment's value is consumed by

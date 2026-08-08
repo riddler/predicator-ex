@@ -255,12 +255,13 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
       InstructionsVisitor.visit_with_positions(program)
     end
 
-    test "the store instruction carries the assignment node's own position" do
+    test "the store instruction carries the lhs root segment's position" do
       {instructions, positions} = program_table("x = 1")
 
       assert instructions == [["lit", "x"], ["lit", 1], ["store", 1]]
-      # segment "x" at its own token, rhs "1" at its own token, store at "="
-      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 3}}
+      # segment "x" at its own token, rhs "1" at its own token, store at the
+      # lhs root "x" (not the "=")
+      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 1}}
     end
 
     test "segment lit instructions carry their own accessor's position" do
@@ -274,15 +275,16 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
              ]
 
       # "user" at its token, "name" at the dot-property token, "Ada" at its
-      # token, store at "="
-      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 13}, 3 => {1, 11}}
+      # token, store at the lhs root "user" (not the "=")
+      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 13}, 3 => {1, 1}}
     end
 
     test "a bracket-access segment's key carries its own token's position" do
       {instructions, positions} = program_table("a[0] = 1")
 
       assert instructions == [["lit", "a"], ["lit", 0], ["lit", 1], ["store", 2]]
-      assert positions == %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 8}, 3 => {1, 6}}
+      # store at the lhs root "a" (not the "=")
+      assert positions == %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 8}, 3 => {1, 1}}
     end
 
     test "a bare expression statement's pop takes the statement node's own position" do
@@ -308,12 +310,46 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
       assert positions == %{
                0 => {1, 1},
                1 => {1, 5},
-               2 => {1, 3},
+               2 => {1, 1},
                3 => {1, 8},
                4 => {1, 12},
                5 => {1, 10},
                6 => {1, 10}
              }
+    end
+
+    test "span mode keeps the assignment's span" do
+      {:ok, program} = Predicator.parse_program("a = 1; a.b = 2", spans: true)
+
+      {instructions, positions} = InstructionsVisitor.visit_with_positions(program)
+
+      assert instructions == [
+               ["lit", "a"],
+               ["lit", 1],
+               ["store", 1],
+               ["lit", "a"],
+               ["lit", "b"],
+               ["lit", 2],
+               ["store", 2]
+             ]
+
+      assert positions[2] == {{1, 1}, {1, 6}}
+      assert positions[6] == {{1, 8}, {1, 15}}
+    end
+
+    test "a deep chain still blames the root" do
+      {instructions, positions} = program_table("a.b.c = 1")
+
+      assert instructions == [
+               ["lit", "a"],
+               ["lit", "b"],
+               ["lit", "c"],
+               ["lit", 1],
+               ["store", 3]
+             ]
+
+      # store blames the lhs root "a", not ".b", ".c", or the "="
+      assert positions[4] == {1, 1}
     end
   end
 
