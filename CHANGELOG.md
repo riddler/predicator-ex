@@ -146,6 +146,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **`docs/isa.md` reserves `pop` and specifies the statement-mode halt
+  contract.** `["pop"]` joins `["store"]` as a reserved tier-6 name for the
+  future 4.0 statement layer - not implemented, not accepted by any current
+  evaluator clause, distinct from the live `jump_if_falsy_or_pop` /
+  `jump_if_true_or_pop` opcodes despite the shared word. Section 2 now
+  specifies two execution modes, distinguished by entry point rather than by
+  anything in the instruction list: expression mode, where the result is the
+  stack top at halt; and statement mode, where the result is the context at
+  halt, with an empty stack at halt by design. `empty_stack` is now documented
+  as an expression-mode rule only - a statement program halting with an empty
+  stack is a normal halt, not an error. A statement program that halts on an
+  error has no result; whether the host keeps or discards the partial context
+  from statements that already completed is the host's policy, not the VM's.
+  **No instruction-set behavior changed**: no opcode is added, removed, or
+  resemanticized, and the ISA version stays v2.
+
 - **`docs/isa.md`: the ISA reference.** The single specification of
   predicator's instruction set - one table row per opcode naming its arity,
   operand types, stack effect, error semantics, ISA version, and conformance-

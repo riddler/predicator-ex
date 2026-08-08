@@ -473,10 +473,10 @@ Per CLAUDE.md, adding entries under `## [Unreleased]` is ordinary work and is
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` still green (unchanged from Phase 1; no Elixir moved)
-- [ ] `bd show px-z5m` lists `area:evaluator` among its labels
-- [ ] `bd show px-tbv.1` shows `→ px-z5m` under `DEPENDS ON`
-- [ ] `bd show px-tbv.2` shows `→ px-z5m` under `DEPENDS ON`
+- [x] `mix quality` still green (unchanged from Phase 1; no Elixir moved)
+- [x] `bd show px-z5m` lists `area:evaluator` among its labels
+- [x] `bd show px-tbv.1` shows `→ px-z5m` under `DEPENDS ON`
+- [x] `bd show px-tbv.2` shows `→ px-z5m` under `DEPENDS ON`
 
 #### Manual Verification:
 - [ ] The CHANGELOG entry is written for a consumer of the library, not as a
@@ -585,3 +585,10 @@ all three of ADR-0003's questions is "nothing is owed".
       `execute` return, and what happens on an error partway through" without
       opening a bead
 - [ ] Section numbering is unchanged: §1 through §8, same titles
+
+Phase 2:
+
+- [ ] The CHANGELOG entry is written for a consumer of the library, not as a
+      summary of this plan
+- [ ] px-tbv.2's note is specific enough that its implementer flips both
+      reservation guards and does not re-open the mode question
