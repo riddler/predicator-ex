@@ -277,43 +277,55 @@ defmodule Predicator.EvaluatorTest do
     end
   end
 
-  describe "logical operators" do
-    test "evaluates logical AND with true values" do
+  describe "retired and/or opcodes" do
+    test "and is refused with retired_opcode, naming ISA v3 and upgrade/1" do
       instructions = [["lit", true], ["lit", true], ["and"]]
-      assert Evaluator.evaluate(instructions) == true
+      result = Evaluator.evaluate(instructions)
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode", message: msg}} =
+               result
+
+      assert msg =~ "and"
+      assert msg =~ "ISA v3"
+      assert msg =~ "Predicator.Instructions.upgrade/1"
     end
 
-    test "evaluates logical AND with false values" do
-      instructions = [["lit", false], ["lit", false], ["and"]]
-      assert Evaluator.evaluate(instructions) == false
-    end
-
-    test "evaluates logical AND with mixed values" do
-      instructions = [["lit", true], ["lit", false], ["and"]]
-      assert Evaluator.evaluate(instructions) == false
-
-      instructions = [["lit", false], ["lit", true], ["and"]]
-      assert Evaluator.evaluate(instructions) == false
-    end
-
-    test "evaluates logical OR with true values" do
-      instructions = [["lit", true], ["lit", true], ["or"]]
-      assert Evaluator.evaluate(instructions) == true
-    end
-
-    test "evaluates logical OR with false values" do
-      instructions = [["lit", false], ["lit", false], ["or"]]
-      assert Evaluator.evaluate(instructions) == false
-    end
-
-    test "evaluates logical OR with mixed values" do
-      instructions = [["lit", true], ["lit", false], ["or"]]
-      assert Evaluator.evaluate(instructions) == true
-
+    test "or is refused with retired_opcode, naming ISA v3 and upgrade/1" do
       instructions = [["lit", false], ["lit", true], ["or"]]
-      assert Evaluator.evaluate(instructions) == true
+      result = Evaluator.evaluate(instructions)
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode", message: msg}} =
+               result
+
+      assert msg =~ "or"
+      assert msg =~ "ISA v3"
+      assert msg =~ "Predicator.Instructions.upgrade/1"
     end
 
+    test "and is refused regardless of operand types or stack depth" do
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode"}} =
+               Evaluator.evaluate([["lit", 1], ["lit", "hello"], ["and"]])
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode"}} =
+               Evaluator.evaluate([["lit", true], ["and"]])
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode"}} =
+               Evaluator.evaluate([["and"]])
+    end
+
+    test "or is refused regardless of operand types or stack depth" do
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode"}} =
+               Evaluator.evaluate([["lit", 42], ["lit", true], ["or"]])
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode"}} =
+               Evaluator.evaluate([["lit", false], ["or"]])
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode"}} =
+               Evaluator.evaluate([["or"]])
+    end
+  end
+
+  describe "logical operators" do
     test "evaluates logical NOT with true value" do
       instructions = [["lit", true], ["not"]]
       assert Evaluator.evaluate(instructions) == false
@@ -322,48 +334,6 @@ defmodule Predicator.EvaluatorTest do
     test "evaluates logical NOT with false value" do
       instructions = [["lit", false], ["not"]]
       assert Evaluator.evaluate(instructions) == true
-    end
-
-    test "returns error for logical AND with non-boolean values" do
-      instructions = [["lit", 42], ["lit", true], ["and"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
-      assert msg =~ "Logical AND requires booleans"
-    end
-
-    test "returns error for logical AND with insufficient stack" do
-      instructions = [["lit", true], ["and"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
-      assert msg =~ "Logical AND requires 2 values on stack, got: 1"
-    end
-
-    test "returns error for logical AND with empty stack" do
-      instructions = [["and"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
-      assert msg =~ "Logical AND requires 2 values on stack, got: 0"
-    end
-
-    test "returns error for logical OR with non-boolean values" do
-      instructions = [["lit", "hello"], ["lit", false], ["or"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
-      assert msg =~ "Logical OR requires booleans"
-    end
-
-    test "returns error for logical OR with insufficient stack" do
-      instructions = [["lit", false], ["or"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
-      assert msg =~ "Logical OR requires 2 values on stack, got: 1"
-    end
-
-    test "returns error for logical OR with empty stack" do
-      instructions = [["or"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.EvaluationError{message: msg}} = result
-      assert msg =~ "Logical OR requires 2 values on stack, got: 0"
     end
 
     test "returns error for logical NOT with non-boolean value" do
@@ -381,19 +351,21 @@ defmodule Predicator.EvaluatorTest do
     end
 
     test "complex logical expression with variables" do
-      # (score > 85 AND age >= 18) OR admin = true
+      # (score > 85 AND age >= 18) OR admin = true, in jump form (the compiler
+      # has emitted jumps rather than and/or since 3.7.0; and/or is retired at
+      # ISA v3 and this expresses the same program the two opcodes used to).
       instructions = [
         ["load", "score"],
         ["lit", 85],
         ["compare", "GT"],
+        ["jump_if_falsy_or_pop", 4],
         ["load", "age"],
         ["lit", 18],
         ["compare", "GTE"],
-        ["and"],
+        ["jump_if_true_or_pop", 4],
         ["load", "admin"],
         ["lit", true],
-        ["compare", "EQ"],
-        ["or"]
+        ["compare", "EQ"]
       ]
 
       context = %{"score" => 90, "age" => 20, "admin" => false}
@@ -417,14 +389,15 @@ defmodule Predicator.EvaluatorTest do
     end
 
     test "mixed comparison and logical operations" do
-      # score > 85 AND NOT expired
+      # score > 85 AND NOT expired, in jump form (see the composite test
+      # above for why)
       instructions = [
         ["load", "score"],
         ["lit", 85],
         ["compare", "GT"],
+        ["jump_if_falsy_or_pop", 3],
         ["load", "expired"],
-        ["not"],
-        ["and"]
+        ["not"]
       ]
 
       context = %{"score" => 90, "expired" => false}
@@ -653,19 +626,7 @@ defmodule Predicator.EvaluatorTest do
       assert message =~ "Comparison requires 2 values on stack, got: 1"
     end
 
-    test "handles logical operations with insufficient stack values" do
-      # AND with only one value
-      instructions = [["lit", true], ["and"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
-      assert message =~ "Logical AND requires 2 values on stack, got: 1"
-
-      # OR with only one value
-      instructions = [["lit", false], ["or"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.EvaluationError{message: message}} = result
-      assert message =~ "Logical OR requires 2 values on stack, got: 1"
-
+    test "handles logical NOT with insufficient stack values" do
       # NOT with no values
       instructions = [["not"]]
       result = Evaluator.evaluate(instructions)
@@ -687,19 +648,7 @@ defmodule Predicator.EvaluatorTest do
       assert message =~ "Contains requires 2 values on stack, got: 1"
     end
 
-    test "handles type mismatches in logical operations" do
-      # AND with non-boolean values
-      instructions = [["lit", 1], ["lit", "hello"], ["and"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
-      assert message =~ "Logical AND requires booleans"
-
-      # OR with non-boolean values
-      instructions = [["lit", 42], ["lit", true], ["or"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
-      assert message =~ "Logical OR requires booleans"
-
+    test "handles type mismatches in logical NOT" do
       # NOT with non-boolean value
       instructions = [["lit", "not_boolean"], ["not"]]
       result = Evaluator.evaluate(instructions)
@@ -1265,7 +1214,9 @@ defmodule Predicator.EvaluatorTest do
     end
 
     test "integrates with logical operations" do
-      # Simulate: created_at > 1d ago AND updated_at < 1h from now
+      # Simulate: created_at > 1d ago AND updated_at < 1h from now, in jump
+      # form (see the composite tests in the "logical operators" describe
+      # block for why)
       now = DateTime.utc_now()
       # 1 hour ago
       recent_past = DateTime.add(now, -3600, :second)
@@ -1277,11 +1228,11 @@ defmodule Predicator.EvaluatorTest do
         ["duration", [[1, "d"]]],
         ["relative_date", "ago"],
         ["compare", "GT"],
+        ["jump_if_falsy_or_pop", 5],
         ["lit", near_future],
         ["duration", [[1, "h"]]],
         ["relative_date", "future"],
-        ["compare", "LT"],
-        ["and"]
+        ["compare", "LT"]
       ]
 
       result = Evaluator.evaluate(instructions)

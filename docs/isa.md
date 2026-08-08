@@ -24,6 +24,8 @@ than re-arguing it.
   library's semver. All three ISA v2 opcodes shipped in 3.7.0; 3.8.0 then
   refined v2 semantics without adding an opcode (it made every arithmetic and
   legacy logical opcode report an unbound root rather than a type mismatch).
+  ISA v3 minted no opcode at all: it retired `and` and `or`, shipping in
+  4.0.0 as the first version the integer moves for without a new opcode.
 - An opcode's semantics never change under its own name. A change to what an
   opcode does is a new name at a new version. This is what makes "scan the
   opcode names in a list" a sound answer to "what version does this list
@@ -53,7 +55,7 @@ than re-arguing it.
   Each sibling publishes the version it supports in its own repository; this
   document maintains no support matrix.
 
-Current version: **ISA v2**.
+Current version: **ISA v3**.
 
 At runtime, `Predicator.isa_version/0` returns this build's version as an
 integer, and `Predicator.Instructions.required_isa/1` returns the minimum
@@ -208,8 +210,8 @@ feature tags, not by tiers.
 | `load` | name (string) | 0 | 1 | v1 | 1 | yes | - |
 | `access` | property (string) | 1 | 1 | v1 | 3 | yes | - |
 | `compare` | operator (string) | 2 | 1 | v1 | 1 | yes | - |
-| `and` | - | 2 | 1 | v1 | 1 | no | - |
-| `or` | - | 2 | 1 | v1 | 1 | no | - |
+| `and` | - | 2 | 1 | v1 | 1 | no | v3 |
+| `or` | - | 2 | 1 | v1 | 1 | no | v3 |
 | `not` | - | 1 | 1 | v1 | 1 | yes | - |
 | `in` | - | 2 | 1 | v1 | 3 | yes | - |
 | `contains` | - | 2 | 1 | v1 | 3 | yes | - |
@@ -303,16 +305,17 @@ reference survives an edit above it.
       exercise them. `EQ`/`NE`/`STRICT_EQ`/`STRICT_NE` on two maps are
       well-defined and portable - only `GT`/`LT`/`GTE`/`LTE` are not.
   - Fewer than two values on the stack is `EvaluationError`.
-- **`and`, `or`** - **legacy: accepted but never emitted by the
-  compiler.** Both operands must be booleans; anything else, including
-  `:undefined`, is `TypeMismatchError` with operation `logical_and` /
-  `logical_or` and expected type `boolean`. They do
-  not short-circuit: both operands are already on the stack by the time
-  either opcode runs. Kept for stored artifacts and for v1 sibling
-  implementations (ADR-0001); ADR-0003 permits retiring them at a major
-  version with an upgrade path (`px-tbv.9`). A v2 implementation still has to
-  run them - they are not deprecated out of the evaluator, only out of code
-  generation.
+- **`and`, `or`** - **retired at ISA v3; never emitted by the compiler.**
+  Both operands must be booleans; anything else, including `:undefined`, is
+  `TypeMismatchError` with operation `logical_and` / `logical_or` and
+  expected type `boolean`. They do not short-circuit: both operands are
+  already on the stack by the time either opcode runs. This is the semantics
+  a v1 or v2 implementation still has to provide - a sibling declaring either
+  version claims `and`/`or` under the interval rule (§1). This build has no
+  `execute_instruction/2` clause for them: evaluating a list containing
+  either is refused with reason `"retired_opcode"`, naming ISA v3 and
+  pointing at `Predicator.Instructions.upgrade/1`, which is the migration
+  ADR-0003 requires (`px-tbv.9`).
 - **`not`** (`execute_logical_not/1`) - boolean required; `:undefined` or any
   other type is `TypeMismatchError` (operation `logical_not`, expected
   `boolean`).
@@ -464,13 +467,14 @@ What a reader might expect to find here and will not:
 |---|---|---|---|
 | v1 | everything not listed below | - | up to 3.6.x |
 | v2 | `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list` | - | 3.7.0 |
+| v3 | - | `and`, `or` | 4.0.0 |
 
-This table records the release each opcode was *introduced* in, and, once any
-opcode has been retired, the release each was *removed* in - both ends of the
-interval §1 defines. A version whose only change is a retirement still gets a
-row here. A version's semantics can also be refined in a later release
-without a new opcode and without a new ISA version - 3.8.0 did exactly that
-to v2, as noted in §1.
+This table records the release each opcode was *introduced* in, and, now that
+an opcode has been retired, the release each was *removed* in - both ends of
+the interval §1 defines. A version whose only change is a retirement still
+gets a row here, as v3 does. A version's semantics can also be refined in a
+later release without a new opcode and without a new ISA version - 3.8.0 did
+exactly that to v2, as noted in §1.
 
 ISA v1 is defined as the full opcode set the Elixir evaluator accepted
 before ADR-0001. A sibling declaring v1 support is claiming that whole set;

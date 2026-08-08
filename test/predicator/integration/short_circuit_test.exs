@@ -84,9 +84,10 @@ defmodule Predicator.Integration.ShortCircuitTest do
     end
   end
 
-  describe "old compiled artifacts still evaluate" do
-    test "a hand-written [\"and\"] instruction list still works" do
-      assert Evaluator.evaluate([["lit", false], ["lit", true], ["and"]], %{}) == false
+  describe "old compiled artifacts are refused, not silently mis-run" do
+    test "a hand-written [\"and\"] instruction list is refused as a retired opcode" do
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "retired_opcode"}} =
+               Evaluator.evaluate([["lit", false], ["lit", true], ["and"]], %{})
     end
   end
 

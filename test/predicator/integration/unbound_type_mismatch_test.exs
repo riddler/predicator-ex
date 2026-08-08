@@ -46,15 +46,13 @@ defmodule Predicator.Integration.UnboundTypeMismatchTest do
       assert Predicator.evaluate("1 + unbound", %{}) == unbound_at("unbound", {1, 5})
     end
 
-    # No positions: table is passed, so these double as no-table regression
-    # tests (px-1e1) for the legacy opcodes.
-    test "legacy [\"and\"], which the compiler no longer emits (px-e3g.1)" do
-      assert Predicator.evaluate([["load", "a"], ["load", "b"], ["and"]], %{"a" => false}) ==
-               {:error, UndefinedVariableError.new("b")}
-    end
-
-    test "legacy [\"or\"], which the compiler no longer emits (px-e3g.1)" do
-      assert Predicator.evaluate([["load", "a"], ["load", "b"], ["or"]], %{"a" => true}) ==
+    # No positions: table is passed, so this doubles as a no-table
+    # regression test (px-1e1). Previously carried by the legacy and/or
+    # opcodes, which px-tbv.9 retired at ISA v3 - a hand-authored arithmetic
+    # list keeps both properties (no table, rejects :undefined) that made
+    # and/or useful here in the first place.
+    test "hand-written arithmetic list, no compiler-produced position table" do
+      assert Predicator.evaluate([["load", "a"], ["load", "b"], ["add"]], %{"a" => 1}) ==
                {:error, UndefinedVariableError.new("b")}
     end
   end
