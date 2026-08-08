@@ -15,5 +15,6 @@ defmodule Predicator.DocsExamplesTest do
     doctest_file("docs/guides/nested-data-access.md")
     doctest_file("docs/guides/custom-functions.md")
     doctest_file("docs/guides/location-expressions.md")
+    doctest_file("docs/guides/embedding.md")
   end
 end

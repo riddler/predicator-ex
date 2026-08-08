@@ -99,6 +99,7 @@ defmodule Predicator.MixProject do
         "docs/guides/nested-data-access.md",
         "docs/guides/custom-functions.md",
         "docs/guides/location-expressions.md",
+        "docs/guides/embedding.md",
         "docs/guides/porting.md",
         "docs/architecture.md",
         {"docs/adr/README.md",

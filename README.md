@@ -58,7 +58,10 @@ portable artifact; the table holds offsets into the source string and is
 meaningless without it. Want positions back after a round trip? Persist the
 source too and recompile with `compile_with_positions/1` on load, rather than
 storing the table - a table compiled from one source silently mismatches a
-different source's instructions.
+different source's instructions. See
+[Embedding compiled programs](docs/guides/embedding.md) for the full
+store/check/run lifecycle, including what to do when a stored artifact
+predates a retired opcode.
 
 ## Documentation
 
@@ -72,6 +75,8 @@ different source's instructions.
   set per evaluation
 - [Location expressions](docs/guides/location-expressions.md) - SCXML
   assignment targets and writing into a context
+- [Embedding compiled programs](docs/guides/embedding.md) - storing an
+  instruction list and checking its ISA version before running it
 - [Porting Predicator](docs/guides/porting.md) - implementing the instruction
   set in another language and verifying it against the conformance corpus
 - [Architecture and language reference](docs/architecture.md) - the grammar
