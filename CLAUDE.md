@@ -300,3 +300,14 @@ and Elixir matching what CI builds with.
   explained in the commit message and the PR body -
   `test/predicator/conformance/corpus_freshness_test.exs` proves the corpus is
   fresh, never that the change was intended.
+- **Binding tests carry a sabotage note.** A test that binds an exported
+  artifact to its source - `test/predicator/isa_sync_test.exs` and
+  `test/predicator/conformance/{corpus_freshness,opcode_coverage,function_coverage,schema_validation,ratchet_registry,package_boundary}_test.exs` -
+  is verified by breaking what it covers, confirming it goes red, reverting, and
+  recording the mutation in one line above the test:
+  `# sabotage: manifest tier table drops tier 3 -> red`. These tests are the
+  only thing standing between a wrong specification and the siblings that
+  consume it (ADR-0003), and a vacuous one is indistinguishable from a passing
+  one without this. **Ordinary tests need no note** - this repo deliberately
+  does not adopt statifier's broader practice; see
+  `docs/research/260808-px-9ab-sabotage-notes.md`.

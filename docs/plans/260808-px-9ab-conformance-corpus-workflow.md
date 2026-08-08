@@ -575,15 +575,15 @@ Then link it: `bd dep add <new-id> px-9ab`.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `docs/research/260808-px-9ab-sabotage-notes.md` exists and states a
+- [x] `docs/research/260808-px-9ab-sabotage-notes.md` exists and states a
       decision, not a survey
-- [ ] `grep -n "sabotage" CLAUDE.md` shows the convention bullet with the
+- [x] `grep -n "sabotage" CLAUDE.md` shows the convention bullet with the
       enumerated file list
-- [ ] The follow-on bead exists, carries `area:conformance` and
+- [x] The follow-on bead exists, carries `area:conformance` and
       `area:evaluator`, and depends on px-9ab
-- [ ] The diff touches only `CLAUDE.md` and `docs/research/`; no test file is
+- [x] The diff touches only `CLAUDE.md` and `docs/research/`; no test file is
       edited in this bead
-- [ ] `grep -rn "ratchet" CLAUDE.md .claude/` shows no ratchet *step* - only
+- [x] `grep -rn "ratchet" CLAUDE.md .claude/` shows no ratchet *step* - only
       references to `conformance/RATCHET.md` as a sibling-repo artifact, if any
 
 #### Manual Verification:
@@ -682,3 +682,10 @@ and no coverage to move. The equivalent verification is threefold:
       duplicate the `area:conformance` prose
 - [ ] `/implement-plan`'s addition would actually be read at the moment it is
       needed - it sits where a stuck agent looks, not in an introduction
+
+### Phase 3
+
+- [ ] The research note's cost section is honest enough that a reader who
+      disagrees can act on it - the decision is overturnable from the note alone
+- [ ] The CLAUDE.md bullet cannot be read as requiring notes on ordinary tests
+- [ ] The enumerated file list matches what is on disk today
