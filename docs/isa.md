@@ -267,9 +267,11 @@ reference survives an edit above it.
   reads a root variable; `access` and `bracket_access` operate on a value
   already on the stack.
 - **`access`** (`execute_access/2`, `access_value/3`) - pops the target,
-  pushes `target[property]`. A missing key, or a target that is neither a map
-  nor a list, pushes `:undefined` - never an error. An empty stack is
-  `EvaluationError` insufficient operands.
+  pushes `target[property]`. A missing key, a property against a list (the
+  compiler only ever emits a binary property, which a list never accepts as
+  an index), or a target that is neither a map nor a list, all push
+  `:undefined` - never an error. An empty stack is `EvaluationError`
+  insufficient operands.
 - **`compare`** (`execute_compare/2`, `compare_values/3`) - operand is one of
   `GT`, `LT`, `EQ`, `GTE`, `LTE`, `NE`, `STRICT_EQ`, `STRICT_NE`; any other
   string is an unknown instruction. Pops right then left (stack top is the
@@ -363,13 +365,33 @@ reference survives an edit above it.
   `not`; the two differ only in which surface operator produced them and in
   the operation name carried on the error.
 - **`bracket_access`** (`execute_bracket_access/1`, `access_value/3`) - pops
-  the key (stack top) then the target. A map accepts a string, atom, or
-  integer key; a list accepts a non-negative integer index. A missing key, an
-  out-of-range index, a negative index, or a target that is neither map nor
-  list all push `:undefined`. A key of any other type is
-  `TypeMismatchError` (operation `bracket_access`, expected `string`, the
-  message naming string/integer/atom as the accepted key types).
-  Fewer than two values on the stack is `EvaluationError`.
+  the key (stack top), then the target.
+  - **Against a map**: a string, an integer, or a boolean key indexes it. (The
+    reference implementation writes this as one Elixir clause on `is_atom/1`,
+    which is also true of `true`, `false`, and `:undefined`; a sibling with no
+    atom type implements the clause as string, integer, and boolean.) A key of
+    any other type - float, list, map, date, duration - is `TypeMismatchError`
+    (operation `bracket_access`, expected `string`). A missing key pushes
+    `:undefined`.
+  - **Boolean keys are data, not a type error.** A map may legitimately be
+    keyed by `true`/`false` (`config[true]`); the reference implementation's
+    context normalization preserves boolean keys for exactly this reason.
+    `m[true]` against a map with no `true` key is an ordinary miss and pushes
+    `:undefined`, the same as any other missing key - it is not a type
+    rejection that leaked through.
+  - **Against a list**: only a non-negative integer indexes; out-of-range and
+    negative indices push `:undefined`. Any non-integer key - string, boolean,
+    `:undefined`, float - is `TypeMismatchError` (operation `bracket_access`,
+    expected `integer`).
+  - Against a target that is neither map nor list: `:undefined`, whatever the
+    key.
+  - Fewer than two values on the stack is `EvaluationError`.
+  - This bullet, not the ISA version, changed to state the above precisely:
+    the list-with-a-non-integer-key case was previously unspecified here and
+    the reference implementation crashed on it rather than returning an error
+    value, and the boolean-map-key line corrects an earlier erratum in this
+    document rather than describing a behavior change - see §1's versioning
+    rules for why neither warrants a version bump.
 - **`call`** (`execute_function_call/3`, `call_function/4`) - pops
   `arg_count` values; the deepest (pushed first) is the first argument. Fewer
   than `arg_count` values on the stack is `EvaluationError`

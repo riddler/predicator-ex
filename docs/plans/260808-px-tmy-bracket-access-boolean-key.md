@@ -421,8 +421,8 @@ always were); no ISA version change and no instruction list changes meaning.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `mix test test/predicator/isa_sync_test.exs` passes - the bullets edited
+- [x] Full quality gate passes: `mix quality`
+- [x] `mix test test/predicator/isa_sync_test.exs` passes - the bullets edited
       here are prose, but that test parses `docs/isa.md`
 
 #### Manual Verification:
@@ -590,3 +590,9 @@ One, recorded rather than blocking, with a default already chosen:
       reproduction
 - [ ] The message for `xs['k']` reads sensibly (names an integer index, does
       not tell the user a string key is required while rejecting their string)
+
+### Phase 2
+
+- [ ] The bullet is readable by someone implementing in JavaScript: it never
+      requires knowing what an Elixir atom is to determine the behavior
+- [ ] No em dashes introduced; file house style matched
