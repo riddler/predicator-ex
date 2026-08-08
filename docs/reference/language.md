@@ -46,14 +46,11 @@ precedence, see [Architecture](../architecture.md).
 | `!=`     | Not equal | `role != 'guest'` |
 | `===`    | Strict equal (no type coercion) | `count === 5` |
 | `!==`    | Strict not equal (no type coercion) | `count !== "5"` |
-| `=`      | Equal - **deprecated**, use `==` | `status = 'active'` |
 
-> **Deprecated: `=` as equality.** Using `=` for equality still works and
-> still compiles to `["compare", "EQ"]`, but parsing one emits a deprecation
-> warning. **Predicator 4.0 makes expression-position `=` a parse error** -
-> `=` is being reserved for assignment in the forthcoming statement grammar.
-> Migrate to `==` before upgrading. Silence the warning with
-> `config :predicator, deprecation_warnings: false`. See
+> **`=` is assignment, not equality.** `=` is valid only at the start of a
+> statement in the [statement grammar](../architecture.md) - `Predicator.parse_program/2`
+> - with an assignable left side; a bare `=` in expression position is a
+> parse error naming `==`. `==` and `===` are the only equality operators. See
 > [ADR-0002](../adr/0002-the-equals-grammar-break.md) for the reasoning.
 
 ## Logical Operators

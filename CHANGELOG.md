@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Statement grammar.** `Predicator.parse_program/2` and
+  `Predicator.Parser.parse_program/2` parse
+  `program := statement (";" statement)* [";"]`, where a statement is either an
+  assignment (`location "=" expression`, the left side an identifier optionally
+  followed by `.name` and `[key]` accessors) or an ordinary expression. Programs
+  parse to `{:program, [statement], position}`, assignments to
+  `{:assignment, lhs, rhs, position}`; both carry positions or spans like every
+  other node, and both round-trip through `Predicator.decompile/2`. The
+  expression grammar is otherwise unchanged, and `Predicator.parse/2` still
+  returns a bare expression AST. Compiling and running a program arrives with
+  the `store` and `pop` opcodes and `Predicator.execute/2`.
+
 - **Source spans.** A point position tells an editor where to put a caret; a
   span tells it what to underline. `Predicator.Parser.parse/2`,
   `Predicator.parse/2`, and `Predicator.evaluate/3` (string input only) take
@@ -215,6 +227,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Predicator.decompile/2` renders a `{:comparison, :eq, ...}` node as `==`
+  rather than `=`, so decompiled output always re-parses under the 4.0 grammar.
+  The node's meaning and compiled instructions are unchanged.
+
 - `docs/isa.md` now specifies opcode retirement mechanics: retiring an opcode
   mints the next ISA version, a version's opcode set is a half-open interval
   so a retired opcode keeps its table row instead of being deleted, and the
@@ -245,6 +261,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compiled from source changes.
 
 ### Removed
+
+- **`=` as an equality operator.** `==` and `===` are the only equality
+  operators. `=` is assignment, valid only at the start of a statement and only
+  with an assignable left side; a bare `=` in expression position - through
+  `Predicator.parse/2`, `Predicator.evaluate/3`, or nested inside a statement -
+  is a parse error naming `==` as the fix, never a silent reinterpretation. The
+  3.7.0 deprecation warning was the notice period; migrate to `==` before
+  upgrading. **The instruction set is unaffected**: `=` and `==` always compiled
+  to `["compare", "EQ"]`, `{:comparison, :eq, ...}` remains a fully supported
+  AST node, and no stored instruction list is invalidated. See
+  [ADR-0002](docs/adr/0002-the-equals-grammar-break.md).
+
+- The `config :predicator, deprecation_warnings` setting, which existed only to
+  silence that warning. It is now inert and has been deleted; remove it from
+  your config.
 
 - **Breaking:** `:line` and `:column` on `Predicator.Errors.ParseError`. The
   struct now stores the location once, in `:position`, as the

@@ -454,8 +454,9 @@ What a reader might expect to find here and will not:
 - Surface syntax, including the `=` grammar break
   ([ADR-0002](adr/0002-the-equals-grammar-break.md)). Both `=` and `==`
   compile to `["compare", "EQ"]`, so no instruction-level divergence exists
-  between them: a parse-time deprecation warning is the entire difference,
-  and it is outside the conformance corpus's scope.
+  between them: the difference is a parse error in expression position and an
+  assignment in statement position, entirely at the parser layer, and it is
+  outside the conformance corpus's scope.
 - The builtin function set - see
   [Language Reference](reference/language.md).
 - Backward jumps and absolute jumps. Every jump in the ISA is relative and

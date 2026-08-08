@@ -63,11 +63,12 @@ iex> Predicator.evaluate("score > 85", %{"score" => 92})
 
 ## Migrating from `=`
 
-Using `=` for equality still works but is deprecated: parsing one now emits a
-warning, and **Predicator 4.0 makes expression-position `=` a parse error** -
-`=` is reserved for assignment in the forthcoming statement grammar. Migrate to
-`==` before upgrading, or silence the warning with
-`config :predicator, deprecation_warnings: false`. See
+`=` is no longer an equality operator. It is assignment, valid only at the
+start of a statement (`Predicator.parse_program/2`) and only with an
+assignable left side; a bare `=` in expression position - through
+`Predicator.parse/2` or `Predicator.evaluate/3` - is a parse error naming `==`
+as the fix, never a silent reinterpretation. `==` and `===` are the only
+equality operators. See
 [ADR-0002](docs/adr/0002-the-equals-grammar-break.md) for the reasoning.
 
 ## Cross-Language Siblings
