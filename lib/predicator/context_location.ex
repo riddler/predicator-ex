@@ -358,7 +358,11 @@ defmodule Predicator.ContextLocation do
   # Assignment implementation
   #
   # `trail` accumulates the segments already traversed so error messages can name
-  # the offending location the way a document author wrote it.
+  # the offending location the way a document author wrote it. It is absolute
+  # within the full path - the interior clause of `do_put/4` below always
+  # recurses with `trail ++ [segment]`, never a reset one - so a trail's length
+  # doubles as the failing segment's 0-based path index wherever a raise site
+  # below reports one.
 
   # Leaf: overwrite whatever is there.
   defp do_put(container, [segment], value, trail) do
@@ -389,7 +393,13 @@ defmodule Predicator.ContextLocation do
   end
 
   defp vivify(scalar, _next_segment, trail) do
-    {:error, LocationError.not_a_container(format_path(trail), List.last(trail), scalar)}
+    {:error,
+     LocationError.not_a_container(
+       format_path(trail),
+       List.last(trail),
+       scalar,
+       length(trail) - 1
+     )}
   end
 
   # Reading a segment. Maps take any key; lists take non-negative integers only.
@@ -402,11 +412,11 @@ defmodule Predicator.ContextLocation do
   end
 
   defp fetch_in(list, index, trail) when is_list(list) and is_integer(index) do
-    {:error, LocationError.invalid_index(format_path(trail ++ [index]), index)}
+    {:error, LocationError.invalid_index(format_path(trail ++ [index]), index, length(trail))}
   end
 
   defp fetch_in(list, key, trail) when is_list(list) do
-    {:error, LocationError.not_a_container(format_path(trail ++ [key]), key, list)}
+    {:error, LocationError.not_a_container(format_path(trail ++ [key]), key, list, length(trail))}
   end
 
   # Writing a segment. Mirrors fetch_in, padding short lists with `:undefined`.
@@ -420,11 +430,11 @@ defmodule Predicator.ContextLocation do
   end
 
   defp set_in(list, index, _value, trail) when is_list(list) and is_integer(index) do
-    {:error, LocationError.invalid_index(format_path(trail ++ [index]), index)}
+    {:error, LocationError.invalid_index(format_path(trail ++ [index]), index, length(trail))}
   end
 
   defp set_in(list, key, _value, trail) when is_list(list) do
-    {:error, LocationError.not_a_container(format_path(trail ++ [key]), key, list)}
+    {:error, LocationError.not_a_container(format_path(trail ++ [key]), key, list, length(trail))}
   end
 
   defp write_at(list, index, value, size) when index < size do

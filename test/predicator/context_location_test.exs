@@ -620,6 +620,51 @@ defmodule Predicator.ContextLocationTest do
     end
   end
 
+  describe "put/3 records the failing segment's path index" do
+    test "a scalar in the interior records its own path index" do
+      assert {:error, %LocationError{type: :not_a_container, details: details}} =
+               ContextLocation.put(%{"a" => %{"b" => 1}}, ["a", "b", "c"], 2)
+
+      assert details.path_index == 1
+    end
+
+    test "a scalar leaf records its own path index" do
+      assert {:error, %LocationError{type: :not_a_container, details: details}} =
+               ContextLocation.put(%{"user" => 5}, ["user", "name"], "Ada")
+
+      assert details.path_index == 0
+    end
+
+    test "a negative list index at the leaf records the segment's path index" do
+      assert {:error, %LocationError{type: :invalid_index, details: details}} =
+               ContextLocation.put(%{"xs" => [1, 2]}, ["xs", -1], 9)
+
+      assert details.index == -1
+      assert details.path_index == 1
+    end
+
+    test "a non-integer key against a list at the leaf records the segment's path index" do
+      assert {:error, %LocationError{type: :not_a_container, details: details}} =
+               ContextLocation.put(%{"items" => [1]}, ["items", "name"], "x")
+
+      assert details.path_index == 1
+    end
+
+    test "a negative list index in the interior records the segment's path index" do
+      assert {:error, %LocationError{type: :invalid_index, details: details}} =
+               ContextLocation.put(%{"items" => [1, 2]}, ["items", -1, "name"], "x")
+
+      assert details.path_index == 1
+    end
+
+    test "a non-integer key against a list in the interior records the segment's path index" do
+      assert {:error, %LocationError{type: :not_a_container, details: details}} =
+               ContextLocation.put(%{"items" => [1]}, ["items", "name", "deep"], "x")
+
+      assert details.path_index == 1
+    end
+  end
+
   describe "resolve_expression/2" do
     test "resolves a valid expression the same as tokenize + parse + resolve/2" do
       {:ok, tokens} = Lexer.tokenize("user.profile.name")

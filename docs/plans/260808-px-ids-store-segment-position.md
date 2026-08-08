@@ -480,12 +480,12 @@ end
 
 #### Automated Verification
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `mix test test/predicator/context_location_test.exs
+- [x] Full quality gate passes: `mix quality`
+- [x] `mix test test/predicator/context_location_test.exs
       test/predicator/errors/location_error_test.exs` is green
-- [ ] Every pre-existing test in both files passes **unmodified** - the change
+- [x] Every pre-existing test in both files passes **unmodified** - the change
       is additive by default argument
-- [ ] All five raise sites are covered by a `path_index` assertion; coverage
+- [x] All five raise sites are covered by a `path_index` assertion; coverage
       stays above the 90% minimum in `coveralls.json`
 
 #### Manual Verification
@@ -1123,3 +1123,14 @@ unresolved**, and is filed as a follow-up bead in Phase 4:
   neither asserting a position or a message
 - Related bead: **px-tmy** (`bracket_access` does not obey its own isa.md
   bullet) - different region of `evaluator.ex`, unaffected by this change
+
+## Deferred Manual Verification
+
+Items deferred from each phase's "Manual Verification" checklist, for a human
+to confirm out of band. None are checked off by an implementing agent.
+
+### Phase 1
+
+- [ ] `ContextLocation.put(%{"a" => %{"b" => 1}}, ["a", "b", "c"], 2)` reports
+      `details.path_index == 1` and its `message` is unchanged
+- [ ] No error message string anywhere in the suite changed wording
