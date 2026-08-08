@@ -46,5 +46,16 @@ defmodule Predicator.Integration.StatementsTest do
       assert ctx.data == %{"a" => 1}
       refute Map.has_key?(ctx.data, "c")
     end
+
+    test "a store failure on an interior segment blames that segment, not the lhs root" do
+      # px-ids: pinning at the integration layer too, not only in
+      # execute_test.exs. `a` is at column 15; the failing segment `.b`'s
+      # point position is the `.` at column 16.
+      assert {:error,
+              %Predicator.Errors.EvaluationError{reason: "not_a_container", position: {1, 16}},
+              ctx} = Predicator.execute(~s(a = {"b": 1}; a.b.c = 2), %{})
+
+      assert ctx.data == %{"a" => %{"b" => 1}}
+    end
   end
 end

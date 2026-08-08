@@ -358,6 +358,13 @@ defmodule Predicator.Evaluator do
   @spec attach_position({:ok, t()} | {:error, term()}, t()) :: {:ok, t()} | {:error, term()}
   defp attach_position({:ok, _evaluator} = ok, _before), do: ok
 
+  # `located/3`'s tagged tuple: `store` has already resolved the exact segment
+  # location itself, so it is stamped directly rather than looked up again by
+  # instruction pointer. Constructed only by `located/3`, destructured only
+  # here - it never escapes `step/1`.
+  defp attach_position({:error, {:located, reason, location}}, _before),
+    do: {:error, Predicator.Errors.put_position(reason, location)}
+
   defp attach_position({:error, reason}, %__MODULE__{} = before) do
     {:error, attach_error_position(reason, before)}
   end
@@ -576,14 +583,19 @@ defmodule Predicator.Evaluator do
      )}
   end
 
-  @spec advance_instruction_pointer({:ok, t()} | {:error, struct()}) ::
-          {:ok, t()} | {:error, struct()}
+  @spec advance_instruction_pointer({:ok, t()} | {:error, struct() | {:located, term(), term()}}) ::
+          {:ok, t()} | {:error, struct() | {:located, term(), term()}}
   defp advance_instruction_pointer({:ok, %__MODULE__{} = evaluator}) do
     {:ok, %__MODULE__{evaluator | instruction_pointer: evaluator.instruction_pointer + 1}}
   end
 
   defp advance_instruction_pointer({:error, error_struct}) when is_struct(error_struct),
     do: {:error, error_struct}
+
+  # Pass `located/3`'s tagged tuple through unchanged: it is not a struct, so
+  # the guarded clause above would not match it and this would otherwise raise
+  # `FunctionClauseError`. `attach_position/2` destructures it next.
+  defp advance_instruction_pointer({:error, {:located, _reason, _location}} = error), do: error
 
   @spec execute_compare(t(), binary()) :: {:ok, t()} | {:error, term()}
   defp execute_compare(%__MODULE__{stack: [right | [left | rest]]} = evaluator, operator) do
@@ -1346,11 +1358,17 @@ defmodule Predicator.Evaluator do
       path = Enum.reverse(reversed_segments)
 
       case validate_store_segments(path) do
-        :ok -> do_store(evaluator, path, value, rest)
-        {:error, _error} = error -> error
+        :ok ->
+          do_store(evaluator, path, value, rest)
+
+        {:error, error, index} ->
+          located(evaluator, error, index)
       end
     else
-      {:error, EvaluationError.insufficient_operands(:store, length(taken), n + 1)}
+      # No segment is identified (D2): the stack was short, so there is no
+      # path to point into. This keeps the store instruction's own `positions`
+      # entry, exactly as before px-ids.
+      located(evaluator, EvaluationError.insufficient_operands(:store, length(taken), n + 1), nil)
     end
   end
 
@@ -1361,8 +1379,8 @@ defmodule Predicator.Evaluator do
       {:ok, new_context} ->
         {:ok, %__MODULE__{evaluator | context: new_context, stack: rest}}
 
-      {:error, %LocationError{} = location_error} ->
-        {:error, wrap_location_error(location_error)}
+      {:error, %LocationError{details: details} = location_error} ->
+        located(evaluator, wrap_location_error(location_error), Map.get(details, :path_index))
     end
   end
 
@@ -1375,13 +1393,23 @@ defmodule Predicator.Evaluator do
   # stays `:string`, but an integer segment is equally valid (it indexes a
   # list), so the message names both instead of claiming `store` requires a
   # string alone.
-  @spec validate_store_segments([term()]) :: :ok | {:error, TypeMismatchError.t()}
+  #
+  # `Enum.find_index/2` rather than `Enum.find/2`: the index is the failing
+  # segment's position in the root-first path, which `execute_store/2` hands to
+  # `located/3` to look the segment's own annotation up in the run's segment
+  # table.
+  @spec validate_store_segments([term()]) ::
+          :ok | {:error, TypeMismatchError.t(), non_neg_integer()}
   defp validate_store_segments(segments) do
-    case Enum.find(segments, fn segment -> not (is_binary(segment) or is_integer(segment)) end) do
+    case Enum.find_index(segments, fn segment ->
+           not (is_binary(segment) or is_integer(segment))
+         end) do
       nil ->
         :ok
 
-      bad_segment ->
+      index ->
+        bad_segment = Enum.at(segments, index)
+
         {:error,
          TypeMismatchError.unary(
            :store,
@@ -1389,7 +1417,7 @@ defmodule Predicator.Evaluator do
            get_value_type(bad_segment),
            bad_segment,
            "a string or an integer"
-         )}
+         ), index}
     end
   end
 
@@ -1399,7 +1427,9 @@ defmodule Predicator.Evaluator do
   # both and gets them stamped by `attach_position/2` like any other
   # evaluator error. The `LocationError`'s message is carried through
   # verbatim (messages are non-normative); its `type` becomes the normative
-  # `reason`.
+  # `reason`. `details` is no longer discarded wholesale: `do_store/4` reads
+  # `:path_index` off it before calling this function, and the rest of
+  # `details` is still dropped here, as it always was.
   @spec wrap_location_error(LocationError.t()) :: EvaluationError.t()
   defp wrap_location_error(%LocationError{type: :not_assignable, message: message}) do
     EvaluationError.new(message, "not_assignable", :store)
@@ -1412,6 +1442,34 @@ defmodule Predicator.Evaluator do
   defp wrap_location_error(%LocationError{type: :invalid_index, message: message}) do
     EvaluationError.new(message, "invalid_index", :store)
   end
+
+  # The store is the one opcode that knows *which part of its own source
+  # expression* failed: a path index, from `validate_store_segments/1` or from
+  # the `LocationError`'s details. `positions` is keyed by instruction, so it
+  # cannot express that; `segment_positions` can, and this is where the two are
+  # joined. Returning `{:located, error, location}` rather than stamping here is
+  # deliberate - `attach_position/2` is the single point that stamps a position
+  # on an evaluator error (`Errors.put_position/2` overwrites unconditionally,
+  # `errors.ex:41-56`), so a position set here would be clobbered by the store
+  # instruction's own table entry. The tuple is constructed in this function and
+  # destructured in `attach_position/2`, and never escapes `step/1`.
+  @spec located(t(), term(), non_neg_integer() | nil) :: {:error, term()}
+  defp located(%__MODULE__{} = evaluator, error, index) do
+    case segment_annotation(evaluator, index) do
+      nil -> {:error, error}
+      annotation -> {:error, {:located, error, annotation}}
+    end
+  end
+
+  @spec segment_annotation(t(), non_neg_integer() | nil) ::
+          Types.position() | Types.span() | nil
+  defp segment_annotation(%__MODULE__{} = evaluator, index) when is_integer(index) do
+    evaluator.segment_positions
+    |> Map.get(evaluator.instruction_pointer, [])
+    |> Enum.at(index)
+  end
+
+  defp segment_annotation(_evaluator, _index), do: nil
 
   # `pop` is the statement-boundary opcode: it discards the stack top and
   # pushes nothing, so the next statement starts from a clean stack

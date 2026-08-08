@@ -831,16 +831,16 @@ Confirm with the gate rather than by assertion.
 
 #### Automated Verification
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `test/predicator/evaluator/store_test.exs:139-168` passes with **no edit
+- [x] Full quality gate passes: `mix quality`
+- [x] `test/predicator/evaluator/store_test.exs:139-168` passes with **no edit
       to its instructions, tables, or assertions** - if it fails, the fallback
       path is broken and the design's degradation claim is wrong
-- [ ] `mix test test/predicator/conformance` (or the corpus task the gate runs)
+- [x] `mix test test/predicator/conformance` (or the corpus task the gate runs)
       is green with no corpus regeneration and no `corpus_hash` change
-- [ ] `mix test test/predicator/isa_sync_test.exs` is green with no edit to that
+- [x] `mix test test/predicator/isa_sync_test.exs` is green with no edit to that
       file
-- [ ] Every `instructions ==` assertion across the suite is unchanged
-- [ ] Coverage above 90% for `evaluator.ex`; `located/3`'s `nil` branch and
+- [x] Every `instructions ==` assertion across the suite is unchanged
+- [x] Coverage above 90% for `evaluator.ex`; `located/3`'s `nil` branch and
       `segment_annotation/2`'s catch-all are both exercised
 
 #### Manual Verification
@@ -1142,3 +1142,13 @@ to confirm out of band. None are checked off by an implementing agent.
       and whose `instructions` and `positions` are identical to what the same
       call returned before this phase
 - [ ] `Predicator.compile_program("a.b.c = 1")` is byte-identical to before
+
+### Phase 3
+
+- [ ] In `iex -S mix`, each line of "Desired End State" reproduces exactly,
+      including `{1, 16}` (not `{1, 17}`) for
+      `~s(a = {"b": 1}; a.b.c = 2)` - the documented precision limit
+- [ ] `Predicator.execute("a = 1; a.b = 2; d = 3", %{}, spans: true)` reports
+      `position: {1, 8}` with `span: {{1, 8}, {1, 9}}`, and a human agrees the
+      narrower underline is an improvement (decision D1)
+- [ ] Every error `message` string is unchanged from before the branch
