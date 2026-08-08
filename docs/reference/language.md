@@ -35,6 +35,32 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 | `%`      | Modulo | `id % 2`, `17 % 5` |
 | `-`      | Unary minus | `-amount`, `-(x + y)` |
 
+### What `+` does with mixed operands
+
+`+` is overloaded across four operand-type combinations:
+
+| Left | Right | Result |
+|---|---|---|
+| Number | Number | Numeric addition |
+| String | String | String concatenation |
+| String | Number | String concatenation (number stringified) |
+| Number | String | String concatenation (number stringified) |
+
+```elixir
+iex> Predicator.evaluate("'Hello' + ' World'", %{})
+{:ok, "Hello World"}
+
+iex> Predicator.evaluate("'Count: ' + 42", %{})
+{:ok, "Count: 42"}
+```
+
+`+` also concatenates two lists:
+
+```elixir
+iex> Predicator.evaluate("[1, 2] + [3]", %{})
+{:ok, [1, 2, 3]}
+```
+
 ## Comparison Operators
 
 | Operator | Description | Example |
@@ -54,6 +80,24 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 > parse error naming `==`. `==` and `===` are the only equality operators. See
 > [ADR-0002](../adr/0002-the-equals-grammar-break.md) for the reasoning.
 
+## Comparing dates and datetimes
+
+- **Same type**: `Date`/`Date` and `DateTime`/`DateTime` compare
+  chronologically via `Date.compare/2` and `DateTime.compare/2`, never by
+  Erlang's raw struct-key ordering.
+- **Mixed pair**: a `Date` compared against a `DateTime` is coerced to
+  `00:00:00` UTC of that day, then compared as two `DateTime`s. This applies
+  to ordering (`>`, `<`, `>=`, `<=`), `==`/`!=`, and `in`/`contains`
+  membership.
+- **Strict equality is exempt**: `===` and `!==` resolve before any type
+  dispatch, so a `Date` is never strictly equal to a `DateTime` regardless of
+  the instant either denotes.
+- **The anchor is fixed at UTC midnight**, with no option to configure it.
+
+Every relative date (`3d ago`, `2w from now`, `next 1mo`, `last 1y`)
+evaluates to a `DateTime`, so without the coercion a `Date` context value
+could never be compared against one.
+
 ## Logical Operators
 
 | Operator | Description | Example |
@@ -61,6 +105,10 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 | `AND`    | Logical AND (case-insensitive) | `score > 85 AND age >= 18` |
 | `OR`     | Logical OR (case-insensitive) | `role == 'admin' OR role == 'manager'` |
 | `NOT`    | Logical NOT (case-insensitive) | `NOT expired` |
+| `!`      | Unary logical negation | `!expired` |
+
+`!` rejects an `:undefined` operand the same way `NOT` does - see the
+"Reject vs. propagate" table below.
 
 ## Membership Operators
 
@@ -151,6 +199,22 @@ Numeric and date functions moved under the `Math.` and `Date.` namespaces to
 avoid colliding with likely user variable names; the unnamespaced string
 functions predate that convention and were left as-is.
 
+### List Functions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `concat(list1, list2)` | Concatenate two lists | `concat([1, 2], [3]) == [1, 2, 3]` |
+
+```elixir
+iex> Predicator.evaluate("concat([1, 2], [3])", %{})
+{:ok, [1, 2, 3]}
+```
+
+`+` also concatenates two lists (see "What `+` does with mixed operands"
+above), but additionally coerces a string or number operand into
+concatenation. `concat` is list-only: given a non-list argument, it returns
+an `EvaluationError` rather than falling back to `+`'s coercion.
+
 ## Decompiling and Formatting Options
 
 `Predicator.decompile/2` converts a parsed AST back to source, preserving
@@ -169,6 +233,29 @@ iex> {:ok, ast} = Predicator.parse("score > 85")
 iex> Predicator.decompile(ast, parentheses: :explicit)
 "(score > 85)"
 ```
+
+## Contexts and key normalization
+
+`Predicator.Context.new/2` builds a persistent bound context: it merges the
+builtin function maps with `opts[:functions]` once, at construction, rather
+than re-merging on every `evaluate/3` call. `bind/3` is an O(1) rebind of a
+single key onto that context's data. `assign/3` writes through
+`Predicator.ContextLocation.put/3`, the same auto-vivifying algorithm the
+[location expressions guide](../guides/location-expressions.md) documents.
+`Predicator.evaluate/3` accepts either a `%Context{}` or a bare map - a bare
+map gets a one-shot `Context.new/2` internally.
+
+`new/2` and `bind/3` are the one edge where atom keys and `nil` values are
+accepted. Both convert **deeply and eagerly** - through nested maps and
+lists - before evaluation ever sees the data: an atom key becomes a string
+key (the string key wins on collision), and `nil` becomes `:undefined`. A
+`Date`, `DateTime`, or any other struct passes through unchanged; only plain
+maps have their keys touched. The evaluator consults string keys only after
+that point - it has no atom-key fallback.
+
+Because the function merge happens once at construction rather than per
+call, reusing a `Context` across many `evaluate/3` calls (e.g. `bind/3` in a
+loop) avoids re-merging the function maps on every evaluation.
 
 ## Undefined and Sparse Data
 
@@ -328,6 +415,19 @@ affects a root `load`: a missing nested path stays `:undefined` under either
 policy, since `access` and `bracket_access` never consult `on_unbound` - and
 it never fires on a load a short-circuited branch skipped.
 
+What actually changes under `:error` is narrower than it looks, because an
+unbound root already errors under the default whenever its `:undefined`
+reaches the result or is rejected by an operator. The policy's own cases are
+the ones where the default *absorbs* the sentinel into a defined result:
+
+| Expression, empty context | Default | Under `on_unbound: :error` |
+|---|---|---|
+| `missing OR true` | `{:ok, true}` | `{:error, ...}` |
+| `[missing]` | `{:ok, [:undefined]}` | `{:error, ...}` |
+| `{'a': missing}` | `{:ok, %{"a" => :undefined}}` | `{:error, ...}` |
+| `missing`, `missing == 5`, `not missing`, `missing + 1` | `{:error, ...}` | same |
+| `false AND missing`, `true OR missing` | `{:ok, false}` / `{:ok, true}` | unchanged - never loaded |
+
 ## Error Shapes
 
 Predicator returns errors as structs under `Predicator.Errors`, never as bare
@@ -358,3 +458,24 @@ iex> {err.__struct__, err.message}
 
 See the [location expressions guide](../guides/location-expressions.md) for
 `Predicator.Errors.LocationError`, the third error struct.
+
+### Positions and spans on errors
+
+`EvaluationError`, `TypeMismatchError`, and `UndefinedVariableError` each
+carry an optional `:position` and an optional `:span`. Under the default
+options only `:position` is set; passing `spans: true` to `evaluate/3` also
+sets `:span`, and in that case `:position` is set to the span's start, so a
+caller that only ever reads `:position` keeps working unchanged. The
+rendered `message` string is the same either way. See
+`docs/reference/ast.md` for what a span covers.
+
+An unbound variable's error is positioned at the *variable's own* load, not
+at the operator that rejected its `:undefined` value:
+
+```elixir
+iex> {:error, err} = Predicator.evaluate("unbound + 1", %{})
+iex> err.position
+{1, 1}
+```
+
+`{1, 1}` is the position of `unbound`, not of `+`.
