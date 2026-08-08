@@ -233,6 +233,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1.18 is required for the built-in `JSON` module; consumers on 1.17 or earlier
   must stay on 3.x.
 
+- `object_set` on a non-map target is now specified behavior. The evaluator
+  returns `%Predicator.Errors.EvaluationError{}` with reason
+  `"invalid_stack_value"` and operation `:object_set` instead of raising a
+  `FunctionClauseError`, matching how `relative_date` reports a non-duration on
+  the stack. `docs/isa.md` section 5 states it normatively rather than calling
+  it unspecified, and the conformance corpus covers it in the errors group - so
+  a sibling implementation must now produce this error to claim tier 4. The
+  shape is reachable only from a hand-built instruction list; the compiler
+  always emits `object_new` immediately before `object_set`, so nothing
+  compiled from source changes.
+
 ### Removed
 
 - **Breaking:** `:line` and `:column` on `Predicator.Errors.ParseError`. The
