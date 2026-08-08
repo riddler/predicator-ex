@@ -25,6 +25,11 @@ Conservative stays the default everywhere else: a clone of a repo that has not
 written an opt-in like this one gets the conservative rules, and so does this
 repo for any action the table below does not name.
 
+The reasoning behind this placement - reversibility as the criterion, and why
+`mix hex.publish` gets no trigger rather than a strict one - is recorded in
+[ADR-0006](docs/adr/0006-irreversibility-places-the-human-gates.md) (proposed).
+The table below is its enforcement; the ADR does not duplicate the rows.
+
 The grant is per action, and every action has a trigger. Authority is not
 blanket - an action whose trigger has not fired is still unauthorized, and an
 explicit "do not commit", "do not push", or equivalent from the current user or
@@ -130,6 +135,13 @@ enforcer` is separate and is not one of them.
 
 Every bead that changes files carries at least one `area:` label naming the part
 of the tree it touches. A bead may carry several.
+
+The reasoning behind this algebra - worktree-per-bead, disjointness as a
+decidable batching test, `area:build`'s exclusivity, and labels as predictions
+about file collision - is recorded in
+[ADR-0005](docs/adr/0005-worktree-parallelism-and-the-area-label-algebra.md)
+(proposed). This section is its enforcement and the live vocabulary; the ADR
+does not duplicate the table below.
 
 | Label | Covers |
 |---|---|
