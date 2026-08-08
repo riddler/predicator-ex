@@ -266,7 +266,7 @@ reference survives an edit above it.
   normalized to string keys before evaluation. This is the only opcode that
   reads a root variable; `access` and `bracket_access` operate on a value
   already on the stack.
-- **`access`** (`execute_access/2`, `access_value/2`) - pops the target,
+- **`access`** (`execute_access/2`, `access_value/3`) - pops the target,
   pushes `target[property]`. A missing key, or a target that is neither a map
   nor a list, pushes `:undefined` - never an error. An empty stack is
   `EvaluationError` insufficient operands.
@@ -362,7 +362,7 @@ reference survives an edit above it.
   `TypeMismatchError` (expected `boolean`). Semantically identical to
   `not`; the two differ only in which surface operator produced them and in
   the operation name carried on the error.
-- **`bracket_access`** (`execute_bracket_access/1`, `access_value/2`) - pops
+- **`bracket_access`** (`execute_bracket_access/1`, `access_value/3`) - pops
   the key (stack top) then the target. A map accepts a string, atom, or
   integer key; a list accepts a non-negative integer index. A missing key, an
   out-of-range index, a negative index, or a target that is neither map nor

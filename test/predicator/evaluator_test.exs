@@ -777,7 +777,7 @@ defmodule Predicator.EvaluatorTest do
 
       # atom key only, and this context reaches Evaluator.evaluate/3 directly,
       # bypassing Predicator.Context.new/2 - so nothing normalizes the atom
-      # key to a string first. access_value/2 no longer falls back to
+      # key to a string first. access_value/3 no longer falls back to
       # String.to_existing_atom/1 (px-8um.2), so the property is :undefined.
       # Atom-keyed nested data works when the context is built through
       # Predicator.Context.new/2 instead; see context_test.exs.
@@ -975,6 +975,77 @@ defmodule Predicator.EvaluatorTest do
       }
 
       assert Evaluator.evaluate(instructions, context) == "localhost"
+    end
+  end
+
+  describe "access_value/3 is total (px-tmy)" do
+    # A boolean key against a list target used to raise FunctionClauseError
+    # from ordinary user-authored source (the bead's reproduction). It must
+    # now return a typed error instead - from source and from a hand-built
+    # instruction list.
+    test "a boolean bracket key against a list target errors, from source" do
+      assert {:error,
+              %Predicator.Errors.TypeMismatchError{
+                operation: :bracket_access,
+                expected: :integer,
+                got: :boolean
+              }} = Predicator.evaluate("xs[flag]", %{"xs" => ["a"], "flag" => true})
+    end
+
+    test "a boolean bracket key against a map target is a miss, from source" do
+      assert {:ok, :undefined} =
+               Predicator.evaluate("m[flag]", %{"m" => %{"a" => 1}, "flag" => true})
+    end
+
+    test "a boolean bracket key against a map target hits, from source" do
+      assert {:ok, "on"} =
+               Predicator.evaluate("config[true]", %{"config" => %{true => "on"}})
+    end
+
+    test "a boolean bracket key against a list target errors, hand-built" do
+      instructions = [["lit", ["a"]], ["lit", true], ["bracket_access"]]
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{operation: :bracket_access}} =
+               Evaluator.evaluate(instructions, %{})
+    end
+
+    test "a boolean bracket key against a map target is a miss, hand-built" do
+      instructions = [["lit", %{"a" => 1}], ["lit", true], ["bracket_access"]]
+
+      assert Evaluator.evaluate(instructions, %{}) == :undefined
+    end
+
+    test "a boolean bracket key against a map target hits, hand-built" do
+      instructions = [["lit", %{true => "on"}], ["lit", true], ["bracket_access"]]
+
+      assert Evaluator.evaluate(instructions, %{}) == "on"
+    end
+
+    test "a string key against a list target errors, not just booleans" do
+      instructions = [["lit", ["a"]], ["lit", "k"], ["bracket_access"]]
+
+      assert {:error,
+              %Predicator.Errors.TypeMismatchError{operation: :bracket_access, expected: :integer}} =
+               Evaluator.evaluate(instructions, %{})
+    end
+
+    test "an :undefined key against a list target errors" do
+      instructions = [["lit", ["a"]], ["lit", :undefined], ["bracket_access"]]
+
+      assert {:error, %Predicator.Errors.TypeMismatchError{operation: :bracket_access}} =
+               Evaluator.evaluate(instructions, %{})
+    end
+
+    test "the access opcode never errors, even on a list target (dot property)" do
+      assert {:ok, :undefined} = Predicator.evaluate("xs.name", %{"xs" => [1, 2]})
+    end
+
+    test "a float key against a list target still errors, now naming an integer" do
+      instructions = [["lit", ["a"]], ["lit", 1.5], ["bracket_access"]]
+
+      assert {:error,
+              %Predicator.Errors.TypeMismatchError{operation: :bracket_access, expected: :integer}} =
+               Evaluator.evaluate(instructions, %{})
     end
   end
 

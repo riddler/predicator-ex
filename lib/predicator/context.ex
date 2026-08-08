@@ -214,7 +214,7 @@ defmodule Predicator.Context do
   #
   # `true`/`false` are atoms in Elixir but are boolean *data* keys here, not
   # variable-name-shaped atom keys - `config[true]` compiles to a literal
-  # atom key lookup (`access_value/2`'s `is_atom(key)` clause), so stringifying
+  # atom key lookup (`access_value/3`'s `is_atom(key)` clause), so stringifying
   # a `true`/`false` map key would silently break that lookup. They are left
   # as-is.
   @spec normalize_map(map()) :: map()
