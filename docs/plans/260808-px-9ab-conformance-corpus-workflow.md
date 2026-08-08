@@ -665,27 +665,59 @@ and no coverage to move. The equivalent verification is threefold:
 
 ## Deferred Manual Verification
 
+Walked with the user on 2026-08-08. Two items failed and were fixed in a
+follow-up commit on this branch; the wording below records what was found.
+
 ### Phase 1
 
-- [ ] Read Step 0's amended carve-out cold: is it obvious that adding
+- [x] Read Step 0's amended carve-out cold: is it obvious that adding
       `conformance/` narrows a skip rather than adding a check?
-- [ ] The two skills' statements of the never-hand-edited rule do not
+      **Yes** - the paragraph says so in place. Also confirmed there is no
+      third copy of the carve-out path list to leave stale: `/release` only
+      references the carve-out, it does not restate it.
+- [x] The two skills' statements of the never-hand-edited rule do not
       contradict `conformance/README.md`'s "How to add a case" - a contributor
       editing `conformance/cases/*.json` is doing the right thing
-- [ ] The PR-body bullet reads as something a reviewer wants, not as boilerplate
+      **They reconcile explicitly.** `conformance/README.md:213` is "How to add
+      a case, without any Elixir" -> edit `conformance/cases/*.json`, and
+      `/commit` names that file as authored and hand-edited by design.
+- [x] The PR-body bullet reads as something a reviewer wants, not as boilerplate
       an author will paste an empty version of
-- [ ] Nothing added reads as a new gate step
+      **Yes** - it is conditional on the corpus actually having moved, so there
+      is no empty form to paste, and it asks for cause plus case ids.
+- [x] Nothing added reads as a new gate step
+      **Failed, then fixed.** `/commit` Step 1 ended "it should stop the commit
+      until it is understood", which sits close enough to the real gate
+      discussion to be read as a stop condition. Reworded as an authoring
+      instruction that says outright there is no check to add.
 
 ### Phase 2
 
-- [ ] The CLAUDE.md bullet reads in the register of its neighbours and does not
+- [x] The CLAUDE.md bullet reads in the register of its neighbours and does not
       duplicate the `area:conformance` prose
-- [ ] `/implement-plan`'s addition would actually be read at the moment it is
+      **Duplication: no** - `area:conformance` is about file collision, these
+      are about authored-vs-generated. **Register: failed, then fixed.** The two
+      bullets ran 7 and 11 lines against neighbours of 2-3, with bold lead-ins
+      and an inline seven-file path glob. Both cut to 4 lines; the file list and
+      the note format moved into the research note CLAUDE.md already cites.
+- [x] `/implement-plan`'s addition would actually be read at the moment it is
       needed - it sits where a stuck agent looks, not in an introduction
+      **Yes** - it is a subsection of the troubleshooting block and leads with
+      the literal failure string.
 
 ### Phase 3
 
-- [ ] The research note's cost section is honest enough that a reader who
+- [x] The research note's cost section is honest enough that a reader who
       disagrees can act on it - the decision is overturnable from the note alone
-- [ ] The CLAUDE.md bullet cannot be read as requiring notes on ordinary tests
-- [ ] The enumerated file list matches what is on disk today
+      **Yes** - three named costs including the unflattering one (the seven
+      existing tests carry no notes until px-suw lands), plus a "What would
+      overturn it" section with two concrete triggers.
+- [x] The CLAUDE.md bullet cannot be read as requiring notes on ordinary tests
+      **Correct** - "Ordinary tests need no note" is stated in the bullet.
+- [x] The enumerated file list matches what is on disk today
+      **All seven exist.** The five conformance tests *not* on the list
+      (`coverage`, `features`, `generator`, `json`, `values`) are unit tests of
+      generator internals, correctly excluded. `json_test.exs` and
+      `values_test.exs` are the closest call, since they cover the canonical
+      encoding the corpus is written in; left out deliberately, and this is the
+      margin the research note warns needs judgement.
