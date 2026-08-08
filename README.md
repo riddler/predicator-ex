@@ -116,7 +116,8 @@ walks the path from picking a version to recording a conformance claim.
 ## Development
 
 See `CLAUDE.md` for the contributor workflow and
-[docs/architecture.md](docs/architecture.md) for the quality-check commands.
+[docs/contributing.md](docs/contributing.md) for the quality-check commands
+and the checklists for adding operators and data types.
 
 ## License
 

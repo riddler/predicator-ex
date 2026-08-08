@@ -175,6 +175,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **Contributor how-tos move out of the published docs** (`px-7jd.3`).
+  `docs/architecture.md`'s Development, Common Tasks, Code Standards,
+  Performance Considerations, and Troubleshooting sections - the quality-check
+  commands, the "Adding New Operators" and "Adding New Data Types" checklists,
+  and debugging notes - move to the new `docs/contributing.md`, which is not
+  listed in `mix.exs`'s hexdocs extras and so is neither published nor shipped
+  in the hex package. `docs/architecture.md` now reads as architecture; the
+  README's Development section points at the new file. **No behavior
+  changed**; this only moves where contributor instructions live.
+
 - **`docs/reference/language.md` documents `:undefined` and sparse-data
   semantics.** A new "Undefined and Sparse Data" section covers where
   `:undefined` comes from (unbound roots, missing nested paths), mismatched
