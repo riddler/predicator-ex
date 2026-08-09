@@ -144,7 +144,10 @@ specifies only that execution stops at the failing instruction.
 A host may additionally surface the value of the program's last expression
 statement alongside the context. That is a host-API convenience, not an ISA
 guarantee - the statement boundary's `pop` discards it as far as the VM is
-concerned.
+concerned. `Predicator.execute_value/2` is this implementation's answer: it
+obtains the value by having the machine retain what `pop` discarded rather
+than by compiling the program differently, so the compiled artifact is
+identical either way.
 
 Statement mode was specified here, ahead of the opcodes that reach it, so the
 statement layer arrived as two opcodes plus an entry point rather than as a
@@ -479,7 +482,12 @@ reference survives an edit above it.
   expression statement so the next statement starts from a clean stack. An
   empty stack is `EvaluationError` insufficient operands. It is unrelated to
   `jump_if_falsy_or_pop`/`jump_if_true_or_pop`, which pop conditionally as
-  part of a jump.
+  part of a jump. Non-normative: this implementation additionally retains the
+  discarded value in the evaluator's own state, which is how
+  `Predicator.execute_value/2` reports the last expression statement's value;
+  the stack effect, the error, and everything else a conforming
+  implementation must reproduce are unchanged, and a sibling need not retain
+  anything.
 
 ## 6. Not in the ISA
 
