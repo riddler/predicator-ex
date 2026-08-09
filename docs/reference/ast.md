@@ -131,13 +131,16 @@ them.
 
 ## Which token a node blames
 
-Leaves point at their own token. Everything else points at the token that
+Leaves point at their own token. Most non-leaf nodes point at the token that
 *names the operation*, so an error names the thing that failed rather than the
 start of the subexpression it failed on - `a * true` reports column 3, not
-column 1. `bracket_access` and `property_access` follow the same rule: an
-access node blames the thing being accessed, not the punctuation that
-introduces it, so a bad property or key names itself rather than the `.` or
-`[` that led to it:
+column 1. `bracket_access` and `property_access` are the deliberate exception:
+an access node blames the accessed operand instead, because for an access the
+thing that failed is the property or key, not the punctuation that reached it
+(the `.` or `[`). For a compound key the point is the key expression's first
+token - `a[x + 1]` blames the `x`, not the `+` - which coincides with the
+key's own blame position only when the key is a single token, as in
+`user.name`:
 
 | Node | Defining token |
 |---|---|

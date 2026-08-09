@@ -660,19 +660,29 @@ automated implementation, recorded here for a human to check off later.
 
 ### Phase 1
 
-- [ ] `Predicator.decompile/2` still round-trips `user.name` and `a[x + 1]` in
+- [x] `Predicator.decompile/2` still round-trips `user.name` and `a[x + 1]` in
       an `iex -S mix` session. This is the only item here not already pinned by
       an automated assertion: the `{1, 17}` case, the unregressed `{1, 3}` key
       blame, and both span shapes are covered by `execute_test.exs:139`,
       `instructions_visitor_positions_test.exs:385`, and
       `integration/spans_test.exs` respectively, all of which the gate runs.
+      Verified live 2026-08-08: both round-trip in point and span mode. The
+      only difference found, `a[(1)]` -> `a[1]`, is pre-existing
+      `StringVisitor` paren-stripping, unrelated to positions.
 
 ### Phase 2
 
-- [ ] `docs/reference/ast.md`'s two tables still read as one coherent rule each,
-      and a reader adding a new node type can tell which row to fill in
-- [ ] The `## [Unreleased]` section describes exactly one behavioral change to
+- [x] `docs/reference/ast.md`'s two tables still read as one coherent rule each,
+      and a reader adding a new node type can tell which row to fill in.
+      Verified live 2026-08-08 - required the prose amendment to "Which token
+      a node blames" made in this commit, which states the access-node
+      exception and the compound-key coincidence as part of the rule itself.
+- [x] The `## [Unreleased]` section describes exactly one behavioral change to
       access positions - the px-ids bullet and the new `### Changed` bullet do
-      not contradict each other
-- [ ] The reference page's `a = {"b": 1}; a.b.c = 2` example matches what
-      `Predicator.execute/1` actually prints
+      not contradict each other. Verified live 2026-08-08: every numeric claim
+      checked holds - `a = 1; a.b = 2` -> `{1, 8}`, `a[true] = 1` -> `{1, 3}`,
+      `a = {"b": 1}; a.b.c = 2` -> `{1, 17}`, `parse("user.name")` -> `{1, 6}`.
+- [x] The reference page's `a = {"b": 1}; a.b.c = 2` example matches what
+      `Predicator.execute/1` actually prints. Verified live 2026-08-08:
+      `Predicator.execute/1` returns "Cannot assign through non-container
+      value at 'a.b'" at `position: {1, 17}`, matching the page.
