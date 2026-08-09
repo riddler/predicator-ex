@@ -322,9 +322,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `["store", n]` instruction's index to one source annotation per location
   segment, and the evaluator joins it with the failing segment's path index.
   `Predicator.execute(~s(a = {"b": 1}; a.b.c = 2), %{})` reports
-  `position: {1, 16}` - the `.b` that held a scalar - instead of `{1, 15}`, the
-  location's root; `Predicator.execute("a[true] = 1", %{"a" => %{}})` reports
-  `{1, 3}`, the offending key, instead of `{1, 1}`. Under `spans: true` the
+  `position: {1, 17}` - the property `b`, which held a scalar - instead of
+  `{1, 15}`, the location's root;
+  `Predicator.execute("a[true] = 1", %{"a" => %{}})` reports `{1, 3}`, the
+  offending key, instead of `{1, 1}`. Under `spans: true` the
   underline narrows to the failing segment (`a.b`) instead of covering the whole
   statement; the caret is unchanged, because a chain node's span already started
   at the chain root. `Predicator.Compiled` gains a `segment_positions` field and
@@ -337,6 +338,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reason, `expected`, or `{:error, error, context}` shape moves.
 
 ### Changed
+
+- **Property and bracket access blame the accessed thing, not the accessor.**
+  A `{:property_access, ...}` node's point position is now the property-name
+  token rather than the `.`, and a `{:bracket_access, ...}` node's is the
+  first token of the key expression rather than the `[`.
+  `Predicator.parse("user.name")` reports `{1, 6}` instead of `{1, 5}`; the
+  position table entry for an `["access", ...]` or `["bracket_access"]`
+  instruction moves with it, and so does any error stamped from one. Spans are
+  unchanged: `spans: true` still runs a chain node from the chain root to the
+  accessor's end. No instruction list, opcode, ISA version, error type, or
+  reason moves.
 
 - `Predicator.compile_with_positions/1` now returns `{:ok, %Predicator.Compiled{}}`
   instead of `{:ok, instructions, position_table}`. The envelope carries the

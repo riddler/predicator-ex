@@ -539,13 +539,13 @@ returns nothing). Recorded so the implementer does not go looking.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality` (no Elixir changed; the gate is
+- [x] Full quality gate passes: `mix quality` (no Elixir changed; the gate is
       run to prove the tree is still green)
-- [ ] `git grep -n 'point position is the `\.`'` returns nothing across `docs/`
+- [x] `git grep -n 'point position is the `\.`'` returns nothing across `docs/`
       and `lib/`
-- [ ] `git grep -n "column 16" docs/` returns nothing (the reference page's old
+- [x] `git grep -n "column 16" docs/` returns nothing (the reference page's old
       worked example)
-- [ ] `git grep -n "{1, 16}" CHANGELOG.md` returns nothing - the px-ids bullet
+- [x] `git grep -n "{1, 16}" CHANGELOG.md` returns nothing - the px-ids bullet
       never spells the word "column", so this is the check that actually proves
       the CHANGELOG correction in D3 was made
 
@@ -666,3 +666,13 @@ automated implementation, recorded here for a human to check off later.
       blame, and both span shapes are covered by `execute_test.exs:139`,
       `instructions_visitor_positions_test.exs:385`, and
       `integration/spans_test.exs` respectively, all of which the gate runs.
+
+### Phase 2
+
+- [ ] `docs/reference/ast.md`'s two tables still read as one coherent rule each,
+      and a reader adding a new node type can tell which row to fill in
+- [ ] The `## [Unreleased]` section describes exactly one behavioral change to
+      access positions - the px-ids bullet and the new `### Changed` bullet do
+      not contradict each other
+- [ ] The reference page's `a = {"b": 1}; a.b.c = 2` example matches what
+      `Predicator.execute/1` actually prints
