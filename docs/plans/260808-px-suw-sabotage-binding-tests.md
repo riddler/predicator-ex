@@ -286,11 +286,11 @@ run `mix corpus.generate` to "fix" it. The fix is `git checkout`.
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `grep -c "# sabotage:"` returns `3` for each of the two files
-- [ ] `git status --short` lists only those two test files - `conformance/cases/`,
+- [x] `grep -c "# sabotage:"` returns `3` for each of the two files
+- [x] `git status --short` lists only those two test files - `conformance/cases/`,
       `conformance/README.md`, `lib/predicator/instructions.ex`, and
       `lib/predicator/conformance/coverage.ex` are clean
-- [ ] Full gate passes: `mix quality`
+- [x] Full gate passes: `mix quality`
 
 #### Manual Verification
 - [ ] The `functions/upper` deletion named `upper` in the red, confirming that
@@ -479,3 +479,11 @@ mutation here, with the mutations tried, and report it.)_
       real generated content rather than merely failing to build
 - [ ] The package-boundary red named the file the comment was added to
 - [ ] `git diff` shows comment-only changes
+
+### Phase 3: `opcode_coverage_test.exs` + `function_coverage_test.exs`
+
+- [ ] The `functions/upper` deletion named `upper` in the red, confirming that
+      case really was the only cover
+- [ ] The added `"noop"` opcode appeared in the coverage red, not merely in an
+      `isa_sync_test.exs` failure
+- [ ] Each note names the mutated file or constant
