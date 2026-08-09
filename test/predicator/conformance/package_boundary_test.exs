@@ -26,6 +26,7 @@ defmodule Predicator.Conformance.PackageBoundaryTest do
                        Enum.any?(@excluded_dirs, &String.starts_with?(path, &1))
                      end)
 
+  # sabotage: instructions.ex gains a comment naming Predicator.Conformance -> red
   test "no shipped module references the conformance apparatus" do
     # Sanity floor: a wildcard that silently matched nothing would make every
     # assertion below vacuous.
@@ -52,6 +53,7 @@ defmodule Predicator.Conformance.PackageBoundaryTest do
            """
   end
 
+  # sabotage: mix.exs package's exclude_patterns emptied to [] -> red
   test "mix.exs still excludes the conformance modules it claims to" do
     # Binds the comment in mix.exs to the code: dropping exclude_patterns
     # would ship the generator again, and the test above would stop meaning

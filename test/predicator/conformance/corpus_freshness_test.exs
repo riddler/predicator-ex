@@ -16,6 +16,7 @@ defmodule Predicator.Conformance.CorpusFreshnessTest do
 
   alias Mix.Tasks.Corpus.Generate, as: CorpusGenerate
 
+  # sabotage: instructions.ex @opcodes moves `access` from tier 3 to tier 4 -> red
   test "the checked-in corpus is exactly what mix corpus.generate would write" do
     assert {:ok, expected_files} = CorpusGenerate.build_files()
 

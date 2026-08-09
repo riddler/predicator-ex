@@ -239,11 +239,11 @@ CLAUDE.md's exclusivity rule exists to prevent.
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `grep -c "# sabotage:"` returns `1` for `corpus_freshness_test.exs` and
+- [x] `grep -c "# sabotage:"` returns `1` for `corpus_freshness_test.exs` and
       `2` for `package_boundary_test.exs`
-- [ ] `git status --short` lists only those two test files - in particular
+- [x] `git status --short` lists only those two test files - in particular
       `mix.exs`, `lib/`, and `conformance/` are clean
-- [ ] Full gate passes: `mix quality`
+- [x] Full gate passes: `mix quality`
 
 #### Manual Verification
 - [ ] The corpus-freshness red named affected case ids, i.e. the mutation moved
@@ -471,4 +471,11 @@ mutation here, with the mutations tried, and report it.)_
 - [ ] Each of the six reds was observed and matched the expected message above -
       not a compile error, not an unrelated suite failure
 - [ ] Each note names the mutation, not the assertion, and reads as one line
+- [ ] `git diff` shows comment-only changes
+
+### Phase 2: `corpus_freshness_test.exs` + `package_boundary_test.exs`
+
+- [ ] The corpus-freshness red named affected case ids, i.e. the mutation moved
+      real generated content rather than merely failing to build
+- [ ] The package-boundary red named the file the comment was added to
 - [ ] `git diff` shows comment-only changes
