@@ -102,13 +102,16 @@ defmodule Predicator.Parser do
       {:ok, {:logical_and, {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}, {:comparison, :gte, {:identifier, "age", {1, 16}}, {:literal, 18, {1, 23}}, {1, 20}}, {1, 12}}}
   """
 
+  alias Predicator.Cast
   alias Predicator.Lexer
 
-  # The seven scalar ISA type names (docs/isa.md section 3). ADR-0011: these are
+  # The seven scalar ISA type names (docs/isa.md section 3), from
+  # Predicator.Cast - one definition, so the parser's vocabulary and the
+  # evaluator's cast/2 dispatch cannot drift apart. ADR-0011: these are
   # contextual identifiers, not keywords - they are only special immediately
   # after `::` and stay valid as variable names everywhere else. `list` and `map`
   # are deliberately absent.
-  @cast_type_names ~w(integer float string boolean date datetime duration)
+  @cast_type_names Cast.type_names()
 
   @typedoc """
   A value that can appear in literals.

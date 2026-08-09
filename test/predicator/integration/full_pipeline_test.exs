@@ -312,4 +312,32 @@ defmodule Predicator.IntegrationTest do
              }) == {:ok, false}
     end
   end
+
+  describe "cast integration" do
+    test "a successful cast compares as its converted value" do
+      assert Predicator.evaluate(~s("42"::integer > 5)) == {:ok, true}
+    end
+
+    test "a failed cast is :undefined and falsy at a jump" do
+      assert Predicator.evaluate(~s("abc"::integer > 5)) == {:ok, :undefined}
+    end
+
+    test "a failed cast inside an AND chain short-circuits without erroring" do
+      assert Predicator.evaluate(~s("abc"::integer > 5 and true)) == {:ok, :undefined}
+    end
+
+    test "the propagation rule reaches through a genuine access-miss undefined" do
+      assert Predicator.evaluate(~s(user.missing::integer), %{"user" => %{}}) ==
+               {:ok, :undefined}
+    end
+
+    test "postfix cast binds tighter than unary minus" do
+      assert Predicator.evaluate(~s(-"1"::integer)) == {:ok, -1}
+    end
+
+    test "compiles and runs via Predicator.execute/2" do
+      assert {:ok, context} = Predicator.execute(~s(x = "42"::integer), %{})
+      assert context.data == %{"x" => 42}
+    end
+  end
 end

@@ -1392,6 +1392,24 @@ defmodule Predicator.ParserTest do
       end
     end
 
+    # The parser's @cast_type_names is defined as Predicator.Cast.type_names/0
+    # (one definition, no drift possible); this guard survives even if that
+    # changes back to a hand-written list.
+    test "the parser's vocabulary agrees with Predicator.Cast.type_names/0" do
+      for type_name <- Predicator.Cast.type_names() do
+        {:ok, tokens} = Lexer.tokenize("x::#{type_name}")
+
+        assert {:ok, {:cast, {:identifier, "x"}, ^type_name}} = parse_positionless(tokens)
+      end
+
+      assert {:error, message, _line, _col} = Predicator.parse("x::not_a_real_type")
+      assert message =~ "Unknown cast type 'not_a_real_type'"
+
+      for type_name <- Predicator.Cast.type_names() do
+        assert message =~ type_name
+      end
+    end
+
     test "casts a string literal" do
       {:ok, tokens} = Lexer.tokenize(~s("42"::integer))
       result = parse_positionless(tokens)

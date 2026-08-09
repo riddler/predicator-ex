@@ -7,8 +7,8 @@ defmodule Predicator.InstructionsTest do
   alias Predicator.Instructions
 
   describe "isa_version/0" do
-    test "returns 3" do
-      assert Instructions.isa_version() == 3
+    test "returns 4" do
+      assert Instructions.isa_version() == 4
     end
 
     test "returns an integer, not a string or a Version struct" do
@@ -68,9 +68,9 @@ defmodule Predicator.InstructionsTest do
       assert MapSet.size(Instructions.opcode_set(2)) == 25
     end
 
-    test "opcode_set(2) equals Map.keys(opcodes()) minus the v3-only opcodes - and/or are still members of v2's set" do
+    test "opcode_set(2) equals Map.keys(opcodes()) minus the v3-only and v4-only opcodes - and/or are still members of v2's set" do
       assert Instructions.opcode_set(2) ==
-               MapSet.new(Map.keys(Instructions.opcodes()) -- ["store", "pop"])
+               MapSet.new(Map.keys(Instructions.opcodes()) -- ["store", "pop", "cast"])
     end
 
     test "opcode_set(3) has 25 members - and/or retired, store/pop added" do

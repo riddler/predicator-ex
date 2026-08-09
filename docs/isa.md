@@ -55,7 +55,7 @@ than re-arguing it.
   Each sibling publishes the version it supports in its own repository; this
   document maintains no support matrix.
 
-Current version: **ISA v3**.
+Current version: **ISA v4**.
 
 At runtime, `Predicator.isa_version/0` returns this build's version as an
 integer, and `Predicator.Instructions.required_isa/1` returns the minimum
@@ -180,8 +180,8 @@ distinct error paths, more than a cell can carry cleanly. See the per-opcode
 subsections below the table.
 
 Every opcode is **ISA v1** except `jump_if_falsy_or_pop`,
-`jump_if_true_or_pop`, and `make_list`, which are **v2** (ADR-0001), and
-`store` and `pop`, which are **v3**.
+`jump_if_true_or_pop`, and `make_list`, which are **v2** (ADR-0001),
+`store` and `pop`, which are **v3**, and `cast`, which is **v4** (ADR-0011).
 
 ### Tiers
 
@@ -198,6 +198,7 @@ row's tier does not depend on the value types the expression happens to use
 | 4 | rich types | `object_new`, `object_set`, `duration`, `relative_date` |
 | 5 | functions | `call` |
 | 6 | statements | `store`, `pop` |
+| 7 | casts | `cast` |
 
 Tiers are defined by opcode, not by value. A date comparison
 (`[["lit", Date], ["lit", Date], ["compare", "GT"]]`) is tier 1 by opcode,
@@ -236,6 +237,7 @@ feature tags, not by tiers.
 | `relative_date` | direction (string) | 1 | 1 | v1 | 4 | yes | - |
 | `store` | n (int >= 0) | n + 1 | 0 | v3 | 6 | yes | - |
 | `pop` | - | 1 | 0 | v3 | 6 | yes | - |
+| `cast` | type name (string) | 1 | 1 | v4 | 7 | yes | - |
 
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` pop 0 or 1 values and push
 0: on the taken branch they leave the value on the stack (net 0 change), and
@@ -488,6 +490,88 @@ reference survives an edit above it.
   the stack effect, the error, and everything else a conforming
   implementation must reproduce are unchanged, and a sibling need not retain
   anything.
+- **`cast`** (`execute_cast/2`, `Predicator.Cast.cast/2`) - pops the stack
+  top, converts it to the named type, pushes the result. The operand must be
+  one of the seven scalar type names below; any other value is `unknown_instruction`,
+  the standing malformed-operand rule (ADR-0011) - `cast` has no other error
+  path. An empty stack is `EvaluationError` insufficient operands. This
+  subsection is the **normative** conversion matrix: a sibling claiming ISA
+  v4 implements exactly it.
+
+  Two rules generate every cell:
+
+  1. `:undefined` propagates: `cast(:undefined, _type)` is `:undefined` for
+     every target.
+  2. `cast` is total over values: a conversion that cannot produce a value of
+     the target type pushes `:undefined`, never an error. The type name
+     itself already failed at parse time if it was invalid; what remains at
+     evaluation time is the data's half, and data problems go soft here, as
+     at a `compare` mismatch or an `access` miss.
+
+  The seven scalar type names are `integer`, `float`, `string`, `boolean`,
+  `date`, `datetime`, `duration` (§3). `=` is identity, a word names a
+  conversion, `-` is `:undefined`:
+
+  | source \ target | integer | float | string | boolean | date | datetime | duration |
+  |---|---|---|---|---|---|---|---|
+  | integer | = | widen | format | - | - | - | - |
+  | float | truncate | = | format | - | - | - | - |
+  | string | parse | parse | = | parse | parse | parse | parse |
+  | boolean | - | - | format | = | - | - | - |
+  | date | - | - | format | - | = | midnight UTC | - |
+  | datetime | - | - | format | - | calendar date | = | - |
+  | duration | - | - | format | - | - | - | = |
+  | list | - | - | - | - | - | - | - |
+  | map | - | - | - | - | - | - | - |
+  | `:undefined` | - | - | - | - | - | - | - |
+
+  **Numeric conversions.**
+
+  - `integer::float` widens exactly.
+  - `float::integer` truncates toward zero. PostgreSQL rounds here; this
+    diverges deliberately, because truncation is what Elixir `trunc`,
+    JavaScript `Math.trunc`, and Ruby `to_i` all do natively, and matching
+    the siblings' host languages is worth more than matching PG's
+    tie-breaking.
+
+  **String parses.** Each parse accepts the whole string or yields
+  `:undefined`; no trimming, no partial consumption, no locale forms.
+
+  - `::integer` - an optionally-negated decimal integer (`-?[0-9]+`).
+  - `::float` - an optionally-negated decimal number with an optional
+    fraction (`-?[0-9]+(\.[0-9]+)?`); `"3"::float` is `3.0`. No exponent
+    form, matching the language's own float literal grammar.
+  - `::boolean` - exactly `"true"` or `"false"`, case-sensitive.
+  - `::date` - ISO 8601 calendar date (`2026-08-09`).
+  - `::datetime` - ISO 8601 datetime **with a UTC offset**, normalized to
+    UTC. A date-only string is `:undefined` here; the supported spelling is
+    `s::date::datetime`.
+  - `::duration` - the language's own duration-literal grammar, a sequence
+    of integer-unit pairs (`"1d2h30m"`).
+
+  **String formats (`::string`).**
+
+  - `integer` - decimal.
+  - `float` - the shortest round-trip decimal. Shortest-round-trip printing
+    is a known cross-language hazard, so the conformance corpus pins values
+    chosen to format identically across languages.
+  - `boolean` - `"true"` / `"false"`.
+  - `date`, `datetime` - ISO 8601; datetimes in UTC with `Z`.
+  - `duration` - the duration-literal grammar, largest unit first, zero
+    components omitted, `"0s"` when all components are zero, so
+    `d::string::duration` round-trips.
+  - Lists and maps are `-`: serialization is `JSON.stringify`'s job, not a
+    cast's.
+
+  **The date/datetime bridge.**
+
+  - `date::datetime` is midnight UTC - the same coercion `compare` and
+    `subtract` already apply to a mixed pair.
+  - `datetime::date` is the datetime's calendar date.
+
+  **No boolean/number bridge.** `1::boolean` and `true::integer` are
+  `:undefined`. The ISA has no truthiness rule (§2) and `compare` refuses to
+  bridge booleans and numbers; casts do not open a side door.
 
 ## 6. Not in the ISA
 
@@ -516,6 +600,7 @@ What a reader might expect to find here and will not:
 | v1 | everything not listed below | - | up to 3.6.x |
 | v2 | `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list` | - | 3.7.0 |
 | v3 | `store`, `pop` | `and`, `or` | 4.0.0 |
+| v4 | `cast` | - | 4.1.0 |
 
 This table records the release each opcode was *introduced* in, and, now that
 an opcode has been retired, the release each was *removed* in - both ends of

@@ -188,6 +188,13 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     left_instructions ++ [{["access", property], position}]
   end
 
+  defp visit_annotated({:cast, expr, type_name, position}, opts) do
+    # Post-order: the operand's instructions, then the cast opcode. The node's
+    # own position slot is the type-name token (docs/reference/ast.md), so a
+    # failed cast blames the type the author wrote.
+    visit_annotated(expr, opts) ++ [{["cast", type_name], position}]
+  end
+
   defp visit_annotated({:comparison, op, left, right, position}, opts) do
     # Post-order traversal: left operand, right operand, then operator
     left_instructions = visit_annotated(left, opts)

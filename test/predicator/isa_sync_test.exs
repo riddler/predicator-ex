@@ -27,7 +27,7 @@ defmodule Predicator.IsaSyncTest do
   # that surface shrinks on retirement while the table does not. Both parsing
   # tests guard against a regex that silently matches nothing - and passes
   # vacuously - by asserting this literal count rather than only "non-empty".
-  @opcode_count 27
+  @opcode_count 28
 
   describe "docs/isa.md section 4 table versus the opcode map" do
     setup do

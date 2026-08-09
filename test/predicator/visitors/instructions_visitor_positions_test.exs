@@ -37,7 +37,9 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
     "2w from now",
     "next 1d",
     "last 1d",
-    "a > 1 AND b < 2 OR c == 3"
+    "a > 1 AND b < 2 OR c == 3",
+    "x::integer",
+    ~s("2026-08-09"::date::datetime)
   ]
 
   defp table(expression) do
@@ -209,6 +211,20 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
 
       assert instructions == [["load", "user"], ["access", "name"]]
       assert positions == %{0 => {1, 1}, 1 => {1, 6}}
+    end
+
+    test "a cast points at its own type-name token" do
+      {instructions, positions} = table("x::integer")
+
+      assert instructions == [["load", "x"], ["cast", "integer"]]
+      assert positions == %{0 => {1, 1}, 1 => {1, 4}}
+    end
+
+    test "a chained cast gives each cast its own type-name token's position" do
+      {instructions, positions} = table(~s("2026-08-09"::date::datetime))
+
+      assert instructions == [["lit", "2026-08-09"], ["cast", "date"], ["cast", "datetime"]]
+      assert positions == %{0 => {1, 1}, 1 => {1, 15}, 2 => {1, 21}}
     end
 
     test "a relative date points at its direction keyword" do

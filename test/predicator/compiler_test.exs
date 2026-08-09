@@ -76,6 +76,13 @@ defmodule Predicator.CompilerTest do
 
       assert result == [["lit", 42]]
     end
+
+    test "compiles a cast to a cast instruction after its operand" do
+      ast = {:cast, {:identifier, "x", nil}, "integer", nil}
+      result = Compiler.to_instructions(ast)
+
+      assert result == [["load", "x"], ["cast", "integer"]]
+    end
   end
 
   describe "integration with full pipeline" do
