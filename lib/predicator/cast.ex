@@ -3,9 +3,9 @@ defmodule Predicator.Cast do
   The `::` cast conversion matrix.
 
   Implements every legal source-to-target conversion for the seven scalar
-  ISA type names, per [ADR-0011](../../docs/adr/0011-casts-are-an-opcode.md)
-  and the working specification in
-  [`docs/research/260809-px-2r5.1-cast-conversion-matrix.md`](../../docs/research/260809-px-2r5.1-cast-conversion-matrix.md).
+  ISA type names. The normative matrix is
+  [`docs/isa.md`](../../docs/isa.md) section 5, under `cast`; ADR-0011
+  records why casting is an opcode rather than a lowering to `call`.
 
   `cast/2` is total over values and never raises or returns an error tuple:
   `:undefined` propagates, and a conversion that cannot produce a value of the
