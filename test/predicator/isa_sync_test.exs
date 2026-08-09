@@ -34,6 +34,7 @@ defmodule Predicator.IsaSyncTest do
       {:ok, isa_doc: File.read!("docs/isa.md")}
     end
 
+    # sabotage: instructions.ex @opcodes gives `load` tier 2 -> red
     test "every table row round-trips through required_isa/1 and tier/1", %{isa_doc: isa_doc} do
       rows = parse_isa_table(isa_doc)
 
@@ -60,6 +61,7 @@ defmodule Predicator.IsaSyncTest do
       end
     end
 
+    # sabotage: instructions.ex @isa_version 3 -> 4 -> red
     test "isa_version/0 is the maximum version in the table", %{isa_doc: isa_doc} do
       rows = parse_isa_table(isa_doc)
       introduced_versions = Enum.map(rows, &elem(&1, 1))
@@ -80,6 +82,7 @@ defmodule Predicator.IsaSyncTest do
       assert Instructions.isa_version() == max_table_version
     end
 
+    # sabotage: docs/isa.md's "Current version: **ISA v3**." -> "**ISA v2**." -> red
     test "section 1's current-version line agrees with isa_version/0", %{isa_doc: isa_doc} do
       assert isa_doc =~ "Current version: **ISA v#{Instructions.isa_version()}**."
     end
@@ -90,6 +93,7 @@ defmodule Predicator.IsaSyncTest do
       {:ok, isa_doc: File.read!("docs/isa.md")}
     end
 
+    # sabotage: docs/isa.md's `and` row Removed in cell v3 -> - -> red
     test "every row's Removed in cell agrees with retired_in/1", %{isa_doc: isa_doc} do
       rows = parse_removed_column(isa_doc)
 
@@ -119,6 +123,7 @@ defmodule Predicator.IsaSyncTest do
       {:ok, isa_doc: File.read!("docs/isa.md")}
     end
 
+    # sabotage: docs/isa.md tier-6 row drops `pop` -> red
     test "each tier's opcode list matches exactly what the map assigns to that tier", %{
       isa_doc: isa_doc
     } do
@@ -154,6 +159,7 @@ defmodule Predicator.IsaSyncTest do
       {:ok, evaluator_src: File.read!("lib/predicator/evaluator.ex")}
     end
 
+    # sabotage: evaluator.ex renames the `pop` clause head to `popp` -> red
     test "every execute_instruction/2 clause head opcode is a known opcode", %{
       evaluator_src: evaluator_src
     } do
