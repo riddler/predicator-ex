@@ -124,8 +124,8 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       iex> {:ok, program} = Predicator.parse_program("a.b = 1", spans: false)
       iex> Predicator.Visitors.InstructionsVisitor.visit_with_segment_positions(program)
       {[["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]],
-       %{0 => {1, 1}, 1 => {1, 2}, 2 => {1, 7}, 3 => {1, 1}},
-       %{3 => [{1, 1}, {1, 2}]}}
+       %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 7}, 3 => {1, 1}},
+       %{3 => [{1, 1}, {1, 3}]}}
   """
   @spec visit_with_segment_positions(Parser.ast() | Parser.program(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table(),
@@ -404,8 +404,8 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   #
   # A segment's annotation is the annotation of the node that produced its
   # *value*: the identifier for the root, the `property_access` node for a
-  # dotted segment (its point position is the `.`, its span runs from the
-  # chain root - docs/reference/ast.md), and the *key expression* for a
+  # dotted segment (its point position is the property name, its span runs
+  # from the chain root - docs/reference/ast.md), and the *key expression* for a
   # bracket segment, since the key is what a bad or out-of-range segment value
   # came from.
   @spec location_segment_annotations(Parser.ast()) ::

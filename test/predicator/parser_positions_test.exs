@@ -155,14 +155,22 @@ defmodule Predicator.ParserPositionsTest do
                Predicator.parse("len(upper(name))")
     end
 
-    test "bracket access points at its opening bracket, one position per link" do
-      assert {:ok, {:bracket_access, {:bracket_access, _base, _k0, {1, 2}}, _k1, {1, 5}}} =
+    test "bracket access points at the key's first token, one position per link" do
+      assert {:ok, {:bracket_access, {:bracket_access, _base, _k0, {1, 3}}, _k1, {1, 6}}} =
                Predicator.parse("a[0][1]")
     end
 
-    test "property access points at the dot" do
-      assert {:ok, {:property_access, {:identifier, "user", {1, 1}}, "name", {1, 5}}} =
+    test "property access points at the property name" do
+      assert {:ok, {:property_access, {:identifier, "user", {1, 1}}, "name", {1, 6}}} =
                Predicator.parse("user.name")
+    end
+
+    test "bracket access points at the key's first token, not the key node's own token" do
+      assert {:ok, {:bracket_access, _base, {:arithmetic, :add, _l, _r, {1, 5}}, {1, 3}}} =
+               Predicator.parse("a[x + 1]")
+
+      assert {:ok, {:bracket_access, _b, {:literal, 1, {1, 4}}, {1, 3}}} =
+               Predicator.parse("a[(1)]")
     end
   end
 

@@ -201,14 +201,14 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
                ["bracket_access"]
              ]
 
-      assert positions == %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 2}, 3 => {1, 6}, 4 => {1, 5}}
+      assert positions == %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 3}, 3 => {1, 6}, 4 => {1, 6}}
     end
 
-    test "property access points at the dot" do
+    test "property access points at the property name" do
       {instructions, positions} = table("user.name")
 
       assert instructions == [["load", "user"], ["access", "name"]]
-      assert positions == %{0 => {1, 1}, 1 => {1, 5}}
+      assert positions == %{0 => {1, 1}, 1 => {1, 6}}
     end
 
     test "a relative date points at its direction keyword" do
@@ -274,9 +274,9 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
                ["store", 2]
              ]
 
-      # "user" at its token, "name" at the dot-property token, "Ada" at its
-      # token, store at the lhs root "user" (not the "=")
-      assert positions == %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 13}, 3 => {1, 1}}
+      # "user" at its token, "name" at its own property-name token, "Ada" at
+      # its token, store at the lhs root "user" (not the "=")
+      assert positions == %{0 => {1, 1}, 1 => {1, 6}, 2 => {1, 13}, 3 => {1, 1}}
     end
 
     test "a bracket-access segment's key carries its own token's position" do
@@ -378,8 +378,8 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
                ["store", 3]
              ]
 
-      assert positions == %{0 => {1, 1}, 1 => {1, 2}, 2 => {1, 4}, 3 => {1, 9}, 4 => {1, 1}}
-      assert segment_positions == %{4 => [{1, 1}, {1, 2}, {1, 4}]}
+      assert positions == %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 5}, 3 => {1, 9}, 4 => {1, 1}}
+      assert segment_positions == %{4 => [{1, 1}, {1, 3}, {1, 5}]}
     end
 
     test "a bracket key segment's annotation is the key's own token position" do
@@ -403,7 +403,7 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
                ["store", 4]
              ]
 
-      assert segment_positions == %{7 => [{1, 1}, {1, 2}, {1, 6}, {1, 9}]}
+      assert segment_positions == %{7 => [{1, 1}, {1, 3}, {1, 6}, {1, 10}]}
     end
 
     test "span mode gives each segment a span, not a point" do
