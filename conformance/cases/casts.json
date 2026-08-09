@@ -1,0 +1,39 @@
+[
+  {
+    "id": "casts/string-to-integer-happy-path",
+    "source": "\"42\"::integer",
+    "expected": { "result": 42 },
+    "notes": "the happy path: a whole-string decimal integer parses"
+  },
+  {
+    "id": "casts/string-to-integer-unconvertible-is-undefined",
+    "source": "\"abc\"::integer",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the totality rule (ADR-0011): a conversion that cannot produce a value of the target type pushes :undefined, never an error"
+  },
+  {
+    "id": "casts/undefined-propagates",
+    "source": "user.missing::integer",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the propagation rule (ADR-0011): :undefined::type is :undefined for every target. user.missing is a genuine :undefined from an access miss, not a load of an absent root, which errors under the default on_unbound policy (see errors.json) and is a separate concern from cast's own semantics"
+  },
+  {
+    "id": "casts/float-to-integer-truncates-toward-zero-at-negative",
+    "source": "-1.5::integer",
+    "expected": { "result": -1 },
+    "notes": "float::integer truncates toward zero, deliberately diverging from PostgreSQL's rounding, to match Elixir trunc/JavaScript Math.trunc/Ruby to_i - -1.5 truncates to -1, not -2"
+  },
+  {
+    "id": "casts/chained-cast-date-to-datetime",
+    "source": "\"2026-08-09\"::date::datetime",
+    "expected": { "result": { "$type": "datetime", "value": "2026-08-09T00:00:00Z" } },
+    "notes": "chained-cast composition (ADR-0011): date::datetime is midnight UTC, and this is the supported spelling of a date-shaped string cast to datetime"
+  },
+  {
+    "id": "casts/no-boolean-number-bridge",
+    "source": "1::boolean",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the ISA has no truthiness rule and casts do not open a side door between booleans and numbers"
+  }
+]

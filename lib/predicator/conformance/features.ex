@@ -11,7 +11,7 @@ defmodule Predicator.Conformance.Features do
 
   The full tag vocabulary: `comparison`, `strict_equality`, `short_circuit`,
   `arithmetic`, `membership`, `access`, `objects`, `dates`, `datetimes`,
-  `durations`, `functions`, `legacy_logical`, `undefined`, `errors`.
+  `durations`, `functions`, `legacy_logical`, `undefined`, `errors`, `casts`.
 
   This is a good-faith mapping, not an exhaustive one - see the per-clause
   comments below for the simplifications taken. `lit`, `load`, `not`, and
@@ -51,7 +51,8 @@ defmodule Predicator.Conformance.Features do
     "object_set" => ~w(objects),
     "duration" => ~w(durations),
     "relative_date" => ~w(dates),
-    "call" => ~w(functions)
+    "call" => ~w(functions),
+    "cast" => ~w(casts)
   }
 
   @doc """

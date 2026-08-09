@@ -15,7 +15,7 @@ defmodule Predicator.Evaluator do
   """
 
   alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
-  alias Predicator.{ContextLocation, Duration, Instructions, Types, Undefined}
+  alias Predicator.{Cast, ContextLocation, Duration, Instructions, Types, Undefined}
 
   alias Predicator.Errors.{
     EvaluationError,
@@ -23,6 +23,12 @@ defmodule Predicator.Evaluator do
     TypeMismatchError,
     UndefinedVariableError
   }
+
+  # The seven scalar ISA type names `cast` accepts (docs/isa.md section 3).
+  # Guarding the dispatch clause on this list is what sends a malformed
+  # operand (`["cast", "widget"]`, `["cast", 5]`) to the catch-all
+  # `unknown_instruction` clause instead of `Cast.cast/2`'s FunctionClauseError.
+  @cast_type_names Cast.type_names()
 
   @typedoc "Internal evaluator state"
   @type t :: %__MODULE__{
@@ -581,6 +587,15 @@ defmodule Predicator.Evaluator do
   # Statement-boundary instruction: discards the stack top, pushes nothing
   defp execute_instruction(%__MODULE__{} = evaluator, ["pop"]) do
     execute_pop(evaluator)
+  end
+
+  # Cast instruction: converts the stack top to the named type via
+  # Predicator.Cast.cast/2, which is total over values (ADR-0011). A
+  # type_name outside the guard - a malformed operand - falls through to the
+  # catch-all clause below and reports unknown_instruction.
+  defp execute_instruction(%__MODULE__{} = evaluator, ["cast", type_name])
+       when is_binary(type_name) and type_name in @cast_type_names do
+    execute_cast(evaluator, type_name)
   end
 
   # A retired opcode has no clause of its own (docs/isa.md section 4, "Retired
@@ -1528,6 +1543,18 @@ defmodule Predicator.Evaluator do
 
   defp execute_pop(%__MODULE__{stack: []}) do
     {:error, EvaluationError.insufficient_operands(:pop, 0, 1)}
+  end
+
+  # Cast.cast/2 is total over values (ADR-0011), so this has no failure branch
+  # of its own besides the empty-stack one - a failed conversion pushes
+  # :undefined and the run continues.
+  @spec execute_cast(__MODULE__.t(), binary()) :: {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_cast(%__MODULE__{stack: [value | rest]} = evaluator, type_name) do
+    {:ok, %__MODULE__{evaluator | stack: [Cast.cast(value, type_name) | rest]}}
+  end
+
+  defp execute_cast(%__MODULE__{stack: stack}, _type_name) do
+    {:error, EvaluationError.insufficient_operands(:cast, length(stack), 1)}
   end
 
   @spec execute_jump_if_falsy_or_pop(__MODULE__.t(), pos_integer()) ::

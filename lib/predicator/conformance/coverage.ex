@@ -139,7 +139,8 @@ defmodule Predicator.Conformance.Coverage do
     3 => "access",
     4 => "rich types",
     5 => "functions",
-    6 => "statements"
+    6 => "statements",
+    7 => "casts"
   }
 
   @doc """

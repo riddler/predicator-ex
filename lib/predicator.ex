@@ -603,7 +603,7 @@ defmodule Predicator do
   ## Examples
 
       iex> Predicator.isa_version()
-      3
+      4
   """
   @spec isa_version() :: pos_integer()
   defdelegate isa_version(), to: Instructions

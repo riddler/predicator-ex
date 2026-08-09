@@ -1312,6 +1312,69 @@ defmodule Predicator.EvaluatorTest do
     end
   end
 
+  describe "cast instruction" do
+    test "converts the stack top to the named type" do
+      instructions = [["lit", "42"], ["cast", "integer"]]
+
+      assert Evaluator.evaluate(instructions) == 42
+    end
+
+    test "a failed conversion pushes :undefined, never an error" do
+      instructions = [["lit", "abc"], ["cast", "integer"]]
+
+      assert Evaluator.evaluate(instructions) == :undefined
+    end
+
+    test ":undefined propagates through cast" do
+      instructions = [["lit", :undefined], ["cast", "integer"]]
+
+      assert Evaluator.evaluate(instructions) == :undefined
+    end
+
+    test "an empty stack is insufficient_operands naming :cast" do
+      instructions = [["cast", "integer"]]
+
+      assert {:error,
+              %Predicator.Errors.EvaluationError{
+                reason: "insufficient_operands",
+                operation: :cast
+              }} = Evaluator.evaluate(instructions)
+    end
+
+    test "a type name outside the seven-name vocabulary is unknown_instruction" do
+      instructions = [["lit", 1], ["cast", "widget"]]
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unknown_instruction"}} =
+               Evaluator.evaluate(instructions)
+    end
+
+    test "a non-string operand is unknown_instruction" do
+      instructions = [["lit", 1], ["cast", 5]]
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unknown_instruction"}} =
+               Evaluator.evaluate(instructions)
+    end
+
+    test "none of the cast paths raise" do
+      for instructions <- [
+            [["lit", "42"], ["cast", "integer"]],
+            [["lit", "abc"], ["cast", "integer"]],
+            [["lit", :undefined], ["cast", "integer"]],
+            [["cast", "integer"]],
+            [["lit", 1], ["cast", "widget"]],
+            [["lit", 1], ["cast", 5]]
+          ] do
+        Evaluator.evaluate(instructions)
+      end
+    end
+
+    test "chained casts run left to right" do
+      instructions = [["lit", "2026-08-09"], ["cast", "date"], ["cast", "datetime"]]
+
+      assert Evaluator.evaluate(instructions) == ~U[2026-08-09 00:00:00Z]
+    end
+  end
+
   describe "unbound_loads/1" do
     test "records executed unbound loads in execution order" do
       evaluator = %Evaluator{

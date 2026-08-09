@@ -954,4 +954,33 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
              ]
     end
   end
+
+  describe "visit/2 - cast nodes" do
+    test "generates a cast instruction after the operand's instructions" do
+      ast = {:cast, {:identifier, "x", nil}, "integer", nil}
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["load", "x"], ["cast", "integer"]]
+    end
+
+    test "a chained cast produces two cast instructions in source order" do
+      ast =
+        {:cast, {:cast, {:string_literal, "2026-08-09", :double, nil}, "date", nil}, "datetime",
+         nil}
+
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["lit", "2026-08-09"], ["cast", "date"], ["cast", "datetime"]]
+    end
+
+    test "a cast over a nested expression visits the operand first" do
+      ast =
+        {:cast, {:arithmetic, :add, {:identifier, "x", nil}, {:literal, 1, nil}, nil}, "integer",
+         nil}
+
+      result = InstructionsVisitor.visit(ast, [])
+
+      assert result == [["load", "x"], ["lit", 1], ["add"], ["cast", "integer"]]
+    end
+  end
 end
