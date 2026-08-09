@@ -36,6 +36,7 @@ defmodule Predicator.Evaluator do
           halted: boolean(),
           unbound_loads: [unbound_load()],
           on_unbound: Predicator.Context.on_unbound(),
+          last_value: Types.value(),
           size: non_neg_integer() | nil
         }
 
@@ -64,6 +65,10 @@ defmodule Predicator.Evaluator do
     segment_positions: %{},
     halted: false,
     unbound_loads: [],
+    # The literal atom rather than `Undefined.value()`, because `defstruct`
+    # requires compile-time literals; it is that atom, matching `on_unbound`'s
+    # literal default below.
+    last_value: :undefined,
     on_unbound: :undefined
   ]
 
@@ -189,6 +194,41 @@ defmodule Predicator.Evaluator do
   """
   @spec unbound_loads_with_locations(t()) :: [unbound_load()]
   def unbound_loads_with_locations(%__MODULE__{unbound_loads: loads}), do: Enum.reverse(loads)
+
+  @doc """
+  The value the most recently executed `["pop"]` instruction discarded, or
+  `:undefined` if the run executed none.
+
+  For a program the compiler produced this is **the last expression statement's
+  value**: `pop` is emitted after every expression statement and after nothing
+  else, so the last one to run carries the last statement's value. It is defined
+  over the instruction list rather than over the AST, so it answers for a
+  hand-built list too.
+
+  Two things it deliberately is not:
+
+  - **Not the stack top at halt.** A list that leaves a residue on the stack
+    without popping it reports `:undefined`; `docs/isa.md` section 2 discards the
+    residue.
+  - **Not written by `jump_if_falsy_or_pop` / `jump_if_true_or_pop`.** Those pop
+    as part of a jump, mid-expression, and their operand is not a statement's
+    value.
+
+  `Predicator.execute_value/2` is the façade over this.
+
+  ## Examples
+
+      iex> instructions = [["lit", 1], ["pop"], ["lit", 2], ["pop"]]
+      iex> {:ok, final} = Predicator.Evaluator.run_state(%Predicator.Evaluator{instructions: instructions})
+      iex> Predicator.Evaluator.last_value(final)
+      2
+
+      iex> {:ok, final} = Predicator.Evaluator.run_state(%Predicator.Evaluator{instructions: [["lit", 1]]})
+      iex> Predicator.Evaluator.last_value(final)
+      :undefined
+  """
+  @spec last_value(t()) :: Types.value()
+  def last_value(%__MODULE__{last_value: value}), do: value
 
   @doc """
   Evaluates a list of instructions with the given context and options.
@@ -1475,8 +1515,15 @@ defmodule Predicator.Evaluator do
   # pushes nothing, so the next statement starts from a clean stack
   # (docs/isa.md §5).
   @spec execute_pop(__MODULE__.t()) :: {:ok, __MODULE__.t()} | {:error, term()}
-  defp execute_pop(%__MODULE__{stack: [_value | rest]} = evaluator) do
-    {:ok, %__MODULE__{evaluator | stack: rest}}
+  # `pop` is the statement-boundary opcode: it discards the stack top and
+  # pushes nothing, so the next statement starts from a clean stack
+  # (docs/isa.md §5). It also *retains* what it discarded in `last_value`,
+  # which is how `Predicator.execute_value/2` answers with the last expression
+  # statement's value without the compiled program having to differ (px-tbv.10).
+  # Only this opcode writes the field: `jump_if_falsy_or_pop` and
+  # `jump_if_true_or_pop` pop as part of a jump, not at a statement boundary.
+  defp execute_pop(%__MODULE__{stack: [value | rest]} = evaluator) do
+    {:ok, %__MODULE__{evaluator | stack: rest, last_value: value}}
   end
 
   defp execute_pop(%__MODULE__{stack: []}) do
