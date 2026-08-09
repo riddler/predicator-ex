@@ -18,8 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   meaning. A conversion that cannot produce a value of the target type is
   `:undefined`, not an error: `"abc"::integer` evaluates to `:undefined`
   rather than raising, so a bad cast inside a larger expression like
-  `"abc"::integer > 5` is just falsy. `Predicator.decompile/2` does not yet
-  render a cast back to `::` syntax; that lands with `px-2r5.4`.
+  `"abc"::integer > 5` is just falsy. `Predicator.decompile/2` renders a cast
+  back to `::` syntax, parenthesizing the operand only when it binds looser
+  than the postfix level (`(1 + 2)::string`, `(-1)::integer`), so casts
+  round-trip losslessly.
 
 ## [4.0.0] - 2026-08-08
 

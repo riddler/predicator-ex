@@ -41,6 +41,10 @@ defmodule Predicator.Visitors.StringVisitor do
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "len(name)"
 
+      iex> ast = {:cast, {:identifier, "score", nil}, "integer", nil}
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
+      "score::integer"
+
       iex> ast = {:object, [], nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "{}"
@@ -211,6 +215,20 @@ defmodule Predicator.Visitors.StringVisitor do
 
     # Property access format: object.property
     "#{object_str}.#{property}"
+  end
+
+  defp do_visit({:cast, expression, type_name, _position}, opts) do
+    mode = get_parentheses_mode(opts)
+
+    # A cast binds at the postfix/primary level, same as property and bracket
+    # access above: the operand needs parens whenever it binds looser (e.g.
+    # `(1 + 2)::string`, `(-1)::integer`, `(a AND b)::boolean`), and a chain
+    # of casts (`x::integer::string`) needs none since each cast is itself
+    # primary-level.
+    expression_str =
+      maybe_wrap_child(do_visit(expression, opts), expression, @level_primary, mode)
+
+    "#{expression_str}::#{type_name}"
   end
 
   defp do_visit({:list, elements, _position}, opts) do
