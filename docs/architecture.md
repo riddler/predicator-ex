@@ -32,7 +32,8 @@ comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "==" | "!=" | "===" | "!
 addition     → multiplication ( ( "+" | "-" ) multiplication )*
 multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
-postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
+postfix      → primary ( "[" expression "]" | "." IDENTIFIER | "::" TYPE_NAME )*
+TYPE_NAME    → "integer" | "float" | "string" | "boolean" | "date" | "datetime" | "duration"
 primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | duration | relative_date | list | object | function_call | "(" expression ")"
 function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
@@ -42,6 +43,11 @@ object_key   → IDENTIFIER | STRING
 duration     → NUMBER UNIT+
 relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
 ```
+
+`::` is postfix, binds tighter than unary minus, and chains left-to-right like
+the other two postfix forms; its seven-name vocabulary comes from
+[`docs/isa.md`](isa.md) §3, with the reasoning in
+[ADR-0011](adr/0011-casts-are-an-opcode.md).
 
 `=` is assignment, not equality. It is valid only at the start of a statement,
 and only with an assignable left side - an identifier optionally followed by
