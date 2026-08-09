@@ -28,6 +28,7 @@ defmodule Predicator.Conformance.SchemaValidationTest do
   @schema_dir "conformance/schema"
 
   describe "every checked-in corpus tier file validates against schema/corpus.json" do
+    # sabotage: schema/corpus.json root required gains "provenance" -> red
     test "each case in each tier-N.json satisfies the schema" do
       schema = read_schema("corpus.json")
 
@@ -44,6 +45,7 @@ defmodule Predicator.Conformance.SchemaValidationTest do
   end
 
   describe "the checked-in manifest.json validates against schema/manifest.json" do
+    # sabotage: schema/manifest.json isa_version type "integer" -> "string" -> red
     test "the manifest satisfies the schema" do
       schema = read_schema("manifest.json")
       manifest = "conformance/manifest.json" |> File.read!() |> JSON.decode!()
@@ -53,6 +55,7 @@ defmodule Predicator.Conformance.SchemaValidationTest do
   end
 
   describe "every authored case validates against schema/case.json" do
+    # sabotage: schema/case.json root required gains "notes" -> red
     test "each case in conformance/cases/*.json satisfies the schema" do
       schema = read_schema("case.json")
 
@@ -67,6 +70,7 @@ defmodule Predicator.Conformance.SchemaValidationTest do
   end
 
   describe "schema/report.json is internally consistent" do
+    # sabotage: schema/report.json results.items.properties.result.enum gains "skip" -> red
     test ~s(the result enum is exactly ["pass", "fail"] - the structural half of never-skip) do
       schema = read_schema("report.json")
       result_schema = get_in(schema, ["properties", "results", "items", "properties", "result"])
@@ -74,6 +78,7 @@ defmodule Predicator.Conformance.SchemaValidationTest do
       assert result_schema["enum"] == ["pass", "fail"]
     end
 
+    # sabotage: schema/report.json root required gains "produced_at" -> red
     test "a well-formed report instance validates" do
       schema = read_schema("report.json")
 
@@ -88,6 +93,7 @@ defmodule Predicator.Conformance.SchemaValidationTest do
       assert :ok == SchemaValidator.validate(schema, report)
     end
 
+    # sabotage: schema/report.json results.items.properties.result.enum gains "skip" -> red
     test "a report containing a skip result fails validation" do
       schema = read_schema("report.json")
 
@@ -106,6 +112,7 @@ defmodule Predicator.Conformance.SchemaValidationTest do
   # Builds the exact file map mix corpus.generate writes and asserts it
   # matches what is checked in, so a validation run here is never silently
   # exercising a stale corpus.
+  # sabotage: conformance/corpus/tier-2.json arithmetic/add-int source gains an extra space -> red
   test "the checked-in corpus matches what generation would produce right now" do
     assert {:ok, files} = CorpusGenerate.build_files()
 
@@ -115,6 +122,7 @@ defmodule Predicator.Conformance.SchemaValidationTest do
   end
 
   describe "every schema file in conformance/schema has the expected top-level shape" do
+    # sabotage: schema/registry.json $id host github.com/riddler -> example.com -> red
     test "each schema declares draft 2020-12, an $id under this repo, and an object root" do
       paths = Path.wildcard(Path.join(@schema_dir, "*.json"))
 

@@ -317,7 +317,7 @@ a file under `conformance/schema/` (or one line of a corpus file).
 |---|---|---|
 | "each case in each tier-N.json satisfies the schema" (`:31`) | `conformance/schema/corpus.json` - add a name no generated case carries (e.g. `"provenance"`) to the root `required` array | `conformance/corpus/tier-1.json: case "<id>" fails schema/corpus.json: {:error, ...}` |
 | "the manifest satisfies the schema" (`:47`) | `conformance/schema/manifest.json` - change `isa_version`'s `"type": "integer"` to `"string"` | `:ok == SchemaValidator.validate(schema, manifest)` fails on the isa_version type |
-| "each case in conformance/cases/*.json satisfies the schema" (`:56`) | `conformance/schema/case.json` - add an optional key that not every authored case carries (e.g. `"expected"`) to the root `required` array | `conformance/cases/<file>.json: case "<id>" fails schema/case.json: {:error, ...}` |
+| "each case in conformance/cases/*.json satisfies the schema" (`:56`) | `conformance/schema/case.json` - add an optional key that not every authored case carries (e.g. `"notes"`) to the root `required` array. (`"expected"` does not work: verified against every file in `conformance/cases/*.json`, every authored case carries it, so it stayed green - `"notes"` is genuinely optional and reddened as expected.) | `conformance/cases/<file>.json: case "<id>" fails schema/case.json: {:error, ...}` |
 | "the result enum is exactly [\"pass\", \"fail\"] - the structural half of never-skip" (`:70`) | `conformance/schema/report.json` - `results.items.properties.result.enum` → `["pass", "fail", "skip"]` | `result_schema["enum"] == ["pass", "fail"]` fails with the three-element list |
 | "a well-formed report instance validates" (`:78`) | `conformance/schema/report.json` - add a key the in-test report literal omits (e.g. `"produced_at"`) to the root `required` array | `:ok == SchemaValidator.validate(schema, report)` fails on the missing required key |
 | "a report containing a skip result fails validation" (`:91`) | Same as `:70` - `report.json`'s result enum gains `"skip"` | `assert {:error, _reason} = ...` fails because validation now returns `:ok` |
@@ -334,11 +334,11 @@ the mutation touched more than intended; narrow it).
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `grep -c "# sabotage:" test/predicator/conformance/schema_validation_test.exs`
+- [x] `grep -c "# sabotage:" test/predicator/conformance/schema_validation_test.exs`
       returns `8`
-- [ ] `git status --short` lists only that test file - `conformance/schema/` and
+- [x] `git status --short` lists only that test file - `conformance/schema/` and
       `conformance/corpus/` are clean
-- [ ] Full gate passes: `mix quality`
+- [x] Full gate passes: `mix quality`
 
 #### Manual Verification
 - [ ] Each red named the schema file or corpus file that was mutated
@@ -487,3 +487,9 @@ mutation here, with the mutations tried, and report it.)_
 - [ ] The added `"noop"` opcode appeared in the coverage red, not merely in an
       `isa_sync_test.exs` failure
 - [ ] Each note names the mutated file or constant
+
+### Phase 4: `schema_validation_test.exs`
+
+- [ ] Each red named the schema file or corpus file that was mutated
+- [ ] The `:91` red was "validation returned `:ok`", i.e. the negative test
+      genuinely depends on the enum
