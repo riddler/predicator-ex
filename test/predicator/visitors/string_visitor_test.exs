@@ -27,7 +27,17 @@ defmodule Predicator.Visitors.StringVisitorTest do
     "user.name.first",
     "3d8h",
     "3d ago",
-    "next 2w"
+    "next 2w",
+    "score::integer",
+    "\"42\"::integer",
+    "x::integer::string",
+    "(1 + 2)::string",
+    "(-1)::integer",
+    "(a AND b)::boolean",
+    "a::integer + b::float > 3",
+    "f(x)::integer",
+    "a.b::string",
+    "list[0]::integer"
   ]
 
   describe "raw parser output" do
@@ -922,6 +932,114 @@ defmodule Predicator.Visitors.StringVisitorTest do
     end
   end
 
+  describe "visit/2 - cast nodes" do
+    test "renders a simple cast as \"expr::type\"" do
+      ast = {:cast, {:identifier, "score", nil}, "integer", nil}
+
+      assert StringVisitor.visit(ast, []) == "score::integer"
+    end
+
+    test "renders a cast of a string literal" do
+      ast = {:cast, {:string_literal, "42", :double, nil}, "integer", nil}
+
+      assert StringVisitor.visit(ast, []) == "\"42\"::integer"
+    end
+
+    test "chains casts without parenthesizing the inner cast" do
+      inner = {:cast, {:identifier, "x", nil}, "integer", nil}
+      ast = {:cast, inner, "string", nil}
+
+      assert StringVisitor.visit(ast, []) == "x::integer::string"
+    end
+
+    test "parenthesizes an arithmetic operand" do
+      inner = {:arithmetic, :add, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:cast, inner, "string", nil}
+
+      assert StringVisitor.visit(ast, []) == "(1 + 2)::string"
+    end
+
+    test "parenthesizes a unary minus operand" do
+      inner = {:unary, :minus, {:literal, 1, nil}, nil}
+      ast = {:cast, inner, "integer", nil}
+
+      assert StringVisitor.visit(ast, []) == "(-1)::integer"
+    end
+
+    test "parenthesizes a logical operand" do
+      inner = {:logical_and, {:identifier, "a", nil}, {:identifier, "b", nil}, nil}
+      ast = {:cast, inner, "boolean", nil}
+
+      assert StringVisitor.visit(ast, []) == "(a AND b)::boolean"
+    end
+
+    test "parenthesizes a comparison operand" do
+      inner = {:comparison, :gt, {:identifier, "a", nil}, {:literal, 1, nil}, nil}
+      ast = {:cast, inner, "boolean", nil}
+
+      assert StringVisitor.visit(ast, []) == "(a > 1)::boolean"
+    end
+
+    test "does not parenthesize a property access operand" do
+      inner = {:property_access, {:identifier, "a", nil}, "b", nil}
+      ast = {:cast, inner, "string", nil}
+
+      assert StringVisitor.visit(ast, []) == "a.b::string"
+    end
+
+    test "does not parenthesize a bracket access operand" do
+      inner = {:bracket_access, {:identifier, "list", nil}, {:literal, 0, nil}, nil}
+      ast = {:cast, inner, "integer", nil}
+
+      assert StringVisitor.visit(ast, []) == "list[0]::integer"
+    end
+
+    test "does not parenthesize a function call operand" do
+      inner = {:function_call, "f", [{:identifier, "x", nil}], nil}
+      ast = {:cast, inner, "integer", nil}
+
+      assert StringVisitor.visit(ast, []) == "f(x)::integer"
+    end
+
+    test "a cast does not need parentheses as an arithmetic operand" do
+      ast =
+        {:arithmetic, :add, {:cast, {:identifier, "x", nil}, "integer", nil}, {:literal, 1, nil},
+         nil}
+
+      assert StringVisitor.visit(ast, []) == "x::integer + 1"
+    end
+
+    test "does not add parentheses in :none mode even when precedence would otherwise require them" do
+      inner = {:arithmetic, :add, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:cast, inner, "string", nil}
+
+      assert StringVisitor.visit(ast, parentheses: :none) == "1 + 2::string"
+    end
+
+    test "explicit mode adds no parens around a primary operand (matches :minimal)" do
+      ast = {:cast, {:identifier, "score", nil}, "integer", nil}
+
+      assert StringVisitor.visit(ast, parentheses: :explicit) == "score::integer"
+    end
+
+    test "explicit mode relies on the operand's own self-wrapping, not cast-level wrapping" do
+      # The arithmetic child already self-wraps under :explicit, so the cast
+      # clause does not need to (and does not) add a second layer of parens.
+      inner = {:arithmetic, :add, {:literal, 1, nil}, {:literal, 2, nil}, nil}
+      ast = {:cast, inner, "string", nil}
+
+      assert StringVisitor.visit(ast, parentheses: :explicit) == "(1 + 2)::string"
+    end
+
+    test "the round-trip: nested casts inside a larger expression" do
+      {:ok, ast} = Predicator.parse("a::integer + b::float > 3")
+      decompiled = StringVisitor.visit(ast, [])
+
+      assert {:ok, reparsed} = Predicator.parse(decompiled)
+      assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast)
+    end
+  end
+
   # px-ek5: :minimal defaulted to emitting no parentheses at all, so a string
   # like "1 + 2 * 3" from {:arithmetic, :multiply, {:arithmetic, :add, 1, 2}, 3}
   # re-parsed to a different AST (1 + (2 * 3)) than the one it came from. These
@@ -1063,7 +1181,16 @@ defmodule Predicator.Visitors.StringVisitorTest do
       "a > 1 AND (b < 2 OR c == 3)",
       "1 + 2 * 3 - 4 / 2",
       "x = (1 + 2) * 3",
-      "x = 1 + 2 * 3"
+      "x = 1 + 2 * 3",
+      "score::integer",
+      "x::integer::string",
+      "(1 + 2)::string",
+      "(-1)::integer",
+      "(a AND b)::boolean",
+      "a::integer + b::float > 3",
+      "f(x)::integer",
+      "a.b::string",
+      "list[0]::integer"
     ]
 
     test "a corpus of precedence-sensitive expressions round-trips under default :minimal" do
