@@ -12,6 +12,7 @@
 | [0008](0008-the-quality-gate-and-its-non-editable-config.md) | `mix quality` is the one aggregated gate, and its config is not agent-editable | accepted |
 | [0009](0009-the-compiled-envelope-carries-the-position-table.md) | The compiled envelope carries the position table; `compile/1` stays a bare list | accepted |
 | [0010](0010-tracker-authority-and-the-mirror-obligation.md) | Tracker authority follows the artifact; mirrors pull, and monorepo work is held by an `external-ref` | proposed |
+| [0011](0011-casts-are-an-opcode.md) | Casts compile to a `cast` opcode (ISA v4); `::` is postfix and failure is `:undefined` | accepted |
 
 New ADRs: next number, same three-section format (Context, Decision,
 Consequences). An ADR is amended by a new ADR that supersedes it, not by
