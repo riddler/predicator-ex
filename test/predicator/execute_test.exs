@@ -138,9 +138,8 @@ defmodule Predicator.ExecuteTest do
 
     test "a deep chain blames the interior segment that actually failed" do
       # `a` is at column 15; the failing segment is `.b`, whose point position
-      # is the `.` at column 16 (docs/reference/ast.md:122-124) - not column 17,
-      # the property name, which this plan explicitly does not reach.
-      assert {:error, %Errors.EvaluationError{reason: "not_a_container", position: {1, 16}}, _ctx} =
+      # is column 17, the property name `b` itself (docs/reference/ast.md).
+      assert {:error, %Errors.EvaluationError{reason: "not_a_container", position: {1, 17}}, _ctx} =
                Predicator.execute(~s(a = {"b": 1}; a.b.c = 2), %{})
     end
 
@@ -207,7 +206,7 @@ defmodule Predicator.ExecuteTest do
 
       assert compiled.instructions == [["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]]
       assert compiled.positions != %{}
-      assert compiled.segment_positions == %{3 => [{1, 1}, {1, 2}]}
+      assert compiled.segment_positions == %{3 => [{1, 1}, {1, 3}]}
     end
   end
 end

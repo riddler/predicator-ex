@@ -947,16 +947,22 @@ defmodule Predicator.Parser do
     token = peek_token(state)
 
     case token do
-      {:lbracket, line, col, _len, _value} ->
+      {:lbracket, _line, _col, _len, _value} ->
         # Parse bracket access: expr[key]
         bracket_state = advance(state)
+        # The point names the key, not the `[` that introduces it - an access
+        # node blames the thing being accessed, same as `property_access`
+        # below (docs/reference/ast.md).
+        key_token = peek_token(bracket_state)
 
         case parse_expression(bracket_state) do
           {:ok, key_expr, key_state} ->
             case peek_token(key_state) do
               {:rbracket, _line, _col, _len, _value} = close ->
                 location =
-                  loc(state, {line, col}, fn -> {node_start(expr), token_end(close)} end)
+                  loc(state, token_start(key_token), fn ->
+                    {node_start(expr), token_end(close)}
+                  end)
 
                 bracket_access = {:bracket_access, expr, key_expr, location}
                 final_state = advance(key_state)
@@ -974,7 +980,7 @@ defmodule Predicator.Parser do
             {:error, message, line, col}
         end
 
-      {:dot, dot_line, dot_col, _len, _value} ->
+      {:dot, _dot_line, _dot_col, _len, _value} ->
         # Parse property access: expr.property
         dot_state = advance(state)
 
@@ -982,8 +988,11 @@ defmodule Predicator.Parser do
           # Duration operators are allowed as property names (like user.name.last)
           {type, _line, _col, _len, property_name} = name_token
           when type in [:identifier, :last_op, :next_op, :ago_op, :from_op, :now_op] ->
+            # The point names the property, not the `.` that introduces it -
+            # an error should name the thing that failed, not the punctuation
+            # (docs/reference/ast.md).
             location =
-              loc(state, {dot_line, dot_col}, fn ->
+              loc(state, token_start(name_token), fn ->
                 {node_start(expr), token_end(name_token)}
               end)
 

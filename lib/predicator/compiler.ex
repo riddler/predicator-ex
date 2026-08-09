@@ -107,8 +107,8 @@ defmodule Predicator.Compiler do
       iex> {:ok, program} = Predicator.parse_program("a.b = 1", spans: false)
       iex> Predicator.Compiler.to_instructions_with_segment_positions(program)
       {[["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]],
-       %{0 => {1, 1}, 1 => {1, 2}, 2 => {1, 7}, 3 => {1, 1}},
-       %{3 => [{1, 1}, {1, 2}]}}
+       %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 7}, 3 => {1, 1}},
+       %{3 => [{1, 1}, {1, 3}]}}
   """
   @spec to_instructions_with_segment_positions(Parser.ast() | Parser.program(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table(),

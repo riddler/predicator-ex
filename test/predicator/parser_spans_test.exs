@@ -262,10 +262,10 @@ defmodule Predicator.ParserSpansTest do
                {1, 3}}} = Parser.parse(tokens)
     end
 
-    test "still points a property access at its dot" do
+    test "still points a property access at its property name" do
       {:ok, tokens} = Lexer.tokenize("a.b")
 
-      assert {:ok, {:property_access, {:identifier, "a", {1, 1}}, "b", {1, 2}}} =
+      assert {:ok, {:property_access, {:identifier, "a", {1, 1}}, "b", {1, 3}}} =
                Parser.parse(tokens)
     end
 

@@ -273,7 +273,7 @@ defmodule Predicator.CompilerTest do
 
       assert segment_instructions == instructions
       assert segment_positions == positions
-      assert segment_table == %{3 => [{1, 1}, {1, 2}]}
+      assert segment_table == %{3 => [{1, 1}, {1, 3}]}
     end
   end
 

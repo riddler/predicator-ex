@@ -50,9 +50,9 @@ defmodule Predicator.Integration.StatementsTest do
     test "a store failure on an interior segment blames that segment, not the lhs root" do
       # px-ids: pinning at the integration layer too, not only in
       # execute_test.exs. `a` is at column 15; the failing segment `.b`'s
-      # point position is the `.` at column 16.
+      # point position is column 17, the property name `b` itself.
       assert {:error,
-              %Predicator.Errors.EvaluationError{reason: "not_a_container", position: {1, 16}},
+              %Predicator.Errors.EvaluationError{reason: "not_a_container", position: {1, 17}},
               ctx} = Predicator.execute(~s(a = {"b": 1}; a.b.c = 2), %{})
 
       assert ctx.data == %{"a" => %{"b" => 1}}
