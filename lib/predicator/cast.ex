@@ -19,8 +19,8 @@ defmodule Predicator.Cast do
 
   @type_names ~w(integer float string boolean date datetime duration)
 
-  @integer_string_regex ~r/^-?[0-9]+$/
-  @float_string_regex ~r/^-?[0-9]+(\.[0-9]+)?$/
+  @integer_string_regex ~r/\A-?[0-9]+\z/
+  @float_string_regex ~r/\A-?[0-9]+(\.[0-9]+)?\z/
 
   @doc "The seven scalar ISA type names casts accept (docs/isa.md section 3)."
   @spec type_names() :: [binary()]
