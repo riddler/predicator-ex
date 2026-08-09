@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Type casts (`::`).** A postfix `expr::type` operator converts a value to
+  one of the seven scalar types - `string`, `integer`, `float`, `boolean`,
+  `date`, `datetime`, `duration` - and chains, so `"42"::integer::float` casts
+  twice left to right. It binds tighter than unary minus, so `-1::integer` is
+  `-(1::integer)`, i.e. `-1`, matching PostgreSQL. Casting compiles to a new
+  `cast` opcode at ISA v4, tier 7 - additive, no stored artifact changes
+  meaning. A conversion that cannot produce a value of the target type is
+  `:undefined`, not an error: `"abc"::integer` evaluates to `:undefined`
+  rather than raising, so a bad cast inside a larger expression like
+  `"abc"::integer > 5` is just falsy. `Predicator.decompile/2` does not yet
+  render a cast back to `::` syntax; that lands with `px-2r5.4`.
+
 ## [4.0.0] - 2026-08-08
 
 ### Added

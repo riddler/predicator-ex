@@ -123,7 +123,12 @@ landing across 3.7.0 and 3.8.0. v3 is minted by 4.0.0 and both retires
 no sibling, consumer, or stored artifact has ever seen v3, so widening its
 set before release changes nothing observable. An additive ISA version ships
 in a minor release;
-retiring an opcode invalidates stored artifacts and takes a major one.
+retiring an opcode invalidates stored artifacts and takes a major one. v4
+introduces the `cast` opcode in a new tier 7 and retires nothing, so it is
+additive like v2 rather than mixed like v3; see
+[`docs/isa.md`](isa.md)'s §5 for the conversion matrix and
+[ADR-0011](adr/0011-casts-are-an-opcode.md) for why casting is an opcode
+rather than a lowering to `call`.
 
 As of 2026-08-06 both siblings are ISA v1 implementations. That is a snapshot,
 not a tracked matrix - each sibling publishes the version it supports in the
