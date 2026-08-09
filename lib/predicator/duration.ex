@@ -309,7 +309,7 @@ defmodule Predicator.Duration do
   defp format_duration_parts([]), do: "0s"
   defp format_duration_parts(parts), do: Enum.join(parts, "")
 
-  @whole_string_regex ~r/^(?:[0-9]+(?:mo|ms|y|w|d|h|m|s))+$/
+  @whole_string_regex ~r/\A(?:[0-9]+(?:mo|ms|y|w|d|h|m|s))+\z/
   @unit_pair_regex ~r/([0-9]+)(mo|ms|y|w|d|h|m|s)/
 
   @doc """

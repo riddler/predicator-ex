@@ -69,6 +69,11 @@ defmodule Predicator.CastTest do
       assert Cast.cast("", "integer") == :undefined
     end
 
+    test "a leading or trailing newline is not end-of-string, not a raise" do
+      assert Cast.cast("42\n", "integer") == :undefined
+      assert Cast.cast("\n42", "integer") == :undefined
+    end
+
     test "no boolean/number bridge" do
       assert Cast.cast(true, "integer") == :undefined
       assert Cast.cast(false, "integer") == :undefined
@@ -99,6 +104,11 @@ defmodule Predicator.CastTest do
       assert Cast.cast("3.5 ", "float") == :undefined
       assert Cast.cast("+3.5", "float") == :undefined
       assert Cast.cast("", "float") == :undefined
+    end
+
+    test "a leading or trailing newline is not end-of-string, not a raise" do
+      assert Cast.cast("3.5\n", "float") == :undefined
+      assert Cast.cast("\n3.5", "float") == :undefined
     end
 
     test "no boolean/number bridge" do
@@ -238,6 +248,11 @@ defmodule Predicator.CastTest do
     test "string rejects a malformed duration literal" do
       assert Cast.cast("abc", "duration") == :undefined
       assert Cast.cast("1x", "duration") == :undefined
+    end
+
+    test "a leading or trailing newline is not end-of-string, not a silent accept" do
+      assert Cast.cast("1d\n", "duration") == :undefined
+      assert Cast.cast("\n1d", "duration") == :undefined
     end
 
     test "no boolean/number bridge" do

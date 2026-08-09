@@ -577,5 +577,13 @@ defmodule Predicator.DurationTest do
     test "rejects trailing whitespace" do
       assert Duration.parse("1d ") == :error
     end
+
+    test "rejects a trailing newline" do
+      assert Duration.parse("1d\n") == :error
+    end
+
+    test "rejects a leading newline" do
+      assert Duration.parse("\n1d") == :error
+    end
   end
 end
