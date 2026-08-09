@@ -30,6 +30,7 @@ defmodule Predicator.Conformance.OpcodeCoverageTest do
   # `conformance/README.md`'s "Opcodes excluded from the coverage rule".
   @excluded_opcodes ~w(relative_date)
 
+  # sabotage: instructions.ex @opcodes gains an uncovered "noop" opcode -> red
   test "every opcode except the documented exclusions appears in at least one case" do
     covered = covered_opcodes()
 
@@ -44,6 +45,7 @@ defmodule Predicator.Conformance.OpcodeCoverageTest do
              "documented exclusions in both this test and conformance/README.md"
   end
 
+  # sabotage: @excluded_opcodes gains "lit", which is covered by a case -> red
   test "the excluded opcode(s) genuinely have no case, so the exclusion is not stale" do
     covered = covered_opcodes()
 
@@ -54,6 +56,7 @@ defmodule Predicator.Conformance.OpcodeCoverageTest do
              "covered by a case - drop the now-unnecessary exclusion"
   end
 
+  # sabotage: conformance/README.md drops the `relative_date` bullet -> red
   test "the exclusion list here matches conformance/README.md's documented exclusions exactly" do
     documented = readme_excluded_opcodes()
 

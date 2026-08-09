@@ -23,6 +23,7 @@ defmodule Predicator.Conformance.FunctionCoverageTest do
 
   alias Predicator.Conformance.{Coverage, Generator}
 
+  # sabotage: conformance/cases/functions.json drops the functions/upper case -> red
   test "every registered builtin except the documented exclusions appears in at least one case" do
     covered = covered_functions()
 
@@ -39,6 +40,7 @@ defmodule Predicator.Conformance.FunctionCoverageTest do
              "\"Functions excluded from the coverage rule\" section"
   end
 
+  # sabotage: coverage.ex @documented_exclusion_functions gains "upper", which is covered by a case -> red
   test "the excluded function(s) genuinely have no case, so the exclusion is not stale" do
     covered = covered_functions()
 
@@ -51,6 +53,7 @@ defmodule Predicator.Conformance.FunctionCoverageTest do
              "covered by a case - drop the now-unnecessary exclusion"
   end
 
+  # sabotage: coverage.ex @documented_exclusion_functions "Date.now" -> "Date.nowww" -> red
   test "the exclusion list only names functions that are actually registered" do
     stale_names =
       Coverage.documented_exclusion_functions()
