@@ -56,9 +56,17 @@ trailing slot last:
 {:function_call, name, args, pos}
 {:bracket_access, target, key, pos}
 {:property_access, target, property, pos}
+{:cast, expression, type_name, pos}
 {:duration, units, pos}
 {:relative_date, duration, direction, pos}
 ```
+
+`type_name` in a `cast` node is one of the seven scalar ISA type names
+(`integer`, `float`, `string`, `boolean`, `date`, `datetime`, `duration`),
+held as a binary; the parser rejects any other name, so a `cast` node can
+never carry an invalid target. The names are contextual identifiers, not
+keywords - they are only special immediately after `::`
+([ADR-0011](../adr/0011-casts-are-an-opcode.md)).
 
 ## Object keys
 
@@ -151,6 +159,7 @@ key's own blame position only when the key is a single token, as in
 | `function_call` | the name token |
 | `bracket_access` | the first token of the key expression |
 | `property_access` | the property-name token |
+| `cast` | the type-name token |
 | `duration` | its first number |
 | `relative_date` | the direction keyword (`ago`, `from`, `next`, `last`) |
 
@@ -181,6 +190,7 @@ characters to *underline*. A new node type needs a row in both:
 | `function_call` | the name token | past the `)` token |
 | `bracket_access` | target expression start | past the `]` token |
 | `property_access` | target expression start | property-name token end |
+| `cast` | target expression start | type-name token end |
 | `duration` | its first number token | past the last duration unit |
 | `relative_date` (`ago`) | duration start | past the `ago` token |
 | `relative_date` (`from now`) | duration start | past the `now` token |

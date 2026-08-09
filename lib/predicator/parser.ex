@@ -25,7 +25,8 @@ defmodule Predicator.Parser do
       addition     → multiplication ( ( "+" | "-" ) multiplication )*
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
       unary        → ( "-" | "!" ) unary | postfix
-      postfix      → primary ( "[" expression "]" | "." IDENTIFIER )*
+      postfix      → primary ( "[" expression "]" | "." IDENTIFIER | "::" TYPE_NAME )*
+      TYPE_NAME    → "integer" | "float" | "string" | "boolean" | "date" | "datetime" | "duration"
       primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | duration | relative_date | function_call | list | object | "(" expression ")"
       function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
       list         → "[" ( expression ( "," expression )* )? "]"
@@ -34,6 +35,10 @@ defmodule Predicator.Parser do
       object_key   → IDENTIFIER | STRING
       duration     → NUMBER UNIT+
       relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
+
+  `TYPE_NAME` is matched contextually against an `IDENTIFIER` token rather than
+  lexed as its own keyword, so the seven names remain usable as variables,
+  properties, and object keys everywhere else (ADR-0011).
 
   Two entry points reach those two grammars. `parse/2` parses the `expression`
   production alone and rejects a top-level `=`; `parse_program/2` parses the
