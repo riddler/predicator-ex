@@ -114,14 +114,16 @@ for a dotted segment, and the key expression for a bracket segment, since the
 key is what a bad or out-of-range segment value came from. The list's length
 is the chain's segment depth, which is exactly `["store", n]`'s own operand,
 so `n` bounds the index into it. Because a `property_access` node's point
-position is the `.` (see "Which token a node blames" below), a dotted
-segment's point position names the accessor rather than the property name -
-for `a.b.c`, the segment for `.b` points at column 16 in `a = {"b": 1};
-a.b.c = 2`, the `.` before `b`, not column 17, `b` itself. And because a
-`property_access` node's span starts at the chain root (see "Which characters
-a node covers" below), narrowing a store failure to one segment's span moves
-only the underline, never the caret - the segment for `.b` in that same
-source spans `a.b`, whose start is still `a`.
+position is the property-name token (see "Which token a node blames" below), a
+dotted segment's point position names the property itself - for `a.b.c`, the
+segment for `.b` points at column 17 in `a = {"b": 1}; a.b.c = 2`, `b` itself.
+And because a `property_access` node's span starts at the chain root (see
+"Which characters a node covers" below), narrowing a store failure to one
+segment's span moves only the underline, never the caret - the segment for
+`.b` in that same source spans `a.b`, whose start is still `a`, at column 15.
+The point-mode caret (column 17) and the span-derived caret (column 15) are
+deliberately different answers to different questions: the point names the
+value that failed, the span's start names where the accessed location begins.
 
 `docs/isa.md` §5 is the normative statement of `store`'s and `pop`'s
 stack discipline and error shapes; this page only says what AST shape feeds
@@ -132,16 +134,20 @@ them.
 Leaves point at their own token. Everything else points at the token that
 *names the operation*, so an error names the thing that failed rather than the
 start of the subexpression it failed on - `a * true` reports column 3, not
-column 1:
+column 1. `bracket_access` and `property_access` follow the same rule: an
+access node blames the thing being accessed, not the punctuation that
+introduces it, so a bad property or key names itself rather than the `.` or
+`[` that led to it:
 
 | Node | Defining token |
 |---|---|
 | `literal`, `string_literal`, `identifier`, `object_key` | own token |
 | `comparison`, `arithmetic`, `membership`, `logical_and`, `logical_or` | the operator |
 | `unary`, `logical_not` | the operator |
-| `list`, `object`, `bracket_access` | the opening bracket or brace |
+| `list`, `object` | the opening bracket or brace |
 | `function_call` | the name token |
-| `property_access` | the `.` |
+| `bracket_access` | the first token of the key expression |
+| `property_access` | the property-name token |
 | `duration` | its first number |
 | `relative_date` | the direction keyword (`ago`, `from`, `next`, `last`) |
 
