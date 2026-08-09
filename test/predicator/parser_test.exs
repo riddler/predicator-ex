@@ -1037,6 +1037,11 @@ defmodule Predicator.ParserTest do
       result = parse_positionless(tokens)
       assert {:error, "Expected '(' after function name but found '+'", 1, 4} = result
     end
+
+    test "a stray :: in expression position returns an error tuple, not a raise" do
+      assert {:error, message, 1, 1} = Predicator.parse("::integer")
+      assert message =~ "'::'"
+    end
   end
 
   describe "parse/1 - operator precedence edge cases" do
