@@ -777,6 +777,85 @@ defmodule Predicator.LexerTest do
     end
   end
 
+  describe ":: token" do
+    test "tokenizes a postfix cast" do
+      assert {:ok, tokens} = Lexer.tokenize("x::integer")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "x"},
+               {:double_colon, 1, 2, 2, "::"},
+               {:identifier, 1, 4, 7, "integer"},
+               {:eof, 1, 11, 0, nil}
+             ]
+    end
+
+    test "does not affect single-colon object literal tokenization" do
+      assert {:ok, tokens} = Lexer.tokenize("{a: 1}")
+
+      assert tokens == [
+               {:lbrace, 1, 1, 1, "{"},
+               {:identifier, 1, 2, 1, "a"},
+               {:colon, 1, 3, 1, ":"},
+               {:integer, 1, 5, 1, 1},
+               {:rbrace, 1, 6, 1, "}"},
+               {:eof, 1, 7, 0, nil}
+             ]
+
+      refute Enum.any?(tokens, &match?({:double_colon, _, _, _, _}, &1))
+    end
+
+    test "does not affect nested object literal tokenization" do
+      assert {:ok, tokens} = Lexer.tokenize("{a: {b: 1}}")
+
+      refute Enum.any?(tokens, &match?({:double_colon, _, _, _, _}, &1))
+    end
+
+    test "lexes ::: greedily as double_colon followed by colon" do
+      assert {:ok, tokens} = Lexer.tokenize(":::")
+
+      assert tokens == [
+               {:double_colon, 1, 1, 2, "::"},
+               {:colon, 1, 3, 1, ":"},
+               {:eof, 1, 4, 0, nil}
+             ]
+    end
+
+    test "tokenizes :: with surrounding spaces" do
+      assert {:ok, tokens} = Lexer.tokenize("x :: integer")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "x"},
+               {:double_colon, 1, 3, 2, "::"},
+               {:identifier, 1, 6, 7, "integer"},
+               {:eof, 1, 13, 0, nil}
+             ]
+    end
+
+    test "does not affect datetime literal colon consumption" do
+      input = "#2024-01-15T10:30:00Z#"
+      {:ok, tokens} = Lexer.tokenize(input)
+
+      assert [
+               {:datetime, 1, 1, 22, %DateTime{}},
+               {:eof, 1, 23, 0, nil}
+             ] = tokens
+
+      refute Enum.any?(tokens, &match?({:colon, _, _, _, _}, &1))
+      refute Enum.any?(tokens, &match?({:double_colon, _, _, _, _}, &1))
+    end
+
+    test "the seven cast type names still lex as plain identifiers" do
+      for type_name <- ~w(integer float string boolean date datetime duration) do
+        assert {:ok, tokens} = Lexer.tokenize(type_name)
+
+        assert [
+                 {:identifier, 1, 1, _len, ^type_name},
+                 {:eof, _eof_line, _eof_col, 0, nil}
+               ] = tokens
+      end
+    end
+  end
+
   describe "additional edge cases for coverage" do
     test "handles carriage return characters" do
       input = "score > 85\r\nAND age >= 18"

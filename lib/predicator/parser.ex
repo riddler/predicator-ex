@@ -1267,6 +1267,7 @@ defmodule Predicator.Parser do
   defp format_token(:lbrace, _value), do: "'{'"
   defp format_token(:rbrace, _value), do: "'}'"
   defp format_token(:colon, _value), do: "':'"
+  defp format_token(:double_colon, _value), do: "'::'"
   defp format_token(:comma, _value), do: "','"
   defp format_token(:semicolon, _value), do: "';'"
   defp format_token(:plus, _value), do: "'+'"
