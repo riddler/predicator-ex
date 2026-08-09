@@ -172,6 +172,17 @@ defmodule Predicator.ParserPositionsTest do
       assert {:ok, {:bracket_access, _b, {:literal, 1, {1, 4}}, {1, 3}}} =
                Predicator.parse("a[(1)]")
     end
+
+    test "a cast points at the type-name token, not '::' and not the operand" do
+      assert {:ok, {:cast, {:identifier, "x", {1, 1}}, "integer", {1, 4}}} =
+               Predicator.parse("x::integer")
+    end
+
+    test "a chained cast gives the inner and outer casts their own distinct points" do
+      assert {:ok,
+              {:cast, {:cast, {:string_literal, "a", :double, {1, 1}}, "date", {1, 6}},
+               "datetime", {1, 12}}} = Predicator.parse(~s("a"::date::datetime))
+    end
   end
 
   describe "durations and relative dates" do

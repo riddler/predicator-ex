@@ -99,6 +99,12 @@ defmodule Predicator.Parser do
 
   alias Predicator.Lexer
 
+  # The seven scalar ISA type names (docs/isa.md section 3). ADR-0011: these are
+  # contextual identifiers, not keywords - they are only special immediately
+  # after `::` and stay valid as variable names everywhere else. `list` and `map`
+  # are deliberately absent.
+  @cast_type_names ~w(integer float string boolean date datetime duration)
+
   @typedoc """
   A value that can appear in literals.
   """
@@ -133,6 +139,8 @@ defmodule Predicator.Parser do
   - `{:function_call, name, arguments, pos}` - A function call with arguments
   - `{:bracket_access, object, key, pos}` - A bracket access expression (obj[key])
   - `{:property_access, object, property, pos}` - A property access expression (obj.prop)
+  - `{:cast, expression, type_name, pos}` - a postfix type cast (`expr::integer`);
+    `type_name` is one of the seven scalar ISA type names, validated at parse time
   - `{:duration, units, pos}` - A duration literal (e.g., 3d8h)
   - `{:relative_date, duration, direction, pos}` - A relative date expression (e.g., 3d ago, next 2w)
   """
@@ -152,6 +160,7 @@ defmodule Predicator.Parser do
           | {:function_call, binary(), [ast()], position()}
           | {:bracket_access, ast(), ast(), position()}
           | {:property_access, ast(), binary(), position()}
+          | {:cast, ast(), binary(), position()}
           | {:duration, [{integer(), binary()}], position()}
           | {:relative_date, ast(), relative_direction(), position()}
 
@@ -1007,6 +1016,35 @@ defmodule Predicator.Parser do
 
           nil ->
             {:error, "Expected property name after '.' but found end of input", 1, 1}
+        end
+
+      {:double_colon, _line, _col, _len, _value} ->
+        # Parse a postfix type cast: expr::type
+        cast_state = advance(state)
+
+        case peek_token(cast_state) do
+          {:identifier, name_line, name_col, _len, type_name} = name_token ->
+            if type_name in @cast_type_names do
+              # The point names the type, not the `::` that introduces it - the
+              # same rule `property_access` follows (docs/reference/ast.md).
+              location =
+                loc(state, token_start(name_token), fn ->
+                  {node_start(expr), token_end(name_token)}
+                end)
+
+              parse_postfix_operations({:cast, expr, type_name, location}, advance(cast_state))
+            else
+              {:error,
+               "Unknown cast type '#{type_name}' - expected one of: " <>
+                 Enum.join(@cast_type_names, ", "), name_line, name_col}
+            end
+
+          {type, line, col, _len, value} ->
+            {:error, "Expected a type name after '::' but found #{format_token(type, value)}",
+             line, col}
+
+          nil ->
+            {:error, "Expected a type name after '::' but found end of input", 1, 1}
         end
 
       _other ->
