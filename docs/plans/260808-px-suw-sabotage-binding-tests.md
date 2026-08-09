@@ -194,10 +194,10 @@ looking for the `popp` message.
 ### Success Criteria
 
 #### Automated Verification
-- [ ] All six `test` blocks in the file carry a `# sabotage:` line:
+- [x] All six `test` blocks in the file carry a `# sabotage:` line:
       `grep -c "# sabotage:" test/predicator/isa_sync_test.exs` returns `6`
-- [ ] `git status --short` lists only `test/predicator/isa_sync_test.exs`
-- [ ] Full gate passes: `mix quality`
+- [x] `git status --short` lists only `test/predicator/isa_sync_test.exs`
+- [x] Full gate passes: `mix quality`
 
 #### Manual Verification
 - [ ] Each of the six reds was observed and matched the expected message above -
@@ -463,3 +463,12 @@ Neither blocks implementation; both have a stated default.
 
 _(None yet. Append any binding test that stays green under every plausible
 mutation here, with the mutations tried, and report it.)_
+
+## Deferred Manual Verification
+
+### Phase 1: `test/predicator/isa_sync_test.exs`
+
+- [ ] Each of the six reds was observed and matched the expected message above -
+      not a compile error, not an unrelated suite failure
+- [ ] Each note names the mutation, not the assertion, and reads as one line
+- [ ] `git diff` shows comment-only changes
