@@ -375,47 +375,10 @@ defmodule Predicator do
         ) :: {:ok, Context.t()} | {:error, struct(), Context.t()}
   def execute(program_or_source, context \\ %{}, opts \\ [])
 
-  def execute(%Compiled{} = compiled, context, opts) when is_map(context) do
-    opts = reject_positions_option!(opts)
-
-    execute_instructions(
-      compiled.instructions,
-      context,
-      opts
-      |> Keyword.put(:positions, compiled.positions)
-      |> Keyword.put(:segment_positions, compiled.segment_positions)
-    )
+  def execute(program_or_source, context, opts) when is_map(context) do
+    program_or_source
+    |> execute_value(context, opts)
     |> drop_last_value()
-  end
-
-  def execute(source, context, opts) when is_binary(source) and is_map(context) do
-    case Lexer.tokenize(source) do
-      {:ok, tokens} ->
-        case Parser.parse_program(tokens, opts) do
-          {:ok, ast} ->
-            {instructions, positions, segment_positions} =
-              Compiler.to_instructions_with_segment_positions(ast)
-
-            execute_instructions(
-              instructions,
-              context,
-              opts
-              |> Keyword.put(:positions, positions)
-              |> Keyword.put(:segment_positions, segment_positions)
-            )
-            |> drop_last_value()
-
-          {:error, message, line, column} ->
-            {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
-        end
-
-      {:error, message, line, column} ->
-        {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
-    end
-  end
-
-  def execute(instructions, context, opts) when is_list(instructions) and is_map(context) do
-    execute_instructions(instructions, context, opts) |> drop_last_value()
   end
 
   @doc """
