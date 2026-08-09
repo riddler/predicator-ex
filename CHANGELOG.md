@@ -43,7 +43,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   discard them is the caller's policy, not the engine's: a caller wanting
   all-or-nothing drops the third element and keeps the context it already
   had. `Predicator.Evaluator.run_state/1`, the state-preserving runner
-  statement mode needs, is now public.
+  statement mode needs, is now public. `Predicator.execute/1,2,3` has a
+  sibling, `execute_value/1,2,3`, below, for a caller who also wants the
+  program's last expression statement's value.
+
+- **`Predicator.execute_value/1,2,3`.** The sibling of `execute/1,2,3` for a
+  caller who also wants the program's last expression statement's value:
+  it returns `{:ok, value, %Context{}} | {:error, error, %Context{}}`, where
+  `value` is that statement's value, or `:undefined` when the program has no
+  expression statement (an assignments-only program, for instance).
+  `Predicator.execute/1,2,3` is unchanged and still returns
+  `{:ok, %Context{}}`. The value comes from `Predicator.Evaluator.last_value/1`,
+  a new accessor over a new `last_value` field on `%Evaluator{}` that the
+  machine fills in as it runs. No compiled program changes and the ISA does
+  not move - the value is retained by the machine, not encoded by the
+  compiler, so an instruction list compiled before this change runs
+  identically and reports the same value under `execute_value/2`.
 
 - **Source spans.** A point position tells an editor where to put a caret; a
   span tells it what to underline. `Predicator.Parser.parse/2`,

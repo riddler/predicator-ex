@@ -155,6 +155,13 @@ Scope of the divergence:
 ADR-0001's consequences call for the matching note in each sibling README.
 Adopting the rule in the siblings is coordinated in that repo, not here.
 
+Statement mode has two entry points: `Predicator.execute/2` returns the
+context, and `Predicator.execute_value/2` returns the context plus the
+program's last expression statement's value. The latter is implemented by
+having the machine retain what `pop` discarded rather than by compiling the
+program differently, so the compiled program is identical either way
+(`docs/isa.md` §2, §5).
+
 ## Key Design Decisions
 
 ### Security First
