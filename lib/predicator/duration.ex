@@ -308,4 +308,46 @@ defmodule Predicator.Duration do
 
   defp format_duration_parts([]), do: "0s"
   defp format_duration_parts(parts), do: Enum.join(parts, "")
+
+  @whole_string_regex ~r/^(?:[0-9]+(?:mo|ms|y|w|d|h|m|s))+$/
+  @unit_pair_regex ~r/([0-9]+)(mo|ms|y|w|d|h|m|s)/
+
+  @doc """
+  Parses a duration literal string into a duration map.
+
+  This is the inverse of `to_string/1`: the whole string must be a sequence
+  of one or more `<digits><unit>` pairs, with no whitespace, no sign, and no
+  partial consumption. The accepted units are exactly the eight `to_string/1`
+  emits - `y`, `mo`, `w`, `d`, `h`, `m`, `s`, `ms` - with `mo` and `ms` matched
+  before the single-character units so `"1mo"` is one month, not one minute
+  followed by a stray `o`. Values are non-negative integers. Repeated units
+  accumulate, matching `add_unit/3`. Anything else - a bad unit, trailing or
+  leading junk, a sign, a bare number, or the empty string - is `:error`.
+
+  ## Examples
+
+      iex> Predicator.Duration.parse("3d8h30m")
+      {:ok, %{years: 0, months: 0, weeks: 0, days: 3, hours: 8, minutes: 30, seconds: 0, milliseconds: 0}}
+
+      iex> Predicator.Duration.parse("0s")
+      {:ok, %{years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, milliseconds: 0}}
+
+      iex> Predicator.Duration.parse("1d ")
+      :error
+  """
+  @spec parse(binary()) :: {:ok, Types.duration()} | :error
+  def parse(string) when is_binary(string) do
+    if string != "" and Regex.match?(@whole_string_regex, string) do
+      duration =
+        @unit_pair_regex
+        |> Regex.scan(string, capture: :all_but_first)
+        |> Enum.reduce(new(), fn [value_str, unit], acc ->
+          add_unit(acc, unit, String.to_integer(value_str))
+        end)
+
+      {:ok, duration}
+    else
+      :error
+    end
+  end
 end

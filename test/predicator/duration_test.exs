@@ -489,4 +489,93 @@ defmodule Predicator.DurationTest do
       assert result == ~U[2024-01-15T10:31:30.750Z]
     end
   end
+
+  describe "parse/1" do
+    test "parses each of the eight units alone" do
+      assert Duration.parse("1y") == {:ok, Duration.new(years: 1)}
+      assert Duration.parse("1mo") == {:ok, Duration.new(months: 1)}
+      assert Duration.parse("1w") == {:ok, Duration.new(weeks: 1)}
+      assert Duration.parse("1d") == {:ok, Duration.new(days: 1)}
+      assert Duration.parse("1h") == {:ok, Duration.new(hours: 1)}
+      assert Duration.parse("1m") == {:ok, Duration.new(minutes: 1)}
+      assert Duration.parse("1s") == {:ok, Duration.new(seconds: 1)}
+      assert Duration.parse("1ms") == {:ok, Duration.new(milliseconds: 1)}
+    end
+
+    test "parses a multi-unit string" do
+      assert Duration.parse("3d8h30m") ==
+               {:ok, Duration.new(days: 3, hours: 8, minutes: 30)}
+    end
+
+    test "disambiguates mo from m and ms from m" do
+      assert Duration.parse("1mo") == {:ok, Duration.new(months: 1)}
+      assert Duration.parse("1m") == {:ok, Duration.new(minutes: 1)}
+      assert Duration.parse("1ms") == {:ok, Duration.new(milliseconds: 1)}
+
+      assert Duration.parse("2mo3m4ms") ==
+               {:ok, Duration.new(months: 2, minutes: 3, milliseconds: 4)}
+    end
+
+    test "accumulates on a repeated unit" do
+      assert Duration.parse("1d2d") == {:ok, Duration.new(days: 3)}
+      assert Duration.parse("1h1h1h") == {:ok, Duration.new(hours: 3)}
+    end
+
+    test "round-trips through to_string/1, including the 0s case" do
+      for duration <- [
+            Duration.new(),
+            Duration.new(seconds: 0),
+            Duration.new(days: 3, hours: 8, minutes: 30),
+            Duration.new(weeks: 2),
+            Duration.new(
+              years: 1,
+              months: 2,
+              weeks: 3,
+              days: 4,
+              hours: 5,
+              minutes: 6,
+              seconds: 7
+            ),
+            Duration.new(milliseconds: 500)
+          ] do
+        assert Duration.parse(Duration.to_string(duration)) == {:ok, duration}
+      end
+    end
+
+    test "rejects the empty string" do
+      assert Duration.parse("") == :error
+    end
+
+    test "rejects a negative value" do
+      assert Duration.parse("-1d") == :error
+    end
+
+    test "rejects a float value" do
+      assert Duration.parse("1.5d") == :error
+    end
+
+    test "rejects an unknown unit" do
+      assert Duration.parse("1x") == :error
+    end
+
+    test "rejects trailing junk" do
+      assert Duration.parse("1dabc") == :error
+    end
+
+    test "rejects leading whitespace" do
+      assert Duration.parse(" 1d") == :error
+    end
+
+    test "rejects embedded whitespace" do
+      assert Duration.parse("1d 2h") == :error
+    end
+
+    test "rejects a bare number with no unit" do
+      assert Duration.parse("42") == :error
+    end
+
+    test "rejects trailing whitespace" do
+      assert Duration.parse("1d ") == :error
+    end
+  end
 end
