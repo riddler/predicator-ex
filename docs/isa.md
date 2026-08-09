@@ -527,7 +527,11 @@ reference survives an edit above it.
 
   **Numeric conversions.**
 
-  - `integer::float` widens exactly.
+  - `integer::float` widens to the nearest representable double, which is
+    exact up to 2^53 and rounds beyond it: `(2^53+1)::float` is `2^53`.
+    Siblings agree, because a 53-bit mantissa is what their host float
+    types have too, but the conversion is not lossless and a round trip
+    through `float` is not identity for a large integer.
   - `float::integer` truncates toward zero. PostgreSQL rounds here; this
     diverges deliberately, because truncation is what Elixir `trunc`,
     JavaScript `Math.trunc`, and Ruby `to_i` all do natively, and matching
