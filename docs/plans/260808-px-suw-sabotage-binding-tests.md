@@ -375,12 +375,12 @@ smaller edit.
 ### Success Criteria
 
 #### Automated Verification
-- [ ] `grep -c "# sabotage:" test/predicator/conformance/ratchet_registry_test.exs`
+- [x] `grep -c "# sabotage:" test/predicator/conformance/ratchet_registry_test.exs`
       returns `5`
-- [ ] `git status --short` lists only that test file -
+- [x] `git status --short` lists only that test file -
       `conformance/examples/` and `conformance/schema/` are clean
-- [ ] Full gate passes: `mix quality`
-- [ ] All seven files now carry a note per `test` block: the two greps in
+- [x] Full gate passes: `mix quality`
+- [x] All seven files now carry a note per `test` block: the two greps in
       "Desired End State" agree file by file (6, 1, 3, 3, 8, 5, 2)
 
 #### Manual Verification
@@ -493,3 +493,12 @@ mutation here, with the mutations tried, and report it.)_
 - [ ] Each red named the schema file or corpus file that was mutated
 - [ ] The `:91` red was "validation returned `:ok`", i.e. the negative test
       genuinely depends on the enum
+
+### Phase 5: `ratchet_registry_test.exs`
+
+- [ ] The `:95` red was the canonical-encoding assertion, not a JSON decode
+      crash
+- [ ] Every note across all seven files reads as one line and names a concrete
+      mutation
+- [ ] Any test that could not be reddened is recorded as a Finding below and
+      reported, not silently skipped

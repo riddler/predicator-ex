@@ -29,6 +29,7 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
   @tier1_path "conformance/corpus/tier-1.json"
 
   describe "conformance/examples/registry.example.json validates against schema/registry.json" do
+    # sabotage: schema/registry.json required array gains "generated_at" -> red
     test "the example satisfies the schema" do
       schema = @schema_path |> File.read!() |> JSON.decode!()
       example = read_example()
@@ -38,6 +39,7 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
   end
 
   describe "RATCHET.md rule 1: every entry is a member of its surface's case set, at the right tier" do
+    # sabotage: registry.example.json flips comparison/eq-string-true's compiler entry to tier 2 -> red
     test "every (case_id, surface) entry exists in the shipped corpus, with a matching tier" do
       example = read_example()
       entries = example["entries"]
@@ -76,6 +78,7 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
   end
 
   describe "the pin: RATCHET.md's corpus_hash and isa_version" do
+    # sabotage: registry.example.json corpus_hash's leading hex digit changed f -> e -> red
     test "the example's corpus_hash and isa_version equal the manifest's" do
       example = read_example()
       manifest = @manifest_path |> File.read!() |> JSON.decode!()
@@ -92,6 +95,7 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
   end
 
   describe "RATCHET.md rule 2: the file is exactly the canonical encoding" do
+    # sabotage: registry.example.json gains an extra space after "isa_version": -> red
     test "re-encoding the parsed example per RATCHET.md's rules byte-matches the file on disk" do
       raw = File.read!(@example_path)
       example = JSON.decode!(raw)
@@ -105,6 +109,7 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
   end
 
   describe "RATCHET.md R5: completeness of the example's evaluator/tier-1 claim" do
+    # sabotage: registry.example.json drops the comparison/eq-string-true evaluator entry -> red
     test "every evaluator-surface tier-1 corpus case has a matching entry" do
       example = read_example()
 
