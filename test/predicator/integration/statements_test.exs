@@ -58,4 +58,24 @@ defmodule Predicator.Integration.StatementsTest do
       assert ctx.data == %{"a" => %{"b" => 1}}
     end
   end
+
+  describe "Predicator.execute_value/2 end to end" do
+    test "a multi-statement program with vivification and a computed bracket key" do
+      assert {:ok, "z", ctx} =
+               Predicator.execute_value(
+                 "user.items[i + 1] = 'z'; user.items[i + 1]",
+                 %{"i" => 1}
+               )
+
+      assert ctx.data == %{"user" => %{"items" => [:undefined, :undefined, "z"]}, "i" => 1}
+    end
+
+    test "a short-circuiting and/or final expression statement reports the statement's value, not the left operand's" do
+      assert {:ok, false, ctx} = Predicator.execute_value("flag = false; flag and true", %{})
+      assert ctx.data == %{"flag" => false}
+
+      assert {:ok, true, ctx} = Predicator.execute_value("flag = true; flag or false", %{})
+      assert ctx.data == %{"flag" => true}
+    end
+  end
 end

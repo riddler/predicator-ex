@@ -354,6 +354,9 @@ defmodule Predicator do
           {:error, _error, _partial} -> ctx    # all-or-nothing is a caller policy
         end
 
+  A caller who also wants the program's last expression statement's value
+  calls `execute_value/3` instead.
+
   ## Examples
 
       iex> {:ok, ctx} = Predicator.execute("x = 1; y = x + 2", %{})
@@ -382,9 +385,110 @@ defmodule Predicator do
       |> Keyword.put(:positions, compiled.positions)
       |> Keyword.put(:segment_positions, compiled.segment_positions)
     )
+    |> drop_last_value()
   end
 
   def execute(source, context, opts) when is_binary(source) and is_map(context) do
+    case Lexer.tokenize(source) do
+      {:ok, tokens} ->
+        case Parser.parse_program(tokens, opts) do
+          {:ok, ast} ->
+            {instructions, positions, segment_positions} =
+              Compiler.to_instructions_with_segment_positions(ast)
+
+            execute_instructions(
+              instructions,
+              context,
+              opts
+              |> Keyword.put(:positions, positions)
+              |> Keyword.put(:segment_positions, segment_positions)
+            )
+            |> drop_last_value()
+
+          {:error, message, line, column} ->
+            {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
+        end
+
+      {:error, message, line, column} ->
+        {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
+    end
+  end
+
+  def execute(instructions, context, opts) when is_list(instructions) and is_map(context) do
+    execute_instructions(instructions, context, opts) |> drop_last_value()
+  end
+
+  @doc """
+  Runs a statement program - a source string, an instruction list, or a
+  `t:Predicator.Compiled.t/0` - and returns the resulting context plus the
+  value the program's last expression statement produced.
+
+  This is `execute/3` plus the last expression statement's value; call
+  `execute/3` instead when the value is not wanted.
+
+  The value is **the value of the program's last expression statement**:
+  `:undefined` when the program has none (a program of assignments only), and
+  `:undefined` for a hand-built instruction list that pops nothing. See
+  `Predicator.Evaluator.last_value/1` for the exact definition, which this
+  function projects.
+
+  ## Parameters
+
+  Same as `execute/3`: `program_or_source`, `context` (default `%{}`), and
+  `opts` (default `[]`), including `:positions` or `:segment_positions`
+  alongside a `%Compiled{}` raising `ArgumentError`.
+
+  ## Returns
+
+  - `{:ok, value, context}` - every statement ran; `value` is the last
+    expression statement's value (or `:undefined`), `context.data` holds every
+    write
+  - `{:error, error_struct, context}` - **identical to `execute/3`'s error
+    arm**: no value is reported for a run that stopped early. A caller who
+    wants the partial run's last value has `Evaluator.run_state/1` and
+    `Evaluator.last_value/1` directly.
+
+  This is a host-API convenience, not an ISA guarantee - see
+  `docs/isa.md` section 2's host-convenience paragraph. A sibling
+  implementation need not offer it.
+
+  ## Examples
+
+      iex> {:ok, value, ctx} = Predicator.execute_value("x = 2; x * 10", %{})
+      iex> value
+      20
+      iex> ctx.data
+      %{"x" => 2}
+
+      iex> {:ok, value, _ctx} = Predicator.execute_value("x = 1", %{})
+      iex> value
+      :undefined
+
+      iex> {:error, %Predicator.Errors.EvaluationError{reason: "not_a_container"}, ctx} =
+      ...>   Predicator.execute_value("a = 1; a.b = 2; c = 3", %{})
+      iex> ctx.data
+      %{"a" => 1}
+  """
+  @spec execute_value(
+          binary() | Types.instruction_list() | Compiled.t(),
+          Types.context() | Context.t(),
+          keyword()
+        ) :: {:ok, Types.value(), Context.t()} | {:error, struct(), Context.t()}
+  def execute_value(program_or_source, context \\ %{}, opts \\ [])
+
+  def execute_value(%Compiled{} = compiled, context, opts) when is_map(context) do
+    opts = reject_positions_option!(opts)
+
+    execute_instructions(
+      compiled.instructions,
+      context,
+      opts
+      |> Keyword.put(:positions, compiled.positions)
+      |> Keyword.put(:segment_positions, compiled.segment_positions)
+    )
+  end
+
+  def execute_value(source, context, opts) when is_binary(source) and is_map(context) do
     case Lexer.tokenize(source) do
       {:ok, tokens} ->
         case Parser.parse_program(tokens, opts) do
@@ -409,7 +513,7 @@ defmodule Predicator do
     end
   end
 
-  def execute(instructions, context, opts) when is_list(instructions) and is_map(context) do
+  def execute_value(instructions, context, opts) when is_list(instructions) and is_map(context) do
     execute_instructions(instructions, context, opts)
   end
 
@@ -420,9 +524,12 @@ defmodule Predicator do
   defp normalize_context(%Context{} = context, _opts), do: context
   defp normalize_context(context, opts) when is_map(context), do: Context.new(context, opts)
 
-  # Helper function to run a statement program's instructions and convert
-  # errors to the evaluate/3 shapes, keeping the partial context on both
-  # paths.
+  # Runs a statement program and returns the final context plus the value the
+  # program's last ["pop"] discarded. execute/3 drops the value via
+  # drop_last_value/1; execute_value/3 keeps it (px-tbv.10). Errors keep
+  # evaluate/3's shapes and the partial context on both paths.
+  @spec execute_instructions(Types.instruction_list(), Context.t() | Types.context(), keyword()) ::
+          {:ok, Types.value(), Context.t()} | {:error, struct(), Context.t()}
   defp execute_instructions(instructions, %Context{} = context, opts) do
     evaluator = %Evaluator{
       instructions: instructions,
@@ -435,7 +542,7 @@ defmodule Predicator do
 
     case Evaluator.run_state(evaluator) do
       {:ok, final} ->
-        {:ok, %{context | data: final.context}}
+        {:ok, Evaluator.last_value(final), %{context | data: final.context}}
 
       {:error, error_struct, final} ->
         {:error, unbound_or_type_mismatch(error_struct, final), %{context | data: final.context}}
@@ -445,6 +552,15 @@ defmodule Predicator do
   defp execute_instructions(instructions, context, opts) when is_map(context) do
     execute_instructions(instructions, Context.new(context, opts), opts)
   end
+
+  # Narrows execute_instructions/3's richer {:ok, value, context} shape down
+  # to execute/3's documented {:ok, context} - the value is not part of
+  # execute/3's contract (px-tbv.10). The error arm is already the shape
+  # execute/3 returns, so it passes through unchanged.
+  @spec drop_last_value({:ok, Types.value(), Context.t()} | {:error, struct(), Context.t()}) ::
+          {:ok, Context.t()} | {:error, struct(), Context.t()}
+  defp drop_last_value({:ok, _value, context}), do: {:ok, context}
+  defp drop_last_value({:error, _error, _context} = error), do: error
 
   # An :undefined result is ambiguous on its own: it's either a genuinely
   # unbound root variable or a value that legitimately evaluates to
