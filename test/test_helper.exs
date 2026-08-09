@@ -70,6 +70,8 @@ defmodule Predicator.ASTShape do
   def strip({:property_access, object, property, _slot}),
     do: {:property_access, strip(object), property}
 
+  def strip({:cast, expr, type_name, _slot}), do: {:cast, strip(expr), type_name}
+
   def strip({:relative_date, duration, direction, _slot}),
     do: {:relative_date, strip(duration), direction}
 
@@ -123,6 +125,8 @@ defmodule Predicator.ASTShape do
 
   def blank({:property_access, object, property, _slot}),
     do: {:property_access, blank(object), property, nil}
+
+  def blank({:cast, expr, type_name, _slot}), do: {:cast, blank(expr), type_name, nil}
 
   def blank({:relative_date, duration, direction, _slot}),
     do: {:relative_date, blank(duration), direction, nil}

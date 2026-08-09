@@ -191,6 +191,29 @@ defmodule Predicator.ParserSpansTest do
       assert slice(source, outer) == "a.b.c"
       assert slice(source, span_of(inner)) == "a.b"
     end
+
+    test "a cast spans from the operand's start to past the type name" do
+      source = "x::integer"
+      {:ok, {:cast, _expr, "integer", span}} = parse_spans(source)
+
+      assert span == {{1, 1}, {1, 11}}
+    end
+
+    test "a cast on a property access spans from the chain root" do
+      source = "x.y::string"
+      {:ok, {:cast, inner, "string", outer}} = parse_spans(source)
+
+      assert slice(source, outer) == "x.y::string"
+      assert slice(source, span_of(inner)) == "x.y"
+    end
+
+    test "a chained cast's outer span covers the whole chain" do
+      source = ~s("a"::date::datetime)
+      {:ok, {:cast, inner, "datetime", outer}} = parse_spans(source)
+
+      assert slice(source, outer) == source
+      assert slice(source, span_of(inner)) == ~s("a"::date)
+    end
   end
 
   describe "durations and relative dates" do
