@@ -200,10 +200,10 @@ looking for the `popp` message.
 - [x] Full gate passes: `mix quality`
 
 #### Manual Verification
-- [ ] Each of the six reds was observed and matched the expected message above -
+- [x] Each of the six reds was observed and matched the expected message above -
       not a compile error, not an unrelated suite failure
-- [ ] Each note names the mutation, not the assertion, and reads as one line
-- [ ] `git diff` shows comment-only changes
+- [x] Each note names the mutation, not the assertion, and reads as one line
+- [x] `git diff` shows comment-only changes
 
 **Implementation Note**: Use `mix test test/predicator/isa_sync_test.exs` while
 iterating; full `mix quality` as the phase gate, after every mutation is
@@ -246,10 +246,10 @@ CLAUDE.md's exclusivity rule exists to prevent.
 - [x] Full gate passes: `mix quality`
 
 #### Manual Verification
-- [ ] The corpus-freshness red named affected case ids, i.e. the mutation moved
+- [x] The corpus-freshness red named affected case ids, i.e. the mutation moved
       real generated content rather than merely failing to build
-- [ ] The package-boundary red named the file the comment was added to
-- [ ] `git diff` shows comment-only changes
+- [x] The package-boundary red named the file the comment was added to
+- [x] `git diff` shows comment-only changes
 
 ---
 
@@ -293,11 +293,11 @@ run `mix corpus.generate` to "fix" it. The fix is `git checkout`.
 - [x] Full gate passes: `mix quality`
 
 #### Manual Verification
-- [ ] The `functions/upper` deletion named `upper` in the red, confirming that
+- [x] The `functions/upper` deletion named `upper` in the red, confirming that
       case really was the only cover
-- [ ] The added `"noop"` opcode appeared in the coverage red, not merely in an
+- [x] The added `"noop"` opcode appeared in the coverage red, not merely in an
       `isa_sync_test.exs` failure
-- [ ] Each note names the mutated file or constant
+- [x] Each note names the mutated file or constant
 
 ---
 
@@ -341,8 +341,8 @@ the mutation touched more than intended; narrow it).
 - [x] Full gate passes: `mix quality`
 
 #### Manual Verification
-- [ ] Each red named the schema file or corpus file that was mutated
-- [ ] The `:91` red was "validation returned `:ok`", i.e. the negative test
+- [x] Each red named the schema file or corpus file that was mutated
+- [x] The `:91` red was "validation returned `:ok`", i.e. the negative test
       genuinely depends on the enum
 
 ---
@@ -384,11 +384,11 @@ smaller edit.
       "Desired End State" agree file by file (6, 1, 3, 3, 8, 5, 2)
 
 #### Manual Verification
-- [ ] The `:95` red was the canonical-encoding assertion, not a JSON decode
+- [x] The `:95` red was the canonical-encoding assertion, not a JSON decode
       crash
-- [ ] Every note across all seven files reads as one line and names a concrete
+- [x] Every note across all seven files reads as one line and names a concrete
       mutation
-- [ ] Any test that could not be reddened is recorded as a Finding below and
+- [x] Any test that could not be reddened is recorded as a Finding below and
       reported, not silently skipped
 
 ---
@@ -468,37 +468,64 @@ mutation here, with the mutations tried, and report it.)_
 
 ### Phase 1: `test/predicator/isa_sync_test.exs`
 
-- [ ] Each of the six reds was observed and matched the expected message above -
+- [x] Each of the six reds was observed and matched the expected message above -
       not a compile error, not an unrelated suite failure
-- [ ] Each note names the mutation, not the assertion, and reads as one line
-- [ ] `git diff` shows comment-only changes
+- [x] Each note names the mutation, not the assertion, and reads as one line
+- [x] `git diff` shows comment-only changes
 
 ### Phase 2: `corpus_freshness_test.exs` + `package_boundary_test.exs`
 
-- [ ] The corpus-freshness red named affected case ids, i.e. the mutation moved
+- [x] The corpus-freshness red named affected case ids, i.e. the mutation moved
       real generated content rather than merely failing to build
-- [ ] The package-boundary red named the file the comment was added to
-- [ ] `git diff` shows comment-only changes
+- [x] The package-boundary red named the file the comment was added to
+- [x] `git diff` shows comment-only changes
 
 ### Phase 3: `opcode_coverage_test.exs` + `function_coverage_test.exs`
 
-- [ ] The `functions/upper` deletion named `upper` in the red, confirming that
+- [x] The `functions/upper` deletion named `upper` in the red, confirming that
       case really was the only cover
-- [ ] The added `"noop"` opcode appeared in the coverage red, not merely in an
+- [x] The added `"noop"` opcode appeared in the coverage red, not merely in an
       `isa_sync_test.exs` failure
-- [ ] Each note names the mutated file or constant
+- [x] Each note names the mutated file or constant
 
 ### Phase 4: `schema_validation_test.exs`
 
-- [ ] Each red named the schema file or corpus file that was mutated
-- [ ] The `:91` red was "validation returned `:ok`", i.e. the negative test
+- [x] Each red named the schema file or corpus file that was mutated
+- [x] The `:91` red was "validation returned `:ok`", i.e. the negative test
       genuinely depends on the enum
 
 ### Phase 5: `ratchet_registry_test.exs`
 
-- [ ] The `:95` red was the canonical-encoding assertion, not a JSON decode
+- [x] The `:95` red was the canonical-encoding assertion, not a JSON decode
       crash
-- [ ] Every note across all seven files reads as one line and names a concrete
+- [x] Every note across all seven files reads as one line and names a concrete
       mutation
-- [ ] Any test that could not be reddened is recorded as a Finding below and
+- [x] Any test that could not be reddened is recorded as a Finding below and
       reported, not silently skipped
+
+### How these were verified
+
+All 27 distinct mutations (28 tests; `schema_validation_test.exs:73` and `:96`
+share the report-enum mutation) were re-applied and re-observed in a single
+pass on 2026-08-08, after the phases had landed. Every one reddened its bound
+test with the message this plan predicts. No test resisted mutation, so the
+Findings section stays empty.
+
+Two things are worth carrying forward for anyone repeating this:
+
+- **Force a recompile around every mutation to Elixir source.** `mix`'s
+  staleness check is mtime-based, and a mutate-compile-revert cycle that
+  completes inside one second can leave the mutated beam in place: the source
+  reads correct, `git status` is clean, and the *next* mutation is then judged
+  against a stale module. The first pass of this re-verification hit exactly
+  that - `Predicator.Instructions.tier("load")` returned `{:ok, 2}` from a
+  clean tree - and produced plausible-looking but worthless reds for five of
+  Phase 1's six mutations. `MIX_ENV=test mix compile --force` after both the
+  mutation and the revert removes the hazard.
+- **Assert a green baseline before each mutation.** It is the cheap check that
+  catches the above: if the bound test is already red on the clean tree, the
+  previous revert did not take and any red observed next proves nothing.
+
+`docs/isa.md`, `conformance/**`, and `mix.exs` mutations need no recompile -
+they are read at runtime - but the baseline check is worth running for them
+anyway.
