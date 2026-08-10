@@ -153,10 +153,13 @@ in this repo's `.claude/agents/`: `wurk-codebase-locator` (where things live),
 describe what exists and do not propose changes, which is what keeps a
 research pass from quietly becoming a design pass.
 
-This repo's own `.claude/agents/` is empty and available for genuinely
-predicator-only agents that have no wurk equivalent - an ISA-drift checker
-(comparing `docs/isa.md` against `lib/predicator/instructions.ex`) is the
-documented example of what would go there; none exists today.
+This repo's own `.claude/agents/` no longer exists - `git rm -r` removes an
+empty directory along with its last file, and git does not track empty
+directories - but the path is available for genuinely predicator-only agents
+that have no wurk equivalent - an ISA-drift checker (comparing `docs/isa.md`
+against `lib/predicator/instructions.ex`) is the documented example of what
+would go there. None exists today; the directory is recreated the day one
+does.
 
 ### Area labels
 
