@@ -703,18 +703,18 @@ Sourced from `.claude/skills/next-issues/SKILL.md`. Two items:
 
 #### Automated Verification
 
-- [ ] All eleven files exist under `.claude/wurk/` and are non-empty:
+- [x] All eleven files exist under `.claude/wurk/` and are non-empty:
       `plan`, `iterate`, `research`, `work`, `commit`, `release`, `implement`,
       `mr`, `issue`, `branch`, `next`
-- [ ] Each filename matches a real generic skill: for each `f` in
+- [x] Each filename matches a real generic skill: for each `f` in
       `.claude/wurk/*.md`, `~/.claude/skills/wurk:$(basename $f .md)` exists -
       an extension whose skill does not exist is never read
-- [ ] `grep -c '' .claude/wurk/*.md` shows each file under ~110 lines - the
+- [x] `grep -c '' .claude/wurk/*.md` shows each file under ~110 lines - the
       statifier band (20-98) is the target; a long file is a sign it is
       restating the generic skill
-- [ ] No extension file contains the string "override" applied to generic
+- [x] No extension file contains the string "override" applied to generic
       behavior, and none instructs the reader to ignore a generic step
-- [ ] `git diff --stat` touches only `.claude/wurk/` - gate carve-out applies
+- [x] `git diff --stat` touches only `.claude/wurk/` - gate carve-out applies
 
 #### Manual Verification
 
@@ -1322,3 +1322,15 @@ Phase 1: `always_batchable` is absent from the file, not present-and-empty
 Phase 1: `warm_globs` matches an actual file: `ls priv/plts/dialyzer.plt*`
 Phase 1: `conformance/` is in `also_gated_paths`, so a corpus-only diff is not
 carved out of the gate
+
+Phase 2: Each file names the generic skill it extends and says "adds only"
+Phase 2: `commit.md`'s changelog section cannot be misread as endorsing
+fragments
+Phase 2: `iterate.md` does not duplicate `plan.md`
+Phase 2: `implement.md` is self-contained - a phase subagent handed only its
+path can follow it with no other read
+Phase 2: `commit.md` and `implement.md` do not contradict each other on the
+corpus discipline (one states the commit-time refusal, the other the
+protocol)
+Phase 2: Reading each extension alongside its generic skill, no instruction
+contradicts the generic one
