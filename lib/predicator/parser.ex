@@ -14,7 +14,9 @@ defmodule Predicator.Parser do
   The parser implements this grammar with proper operator precedence:
 
       program      → statement ( ";" statement )* ( ";" )?
-      statement    → assignment | expression
+      statement    → if_statement | assignment | expression
+      if_statement → "if" expression block ( "else" ( block | if_statement ) )?
+      block        → "{" ( statement ( ";" statement )* ( ";" )? )? "}"
       assignment   → location "=" expression
       location     → IDENTIFIER ( "." IDENTIFIER | "[" expression "]" )*
       expression   → logical_or
@@ -186,9 +188,29 @@ defmodule Predicator.Parser do
   @type assignment :: {:assignment, ast(), ast(), position()}
 
   @typedoc """
-  One statement: an assignment, or a bare expression.
+  A brace-delimited statement sequence: `"{" ( statement (";" statement)* (";")? )? "}"`.
+
+  Produced only as the then/else slot of an `t:if_statement/0` - a block has no
+  meaning without the `if` that holds it. Not a member of `t:ast/0`, the same
+  as `t:program/0` and `t:assignment/0`.
   """
-  @type statement :: assignment() | ast()
+  @type block :: {:block, [statement()], position()}
+
+  @typedoc """
+  An if statement: `"if" expression block ( "else" ( block | if_statement ) )?`.
+
+  `else_block` is `nil` when there is no `else` and a `t:block/0` when there is
+  - including for `else { }`, whose empty block stays distinguishable from an
+  absent one. `else if c { B }` desugars to an `else_block` of
+  `{:block, [{:if, c, ..., ...}], pos}`, with no separate chain node in the AST
+  (ADR-0013). Not a member of `t:ast/0`.
+  """
+  @type if_statement :: {:if, ast(), block(), block() | nil, position()}
+
+  @typedoc """
+  One statement: an if statement, an assignment, or a bare expression.
+  """
+  @type statement :: assignment() | if_statement() | ast()
 
   @typedoc """
   A parsed statement sequence: `statement (";" statement)* [";"]`.
@@ -382,7 +404,7 @@ defmodule Predicator.Parser do
 
     case parse_statement(state) do
       {:ok, first, next_state} ->
-        case parse_program_rest(next_state, [first]) do
+        case parse_statement_sequence(next_state, [first], :eof) do
           {:ok, statements, final_state} ->
             finish_program(state, start_point, statements, final_state)
 
@@ -439,40 +461,71 @@ defmodule Predicator.Parser do
     end)
   end
 
-  # Consumes a ";" and, unless it is the grammar's single optional trailing
-  # one, parses another statement and recurses. A ";" immediately followed by
-  # another ";" is not consumed here - it falls through to parse_statement/1,
-  # which reports it as an ordinary unexpected-token error: empty statements
-  # are not allowed.
-  @spec parse_program_rest(parser_state(), [statement()]) ::
+  # Walks `(";" statement)*` - the tail shared by a program body and a block
+  # body, distinguished only by `terminator` (`:eof` at top level, `:rbrace`
+  # inside a block; ADR-0013's block form is the same production as the
+  # program body, just terminated differently). Consumes a ";" and, unless it
+  # is the grammar's single optional trailing one, parses another statement
+  # and recurses. A ";" immediately followed by another ";" is not consumed
+  # here - it falls through to parse_statement/1, which reports it as an
+  # ordinary unexpected-token error: empty statements are not allowed.
+  #
+  # ADR-0013 also makes the separator after a closing "}" optional: when the
+  # most recently parsed statement is brace_terminated?/1 and the next token
+  # is neither ";" nor the terminator, the walker parses the next statement
+  # directly instead of stopping.
+  @spec parse_statement_sequence(parser_state(), [statement()], atom()) ::
           {:ok, [statement()], parser_state()}
           | {:error, binary(), pos_integer(), pos_integer()}
-  defp parse_program_rest(state, acc) do
+  defp parse_statement_sequence(state, acc, terminator) do
     case peek_token(state) do
       {:semicolon, _line, _col, _len, _value} ->
         after_semicolon = advance(state)
 
-        case peek_token(after_semicolon) do
-          {:eof, _line, _col, _len, _value} ->
-            {:ok, Enum.reverse(acc), after_semicolon}
+        if at_terminator?(after_semicolon, terminator) do
+          {:ok, Enum.reverse(acc), after_semicolon}
+        else
+          case parse_statement(after_semicolon) do
+            {:ok, statement, new_state} ->
+              parse_statement_sequence(new_state, [statement | acc], terminator)
 
-          nil ->
-            {:ok, Enum.reverse(acc), after_semicolon}
-
-          _more_tokens ->
-            case parse_statement(after_semicolon) do
-              {:ok, statement, new_state} ->
-                parse_program_rest(new_state, [statement | acc])
-
-              {:error, _message, _line, _col} = error ->
-                error
-            end
+            {:error, _message, _line, _col} = error ->
+              error
+          end
         end
 
       _not_semicolon ->
-        {:ok, Enum.reverse(acc), state}
+        if brace_terminated?(hd(acc)) and not at_terminator?(state, terminator) do
+          case parse_statement(state) do
+            {:ok, statement, new_state} ->
+              parse_statement_sequence(new_state, [statement | acc], terminator)
+
+            {:error, _message, _line, _col} = error ->
+              error
+          end
+        else
+          {:ok, Enum.reverse(acc), state}
+        end
     end
   end
+
+  # True at the walker's terminator token or at a genuinely exhausted token
+  # list (defensive: the lexer always appends an explicit `:eof` token, so
+  # `nil` should not occur in practice).
+  @spec at_terminator?(parser_state(), atom()) :: boolean()
+  defp at_terminator?(state, terminator) do
+    case peek_token(state) do
+      {^terminator, _line, _col, _len, _value} -> true
+      nil -> true
+      _other -> false
+    end
+  end
+
+  # A statement that ends in `}` may be followed directly by the next
+  # statement; every other statement still needs its `;` (ADR-0013).
+  @spec brace_terminated?(statement()) :: boolean()
+  defp brace_terminated?({:if, _cond, _then, _else, _pos}), do: true
+  defp brace_terminated?(_statement), do: false
 
   # A statement is an assignment, if the leading tokens are location-shaped
   # and followed by "=", or an ordinary expression otherwise.
@@ -481,7 +534,7 @@ defmodule Predicator.Parser do
   defp parse_statement(state) do
     case peek_token(state) do
       {:if_kw, line, col, _len, _value} ->
-        {:error, "'if' is a reserved word - if statements are not supported yet.", line, col}
+        parse_if_statement(state, {line, col})
 
       {:while_kw, line, col, _len, _value} ->
         {:error, "'while' is a reserved word - while statements are not supported yet.", line,
@@ -497,6 +550,140 @@ defmodule Predicator.Parser do
           :not_assignment -> parse_expression(state)
         end
     end
+  end
+
+  # Parses `"if" expression block ( "else" ( block | if_statement ) )?`. The
+  # leading "if" is still unconsumed in `state`, which `point` already names -
+  # `advance/1` moves past it before the condition is parsed.
+  @spec parse_if_statement(parser_state(), Predicator.Types.position()) ::
+          {:ok, if_statement(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_if_statement(state, point) do
+    case parse_expression(advance(state)) do
+      {:ok, condition, after_cond} ->
+        case parse_block(after_cond) do
+          {:ok, then_block, after_then} ->
+            case parse_else(after_then) do
+              {:ok, else_block, final_state} ->
+                node =
+                  {:if, condition, then_block, else_block,
+                   if_loc(state, point, then_block, else_block)}
+
+                {:ok, node, final_state}
+
+              error ->
+                error
+            end
+
+          error ->
+            error
+        end
+
+      error ->
+        error
+    end
+  end
+
+  # Parses a block body: "{" ( statement (";" statement)* (";")? )? "}",
+  # requiring both delimiters. An empty block returns before entering the
+  # statement-sequence walker, since a bare "}" is not statement-shaped.
+  @spec parse_block(parser_state()) ::
+          {:ok, block(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_block(state) do
+    case peek_token(state) do
+      {:lbrace, line, col, _len, _value} ->
+        parse_block_body(state, advance(state), {line, col})
+
+      {type, line, col, _len, value} ->
+        {:error, "Expected '{' to open a block but found #{format_token(type, value)}", line, col}
+
+      nil ->
+        {:error, "Expected '{' to open a block but found end of input", 1, 1}
+    end
+  end
+
+  @spec parse_block_body(parser_state(), parser_state(), Predicator.Types.position()) ::
+          {:ok, block(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_block_body(state, brace_state, point) do
+    case peek_token(brace_state) do
+      {:rbrace, _line, _col, _len, _value} = close ->
+        {:ok, {:block, [], delimited_loc(state, point, close)}, advance(brace_state)}
+
+      _token ->
+        case parse_statement(brace_state) do
+          {:ok, first, next_state} ->
+            case parse_statement_sequence(next_state, [first], :rbrace) do
+              {:ok, statements, final_state} ->
+                finish_block(state, point, statements, final_state)
+
+              {:error, _message, _line, _col} = error ->
+                error
+            end
+
+          {:error, _message, _line, _col} = error ->
+            error
+        end
+    end
+  end
+
+  @spec finish_block(parser_state(), Predicator.Types.position(), [statement()], parser_state()) ::
+          {:ok, block(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp finish_block(state, point, statements, final_state) do
+    case peek_token(final_state) do
+      {:rbrace, _line, _col, _len, _value} = close ->
+        {:ok, {:block, statements, delimited_loc(state, point, close)}, advance(final_state)}
+
+      {type, line, col, _len, value} ->
+        {:error, "Expected '}' to close the block but found #{format_token(type, value)}", line,
+         col}
+
+      nil ->
+        {:error, "Expected '}' to close the block but found end of input", 1, 1}
+    end
+  end
+
+  # Parses the optional else clause: absent (nil), "else { ... }", or
+  # "else if ...", which desugars into a synthetic block per ADR-0013.
+  @spec parse_else(parser_state()) ::
+          {:ok, block() | nil, parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_else(state) do
+    case peek_token(state) do
+      {:else_kw, _line, _col, _len, _value} ->
+        parse_else_body(advance(state))
+
+      _no_else ->
+        {:ok, nil, state}
+    end
+  end
+
+  @spec parse_else_body(parser_state()) ::
+          {:ok, block(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_else_body(state) do
+    case peek_token(state) do
+      {:if_kw, line, col, _len, _value} ->
+        case parse_if_statement(state, {line, col}) do
+          {:ok, nested, final_state} ->
+            # ADR-0013: else-if is sugar. The synthetic block borrows the
+            # nested if's own trailing slot, which is its `if` token in point
+            # mode and its span in span mode - correct in both without a
+            # branch here.
+            slot = elem(nested, tuple_size(nested) - 1)
+            {:ok, {:block, [nested], slot}, final_state}
+
+          {:error, _message, _line, _col} = error ->
+            error
+        end
+
+      _not_if ->
+        parse_block(state)
+    end
+  end
+
+  # Point: the `if` keyword. Span: the `if` token through past the closing `}`
+  # of the last block present - the else block when there is one, otherwise
+  # the then block.
+  @spec if_loc(parser_state(), Predicator.Types.position(), block(), block() | nil) :: position()
+  defp if_loc(state, point, then_block, else_block) do
+    loc(state, point, fn -> {point, node_end(else_block || then_block)} end)
   end
 
   # Probes for an assignment by parsing an `addition`-level candidate - one
@@ -1261,10 +1448,13 @@ defmodule Predicator.Parser do
   defp token_span(token), do: {token_start(token), token_end(token)}
 
   # Only correct in span mode, where a child's trailing slot is its span.
-  @spec node_start(ast()) :: Predicator.Types.position()
+  # Widened beyond ast() to statement() | block() because callers use these
+  # to close over an if_statement's condition/blocks and a program's or
+  # block's own statement list, neither of which is a member of t:ast/0.
+  @spec node_start(statement() | block()) :: Predicator.Types.position()
   defp node_start(node), do: node |> elem(tuple_size(node) - 1) |> elem(0)
 
-  @spec node_end(ast()) :: Predicator.Types.position()
+  @spec node_end(statement() | block()) :: Predicator.Types.position()
   defp node_end(node), do: node |> elem(tuple_size(node) - 1) |> elem(1)
 
   # An infix node spans from its left operand's start to its right operand's

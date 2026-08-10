@@ -81,14 +81,17 @@ pairs.
 
 ## Statement nodes
 
-`{:program, statements, pos}` and `{:assignment, lhs, rhs, pos}` are produced
-only by `Predicator.Parser.parse_program/2`, the statement entry point
-alongside `parse/2`. Neither is a member of `t:ast/0`: `parse/2` never returns
-one, and an expression consumer never has to handle one.
+`{:program, statements, pos}`, `{:assignment, lhs, rhs, pos}`,
+`{:if, condition, then_block, else_block, pos}`, and `{:block, statements, pos}`
+are produced only by `Predicator.Parser.parse_program/2`, the statement entry
+point alongside `parse/2`. None of the four is a member of `t:ast/0`: `parse/2`
+never returns one, and an expression consumer never has to handle one.
 
 ```elixir
 {:program, [statement], pos}
 {:assignment, lhs, rhs, pos}
+{:if, condition, then_block, else_block, pos}
+{:block, [statement], pos}
 ```
 
 `lhs` in an assignment node is the unflattened access chain the parser already
@@ -100,8 +103,37 @@ an arbitrary expression that only resolves against a context at runtime;
 position is the `=` token; the span (under `spans: true`) runs from the `lhs`
 start to the `rhs` end.
 
-`InstructionsVisitor` compiles both nodes. A `{:program, statements, pos}`
-compiles each statement in order, concatenating the results. An
+`condition` in an if node is a bare expression; `then_block` is always a
+`{:block, statements, pos}`, never `nil`. `else_block` is `nil` when there is
+no `else` and a `{:block, statements, pos}` when there is - including for
+`else { }`, whose empty block stays distinguishable from an absent one
+([ADR-0013](../adr/0013-control-flow-lowers-to-new-jump-opcodes.md)). A block
+introduces no scope: its `statements` are ordinary program statements, and a
+`store` inside one is visible after the block.
+
+`else if c2 { B }` is parser sugar with no chain node of its own: it parses as
+an `else_block` holding a single-statement block whose one statement is the
+nested `{:if, ...}`. For
+
+```
+if a { x = 1 } else if b { x = 2 } else { x = 3 }
+```
+
+the outer node's `else_block` is `{:block, [{:if, b, ..., ...}], pos}` - a
+block wrapping the `if b { x = 2 } else { x = 3 }` node, not a three-way
+chain. That synthetic block's own trailing slot is the nested `if` node's own
+slot, so it needs no position of its own: in point mode it is the nested `if`
+token, and under `spans: true` it is the nested `if`'s span, which already
+starts at the same token and runs through the same final `}`.
+
+Neither `if` nor `block` is a member of `t:ast/0`, the same as `program` and
+`assignment`. `InstructionsVisitor` does not yet compile them - that lands
+with the ISA v5 opcodes (`px-3so.3`); until then a `{:if, ...}` in a parsed
+tree only exists to be read back or re-decompiled, never executed.
+
+`InstructionsVisitor` compiles the `program` and `assignment` nodes today. A
+`{:program, statements, pos}` compiles each statement in order, concatenating
+the results. An
 `{:assignment, lhs, rhs, pos}` compiles to the `lhs` chain's segments
 (root-to-leaf), then `rhs`, then `["store", n]`, where `n` is the chain's
 segment depth; any other statement compiles to its own instructions followed
@@ -162,6 +194,9 @@ key's own blame position only when the key is a single token, as in
 | `cast` | the type-name token |
 | `duration` | its first number |
 | `relative_date` | the direction keyword (`ago`, `from`, `next`, `last`) |
+| `if` | the `if` keyword |
+| `block` | the opening `{` token |
+| a desugared else-if's synthetic block | the nested `if` keyword |
 
 A new node type follows this rule: point it at the token a reader would blame.
 
@@ -196,12 +231,15 @@ characters to *underline*. A new node type needs a row in both:
 | `relative_date` (`from now`) | duration start | past the `now` token |
 | `relative_date` (`next`, `last`) | the direction keyword token | duration end |
 | parenthesized expression | the `(` token | past the `)` token |
+| `if` | the `if` token | past the last block's `}` (the else block's if present, otherwise the then block's) |
+| `block` | the `{` token | past the `}` token |
+| a desugared else-if's synthetic block | the nested `if`'s own span start | the nested `if`'s own span end |
 
 Two consequences follow from this table: a quoted string's and a `#`-fenced
 date's span include their delimiters, because the lexer's token length is the
-full source extent; and an empty `[]`, `{}`, or `f()` still spans both
-delimiters, because the end comes from the closing token rather than from a
-child.
+full source extent; and an empty `[]`, `{}`, `f()`, or `{ }` block still spans
+both delimiters, because the end comes from the closing token rather than
+from a child.
 
 A parenthesized expression's span includes its parentheses and composes to the
 outermost pair.
