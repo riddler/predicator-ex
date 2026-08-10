@@ -213,4 +213,41 @@ defmodule Predicator.ParserPositionsTest do
                 {1, 3}}, {:identifier, "a", {1, 9}}, {1, 7}}} = Predicator.parse("a + a + a")
     end
   end
+
+  describe "if/else statements point at the 'if' keyword" do
+    test "if with no else" do
+      assert Predicator.parse_program("if c { a = 1 }") ==
+               {:ok,
+                {:program,
+                 [
+                   {:if, {:identifier, "c", {1, 4}},
+                    {:block,
+                     [{:assignment, {:identifier, "a", {1, 8}}, {:literal, 1, {1, 12}}, {1, 10}}],
+                     {1, 6}}, nil, {1, 1}}
+                 ], {1, 1}}}
+    end
+
+    test "a block points at its opening brace" do
+      assert {:ok, {:program, [{:if, _cond, {:block, _stmts, {1, 6}}, nil, _if_pos}], _prog_pos}} =
+               Predicator.parse_program("if c { a = 1 }")
+    end
+
+    test "an empty block still carries a position" do
+      assert Predicator.parse_program("if c { }") ==
+               {:ok,
+                {:program, [{:if, {:identifier, "c", {1, 4}}, {:block, [], {1, 6}}, nil, {1, 1}}],
+                 {1, 1}}}
+    end
+
+    test "a nested if inside an else block points at its own 'if' token" do
+      assert {:ok,
+              {:program,
+               [
+                 {:if, _cond, _then,
+                  {:block,
+                   [{:if, {:identifier, "b", {1, 18}}, _nested_then, _nested_else, {1, 15}}],
+                   {1, 15}}, {1, 1}}
+               ], _prog_pos}} = Predicator.parse_program("if a { } else if b { }")
+    end
+  end
 end

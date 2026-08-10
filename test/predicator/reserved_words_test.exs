@@ -8,7 +8,6 @@ defmodule Predicator.ReservedWordsTest do
       "only valid in a program (Predicator.parse_program/2)."
   end
 
-  @if_statement_message "'if' is a reserved word - if statements are not supported yet."
   @while_statement_message "'while' is a reserved word - while statements are not supported yet."
   @else_statement_message "Unexpected 'else' - an 'else' block must follow an 'if' block."
 
@@ -17,8 +16,14 @@ defmodule Predicator.ReservedWordsTest do
       assert Predicator.parse("if = 3") == {:error, expression_message("if"), 1, 1}
     end
 
-    test "Predicator.parse_program/2 reports the statement-position message" do
-      assert Predicator.parse_program("if = 3") == {:error, @if_statement_message, 1, 1}
+    test "Predicator.parse_program/2 - 'if' is consumed as the keyword, not a variable name" do
+      # Phase 2: `if` now opens a real if_statement, so "if = 3" fails where
+      # the condition expression meets the bare "=" - the same fix-it-free
+      # rejection any invalid condition gets, not a statement-keyword message.
+      assert Predicator.parse_program("if = 3") ==
+               {:error,
+                "Expected number, string, boolean, date, datetime, identifier, function call, " <>
+                  "list, object, or '(' but found '='", 1, 4}
     end
 
     test "Predicator.evaluate/3" do
@@ -127,10 +132,6 @@ defmodule Predicator.ReservedWordsTest do
   end
 
   describe "the statement-position messages, through Predicator.parse_program/2" do
-    test "'if x { }' - Phase 2 replaces this placeholder" do
-      assert Predicator.parse_program("if x { }") == {:error, @if_statement_message, 1, 1}
-    end
-
     test "'while x { }'" do
       assert Predicator.parse_program("while x { }") == {:error, @while_statement_message, 1, 1}
     end

@@ -267,6 +267,49 @@ defmodule Predicator.ParserSpansTest do
     end
   end
 
+  describe "if/else and block spans" do
+    test "an if with no else spans the 'if' token through the then block's '}'" do
+      source = "if c { a = 1 }"
+      {:ok, {:program, [if_node], _pos}} = parse_program_spans(source)
+
+      assert slice(source, span_of(if_node)) == "if c { a = 1 }"
+    end
+
+    test "an if/else spans through the else block's '}'" do
+      source = "if c { a = 1 } else { a = 2 }"
+      {:ok, {:program, [if_node], _pos}} = parse_program_spans(source)
+
+      assert slice(source, span_of(if_node)) == source
+    end
+
+    test "a block spans its own braces" do
+      source = "if c { a = 1 }"
+
+      {:ok, {:program, [{:if, _cond, then_block, nil, _if_pos}], _prog_pos}} =
+        parse_program_spans(source)
+
+      assert slice(source, span_of(then_block)) == "{ a = 1 }"
+    end
+
+    test "an empty block's span still comes from its closing '}', not from a child" do
+      source = "if c { }"
+
+      {:ok, {:program, [{:if, _cond, then_block, nil, _if_pos}], _prog_pos}} =
+        parse_program_spans(source)
+
+      assert slice(source, span_of(then_block)) == "{ }"
+    end
+
+    test "a desugared else-if's synthetic block spans the nested if" do
+      source = "if a { } else if b { }"
+
+      {:ok, {:program, [{:if, _cond, _then, else_block, _if_pos}], _prog_pos}} =
+        parse_program_spans(source)
+
+      assert slice(source, span_of(else_block)) == "if b { }"
+    end
+  end
+
   describe "the default parse" do
     test "is byte-identical to an explicit spans: false parse" do
       for source <- @corpus do
@@ -321,6 +364,11 @@ defmodule Predicator.ParserSpansTest do
   defp parse_spans(source) do
     {:ok, tokens} = Lexer.tokenize(source)
     Parser.parse(tokens, spans: true)
+  end
+
+  defp parse_program_spans(source) do
+    {:ok, tokens} = Lexer.tokenize(source)
+    Parser.parse_program(tokens, spans: true)
   end
 
   defp assert_span(source, expected) do
