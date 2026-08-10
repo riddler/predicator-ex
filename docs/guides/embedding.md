@@ -48,7 +48,7 @@ true
 Pass the `%Predicator.Compiled{}` struct straight to `Predicator.evaluate/3` -
 it accepts the struct directly, so the position table cannot be dropped
 between compiling and evaluating
-([ADR-0009](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0009-the-compiled-envelope-carries-the-position-table.md)):
+([ADR-0009](../adr/0009-the-compiled-envelope-carries-the-position-table.md)):
 
 ```elixir
 iex> {:ok, compiled} = Predicator.compile_with_positions("score > 85")

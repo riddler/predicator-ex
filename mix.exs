@@ -107,6 +107,8 @@ defmodule Predicator.MixProject do
         "docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md",
         "docs/adr/0002-the-equals-grammar-break.md",
         "docs/adr/0003-the-elixir-implementation-leads-the-isa.md",
+        "docs/adr/0009-the-compiled-envelope-carries-the-position-table.md",
+        "docs/adr/0011-casts-are-an-opcode.md",
         "CHANGELOG.md",
         "LICENSE"
       ],
