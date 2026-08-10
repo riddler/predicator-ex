@@ -139,13 +139,14 @@ upstream of the worktree.
 
 ### Research agents
 
-`.claude/agents/` carries read-only research agents the planning and research
-skills dispatch to: `codebase-locator` (where things live), `codebase-analyzer`
-(how they work), `codebase-pattern-finder` (existing patterns to model after),
-`thoughts-locator` and `thoughts-analyzer` (prior research, plans, ADRs, and
-`docs/architecture.md`), and `web-search-researcher`. They are **documentarians,
-not critics**: they describe what exists and do not propose changes, which is
-what keeps a research pass from quietly becoming a design pass.
+The wurk skills dispatch to read-only research agents installed globally:
+`wurk-codebase-locator` (where things live), `wurk-codebase-analyzer` (how they
+work), `wurk-codebase-pattern-finder` (existing patterns to model after),
+`wurk-docs-locator` and `wurk-docs-analyzer` (prior research, plans, ADRs, and
+`docs/architecture.md`), and `wurk-web-search-researcher`. They are
+**documentarians, not critics**: they describe what exists and do not propose
+changes, which is what keeps a research pass from quietly becoming a design
+pass.
 
 ### Area labels
 

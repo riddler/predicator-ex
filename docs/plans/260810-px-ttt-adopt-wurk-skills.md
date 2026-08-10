@@ -826,18 +826,18 @@ Phase 4's job; the agent names are this phase's because they break here.)
 
 #### Automated Verification
 
-- [ ] `.claude/skills` and `.claude/agents` do not exist
-- [ ] `ruby ~/.claude/skills/wurk:kit/scripts/lib/manifest.rb check` still
+- [x] `.claude/skills` and `.claude/agents` do not exist
+- [x] `ruby ~/.claude/skills/wurk:kit/scripts/lib/manifest.rb check` still
       exits 0 (the manifest is untouched but must still resolve with the
       skills gone)
-- [ ] `git diff HEAD -- .claude/settings.json` shows the `_comment` and the
+- [x] `git diff HEAD -- .claude/settings.json` shows the `_comment` and the
       three `deny` entries **unchanged**, and only a `hooks` key added
-- [ ] `python3 -c 'import json;json.load(open(".claude/settings.json"))'` (or
+- [x] `python3 -c 'import json;json.load(open(".claude/settings.json"))'` (or
       `ruby -rjson -e 'JSON.parse(File.read(".claude/settings.json"))'`) parses
-- [ ] `bd show px-uio` reports status closed with the superseding note
-- [ ] `git grep -n 'thoughts-locator\|thoughts-analyzer'` returns nothing
+- [x] `bd show px-uio` reports status closed with the superseding note
+- [x] `git grep -n 'thoughts-locator\|thoughts-analyzer'` returns nothing
       outside `docs/plans/` history
-- [ ] `git diff --stat` touches no Elixir code - gate carve-out applies
+- [x] `git diff --stat` touches no Elixir code - gate carve-out applies
 
 #### Manual Verification
 
@@ -1334,3 +1334,8 @@ corpus discipline (one states the commit-time refusal, the other the
 protocol)
 Phase 2: Reading each extension alongside its generic skill, no instruction
 contradicts the generic one
+
+Phase 3: A fresh session in this repo shows primed bead context (the hook
+fires)
+Phase 3: The deny rules still fire: an attempted `Edit(.quality.exs)` is
+refused

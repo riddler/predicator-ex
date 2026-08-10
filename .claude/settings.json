@@ -6,5 +6,10 @@
       "Edit(.credo.exs)",
       "Edit(coveralls.json)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "", "hooks": [{ "type": "command", "command": "bd prime --hook-json" }] }
+    ]
   }
 }
