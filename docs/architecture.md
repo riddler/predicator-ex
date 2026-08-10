@@ -21,7 +21,9 @@ Expression String → Lexer → Parser → Compiler → Instructions → Evaluat
 
 ```text
 program      → statement ( ";" statement )* ( ";" )?
-statement    → assignment | expression
+statement    → if_statement | assignment | expression
+if_statement → "if" expression block ( "else" ( block | if_statement ) )?
+block        → "{" ( statement ( ";" statement )* ( ";" )? )? "}"
 assignment   → location "=" expression
 location     → IDENTIFIER ( "." IDENTIFIER | "[" expression "]" )*
 expression   → logical_or
@@ -54,6 +56,17 @@ and only with an assignable left side - an identifier optionally followed by
 `.name` and `[key]` accessors. A bare `=` in expression position is a parse
 error naming `==` as the fix; there is no context where `=` silently means
 equality. `==` and `===` are the only equality operators.
+
+`if` is statement-position only, like `=`: `parse/2` rejects it the same way
+it rejects a top-level `=`, and there is no ternary form. Braces are
+mandatory - a block may be empty, but there is no braceless single-statement
+form - and they group statements without introducing a scope: a `store`
+inside a taken branch writes to the same flat context as one outside it.
+`else if c { B }` is parser sugar, not a grammar production of its own - it
+desugars to an `else` block whose sole statement is the nested `if`, with no
+chain node in the AST. See
+[ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md)
+for all three.
 
 The two grammars above are reached by two separate entry points:
 `Predicator.Parser.parse/2` parses the `expression` production alone and

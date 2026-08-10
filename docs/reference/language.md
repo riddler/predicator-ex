@@ -253,6 +253,90 @@ iex> Predicator.evaluate("user.age::integer", %{"user" => %{}})
 {:ok, :undefined}
 ```
 
+## Statements and control flow
+
+Everything above this section is the `expression` grammar, reached through
+`Predicator.parse/2` and `Predicator.evaluate/3`. A program is a
+`;`-separated sequence of *statements*, reached through the separate
+`Predicator.parse_program/2` entry point (and `Predicator.execute/2,3` for
+running one) - the same split the `=` note above draws for assignment: `if`
+is statement-position only, exactly like `=`, and `parse/2` rejects it with a
+message naming `parse_program/2`.
+
+```elixir
+iex> Predicator.parse("if x { }")
+{:error, "'if' is a statement keyword, not an expression - control flow is only valid in a program (Predicator.parse_program/2).", 1, 1}
+```
+
+### `if`/`else`
+
+The `if_statement` production (see the grammar in
+[Architecture](../architecture.md)) is `if cond { ... }`, optionally followed
+by an `else`. It runs its `then` block when `cond` is `true` and skips it
+otherwise; an `else` block runs when the condition does not:
+
+```elixir
+iex> {:ok, ast} = Predicator.parse_program("if score > 85 { grade = 'A' }")
+iex> ast
+{:program, [{:if, {:comparison, :gt, {:identifier, "score", {1, 4}}, {:literal, 85, {1, 12}}, {1, 10}}, {:block, [{:assignment, {:identifier, "grade", {1, 17}}, {:string_literal, "A", :single, {1, 25}}, {1, 23}}], {1, 15}}, nil, {1, 1}}], {1, 1}}
+```
+
+```elixir
+iex> {:ok, ast} = Predicator.parse_program("if score > 85 { grade = 'A' } else { grade = 'B' }")
+iex> {:if, _condition, _then_block, else_block, _pos} = hd(elem(ast, 1))
+iex> else_block
+{:block, [{:assignment, {:identifier, "grade", {1, 38}}, {:string_literal, "B", :single, {1, 46}}, {1, 44}}], {1, 36}}
+```
+
+`else if` chains are sugar, not a separate construct: `else if c2 { B }`
+parses as an `else` block whose sole statement is another `{:if, ...}` node,
+recursively. There is no chain node in the AST to learn - `if a { A } else if
+b { B } else { C }` and a hand-nested `if a { A } else { if b { B } else { C
+} } }` desugar to the identical tree.
+
+Braces are mandatory - there is no braceless single-statement form - and a
+block may be empty:
+
+```elixir
+iex> Predicator.parse_program("if x { }")
+{:ok, {:program, [{:if, {:identifier, "x", {1, 4}}, {:block, [], {1, 6}}, nil, {1, 1}}], {1, 1}}}
+```
+
+The separator between a block's closing `}` and the next statement is
+optional - `if c { } a = 1` and `if c { }; a = 1` both parse - because a
+statement ending in `}` is already unambiguously terminated.
+
+### Braces introduce no scope
+
+Unlike most C-family languages, `{ }` here only *groups* statements; it does
+not open a new binding scope. An assignment made inside a taken branch is an
+ordinary write to the same flat context every other assignment writes to, so
+it is visible after the block and in `execute/2`'s result, whether or not the
+branch that wrote it was the one taken - `x = 1; if x > 0 { y = 2 } else
+{ y = 3 }` leaves both `x` and `y` bound at the top level, the same as if the
+assignment inside the taken branch had been written without the surrounding
+`if` at all.
+
+See [ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md)
+for why: the statement layer has no declaration form to hang a scope on, and
+statement mode's whole output is the context at halt, so a write that
+vanished with its block would be a write to nowhere.
+
+### The condition must be a boolean
+
+`if`'s condition is a bare expression - parentheses are ordinary grouping,
+never required - and its value must be a boolean. `false` and `:undefined`
+skip the branch; `true` runs it; any other value is a `TypeMismatchError`
+rather than being coerced (see "Error Shapes" below).
+
+### Reserved words
+
+`if`, `else`, and `while` are reserved words: none of the three can be used
+as a variable name, a bare property name (`user.if`), or a bare object key
+(`{if: 1}`) - only a quoted key (`{"if": 1}`) still works. `while` is
+reserved from the same release as `if` and `else`, but it does not yet parse
+as a statement.
+
 ## Builtin Functions
 
 ### String Functions
