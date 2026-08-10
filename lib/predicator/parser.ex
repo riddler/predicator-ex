@@ -479,10 +479,23 @@ defmodule Predicator.Parser do
   @spec parse_statement(parser_state()) ::
           {:ok, statement(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
   defp parse_statement(state) do
-    case try_parse_assignment(state) do
-      {:ok, _ast, _state} = ok -> ok
-      {:error, _message, _line, _col} = error -> error
-      :not_assignment -> parse_expression(state)
+    case peek_token(state) do
+      {:if_kw, line, col, _len, _value} ->
+        {:error, "'if' is a reserved word - if statements are not supported yet.", line, col}
+
+      {:while_kw, line, col, _len, _value} ->
+        {:error, "'while' is a reserved word - while statements are not supported yet.", line,
+         col}
+
+      {:else_kw, line, col, _len, _value} ->
+        {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", line, col}
+
+      _other ->
+        case try_parse_assignment(state) do
+          {:ok, _ast, _state} = ok -> ok
+          {:error, _message, _line, _col} = error -> error
+          :not_assignment -> parse_expression(state)
+        end
     end
   end
 
@@ -1169,6 +1182,15 @@ defmodule Predicator.Parser do
     parse_relative_date_expression(state, :last, {line, col})
   end
 
+  # `if`/`else`/`while` are statement keywords, never valid in expression
+  # position - control flow only exists through Predicator.parse_program/2.
+  defp parse_primary_token(_state, {kw, line, col, _len, value})
+       when kw in [:if_kw, :else_kw, :while_kw] do
+    {:error,
+     "'#{value}' is a statement keyword, not an expression - control flow is " <>
+       "only valid in a program (Predicator.parse_program/2).", line, col}
+  end
+
   # Handle unexpected tokens
   defp parse_primary_token(_state, {type, line, col, _len, value}) do
     expected =
@@ -1326,6 +1348,9 @@ defmodule Predicator.Parser do
   defp format_token(:bang, _value), do: "'!'"
   defp format_token(:function_name, value), do: "function '#{value}'"
   defp format_token(:qualified_function_name, value), do: "function '#{value}'"
+  defp format_token(:if_kw, _value), do: "'if'"
+  defp format_token(:else_kw, _value), do: "'else'"
+  defp format_token(:while_kw, _value), do: "'while'"
   defp format_token(:eof, _value), do: "end of input"
 
   # Parse list literals: [element1, element2, ...]
