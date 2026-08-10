@@ -155,7 +155,7 @@
     "id": "casts/string-to-datetime-with-offset",
     "source": "\"2026-08-09T10:00:00Z\"::datetime::date",
     "expected": { "result": { "$type": "date", "value": "2026-08-09" } },
-    "notes": "datetime string-parse requires a UTC offset and succeeds here - chained on to ::date rather than asserted as a datetime value, deliberately: Predicator.Cast.normalize_to_utc round-trips through microsecond precision, so the parsed datetime's own fractional-seconds field is not this repo's normative form yet (px-7t8) and this case does not want to pin it. Chaining to ::date confirms the parse succeeded and the calendar date is right without touching that open question"
+    "notes": "datetime string-parse requires a UTC offset and succeeds here - chained on to ::date rather than asserted as a datetime value, deliberately: this case's subject is the offset requirement, and the fractional-seconds field of the parsed datetime, though normative now (docs/isa.md section 5, pinned by px-7t8's two casts/datetime::string-format cases above), is not what this case is testing. Chaining to ::date confirms the parse succeeded and the calendar date is right without also asserting a fact this case doesn't own"
   },
   {
     "id": "casts/string-to-duration",
@@ -199,6 +199,18 @@
     "source": "2w3d::string",
     "expected": { "result": "2w3d" },
     "notes": "duration::string is the duration-literal grammar, largest unit first"
+  },
+  {
+    "id": "casts/datetime-to-string-zero-fraction-omitted",
+    "source": "#2026-08-09T10:30:00Z#::string",
+    "expected": { "result": "2026-08-09T10:30:00Z" },
+    "notes": "datetime::string omits the fractional-seconds field entirely when the sub-second component is zero (docs/isa.md section 5, pinned by px-7t8). The sentence 'ISO 8601; datetimes in UTC with Z' did not determine this field, and the three implementations' host defaults disagreed on it - Elixir six digits, JavaScript three, Ruby none - so all three could claim ISA v4 while producing different strings for this cast. This case is the form, not one language's default"
+  },
+  {
+    "id": "casts/datetime-to-string-non-zero-fraction-is-six-digits",
+    "source": "\"2026-08-09T10:30:00.500Z\"::datetime::string",
+    "expected": { "result": "2026-08-09T10:30:00.500000Z" },
+    "notes": "a non-zero sub-second component formats as exactly six digits, never a variable or minimal count (docs/isa.md section 5, px-7t8). The pinned value is expressible in milliseconds deliberately, so a JavaScript sibling backed by Date rather than Temporal can construct the input at all - the same portability discipline the float::string case applies. Note this also shows that datetime::string is a canonicalization and not a string identity: three input digits come back as six"
   },
   {
     "id": "casts/date-to-datetime-bridge-direct",
