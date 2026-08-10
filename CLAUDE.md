@@ -111,42 +111,52 @@ Also avoid `bd edit`, which opens `$EDITOR` and blocks. Use
 ## Worktrees, skills, and area labels
 
 Work is picked up one bead at a time and done in its own git worktree, so
-several agents can run in parallel without editing the same tree. The skills in
-`.claude/skills/` automate the loop:
+several agents can run in parallel without editing the same tree. The skills
+that automate the loop are installed globally under `wurk:` (`~/.claude/skills/
+wurk:*`), not in this repo; this repo configures them through
+`.claude/wurk.json` (the manifest - area labels, gate commands, commit style,
+release recipe) and the `.claude/wurk/*.md` extension files (predicator-only
+content the generic skills do not carry). See ADR-0012 for the adoption and
+what stays local.
 
 | Skill | What it does |
 |---|---|
-| `/create-issue` | file a bead with type, priority, `area:` label, and dependency links |
-| `/next-issue`, `/next-issues` | pick ready beads, claim them, dispatch to worktrees |
-| `/new-worktree` | one issue, one branch, one worktree, one tmux window |
-| `/work` | the single entry point inside a worktree: size the bead, then drive research/plan/implement as subagents |
-| `/research-codebase`, `/create-plan`, `/iterate-plan`, `/implement-plan` | the stages `/work` dispatches: document, plan in `docs/plans/`, then execute |
-| `/commit` | gate, message, `Refs:` trailer, no attribution |
-| `/merge-request` | rebase onto `origin/main`, full gate, push, open the PR |
-| `/release` | bump `@version`, promote the changelog, bump the README pin - human-gated tag/push/publish stay separate |
-| `/cleanup-worktrees`, `/refresh-worktree` | land merged work, rebase the survivors |
+| `/wurk:issue` | file a bead with type, priority, `area:` label, and dependency links |
+| `/wurk:next` | pick up to `n` ready beads (default 1), claim them, dispatch to worktrees |
+| `/wurk:branch` | one issue, one branch, one worktree, one tmux window |
+| `/wurk:work` | the single entry point inside a worktree: size the bead, then drive research/plan/implement as subagents |
+| `/wurk:research`, `/wurk:plan`, `/wurk:iterate`, `/wurk:implement` | the stages `/wurk:work` dispatches: document, plan in `docs/plans/`, then execute |
+| `/wurk:commit` | gate, message, `Refs:` trailer, no attribution |
+| `/wurk:mr` | rebase onto `origin/main`, full gate, push, open the PR |
+| `/wurk:release` | bump `@version`, promote the changelog, bump the README pin - human-gated tag/push/publish stay separate |
+| `/wurk:cleanup`, `/wurk:refresh` | land merged work, rebase the survivors |
 
 Worktrees live at `../predicator-ex-worktrees/<bead-id>-<slug>`, cut from
 `origin/main`. The claim is the lock: `bd update <id> --claim` happens before the
 worktree exists, never after.
 
-**Sizing happens in the worktree, not before it.** `/next-issue` and
-`/next-issues` select and claim; they hand the bead to `/work`, which reads the
-files the bead names before choosing between research-first, plan-first, and
-just-do-it. A description-only guess at blast radius made in the main checkout is
-what that split exists to replace, so do not move a triage decision back
-upstream of the worktree.
+**Sizing happens in the worktree, not before it.** `/wurk:next` selects and
+claims; it hands the bead to `/wurk:work`, which reads the files the bead names
+before choosing between research-first, plan-first, and just-do-it. A
+description-only guess at blast radius made in the main checkout is what that
+split exists to replace, so do not move a triage decision back upstream of the
+worktree.
 
 ### Research agents
 
-The wurk skills dispatch to read-only research agents installed globally:
-`wurk-codebase-locator` (where things live), `wurk-codebase-analyzer` (how they
-work), `wurk-codebase-pattern-finder` (existing patterns to model after),
-`wurk-docs-locator` and `wurk-docs-analyzer` (prior research, plans, ADRs, and
-`docs/architecture.md`), and `wurk-web-search-researcher`. They are
-**documentarians, not critics**: they describe what exists and do not propose
-changes, which is what keeps a research pass from quietly becoming a design
-pass.
+The wurk skills dispatch to read-only research agents installed globally, not
+in this repo's `.claude/agents/`: `wurk-codebase-locator` (where things live),
+`wurk-codebase-analyzer` (how they work), `wurk-codebase-pattern-finder`
+(existing patterns to model after), `wurk-docs-locator` and `wurk-docs-analyzer`
+(prior research, plans, ADRs, and `docs/architecture.md`), and
+`wurk-web-search-researcher`. They are **documentarians, not critics**: they
+describe what exists and do not propose changes, which is what keeps a
+research pass from quietly becoming a design pass.
+
+This repo's own `.claude/agents/` is empty and available for genuinely
+predicator-only agents that have no wurk equivalent - an ISA-drift checker
+(comparing `docs/isa.md` against `lib/predicator/instructions.ex`) is the
+documented example of what would go there; none exists today.
 
 ### Area labels
 
@@ -174,14 +184,14 @@ duplicate the table below.
 | `area:build` | `mix.exs`, `mix.lock`, `.quality.exs`, `.credo.exs`, `coveralls.json`, `mise.toml`, `.gitignore`, `.github/**` |
 
 **Two beads are batchable iff their area sets are disjoint.** That is the whole
-rule, and it is what lets `/next-issues` claim several beads at once without a
+rule, and it is what lets `/wurk:next` claim several beads at once without a
 human adjudicating each pair.
 
 **`area:build` is exclusive: a bead carrying it batches with nothing** and lands
 on `main` alone. It moves `mix.lock` and the gate config that every other
 worktree's warmed `_build` and quality run depend on, so a parallel branch does
 not merely conflict with it - it goes red for reasons that have nothing to do
-with the work in it, which is the failure `/refresh-worktree` exists to repair.
+with the work in it, which is the failure `/wurk:refresh` exists to repair.
 
 Two clarifications that come up:
 
