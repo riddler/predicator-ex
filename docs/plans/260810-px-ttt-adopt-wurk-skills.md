@@ -956,13 +956,13 @@ scopes `## [Unreleased]` entries to user-facing changes.
 
 #### Automated Verification
 
-- [ ] `git grep -n` for each of the 14 deleted skill names returns nothing
+- [x] `git grep -n` for each of the 14 deleted skill names returns nothing
       outside `docs/plans/`, `docs/research/`, and deliberate ADR prose
-- [ ] `git grep -n` for each of the 6 unprefixed agent names returns nothing
+- [x] `git grep -n` for each of the 6 unprefixed agent names returns nothing
       outside those same directories
-- [ ] `docs/adr/0012-adopting-the-shared-wurk-workflow.md` exists and is listed
+- [x] `docs/adr/0012-adopting-the-shared-wurk-workflow.md` exists and is listed
       in `docs/adr/README.md`
-- [ ] `git diff --stat` touches only `CLAUDE.md` and `docs/` - gate carve-out
+- [x] `git diff --stat` touches only `CLAUDE.md` and `docs/` - gate carve-out
       applies
 
 #### Manual Verification
@@ -1339,3 +1339,10 @@ Phase 3: A fresh session in this repo shows primed bead context (the hook
 fires)
 Phase 3: The deny rules still fire: an attempted `Edit(.quality.exs)` is
 refused
+
+Phase 4: The rewritten CLAUDE.md skill table reads correctly to someone who
+has never seen the old one - no orphan references to a `/next-issues` batch
+form that no longer exists as a separate skill
+Phase 4: ADR-0012 does not re-argue ADR-0005, ADR-0006, or ADR-0008; it cites
+them
+Phase 4: Every ADR sentence left naming an old skill is genuinely historical
