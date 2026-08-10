@@ -160,3 +160,12 @@ wrong shape, not the rule.
 No ratchet registry, ratchet mix task, or ratchet step is added anywhere by
 this decision; `conformance/RATCHET.md` and the sibling-repo ratchet mechanics
 are unaffected.
+
+## Additions to the class
+
+- 2026-08-10 (`px-ir1`): `test/docs_adr_links_test.exs`. The published
+  documentation set is an exported artifact in the same sense as the corpus -
+  hexdocs is what a consumer reads - and this test binds `mix.exs`'s `extras:`
+  list to the ADR citations in the pages it publishes. A vacuous pass ships
+  404s on the front door with nothing noticing, which is the class's test.
+  Eight files now.

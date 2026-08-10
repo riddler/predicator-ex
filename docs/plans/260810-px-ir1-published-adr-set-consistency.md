@@ -404,11 +404,11 @@ note for the file list.
 
 #### Automated Verification:
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] The new test runs and passes: `mix test test/docs_adr_links_test.exs` -
+- [x] Full quality gate passes: `mix quality`
+- [x] The new test runs and passes: `mix test test/docs_adr_links_test.exs` -
       its anti-vacuity floors are part of that run, so a link regex matching
       nothing reddens it rather than passing
-- [ ] `mix docs 2>&1 | grep 'references file' | grep 'adr/'` still prints
+- [x] `mix docs 2>&1 | grep 'references file' | grep 'adr/'` still prints
       nothing
 
 #### Manual Verification:
@@ -526,3 +526,27 @@ work fully verified:
       in number order with 0001-0003
 - [ ] `doc/embedding.html`'s ADR-0009 link stays inside hexdocs
 - [ ] No regressions in related features: the other extras render unchanged
+
+**From Phase 2:**
+
+The mechanical sabotage pass itself was performed during implementation and
+passed on the first attempt for all four mutations (each went red naming the
+offending file and target, then was reverted cleanly); the items below are
+still listed verbatim per the plan's own convention, for the human-facing
+record.
+
+- [ ] Remove `docs/adr/0011-casts-are-an-opcode.md` from `mix.exs` `extras:` ->
+      the relative-link test fails naming 0011 and both of its relative
+      citation sites, `docs/architecture.md` and `docs/adr/README.md`. If the
+      index is not among them, the resolve-then-classify ordering above was not
+      implemented and the test is blind to the file it exists for
+- [ ] Restore `docs/guides/embedding.md:51` to the absolute GitHub URL for
+      ADR-0009 -> the absolute-link test fails naming `embedding.md` and 0009
+- [ ] Add `docs/adr/0007-beads-for-issue-tracking.md` to `extras:` -> the
+      governance test fails naming 0007
+- [ ] Point one `docs/adr/README.md` row at a filename that does not exist ->
+      the existence test fails naming that target
+- [ ] A test that stays green under its mutation is a finding, not a note to
+      skip: reshape the test rather than weakening the note
+- [ ] The working tree is clean after the pass (`git status`) - every mutation
+      reverted
