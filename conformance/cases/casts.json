@@ -35,5 +35,322 @@
     "source": "1::boolean",
     "expected": { "result": { "$type": "undefined" } },
     "notes": "the ISA has no truthiness rule and casts do not open a side door between booleans and numbers"
+  },
+  {
+    "id": "casts/integer-to-integer-identity",
+    "source": "5::integer",
+    "expected": { "result": 5 },
+    "notes": "identity clause: an integer already of the target type passes through unchanged"
+  },
+  {
+    "id": "casts/float-to-float-identity",
+    "source": "3.5::float",
+    "expected": { "result": 3.5 },
+    "notes": "identity clause: a float already of the target type passes through unchanged"
+  },
+  {
+    "id": "casts/string-to-string-identity",
+    "source": "\"abc\"::string",
+    "expected": { "result": "abc" },
+    "notes": "identity clause: a string already of the target type passes through unchanged"
+  },
+  {
+    "id": "casts/boolean-to-boolean-identity",
+    "source": "true::boolean",
+    "expected": { "result": true },
+    "notes": "identity clause: a boolean already of the target type passes through unchanged"
+  },
+  {
+    "id": "casts/date-to-date-identity",
+    "source": "#2026-08-09#::date",
+    "expected": { "result": { "$type": "date", "value": "2026-08-09" } },
+    "notes": "identity clause: a date already of the target type passes through unchanged"
+  },
+  {
+    "id": "casts/datetime-to-datetime-identity",
+    "source": "#2026-08-09T10:30:00Z#::datetime",
+    "expected": { "result": { "$type": "datetime", "value": "2026-08-09T10:30:00Z" } },
+    "notes": "identity clause: a datetime already of the target type passes through unchanged"
+  },
+  {
+    "id": "casts/duration-to-duration-identity",
+    "source": "3d::duration",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 3,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "notes": "identity clause: a duration already of the target type passes through unchanged"
+  },
+  {
+    "id": "casts/integer-to-float-widens-exactly",
+    "source": "42::float",
+    "expected": { "result": 42.0 },
+    "notes": "integer::float widens exactly (below 2^53, where every integer has an exact float representation)"
+  },
+  {
+    "id": "casts/float-to-integer-truncates-toward-zero-at-positive",
+    "source": "1.9::integer",
+    "expected": { "result": 1 },
+    "notes": "float::integer truncates toward zero at positive values too - 1.9 truncates to 1, not rounds to 2"
+  },
+  {
+    "id": "casts/integer-to-string-format",
+    "source": "42::string",
+    "expected": { "result": "42" },
+    "notes": "integer::string is decimal formatting"
+  },
+  {
+    "id": "casts/float-to-string-format",
+    "source": "3.5::string",
+    "expected": { "result": "3.5" },
+    "notes": "float::string is normative only on the subset where exponent notation never kicks in and no trailing .0 ambiguity arises (px-2r5.3 notes); 3.5 formats identically across Elixir, JS, and Ruby's shortest-round-trip printers"
+  },
+  {
+    "id": "casts/string-to-integer-negative",
+    "source": "\"-7\"::integer",
+    "expected": { "result": -7 },
+    "notes": "the integer string-parse grammar accepts an optional leading minus"
+  },
+  {
+    "id": "casts/string-to-float-no-decimal-point-still-parses",
+    "source": "\"3\"::float",
+    "expected": { "result": 3.0 },
+    "notes": "the float string-parse grammar accepts a bare integer form - \"3\"::float is 3.0, not :undefined"
+  },
+  {
+    "id": "casts/string-to-float-negative-decimal",
+    "source": "\"-2.5\"::float",
+    "expected": { "result": -2.5 },
+    "notes": "the float string-parse grammar accepts an optional leading minus with a fractional part"
+  },
+  {
+    "id": "casts/string-to-boolean-true",
+    "source": "\"true\"::boolean",
+    "expected": { "result": true },
+    "notes": "boolean string-parse accepts exactly the lowercase literal \"true\""
+  },
+  {
+    "id": "casts/string-to-boolean-false",
+    "source": "\"false\"::boolean",
+    "expected": { "result": false },
+    "notes": "boolean string-parse accepts exactly the lowercase literal \"false\""
+  },
+  {
+    "id": "casts/string-to-date",
+    "source": "\"2026-08-09\"::date",
+    "expected": { "result": { "$type": "date", "value": "2026-08-09" } },
+    "notes": "date string-parse is ISO 8601 calendar date"
+  },
+  {
+    "id": "casts/string-to-datetime-with-offset",
+    "source": "\"2026-08-09T10:00:00Z\"::datetime::date",
+    "expected": { "result": { "$type": "date", "value": "2026-08-09" } },
+    "notes": "datetime string-parse requires a UTC offset and succeeds here - chained on to ::date rather than asserted as a datetime value, deliberately: Predicator.Cast.normalize_to_utc round-trips through microsecond precision, so the parsed datetime's own fractional-seconds field is not this repo's normative form yet (px-7t8) and this case does not want to pin it. Chaining to ::date confirms the parse succeeded and the calendar date is right without touching that open question"
+  },
+  {
+    "id": "casts/string-to-duration",
+    "source": "\"2w3d\"::duration",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 2,
+          "days": 3,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "notes": "duration string-parse is the language's own duration-literal grammar"
+  },
+  {
+    "id": "casts/boolean-to-string-true",
+    "source": "true::string",
+    "expected": { "result": "true" },
+    "notes": "boolean::string formats as the literal \"true\""
+  },
+  {
+    "id": "casts/boolean-to-string-false",
+    "source": "false::string",
+    "expected": { "result": "false" },
+    "notes": "boolean::string formats as the literal \"false\""
+  },
+  {
+    "id": "casts/date-to-string",
+    "source": "#2026-08-09#::string",
+    "expected": { "result": "2026-08-09" },
+    "notes": "date::string is ISO 8601 calendar date formatting"
+  },
+  {
+    "id": "casts/duration-to-string",
+    "source": "2w3d::string",
+    "expected": { "result": "2w3d" },
+    "notes": "duration::string is the duration-literal grammar, largest unit first"
+  },
+  {
+    "id": "casts/date-to-datetime-bridge-direct",
+    "source": "#2026-08-09#::datetime",
+    "expected": { "result": { "$type": "datetime", "value": "2026-08-09T00:00:00Z" } },
+    "notes": "the date::datetime bridge applied directly to a date literal, not by way of a string parse - midnight UTC, the same coercion compare and subtract already apply to a mixed pair"
+  },
+  {
+    "id": "casts/datetime-to-date-bridge",
+    "source": "#2026-08-09T10:30:00Z#::date",
+    "expected": { "result": { "$type": "date", "value": "2026-08-09" } },
+    "notes": "the datetime::date bridge takes the datetime's calendar date, discarding the time of day"
+  },
+  {
+    "id": "casts/boolean-to-integer-no-bridge",
+    "source": "true::integer",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the reverse direction of the seeded no-boolean-number-bridge case: the refusal is symmetric, not one-directional"
+  },
+  {
+    "id": "casts/date-to-integer-refused",
+    "source": "#2026-08-09#::integer",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "a date has no numeric representation in the cast matrix - the catch-all rule, not a parse failure"
+  },
+  {
+    "id": "casts/integer-to-date-refused",
+    "source": "5::date",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "an integer cannot become a date - only a string can, via ISO 8601 parsing"
+  },
+  {
+    "id": "casts/duration-to-integer-refused",
+    "source": "3d::integer",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "a duration has no numeric representation in the cast matrix"
+  },
+  {
+    "id": "casts/list-to-integer-refused",
+    "source": "[1, 2, 3]::integer",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "lists are not a cast source for any target - the catch-all rule covers structural values, not just scalar mismatches"
+  },
+  {
+    "id": "casts/map-to-string-refused",
+    "source": "{a: 1}::string",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "maps are not a cast source for any target, including ::string - serialization is JSON.stringify's job, not a cast's"
+  },
+  {
+    "id": "casts/string-to-integer-trailing-garbage-is-undefined",
+    "source": "\"42abc\"::integer",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "no partial consumption: the whole string must match, not a leading prefix of it"
+  },
+  {
+    "id": "casts/string-to-integer-leading-whitespace-is-undefined",
+    "source": "\" 42\"::integer",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "no trimming: leading (or trailing) whitespace makes the string unconvertible"
+  },
+  {
+    "id": "casts/string-to-integer-trailing-newline-is-undefined",
+    "source": "\"42\\n\"::integer",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "regression for the anchoring defect fixed on px-2r5.3 (commit a06ba16): PCRE $ matches before a trailing newline, so an unanchored regex would have accepted \"42\\n\" and then raised out of the string-to-integer parse. \\A/\\z anchors make this :undefined, per the totality rule, instead of an error"
+  },
+  {
+    "id": "casts/string-to-float-unconvertible-is-undefined",
+    "source": "\"abc\"::float",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the totality rule applied to the float parse target"
+  },
+  {
+    "id": "casts/string-to-float-exponent-notation-is-undefined",
+    "source": "\"1e10\"::float",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the float string-parse grammar has no exponent form, matching the language's own float literal grammar - \"1e10\" is not a whole-string decimal number"
+  },
+  {
+    "id": "casts/string-to-float-trailing-newline-is-undefined",
+    "source": "\"1.5\\n\"::float",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "regression for the same anchoring defect fixed on px-2r5.3 (commit a06ba16), on the float parse path"
+  },
+  {
+    "id": "casts/string-to-boolean-case-sensitive",
+    "source": "\"True\"::boolean",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "boolean string-parse is case-sensitive: only the exact lowercase literals \"true\"/\"false\" match"
+  },
+  {
+    "id": "casts/string-to-boolean-unconvertible-is-undefined",
+    "source": "\"yes\"::boolean",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the totality rule applied to the boolean parse target - no other truthy/falsy spellings are accepted"
+  },
+  {
+    "id": "casts/string-to-date-unconvertible-is-undefined",
+    "source": "\"not-a-date\"::date",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the totality rule applied to the date parse target"
+  },
+  {
+    "id": "casts/string-to-date-invalid-calendar-date-is-undefined",
+    "source": "\"2026-13-45\"::date",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "a syntactically ISO-8601-shaped string that names no real calendar date is still :undefined, not an error"
+  },
+  {
+    "id": "casts/string-to-datetime-date-only-is-undefined",
+    "source": "\"2026-08-09\"::datetime",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "a date-only string is :undefined for ::datetime - it has no UTC offset to parse. The supported spelling for this conversion is the chained ::date::datetime bridge, not a direct parse"
+  },
+  {
+    "id": "casts/string-to-datetime-unconvertible-is-undefined",
+    "source": "\"garbage\"::datetime",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the totality rule applied to the datetime parse target"
+  },
+  {
+    "id": "casts/string-to-duration-unconvertible-is-undefined",
+    "source": "\"not-a-duration\"::duration",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the totality rule applied to the duration parse target"
+  },
+  {
+    "id": "casts/string-to-duration-trailing-newline-is-undefined",
+    "source": "\"1d\\n\"::duration",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "regression for the same anchoring defect fixed on px-2r5.3 (commit a06ba16): a trailing newline silently parsed as a valid duration before the fix, on top of the integer and float paths"
+  },
+  {
+    "id": "casts/undefined-propagates-to-string",
+    "source": "user.missing::string",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the propagation rule holds for every target, not just ::integer - restated here for ::string"
+  },
+  {
+    "id": "casts/undefined-propagates-to-date",
+    "source": "user.missing::date",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the propagation rule holds for every target, not just ::integer - restated here for ::date"
+  },
+  {
+    "id": "casts/undefined-propagates-through-chained-casts",
+    "source": "user.missing::integer::string",
+    "context": { "user": {} },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "propagation composes: :undefined::integer is :undefined, and :undefined::string is :undefined again - a chain of casts never recovers from an :undefined partway through"
   }
 ]
