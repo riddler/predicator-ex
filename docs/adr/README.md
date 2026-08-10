@@ -5,14 +5,18 @@
 | [0001](0001-keep-the-stack-vm-revise-the-instruction-set.md) | Keep the stack VM; revise the instruction set (ISA v2) | accepted |
 | [0002](0002-the-equals-grammar-break.md) | The `=` grammar break (4.0) | accepted |
 | [0003](0003-the-elixir-implementation-leads-the-isa.md) | The Elixir implementation leads the ISA | accepted |
-| [0004](0004-no-eval-errors-are-values.md) | No eval, ever; errors are values | accepted |
-| [0005](0005-worktree-parallelism-and-the-area-label-algebra.md) | Worktree-per-bead parallelism, with area labels as a decidable batching algebra | accepted |
-| [0006](0006-irreversibility-places-the-human-gates.md) | The human gate belongs where an action stops being reversible; `mix hex.publish` has no trigger at all | accepted |
-| [0007](0007-beads-for-issue-tracking.md) | All work is tracked in `bd` (beads) - not GitHub Issues, not TodoWrite, not markdown TODO lists | accepted |
-| [0008](0008-the-quality-gate-and-its-non-editable-config.md) | `mix quality` is the one aggregated gate, and its config is not agent-editable | accepted |
+| [0004](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0004-no-eval-errors-are-values.md) | No eval, ever; errors are values | accepted |
+| [0005](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0005-worktree-parallelism-and-the-area-label-algebra.md) | Worktree-per-bead parallelism, with area labels as a decidable batching algebra | accepted |
+| [0006](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0006-irreversibility-places-the-human-gates.md) | The human gate belongs where an action stops being reversible; `mix hex.publish` has no trigger at all | accepted |
+| [0007](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0007-beads-for-issue-tracking.md) | All work is tracked in `bd` (beads) - not GitHub Issues, not TodoWrite, not markdown TODO lists | accepted |
+| [0008](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0008-the-quality-gate-and-its-non-editable-config.md) | `mix quality` is the one aggregated gate, and its config is not agent-editable | accepted |
 | [0009](0009-the-compiled-envelope-carries-the-position-table.md) | The compiled envelope carries the position table; `compile/1` stays a bare list | accepted |
-| [0010](0010-tracker-authority-and-the-mirror-obligation.md) | Tracker authority follows the artifact; mirrors pull, and monorepo work is held by an `external-ref` | proposed |
+| [0010](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0010-tracker-authority-and-the-mirror-obligation.md) | Tracker authority follows the artifact; mirrors pull, and monorepo work is held by an `external-ref` | proposed |
 | [0011](0011-casts-are-an-opcode.md) | Casts compile to a `cast` opcode (ISA v4); `::` is postfix and failure is `:undefined` | accepted |
+
+Link form is load-bearing: an ADR published to hexdocs is linked relatively so
+the link resolves there, and an unpublished one is linked by absolute GitHub
+URL. `test/docs_adr_links_test.exs` enforces both directions.
 
 New ADRs: next number, same three-section format (Context, Decision,
 Consequences). An ADR is amended by a new ADR that supersedes it, not by

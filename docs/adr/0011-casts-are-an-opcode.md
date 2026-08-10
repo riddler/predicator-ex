@@ -7,7 +7,7 @@ Decision record for `px-2r5.1`, the design gate on the `px-2r5` epic
 grammar slot, the type vocabulary, the failure rules, and whether casts also
 exist as functions. The full conversion matrix and per-cell parse/format
 rules live in
-[`docs/research/260809-px-2r5.1-cast-conversion-matrix.md`](../research/260809-px-2r5.1-cast-conversion-matrix.md);
+[`docs/research/260809-px-2r5.1-cast-conversion-matrix.md`](https://github.com/riddler/predicator-ex/blob/main/docs/research/260809-px-2r5.1-cast-conversion-matrix.md);
 this ADR carries the rules that generate that matrix, not its cells.
 
 ## Context

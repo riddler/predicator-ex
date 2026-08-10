@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   than the postfix level (`(1 + 2)::string`, `(-1)::integer`), so casts
   round-trip losslessly.
 
+### Changed
+
+- **Published ADR set.** The API documentation now carries every ADR its pages
+  cite - ADR-0009 (the compiled envelope) and ADR-0011 (casts are an opcode)
+  join 0001-0003 - so those citations resolve on hexdocs instead of 404ing.
+  The governance ADRs stay unpublished and the ADR index links them by
+  absolute GitHub URL.
+
 ## [4.0.0] - 2026-08-08
 
 ### Added
