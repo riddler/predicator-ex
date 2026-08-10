@@ -268,6 +268,13 @@ iex> Predicator.parse("if x { }")
 {:error, "'if' is a statement keyword, not an expression - control flow is only valid in a program (Predicator.parse_program/2).", 1, 1}
 ```
 
+> **`if`/`else` parses but does not execute yet.** This section describes the
+> semantics ADR-0013 settles, and `parse_program/2` builds the tree for them
+> today. Lowering an `if` to instructions needs the ISA v5 jump opcodes, so
+> until those land `Predicator.execute/2,3` and `Predicator.decompile/2` do
+> not accept a program containing one. Everything below is the grammar and
+> the meaning, not a promise about what runs today.
+
 ### `if`/`else`
 
 The `if_statement` production (see the grammar in
@@ -292,7 +299,7 @@ iex> else_block
 parses as an `else` block whose sole statement is another `{:if, ...}` node,
 recursively. There is no chain node in the AST to learn - `if a { A } else if
 b { B } else { C }` and a hand-nested `if a { A } else { if b { B } else { C
-} } }` desugar to the identical tree.
+} }` desugar to the identical tree.
 
 Braces are mandatory - there is no braceless single-statement form - and a
 block may be empty:
@@ -315,7 +322,9 @@ it is visible after the block and in `execute/2`'s result, whether or not the
 branch that wrote it was the one taken - `x = 1; if x > 0 { y = 2 } else
 { y = 3 }` leaves both `x` and `y` bound at the top level, the same as if the
 assignment inside the taken branch had been written without the surrounding
-`if` at all.
+`if` at all. This is the settled rule rather than observable behavior yet:
+per the note above, `execute/2` does not accept an `if` program until the
+ISA v5 opcodes land.
 
 See [ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md)
 for why: the statement layer has no declaration form to hang a scope on, and
