@@ -131,6 +131,7 @@ defmodule Predicator.Cast do
   def cast(%DateTime{} = value, "string") do
     value
     |> normalize_to_utc()
+    |> canonicalize_microsecond()
     |> DateTime.to_iso8601()
   end
 
@@ -165,4 +166,15 @@ defmodule Predicator.Cast do
   defp normalize_to_utc(datetime) do
     DateTime.from_unix!(DateTime.to_unix(datetime, :microsecond), :microsecond)
   end
+
+  # docs/isa.md section 5: datetime::string omits the fractional-seconds field
+  # entirely when the sub-second component is zero and emits exactly six digits
+  # when it is not. normalize_to_utc/1 forces precision 6 to stay
+  # tz-database-free, so this is where that internal artifact stops.
+  @spec canonicalize_microsecond(DateTime.t()) :: DateTime.t()
+  defp canonicalize_microsecond(%DateTime{microsecond: {0, _precision}} = datetime),
+    do: %{datetime | microsecond: {0, 0}}
+
+  defp canonicalize_microsecond(%DateTime{microsecond: {microseconds, _precision}} = datetime),
+    do: %{datetime | microsecond: {microseconds, 6}}
 end
