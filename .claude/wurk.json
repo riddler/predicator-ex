@@ -1,0 +1,76 @@
+{
+  "wurk": 1,
+
+  "beads": {
+    "prefix": "px",
+    "topology": "beads",
+    "areas": {
+      "labels": [
+        "area:lexer-parser",
+        "area:evaluator",
+        "area:context",
+        "area:functions",
+        "area:visitors",
+        "area:api",
+        "area:conformance",
+        "area:skills",
+        "area:docs",
+        "area:build"
+      ],
+      "lands_alone": ["area:build"]
+    }
+  },
+
+  "forge": { "kind": "github", "labels": {} },
+
+  "gate": {
+    "full": ["mix", "quality"],
+    "loop": ["mix", "quality", "--profile", "loop"],
+    "report": ["mix", "quality", "--report", "-"],
+    "build_paths": ["lib/", "test/", "mix.exs", "mix.lock"],
+    "also_gated_paths": ["conformance/"],
+    "moving_files": [".quality.exs", ".credo.exs", "coveralls.json"],
+    "project_level_skips": [
+      "^:doctor not installed$",
+      "^:gettext not installed$",
+      "^:sobelow not installed$"
+    ]
+  },
+
+  "parallelism": {
+    "model": "worktree-per-issue",
+    "worktrees_dir": "../predicator-ex-worktrees",
+    "trust": ["mise", "trust", "{path}"],
+    "warm_clone": ["deps", "_build", "priv/plts"],
+    "warm_globs": ["priv/plts/dialyzer.plt*"],
+    "warm": [["mix", "deps.get"]],
+    "repair_when": "mix.lock",
+    "repair": [["mix", "deps.get"]],
+    "post_branch": []
+  },
+
+  "tmux": { "session": "predicator-ex", "model": "opus" },
+
+  "artifacts": {
+    "plans": "docs/plans",
+    "research": "docs/research",
+    "filename": "YYMMDD-[id-]kebab"
+  },
+
+  "commits": {
+    "style": "s-form",
+    "subject_under": 50,
+    "body_line_max": 72,
+    "total_lines_max": 40,
+    "trailer": { "key": "Refs" }
+  },
+
+  "changelog": { "mode": "keep-a-changelog" },
+
+  "release": {
+    "kind": "hex",
+    "version_file": "mix.exs",
+    "readme_pin": true,
+    "changelog": "CHANGELOG.md"
+  }
+}
