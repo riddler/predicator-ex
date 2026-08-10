@@ -78,6 +78,9 @@ defmodule Predicator.Lexer do
           | {:dot, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:in_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:contains_op, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:if_kw, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:else_kw, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:while_kw, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:qualified_function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:duration_unit, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -504,6 +507,9 @@ defmodule Predicator.Lexer do
   defp classify_identifier("in"), do: {:in_op, "in"}
   defp classify_identifier("CONTAINS"), do: {:contains_op, "CONTAINS"}
   defp classify_identifier("contains"), do: {:contains_op, "contains"}
+  defp classify_identifier("if"), do: {:if_kw, "if"}
+  defp classify_identifier("else"), do: {:else_kw, "else"}
+  defp classify_identifier("while"), do: {:while_kw, "while"}
   defp classify_identifier("ago"), do: {:ago_op, "ago"}
   defp classify_identifier("from"), do: {:from_op, "from"}
   defp classify_identifier("now"), do: {:now_op, "now"}

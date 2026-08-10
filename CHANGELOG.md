@@ -27,6 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`if`, `else` and `while` are reserved words.** The lexer now classifies
+  all three as keywords rather than plain identifiers, so a predicate that
+  used one as a variable name (`if = 3`), a bare property name (`user.if`),
+  or a bare object key (`{if: 1}`) is now a parse error. The fix is renaming
+  the variable or, for an object key, quoting it (`{"if": 1}`, which still
+  parses). Only the lowercase spelling is reserved - `IF`, `Else`, and
+  similar stay ordinary identifiers. All three words are reserved together
+  even though `while` does not gain real grammar until a later release, so
+  the break lands once instead of twice (ADR-0013).
 - **Published ADR set.** The API documentation now carries every ADR its pages
   cite - ADR-0009 (the compiled envelope) and ADR-0011 (casts are an opcode)
   join 0001-0003 - so those citations resolve on hexdocs instead of 404ing.

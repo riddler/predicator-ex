@@ -153,6 +153,87 @@ defmodule Predicator.LexerTest do
                {:eof, 1, 9, 0, nil}
              ]
     end
+
+    test "tokenizes the statement keywords if, else, and while" do
+      assert {:ok, tokens} = Lexer.tokenize("if")
+
+      assert tokens == [
+               {:if_kw, 1, 1, 2, "if"},
+               {:eof, 1, 3, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("else")
+
+      assert tokens == [
+               {:else_kw, 1, 1, 4, "else"},
+               {:eof, 1, 5, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("while")
+
+      assert tokens == [
+               {:while_kw, 1, 1, 5, "while"},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "only the lowercase spelling of if/else/while is reserved" do
+      assert {:ok, tokens} = Lexer.tokenize("IF")
+
+      assert tokens == [
+               {:identifier, 1, 1, 2, "IF"},
+               {:eof, 1, 3, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("Else")
+
+      assert tokens == [
+               {:identifier, 1, 1, 4, "Else"},
+               {:eof, 1, 5, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("WHILE")
+
+      assert tokens == [
+               {:identifier, 1, 1, 5, "WHILE"},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "identifiers that merely contain a reserved word stay identifiers" do
+      assert {:ok, tokens} = Lexer.tokenize("iffy")
+
+      assert tokens == [
+               {:identifier, 1, 1, 4, "iffy"},
+               {:eof, 1, 5, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("elsewhere")
+
+      assert tokens == [
+               {:identifier, 1, 1, 9, "elsewhere"},
+               {:eof, 1, 10, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("whilst")
+
+      assert tokens == [
+               {:identifier, 1, 1, 6, "whilst"},
+               {:eof, 1, 7, 0, nil}
+             ]
+    end
+
+    test "'if (x)' does not lex as a function call" do
+      assert {:ok, tokens} = Lexer.tokenize("if (x)")
+
+      assert tokens == [
+               {:if_kw, 1, 1, 2, "if"},
+               {:lparen, 1, 4, 1, "("},
+               {:identifier, 1, 5, 1, "x"},
+               {:rparen, 1, 6, 1, ")"},
+               {:eof, 1, 7, 0, nil}
+             ]
+    end
   end
 
   describe "tokenize/1 - list literals" do
