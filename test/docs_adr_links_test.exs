@@ -38,7 +38,13 @@ defmodule Predicator.DocsAdrLinksTest do
   @adr_extra_regex ~r/docs\/adr\/(\d{4})-/
 
   describe "relative ADR links" do
-    # sabotage: drop the 0011 entry from mix.exs extras: -> red
+    # sabotage: drop the 0011 entry from mix.exs extras: -> red. To prove the
+    # index itself is covered rather than merely reached, also rewrite
+    # docs/architecture.md's two 0011 links to absolute form, so
+    # docs/adr/README.md is the only relative citation left - the assert below
+    # is inside a comprehension and fail-fasts, so a single mutation names
+    # whichever site it hits first and says nothing about the index. See
+    # docs/research/260808-px-9ab-sabotage-notes.md.
     test "every relative ADR link in a published extra names a published ADR" do
       relative_links = adr_links() |> Enum.filter(&(&1.form == :relative))
 

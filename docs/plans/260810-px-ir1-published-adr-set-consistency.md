@@ -419,21 +419,35 @@ apply the mutation named in its `# sabotage:` note, confirm the suite goes red
 *for that reason* and that the failure message names the offending file and
 target, then revert.
 
-- [ ] Remove `docs/adr/0011-casts-are-an-opcode.md` from `mix.exs` `extras:` ->
-      the relative-link test fails naming 0011 and both of its relative
-      citation sites, `docs/architecture.md` and `docs/adr/README.md`. If the
-      index is not among them, the resolve-then-classify ordering above was not
-      implemented and the test is blind to the file it exists for
-- [ ] Restore `docs/guides/embedding.md:51` to the absolute GitHub URL for
+- [x] Remove `docs/adr/0011-casts-are-an-opcode.md` from `mix.exs` `extras:`
+      **and** temporarily rewrite `docs/architecture.md`'s two `0011` links to
+      absolute form -> the relative-link test fails naming
+      `docs/adr/README.md` and 0011.
+
+      **This item was rewritten on 2026-08-10; the original was not
+      checkable.** It asked for the failure to name *both* relative citation
+      sites and treated the index's absence as proof that the
+      resolve-then-classify ordering was missing. The assertion sits inside a
+      `for` comprehension, so it fail-fasts on the first violating site - it
+      named `docs/architecture.md` alone, and that told us nothing either way.
+      Isolating the index as the only remaining relative citation is what
+      discriminates "covered" from "blind", and it passed: the failure read
+      `docs/adr/README.md links ADR-0011 (0011-casts-are-an-opcode.md)`, a bare
+      sibling filename with no `adr/` segment, resolved correctly before
+      classification. Recorded in
+      `docs/research/260808-px-9ab-sabotage-notes.md`
+- [x] Restore `docs/guides/embedding.md:51` to the absolute GitHub URL for
       ADR-0009 -> the absolute-link test fails naming `embedding.md` and 0009
-- [ ] Add `docs/adr/0007-beads-for-issue-tracking.md` to `extras:` -> the
-      governance test fails naming 0007
-- [ ] Point one `docs/adr/README.md` row at a filename that does not exist ->
+- [x] Add `docs/adr/0007-beads-for-issue-tracking.md` to `extras:` -> the
+      governance test fails naming 0007. Red twice, in fact: the absolute-link
+      test independently caught the index row becoming the wrong form
+- [x] Point one `docs/adr/README.md` row at a filename that does not exist ->
       the existence test fails naming that target
-- [ ] A test that stays green under its mutation is a finding, not a note to
-      skip: reshape the test rather than weakening the note
-- [ ] The working tree is clean after the pass (`git status`) - every mutation
-      reverted
+- [x] A test that stays green under its mutation is a finding, not a note to
+      skip: reshape the test rather than weakening the note. None stayed green;
+      the one finding was in the note above, not in the test
+- [x] The working tree is clean after the pass (`git status`) - every mutation
+      reverted. Confirmed with an empty `git diff HEAD` and a green full suite
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive execution,
@@ -515,17 +529,26 @@ blocks execution.
 ## Deferred Manual Verification
 
 Deferred from --loop execution; confirm these manually before considering the
-work fully verified:
+work fully verified.
+
+**All items below were verified on 2026-08-10**, walked through against a real
+`mix docs` build. The one item that needed rewriting to be checkable at all is
+marked; see the note under Phase 2.
 
 **From Phase 1:**
 
-- [ ] `mix docs` then open `doc/architecture-decision-records.html`: all eleven
+- [x] `mix docs` then open `doc/architecture-decision-records.html`: all eleven
       rows link somewhere, the five published numbers land on hexdocs pages and
       the six governance numbers land on GitHub
-- [ ] ADR-0009 and ADR-0011 appear in the sidebar under the Architecture group,
+- [x] ADR-0009 and ADR-0011 appear in the sidebar under the Architecture group,
       in number order with 0001-0003
-- [ ] `doc/embedding.html`'s ADR-0009 link stays inside hexdocs
-- [ ] No regressions in related features: the other extras render unchanged
+- [x] `doc/embedding.html`'s ADR-0009 link stays inside hexdocs
+- [x] No regressions in related features: the other extras render unchanged.
+      Verified by sweeping every generated page for unresolvable internal
+      links: the only one is the pre-existing `readme.html -> docs/contributing.md`.
+      `mix docs` emits zero ADR link warnings; the six that remain are
+      `../conformance/RATCHET.md` (x4) and `docs/contributing.md` (x2), both
+      out of scope and untouched by this branch's diff
 
 **From Phase 2:**
 
@@ -535,18 +558,32 @@ offending file and target, then was reverted cleanly); the items below are
 still listed verbatim per the plan's own convention, for the human-facing
 record.
 
-- [ ] Remove `docs/adr/0011-casts-are-an-opcode.md` from `mix.exs` `extras:` ->
-      the relative-link test fails naming 0011 and both of its relative
-      citation sites, `docs/architecture.md` and `docs/adr/README.md`. If the
-      index is not among them, the resolve-then-classify ordering above was not
-      implemented and the test is blind to the file it exists for
-- [ ] Restore `docs/guides/embedding.md:51` to the absolute GitHub URL for
+- [x] Remove `docs/adr/0011-casts-are-an-opcode.md` from `mix.exs` `extras:`
+      **and** temporarily rewrite `docs/architecture.md`'s two `0011` links to
+      absolute form -> the relative-link test fails naming
+      `docs/adr/README.md` and 0011.
+
+      **This item was rewritten on 2026-08-10; the original was not
+      checkable.** It asked for the failure to name *both* relative citation
+      sites and treated the index's absence as proof that the
+      resolve-then-classify ordering was missing. The assertion sits inside a
+      `for` comprehension, so it fail-fasts on the first violating site - it
+      named `docs/architecture.md` alone, and that told us nothing either way.
+      Isolating the index as the only remaining relative citation is what
+      discriminates "covered" from "blind", and it passed: the failure read
+      `docs/adr/README.md links ADR-0011 (0011-casts-are-an-opcode.md)`, a bare
+      sibling filename with no `adr/` segment, resolved correctly before
+      classification. Recorded in
+      `docs/research/260808-px-9ab-sabotage-notes.md`
+- [x] Restore `docs/guides/embedding.md:51` to the absolute GitHub URL for
       ADR-0009 -> the absolute-link test fails naming `embedding.md` and 0009
-- [ ] Add `docs/adr/0007-beads-for-issue-tracking.md` to `extras:` -> the
-      governance test fails naming 0007
-- [ ] Point one `docs/adr/README.md` row at a filename that does not exist ->
+- [x] Add `docs/adr/0007-beads-for-issue-tracking.md` to `extras:` -> the
+      governance test fails naming 0007. Red twice, in fact: the absolute-link
+      test independently caught the index row becoming the wrong form
+- [x] Point one `docs/adr/README.md` row at a filename that does not exist ->
       the existence test fails naming that target
-- [ ] A test that stays green under its mutation is a finding, not a note to
-      skip: reshape the test rather than weakening the note
-- [ ] The working tree is clean after the pass (`git status`) - every mutation
-      reverted
+- [x] A test that stays green under its mutation is a finding, not a note to
+      skip: reshape the test rather than weakening the note. None stayed green;
+      the one finding was in the note above, not in the test
+- [x] The working tree is clean after the pass (`git status`) - every mutation
+      reverted. Confirmed with an empty `git diff HEAD` and a green full suite

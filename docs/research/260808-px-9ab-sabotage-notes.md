@@ -169,3 +169,29 @@ are unaffected.
   list to the ADR citations in the pages it publishes. A vacuous pass ships
   404s on the front door with nothing noticing, which is the class's test.
   Eight files now.
+
+  Sabotage pass verified 2026-08-10. All four mutations went red naming the
+  offending file and ADR number: dropping `0011` from `extras:`, restoring
+  `docs/guides/embedding.md`'s ADR-0009 link to its absolute form, adding
+  governance ADR-0007 to `extras:` (red twice - the governance guard and the
+  absolute-link test caught it independently), and pointing an index row at a
+  filename that does not exist.
+
+  **A mutation that looks discriminating and is not.** The obvious way to
+  check that `docs/adr/README.md` is covered - unpublish `0011` and expect the
+  failure to name both of its relative citation sites - cannot work, because
+  the assertion sits inside a `for` comprehension and fail-fasts on whichever
+  site it reaches first. It named `docs/architecture.md` alone, and the index's
+  absence from that message was evidence of nothing.
+
+  The index is the file this test exists for, and it is the hard case: its
+  targets are bare sibling filenames (`0011-casts-are-an-opcode.md`) with no
+  `adr/` segment in the raw text, so a classifier that matches before resolving
+  is blind to every row of it while still passing. Discriminating between
+  "covered" and "blind" needs the index isolated as the *only* relative
+  citation left: unpublish `0011` **and** temporarily rewrite
+  `docs/architecture.md`'s two `0011` links to absolute form. The failure then
+  reads `docs/adr/README.md links ADR-0011 (0011-casts-are-an-opcode.md)`,
+  which is the resolve-then-classify ordering proving itself. That is the
+  mutation to re-run if this test is ever reshaped; the single-mutation form is
+  a weaker check wearing the same clothes.
