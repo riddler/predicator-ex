@@ -446,6 +446,9 @@ defmodule Predicator.Parser do
       nil ->
         {:ok, {:program, statements, program_loc(state, start_point, statements)}}
 
+      {kw, line, col, _len, _value} when kw in [:else_kw, :while_kw] ->
+        {:error, statement_keyword_message(kw), line, col}
+
       {type, line, col, _len, value} ->
         {:error, "Unexpected token #{format_token(type, value)} after statement", line, col}
     end
@@ -527,6 +530,17 @@ defmodule Predicator.Parser do
   defp brace_terminated?({:if, _cond, _then, _else, _pos}), do: true
   defp brace_terminated?(_statement), do: false
 
+  # The dedicated message for a statement keyword that cannot appear where it
+  # was found - shared by parse_statement/1 (the keyword leads a statement)
+  # and finish_program/4 (the keyword trails one), so the two can never say
+  # different things about the same token.
+  @spec statement_keyword_message(:while_kw | :else_kw) :: binary()
+  defp statement_keyword_message(:while_kw),
+    do: "'while' is a reserved word - while statements are not supported yet."
+
+  defp statement_keyword_message(:else_kw),
+    do: "Unexpected 'else' - an 'else' block must follow an 'if' block."
+
   # A statement is an assignment, if the leading tokens are location-shaped
   # and followed by "=", or an ordinary expression otherwise.
   @spec parse_statement(parser_state()) ::
@@ -537,11 +551,10 @@ defmodule Predicator.Parser do
         parse_if_statement(state, {line, col})
 
       {:while_kw, line, col, _len, _value} ->
-        {:error, "'while' is a reserved word - while statements are not supported yet.", line,
-         col}
+        {:error, statement_keyword_message(:while_kw), line, col}
 
       {:else_kw, line, col, _len, _value} ->
-        {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", line, col}
+        {:error, statement_keyword_message(:else_kw), line, col}
 
       _other ->
         case try_parse_assignment(state) do
@@ -1369,13 +1382,21 @@ defmodule Predicator.Parser do
     parse_relative_date_expression(state, :last, {line, col})
   end
 
-  # `if`/`else`/`while` are statement keywords, never valid in expression
-  # position - control flow only exists through Predicator.parse_program/2.
+  # `if`/`else` are statement keywords, never valid in expression position -
+  # control flow only exists through Predicator.parse_program/2.
   defp parse_primary_token(_state, {kw, line, col, _len, value})
-       when kw in [:if_kw, :else_kw, :while_kw] do
+       when kw in [:if_kw, :else_kw] do
     {:error,
      "'#{value}' is a statement keyword, not an expression - control flow is " <>
        "only valid in a program (Predicator.parse_program/2).", line, col}
+  end
+
+  # `while` is not a valid expression either, but pointing it at
+  # parse_program/2 would be a dead end - while statements aren't implemented
+  # there yet, so this uses the same reserved-word message statement position
+  # already gives it.
+  defp parse_primary_token(_state, {:while_kw, line, col, _len, _value}) do
+    {:error, statement_keyword_message(:while_kw), line, col}
   end
 
   # Handle unexpected tokens

@@ -201,6 +201,17 @@ defmodule Predicator.IfStatementTest do
                {:error, "'while' is a reserved word - while statements are not supported yet.", 1,
                 1}
     end
+
+    test "a dangling 'else' after a completed statement gets the dedicated message, not the generic one" do
+      assert Predicator.parse_program("x = 1\nelse { y = 2 }") ==
+               {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", 2, 1}
+    end
+
+    test "a dangling 'while' after a completed statement gets the reserved-word message, not the generic one" do
+      assert Predicator.parse_program("x = 1\nwhile y { z = 2 }") ==
+               {:error, "'while' is a reserved word - while statements are not supported yet.", 2,
+                1}
+    end
   end
 
   describe "entry-point separation" do
