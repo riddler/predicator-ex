@@ -14,6 +14,7 @@
 | [0010](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0010-tracker-authority-and-the-mirror-obligation.md) | Tracker authority follows the artifact; mirrors pull, and monorepo work is held by an `external-ref` | proposed |
 | [0011](0011-casts-are-an-opcode.md) | Casts compile to a `cast` opcode (ISA v4); `::` is postfix and failure is `:undefined` | accepted |
 | [0012](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0012-adopting-the-shared-wurk-workflow.md) | Adopting the shared `wurk` workflow: `.claude/skills/` and `.claude/agents/` are consumed globally as `wurk:*`, configured by manifest and extensions | accepted |
+| [0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md) | Control flow lowers to new jump opcodes; `if` is ISA v5, `while` is ISA v6 with a loop budget | accepted |
 
 Link form is load-bearing: an ADR published to hexdocs is linked relatively so
 the link resolves there, and an unpublished one is linked by absolute GitHub
