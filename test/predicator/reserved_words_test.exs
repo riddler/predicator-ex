@@ -62,8 +62,13 @@ defmodule Predicator.ReservedWordsTest do
   end
 
   describe "'while' used as a variable name, from every entry point" do
+    # Unlike 'if'/'else', expression position gives 'while' the same
+    # reserved-but-unsupported message as statement position, not the
+    # expression_message/1 pointer to parse_program/2 - that pointer would be
+    # a dead end for 'while', which parse_program/2 doesn't support yet
+    # either.
     test "Predicator.parse/2" do
-      assert Predicator.parse("while = 3") == {:error, expression_message("while"), 1, 1}
+      assert Predicator.parse("while = 3") == {:error, @while_statement_message, 1, 1}
     end
 
     test "Predicator.parse_program/2" do
@@ -74,12 +79,12 @@ defmodule Predicator.ReservedWordsTest do
       assert {:error, %ParseError{message: message, position: {1, 1}}} =
                Predicator.evaluate("while = 3", %{})
 
-      assert message == expression_message("while")
+      assert message == @while_statement_message
     end
 
     test "Predicator.compile/1" do
       assert Predicator.compile("while = 3") ==
-               {:error, "#{expression_message("while")} at line 1, column 1"}
+               {:error, "#{@while_statement_message} at line 1, column 1"}
     end
   end
 
@@ -138,6 +143,12 @@ defmodule Predicator.ReservedWordsTest do
 
     test "'else { }'" do
       assert Predicator.parse_program("else { }") == {:error, @else_statement_message, 1, 1}
+    end
+  end
+
+  describe "'while' at expression position, through Predicator.parse/2" do
+    test "'while > 1' gets the reserved-but-unsupported message, not the parse_program/2 pointer" do
+      assert Predicator.parse("while > 1") == {:error, @while_statement_message, 1, 1}
     end
   end
 end
