@@ -190,8 +190,14 @@ trailing newline does not parse (`"42\n"::integer` is `:undefined`, not
 - `::duration` - the language's own duration-literal grammar (see below).
 
 **String formats (`::string`).** Integer formats as decimal, float as the
-shortest round-trip decimal, boolean as `"true"`/`"false"`, date and
-datetime as ISO 8601 (datetime in UTC with a `Z` suffix), and duration via
+shortest round-trip decimal, boolean as `"true"`/`"false"`, and date as ISO
+8601. Datetime formats as ISO 8601 in UTC with a `Z` suffix, and the
+fractional-seconds field is canonicalized: omitted entirely when the
+sub-second component is zero (`"2026-08-09T12:00:00Z"`), and exactly six
+digits when it is not (`"2026-08-09T12:00:00.500000Z"`). That makes
+`::string` a canonicalization of the instant rather than a string identity -
+a one-digit fraction widens to six, and a seventh input digit is truncated by
+the `::datetime` parse before it ever reaches `::string`. Duration formats via
 the duration-literal grammar, largest unit first with zero components
 omitted (`"0s"` when every component is zero).
 

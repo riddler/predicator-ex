@@ -560,7 +560,18 @@ reference survives an edit above it.
     is a known cross-language hazard, so the conformance corpus pins values
     chosen to format identically across languages.
   - `boolean` - `"true"` / `"false"`.
-  - `date`, `datetime` - ISO 8601; datetimes in UTC with `Z`.
+  - `date` - ISO 8601 calendar date (`2026-08-09`).
+  - `datetime` - ISO 8601 in UTC with `Z`, and the fractional-seconds field is
+    **normative**: omitted entirely when the sub-second component is zero
+    (`2026-08-09T12:00:00Z`), and exactly six digits when it is not
+    (`2026-08-09T12:00:00.500000Z`). Never any other digit count, and never a
+    zero fraction spelled out. Sub-second precision is microseconds - the
+    `::datetime` parse truncates digits past the sixth - so the field is
+    stated in terms of the instant, not in terms of any host type's precision
+    or scale field. `dt::string::datetime` preserves the instant, but
+    `s::datetime::string` is a **canonicalization** rather than a string
+    identity: `"…:00.5Z"` returns as `"…:00.500000Z"`, and a seventh digit is
+    gone.
   - `duration` - the duration-literal grammar, largest unit first, zero
     components omitted, `"0s"` when all components are zero, so
     `d::string::duration` round-trips.

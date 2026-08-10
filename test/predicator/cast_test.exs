@@ -141,16 +141,38 @@ defmodule Predicator.CastTest do
       assert Cast.cast(~D[2026-08-09], "string") == "2026-08-09"
     end
 
-    test "datetime formats as ISO 8601 UTC with Z, normalizing a non-UTC offset" do
-      # The tzdb-free UTC-normalization route (DateTime.to_unix/2 then
-      # DateTime.from_unix!/2, both at microsecond precision) always yields
-      # microsecond precision in the formatted output, even for a
-      # whole-second input - this is the documented tradeoff of avoiding a
-      # time zone database.
-      assert Cast.cast(~U[2026-08-09T10:00:00Z], "string") == "2026-08-09T10:00:00.000000Z"
+    test "datetime with a zero sub-second component formats with no fraction" do
+      # docs/isa.md section 5 pins this: the fraction is omitted entirely when
+      # the sub-second component is zero. normalize_to_utc/1 still forces
+      # microsecond precision internally - that is what keeps UTC
+      # normalization tz-database-free - but the precision field is an Elixir
+      # struct detail and no longer reaches the output.
+      assert Cast.cast(~U[2026-08-09T10:00:00Z], "string") == "2026-08-09T10:00:00Z"
 
       {:ok, offset_dt, _offset} = DateTime.from_iso8601("2026-08-09T12:00:00+02:00")
-      assert Cast.cast(offset_dt, "string") == "2026-08-09T10:00:00.000000Z"
+      assert Cast.cast(offset_dt, "string") == "2026-08-09T10:00:00Z"
+    end
+
+    test "datetime with a non-zero sub-second component formats with six digits" do
+      assert Cast.cast(~U[2026-08-09T10:00:00.5Z], "string") ==
+               "2026-08-09T10:00:00.500000Z"
+
+      assert Cast.cast(~U[2026-08-09T10:00:00.123456Z], "string") ==
+               "2026-08-09T10:00:00.123456Z"
+    end
+
+    test "datetime::string is a canonicalization, not a string identity" do
+      # A seventh input digit is truncated by the ::datetime parse, and a
+      # one-digit fraction widens to six. Both are docs/isa.md section 5's
+      # stated behavior, not an accident of the host type.
+      assert "2026-08-09T10:00:00.123456789Z" |> Cast.cast("datetime") |> Cast.cast("string") ==
+               "2026-08-09T10:00:00.123456Z"
+
+      assert "2026-08-09T10:00:00.5Z" |> Cast.cast("datetime") |> Cast.cast("string") ==
+               "2026-08-09T10:00:00.500000Z"
+
+      assert "2026-08-09T10:00:00Z" |> Cast.cast("datetime") |> Cast.cast("string") ==
+               "2026-08-09T10:00:00Z"
     end
 
     test "duration formats via the duration-literal grammar" do

@@ -347,22 +347,22 @@ digits otherwise.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` (full) is green.
-- [ ] `mix test test/predicator/cast_test.exs` passes, and the three datetime
+- [x] `mix quality` (full) is green.
+- [x] `mix test test/predicator/cast_test.exs` passes, and the three datetime
       `::string` tests above are present and passing.
-- [ ] `grep -rn '000000Z' lib/ test/ docs/isa.md docs/reference/ conformance/`
+- [x] `grep -rn '000000Z' lib/ test/ docs/isa.md docs/reference/ conformance/`
       returns nothing. `docs/research/` is deliberately not searched: the
       research document quotes the old six-digit behavior as history and is
       correct to keep it.
-- [ ] `test/predicator/conformance/corpus_freshness_test.exs` passes **without**
+- [x] `test/predicator/conformance/corpus_freshness_test.exs` passes **without**
       `mix corpus.generate` having been run - the expected outcome, since no
       corpus case renders a datetime through `::string`. If it goes red, the
       diff is real: run `mix corpus.generate`, and the corpus diff ships in this
       phase's commit with the ADR-0003 explanation in the commit message and PR
       body.
-- [ ] `test/predicator/isa_sync_test.exs` passes with no edit to it, confirming
+- [x] `test/predicator/isa_sync_test.exs` passes with no edit to it, confirming
       the ISA did not move.
-- [ ] Coverage stays above the `coveralls.json` floor (>90% per component);
+- [x] Coverage stays above the `coveralls.json` floor (>90% per component);
       `Predicator.Cast`'s new helper has both clauses covered.
 
 #### Manual Verification:
@@ -569,3 +569,37 @@ path.
 - Behavioral site: `lib/predicator/cast.ex:131-135`, `:164-167`
 - Spec site: `docs/isa.md:556-568`
 - Bead: `px-7t8`; deferred sibling question: `px-qq6`
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] `docs/isa.md` §5's new bullet reads as the research document wrote it, and
+      `docs/reference/language.md` does not contradict it.
+- [ ] `iex -S mix` spot check: `Predicator.evaluate!(~s(#2026-08-09T10:30:00Z#::string))`
+      is `"2026-08-09T10:30:00Z"` and
+      `Predicator.evaluate!(~s("2026-08-09T10:30:00.5Z"::datetime::string))` is
+      `"2026-08-09T10:30:00.500000Z"`.
+- [ ] `CHANGELOG.md`'s cast bullet still reads as one coherent paragraph after
+      the fold, rather than as a sentence stapled on.
+- [ ] No regressions in the neighbouring datetime surfaces, both of which are
+      deliberately out of scope, so any change there is a defect in this phase.
+      Both render at the *value's own* precision today and must continue to:
+      `Predicator.decompile(~s(#2026-08-09T10:30:00Z# = x))` still renders the
+      literal as `#2026-08-09T10:30:00Z#`
+      (`lib/predicator/visitors/string_visitor.ex:159-161`), and a parse error
+      on a misplaced datetime token still reads
+      `datetime '2026-08-09T10:30:00Z'` (`lib/predicator/parser.ex:1287`).
+
+**Implementation Note**: Use the project's loop gate between edits while
+iterating; run the full gate as the phase gate. In interactive execution, pause
+here for the human to confirm the manual testing before moving to the next
+phase. In looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---

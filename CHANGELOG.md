@@ -18,10 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   meaning. A conversion that cannot produce a value of the target type is
   `:undefined`, not an error: `"abc"::integer` evaluates to `:undefined`
   rather than raising, so a bad cast inside a larger expression like
-  `"abc"::integer > 5` is just falsy. `Predicator.decompile/2` renders a cast
-  back to `::` syntax, parenthesizing the operand only when it binds looser
-  than the postfix level (`(1 + 2)::string`, `(-1)::integer`), so casts
-  round-trip losslessly.
+  `"abc"::integer > 5` is just falsy. `datetime::string` omits the
+  fractional-seconds field when the sub-second component is zero and emits
+  exactly six digits otherwise, never any other shape. `Predicator.decompile/2`
+  renders a cast back to `::` syntax, parenthesizing the operand only when it
+  binds looser than the postfix level (`(1 + 2)::string`, `(-1)::integer`), so
+  casts round-trip losslessly.
 
 ### Changed
 
