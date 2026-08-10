@@ -45,6 +45,19 @@ place this is said.
 The uncovered lines the gate finds are almost always the `{:error, _}`
 branches. Write tests for them, not just the happy path.
 
+## The span-slot contract
+
+A hand-built AST node with a `nil` span renders identically to one carrying a
+real span - `StringVisitor` and friends never require span data to produce
+correct output. This is what makes parse -> visit -> parse round-tripping a
+valid test strategy without also constructing spans by hand.
+
+## Edge-case test naming
+
+A test file exercising the edge cases of a feature (precedence surprises,
+boundary values, malformed input) is named `*_edge_cases_test.exs`, not
+folded into the feature's main test file.
+
 ## Two debugging moves
 
 - Parse or precedence surprise: read the precedence table in
