@@ -118,6 +118,135 @@ could never be compared against one.
 | `in`     | Element in collection | `role in ['admin', 'manager']` |
 | `contains` | Collection contains element | `[1, 2, 3] contains 2` |
 
+## Type Casts
+
+`expr::type` converts `expr`'s value to a named type. The seven legal target
+type names are `integer`, `float`, `string`, `boolean`, `date`, `datetime`,
+and `duration` - the scalar ISA type names (`docs/isa.md` §3); `list` and
+`map` are not among them. A name that is not one of the seven is a parse
+error at authoring time, naming the accepted list:
+
+```elixir
+iex> Predicator.evaluate("'42'::integer", %{})
+{:ok, 42}
+```
+
+`::` is postfix: it binds tighter than unary minus, so `-1::integer` is
+`-(1::integer)`, i.e. `-1`, not `(-1)::integer`. It chains left-to-right like
+the other postfix forms (`.` and `[]`), so a cast can feed another cast:
+
+```elixir
+iex> Predicator.evaluate("'42'::integer::float", %{})
+{:ok, 42.0}
+```
+
+### Conversion matrix
+
+`=` is identity (a same-type cast is a no-op), a description names the
+conversion performed, and `-` means the pair always yields `:undefined`
+(see "Failure is `:undefined`, never an error" below):
+
+| source \ target | integer | float | string | boolean | date | datetime | duration |
+|---|---|---|---|---|---|---|---|
+| integer | = | widen | format | - | - | - | - |
+| float | truncate | = | format | - | - | - | - |
+| string | parse | parse | = | parse | parse | parse | parse |
+| boolean | - | - | format | = | - | - | - |
+| date | - | - | format | - | = | midnight UTC | - |
+| datetime | - | - | format | - | calendar date | = | - |
+| duration | - | - | format | - | - | - | = |
+
+There is no boolean/number bridge: `1::boolean` and `true::integer` are both
+`:undefined`, matching the language's rule that no operator treats a number
+as truthy or a boolean as a number. Lists and maps are not among the seven
+types casts accept, so `[1, 2]::string` is `:undefined` too - a cast never
+serializes a collection.
+
+**Numeric conversions.**
+
+- `integer::float` widens to the nearest representable double, exact up to
+  2^53 and rounding beyond it - not lossless for a very large integer.
+- `float::integer` truncates toward zero (`-1.5::integer` is `-1`,
+  `1.9::integer` is `1`), not PostgreSQL's round-to-nearest.
+
+**String parses.** Each parse accepts the whole string, anchored start to
+end, or yields `:undefined` - no trimming, no partial consumption, and a
+trailing newline does not parse (`"42\n"::integer` is `:undefined`, not
+`42`):
+
+- `::integer` - an optionally-negated decimal integer (`-?[0-9]+`); no
+  leading `+`, no underscores, no leading/trailing whitespace.
+- `::float` - an optionally-negated decimal with an optional fraction
+  (`-?[0-9]+(\.[0-9]+)?`); `"3"::float` is `3.0`. No exponent form
+  (`"1e3"::float` is `:undefined`) and no bare fraction (`".5"::float` is
+  `:undefined`).
+- `::boolean` - exactly `"true"` or `"false"`, case-sensitive; `"TRUE"`,
+  `"1"`, and `"yes"` are all `:undefined`.
+- `::date` - an ISO 8601 calendar date (`"2026-08-09"`); a datetime-shaped
+  string is `:undefined` here.
+- `::datetime` - an ISO 8601 datetime **with a UTC offset**, normalized to
+  UTC; a date-only string is `:undefined`. The supported spelling for a
+  date-shaped string is `s::date::datetime`.
+- `::duration` - the language's own duration-literal grammar (see below).
+
+**String formats (`::string`).** Integer formats as decimal, float as the
+shortest round-trip decimal, boolean as `"true"`/`"false"`, date and
+datetime as ISO 8601 (datetime in UTC with a `Z` suffix), and duration via
+the duration-literal grammar, largest unit first with zero components
+omitted (`"0s"` when every component is zero).
+
+**The date/datetime bridge.** `date::datetime` lands at midnight UTC - the
+same coercion `compare` and arithmetic already apply to a mixed date/datetime
+pair. `datetime::date` keeps the datetime's calendar date and drops the time.
+
+### Duration parsing is a canonicalizer, not `to_string`'s inverse
+
+`::duration` accepts a sequence of `<digits><unit>` pairs
+(`y`, `mo`, `w`, `d`, `h`, `m`, `s`, `ms`) with no whitespace, no sign, and no
+partial consumption - but unlike the other string parses, it does not
+require a *canonical* ordering, and repeated units accumulate rather than
+overwriting. `"30m3d"` parses to the same duration as `"3d30m"` (3 days,
+30 minutes), and `"1s2s"` parses to 3 seconds, not the last `"2s"` seen. So
+`::duration` is a canonicalizer over any equivalent spelling, not an inverse
+of `::string`'s duration formatting: `some_string::duration::string` does not
+reproduce `some_string` unless it was already in canonical (largest-unit-
+first, non-repeating) form. Round-tripping the other direction -
+`some_duration::string::duration` - does recover the original duration,
+because `::string`'s output is already canonical.
+
+### Failure is `:undefined`, never an error
+
+A conversion that cannot produce a value of the target type yields
+`:undefined`. It never raises and never returns an error - casting is total
+over every value:
+
+```elixir
+iex> Predicator.evaluate("'abc'::integer", %{})
+{:ok, :undefined}
+```
+
+Because `:undefined` is falsy at a jump (see "Undefined and Sparse Data"
+below), a bad cast inside a larger expression is just falsy rather than a
+crash:
+
+```elixir
+iex> Predicator.evaluate("'abc'::integer > 5", %{})
+{:ok, :undefined}
+```
+
+Casting `:undefined` itself yields `:undefined` for every target type -
+the same propagation rule a missing nested path already follows elsewhere in
+the language. (A bare unbound *root* variable is different: as with any
+other operator, `missing::integer` on an empty context still reports
+`Predicator.Errors.UndefinedVariableError` under the rule in "Unbound roots
+vs. missing paths" below, because it is the root itself that is unbound, not
+a value the cast produced.)
+
+```elixir
+iex> Predicator.evaluate("user.age::integer", %{"user" => %{}})
+{:ok, :undefined}
+```
+
 ## Builtin Functions
 
 ### String Functions
@@ -283,8 +412,18 @@ boundary - and `Predicator.Types.undefined?/1` delegates to it.
   {:ok, :undefined}
   ```
 
-Both cases produce the same value in isolation, but they are **not** treated
-the same at the top level - see "Unbound roots vs. missing paths" below.
+- **A failed cast** - `expr::type` where `expr`'s value cannot be converted
+  to `type` - also evaluates to `:undefined`, never an error. See
+  "Type Casts" above for the full conversion matrix.
+
+  ```elixir
+  iex> Predicator.evaluate("'abc'::integer", %{})
+  {:ok, :undefined}
+  ```
+
+The first two cases produce the same value in isolation, but they are **not**
+treated the same at the top level - see "Unbound roots vs. missing paths"
+below.
 
 ### Mismatched comparisons
 
