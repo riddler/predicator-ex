@@ -459,20 +459,20 @@ pin, and that no existing expectation moved.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix corpus.generate` completes without a disagreement error - the
+- [x] `mix corpus.generate` completes without a disagreement error - the
       generator computes the real result and fails loudly if an authored
       `expected` is wrong, so a clean run is itself the confirmation that
       Phase 1's behavior matches these two cases.
-- [ ] `mix quality` (full) is green, including
+- [x] `mix quality` (full) is green, including
       `test/predicator/conformance/corpus_freshness_test.exs`, which byte-compares
       the checked-in corpus against a fresh in-memory generation.
-- [ ] `conformance/manifest.json` reports tier 7 `case_count` 56, and
+- [x] `conformance/manifest.json` reports tier 7 `case_count` 56, and
       `test/predicator/conformance/schema_validation_test.exs` accepts both new
       cases.
-- [ ] `grep -c 'datetime-to-string' conformance/corpus/tier-7.json` is 2, and
+- [x] `grep -c 'datetime-to-string' conformance/corpus/tier-7.json` is 2, and
       the two `expected` strings there are exactly `2026-08-09T10:30:00Z` and
       `2026-08-09T10:30:00.500000Z`.
-- [ ] No `px-7t8`-as-open-question text remains in `conformance/cases/`:
+- [x] No `px-7t8`-as-open-question text remains in `conformance/cases/`:
       `grep -rn 'px-7t8' conformance/` finds only settled references.
 
 #### Manual Verification:
@@ -594,6 +594,25 @@ before considering the plan fully landed.
       (`lib/predicator/visitors/string_visitor.ex:159-161`), and a parse error
       on a misplaced datetime token still reads
       `datetime '2026-08-09T10:30:00Z'` (`lib/predicator/parser.ex:1287`).
+
+**Implementation Note**: Use the project's loop gate between edits while
+iterating; run the full gate as the phase gate. In interactive execution, pause
+here for the human to confirm the manual testing before moving to the next
+phase. In looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] The two new cases read as portable: a Ruby or JavaScript implementer can
+      construct both inputs and produce both outputs in one line of their host
+      language (`iso8601(6)` / a `.000` strip plus padding), which was the whole
+      criterion the form was chosen on.
+- [ ] The corpus diff contains only the two added cases and the reworded note -
+      no unrelated case, hash, or ordering churn.
+- [ ] The commit message and PR body both explain the corpus diff per ADR-0003.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution, pause
