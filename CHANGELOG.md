@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`if`/`else` statements parse.** `Predicator.parse_program/2` accepts
+  `if cond { ... }` with an optional `else` block, producing two new AST
+  nodes - `{:if, condition, then_block, else_block, pos}` and
+  `{:block, statements, pos}`. Braces are mandatory, a block may be empty,
+  and `{ }` groups statements without opening a scope, so an assignment
+  inside a branch writes to the same flat context as one outside it.
+  `else if` is parser sugar with no chain node of its own: it parses as an
+  `else` block whose sole statement is the nested `if`, so
+  `if a { A } else if b { B }` and the hand-nested form produce the same
+  tree. `if` is statement-position only - `Predicator.parse/2` rejects it
+  with a message naming `parse_program/2`. **Parsing only for now**:
+  lowering an `if` needs the ISA v5 jump opcodes, so
+  `Predicator.execute/2,3` and `Predicator.decompile/2` do not yet accept a
+  program containing one (ADR-0013).
 - **Type casts (`::`).** A postfix `expr::type` operator converts a value to
   one of the seven scalar types - `string`, `integer`, `float`, `boolean`,
   `date`, `datetime`, `duration` - and chains, so `"42"::integer::float` casts
