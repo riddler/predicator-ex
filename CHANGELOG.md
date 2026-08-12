@@ -13,12 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to `{:literal, :undefined, pos}` and compiling to `["lit", :undefined]` -
   the same instruction an absent map key or a normalized `nil` already
   produced, now with a source spelling an author can write directly. That
-  makes `x === undefined` a boundness test that works under both
-  `on_unbound` policies (`{:ok, true}`/`{:ok, false}`, never an error, since
-  the literal compiles to `lit` rather than `load` and only `load` consults
-  the policy); `x == undefined` is not the same test and keeps propagating -
-  it evaluates to `:undefined` rather than answering, since `==` is a
-  non-strict comparison operator. **The ISA version does not move**: surface
+  makes `x === undefined` a boundness test that answers `{:ok, true}` or
+  `{:ok, false}` for a bound value under either `on_unbound` policy - the
+  literal itself is never affected by the policy, since it compiles to `lit`
+  rather than `load` and only `load` consults it. A *genuinely unbound* root
+  is the exception on the strict side: it answers `{:ok, true}` under the
+  default policy, but still errors under `on_unbound: :error`, where the
+  `load` of `x` fails before the comparison runs. `x == undefined` is not
+  the same test and keeps propagating - it evaluates to `:undefined` rather
+  than answering, since `==` is a non-strict comparison operator. **The ISA version does not move**: surface
   syntax is outside the ISA (`docs/isa.md` §6), and `lit`'s operand already
   admitted `:undefined` per §3's value domain, so this is a new spelling for
   an instruction that already existed, not a new opcode or a widened one.

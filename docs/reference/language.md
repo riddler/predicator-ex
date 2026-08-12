@@ -707,11 +707,25 @@ iex> Predicator.evaluate("x == undefined", %{"x" => 1})
 {:ok, :undefined}
 ```
 
-If `x` is an unbound root rather than a bound value, the outcome is the same
-either way regardless of which comparison is used: the top-level result is
-`Predicator.Errors.UndefinedVariableError` under both `on_unbound` policies,
-via the trace-back rewrite described in "Unbound roots vs. missing paths"
-below.
+If `x` is an unbound root rather than a bound value, the two comparisons
+diverge under the default `on_unbound: :undefined`. `x === undefined` still
+answers `true`: strict equality is resolved before any type dispatch, so it
+never produces the `:undefined`-operand `TypeMismatchError` that the
+trace-back rewrite keys on (see "Unbound roots vs. missing paths" below).
+`x == undefined` does produce one, so it is rewritten to
+`Predicator.Errors.UndefinedVariableError` and never reaches a boolean:
+
+```elixir
+iex> Predicator.evaluate("x === undefined", %{})
+{:ok, true}
+iex> {:error, err} = Predicator.evaluate("x == undefined", %{})
+iex> err.__struct__
+Predicator.Errors.UndefinedVariableError
+```
+
+That makes `===` the boundness test for an absent root as well as an
+`:undefined` one - but only under this policy. Under `on_unbound: :error`
+both comparisons error; see "The honest boundary" below.
 
 The literal itself is never affected by `on_unbound`, under either
 comparison operator - it compiles to `lit`, not `load`, and only `load`
