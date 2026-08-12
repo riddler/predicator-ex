@@ -574,14 +574,14 @@ block) and `test/predicator/compiler_test.exs`
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green.
-- [ ] The new `decompile/2` doctest passes (`mix test --only doctest` or the
+- [x] `mix quality` is green.
+- [x] The new `decompile/2` doctest passes (`mix test --only doctest` or the
       full run).
-- [ ] Coverage stays above the 90% minimum, with both new `do_visit/2`
+- [x] Coverage stays above the 90% minimum, with both new `do_visit/2`
       clauses and the `catch` block covered.
-- [ ] `git status --porcelain conformance/` is empty - no exported
+- [x] `git status --porcelain conformance/` is empty - no exported
       specification moves.
-- [ ] Every existing `test/predicator/visitors/string_visitor_test.exs` case
+- [x] Every existing `test/predicator/visitors/string_visitor_test.exs` case
       passes unchanged, i.e. no existing round-trip assertion was edited to
       accommodate the union return.
 
@@ -686,6 +686,28 @@ before considering the plan fully landed.
 - [ ] No regression in the statement-mode integration suite's behaviour when
       exercised by hand (`test/predicator/integration/statements_test.exs`
       cases re-run in `iex`).
+
+**Implementation Note**: Use `mix quality --profile loop` between edits and
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] In `iex -S mix`, the bead's second reproduction -
+      `{:ok, ast} = Predicator.parse_program("if a { x = 1 }")` then
+      `Predicator.decompile(ast)` - returns `{:error, error}` and
+      `error.message` reads sensibly.
+- [ ] `docs/reference/language.md`'s callout, read end to end, now matches
+      what the two entry points actually do.
+- [ ] Both bead reproductions are re-run together after both phases have
+      landed, confirming neither visitor can still be reached with a node it
+      has no clause for - the confirmation px-aen's description asks whichever
+      resolver lands last to perform.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits and
 full `mix quality` as the phase gate. In interactive execution, pause here for

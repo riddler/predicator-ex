@@ -60,7 +60,8 @@ defmodule Predicator.Visitors.StringVisitor do
 
   @behaviour Predicator.Visitor
 
-  alias Predicator.Parser
+  alias Predicator.{Errors, Parser, Types}
+  alias Predicator.Errors.EvaluationError
 
   # Precedence levels, loosest to tightest, matching the grammar in
   # docs/architecture.md's "Grammar with Operator Precedence" section:
@@ -94,7 +95,10 @@ defmodule Predicator.Visitors.StringVisitor do
 
   ## Returns
 
-  String representation of the AST node
+  String representation of the AST node, or `{:error, struct()}` when
+  `ast_node` contains a node this visitor has no clause for - currently
+  `{:if, ...}` and `{:block, ...}` (ADR-0013's control flow, not yet
+  rendered).
 
   ## Options
 
@@ -109,12 +113,14 @@ defmodule Predicator.Visitors.StringVisitor do
     - `:verbose` - extra spacing: "score  >  85"
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.visitable(), keyword()) :: binary()
+  @spec visit(Parser.visitable(), keyword()) :: binary() | {:error, struct()}
   def visit(ast_node, opts \\ []) do
     do_visit(ast_node, opts)
+  catch
+    {:unsupported_node, error} -> {:error, error}
   end
 
-  @spec do_visit(Parser.ast() | Parser.program() | Parser.statement(), keyword()) :: binary()
+  @spec do_visit(Parser.visitable(), keyword()) :: binary()
   defp do_visit(ast_node, opts)
 
   defp do_visit({:literal, value, _position}, _opts) when is_integer(value) do
@@ -280,6 +286,15 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
+  # Rendering control flow back to source is px-3so.5's work, including
+  # ADR-0013's else-if printing rule. Declining explicitly keeps the contract a
+  # value (ADR-0004) rather than a FunctionClauseError.
+  defp do_visit({:if, _condition, _then_block, _else_block, annotation}, _opts),
+    do: unsupported_node("if", annotation)
+
+  defp do_visit({:block, _statements, annotation}, _opts),
+    do: unsupported_node("block", annotation)
+
   defp do_visit({:program, statements, _position}, opts) do
     Enum.map_join(statements, "; ", &do_visit(&1, opts))
   end
@@ -430,4 +445,20 @@ defmodule Predicator.Visitors.StringVisitor do
 
   defp format_object_key({:object_key, value, :single, _position}),
     do: ~s('#{String.replace(value, "'", "\\'")}')
+
+  # Escapes to visit/2's `catch`, converting a node this visitor has no clause
+  # for into an {:error, struct()} at the boundary instead of a
+  # FunctionClauseError - the same throw/catch shape checked in at
+  # lib/predicator/duration.ex:76-109 and mirrored in InstructionsVisitor.
+  @spec unsupported_node(binary(), Types.position() | Types.span() | nil) :: no_return()
+  defp unsupported_node(construct, annotation) do
+    error =
+      EvaluationError.new(
+        "'#{construct}' does not decompile to source yet - rendering control " <>
+          "flow needs the else-if printing rule (ADR-0013)",
+        "unsupported_node"
+      )
+
+    throw({:unsupported_node, Errors.put_position(error, annotation)})
+  end
 end

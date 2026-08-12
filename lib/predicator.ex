@@ -888,7 +888,10 @@ defmodule Predicator do
 
   ## Returns
 
-  String representation of the AST
+  String representation of the AST, or `{:error, struct()}` when `ast`
+  contains a node the StringVisitor has no clause for - currently
+  `{:if, ...}` and `{:block, ...}` (ADR-0013's control flow, not yet
+  rendered).
 
   ## Examples
 
@@ -903,8 +906,13 @@ defmodule Predicator do
       iex> ast = {:comparison, :eq, {:identifier, "active", nil}, {:literal, true, nil}, nil}
       iex> Predicator.decompile(ast, parentheses: :explicit, spacing: :verbose)
       "(active  ==  true)"
+
+      iex> {:ok, ast} = Predicator.parse_program("if a { x = 1 }")
+      iex> {:error, error} = Predicator.decompile(ast)
+      iex> error.reason
+      "unsupported_node"
   """
-  @spec decompile(Parser.ast() | Parser.program(), keyword()) :: binary()
+  @spec decompile(Parser.visitable(), keyword()) :: binary() | {:error, struct()}
   def decompile(ast, opts \\ []) do
     Compiler.to_string(ast, opts)
   end

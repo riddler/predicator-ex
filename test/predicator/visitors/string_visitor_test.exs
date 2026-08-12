@@ -1205,4 +1205,56 @@ defmodule Predicator.Visitors.StringVisitorTest do
       end
     end
   end
+
+  describe "visit/2 - unsupported nodes (if/block)" do
+    test "declines a bare if node instead of raising" do
+      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 1}}
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"} = error} =
+               StringVisitor.visit(ast, [])
+
+      assert error.position == {1, 1}
+    end
+
+    test "declines a bare block node - the hand-built-AST case" do
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               StringVisitor.visit({:block, [], nil}, [])
+    end
+
+    test "decompile/2 declines a program containing a bare if" do
+      {:ok, ast} = Predicator.parse_program("if a { x = 1 }")
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"} = error} =
+               Predicator.decompile(ast)
+
+      [{:if, _condition, _then_block, _else_block, if_annotation}] = elem(ast, 1)
+      assert error.position == if_annotation
+    end
+
+    test "decompile/2 declines a program containing an if/else" do
+      {:ok, ast} = Predicator.parse_program("if a { x = 1 } else { x = 2 }")
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               Predicator.decompile(ast)
+    end
+
+    test "decompile/2 declines an else-if chain - the nested case" do
+      {:ok, ast} = Predicator.parse_program("if a { x = 1 } else if b { x = 2 }")
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               Predicator.decompile(ast)
+    end
+
+    test "negative control: decompile/2 on an ordinary expression still returns a binary" do
+      {:ok, ast} = Predicator.parse("a > 1")
+
+      assert Predicator.decompile(ast) == "a > 1"
+    end
+
+    test "negative control: decompile/2 on a program of assignments still returns a binary" do
+      {:ok, ast} = Predicator.parse_program("a = 1; b = 2")
+
+      assert Predicator.decompile(ast) == "a = 1; b = 2"
+    end
+  end
 end
