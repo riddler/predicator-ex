@@ -340,4 +340,20 @@ defmodule Predicator.IntegrationTest do
       assert context.data == %{"x" => 42}
     end
   end
+
+  describe "the undefined literal (px-ocp)" do
+    test "compiles to lit :undefined, never a load" do
+      assert Predicator.compile("x === undefined") ==
+               {:ok, [["load", "x"], ["lit", :undefined], ["compare", "STRICT_EQ"]]}
+    end
+
+    test "x == undefined propagates instead of answering" do
+      assert Predicator.evaluate("x == undefined", %{"x" => 1}) == {:ok, :undefined}
+    end
+
+    test "x = undefined binds x to :undefined through Predicator.execute/2" do
+      assert {:ok, context} = Predicator.execute("x = undefined", %{})
+      assert context.data == %{"x" => :undefined}
+    end
+  end
 end

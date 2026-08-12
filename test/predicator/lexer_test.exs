@@ -78,6 +78,43 @@ defmodule Predicator.LexerTest do
              ]
     end
 
+    test "tokenizes the undefined keyword" do
+      assert {:ok, tokens} = Lexer.tokenize("undefined")
+
+      assert tokens == [
+               {:undefined, 1, 1, 9, :undefined},
+               {:eof, 1, 10, 0, nil}
+             ]
+    end
+
+    test "does not classify UNDEFINED or Undefined as the undefined keyword" do
+      assert {:ok, tokens} = Lexer.tokenize("UNDEFINED")
+
+      assert tokens == [
+               {:identifier, 1, 1, 9, "UNDEFINED"},
+               {:eof, 1, 10, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("Undefined")
+
+      assert tokens == [
+               {:identifier, 1, 1, 9, "Undefined"},
+               {:eof, 1, 10, 0, nil}
+             ]
+    end
+
+    test "does not turn undefined( into a function_name" do
+      assert {:ok, tokens} = Lexer.tokenize("undefined(1)")
+
+      assert tokens == [
+               {:undefined, 1, 1, 9, :undefined},
+               {:lparen, 1, 10, 1, "("},
+               {:integer, 1, 11, 1, 1},
+               {:rparen, 1, 12, 1, ")"},
+               {:eof, 1, 13, 0, nil}
+             ]
+    end
+
     test "tokenizes uppercase logical operators" do
       assert {:ok, tokens} = Lexer.tokenize("AND")
 

@@ -31,6 +31,30 @@ defmodule Predicator.ParserTest do
       assert parse_positionless(tokens) == {:ok, {:literal, false}}
     end
 
+    test "parses the undefined literal" do
+      {:ok, tokens} = Lexer.tokenize("undefined")
+      assert parse_positionless(tokens) == {:ok, {:literal, :undefined}}
+    end
+
+    test "parses the undefined literal with its position" do
+      {:ok, tokens} = Lexer.tokenize("undefined")
+      assert Predicator.Parser.parse(tokens) == {:ok, {:literal, :undefined, {1, 1}}}
+    end
+
+    test "parses undefined inside a list literal" do
+      {:ok, tokens} = Lexer.tokenize("[undefined, 1]")
+
+      assert parse_positionless(tokens) ==
+               {:ok, {:list, [{:literal, :undefined}, {:literal, 1}]}}
+    end
+
+    test "parses undefined as an object value" do
+      {:ok, tokens} = Lexer.tokenize("{k: undefined}")
+
+      assert parse_positionless(tokens) ==
+               {:ok, {:object, [{{:object_key, "k", :identifier}, {:literal, :undefined}}]}}
+    end
+
     test "parses identifier" do
       {:ok, tokens} = Lexer.tokenize("score")
       assert parse_positionless(tokens) == {:ok, {:identifier, "score"}}
@@ -115,6 +139,41 @@ defmodule Predicator.ParserTest do
 
       expected = {:comparison, :equal_equal, {:identifier, "active"}, {:literal, true}}
       assert parse_positionless(tokens) == {:ok, expected}
+    end
+  end
+
+  describe "parse/1 - undefined as an operand" do
+    test "parses undefined as the right operand of ===" do
+      {:ok, tokens} = Lexer.tokenize("x === undefined")
+
+      expected = {:comparison, :strict_eq, {:identifier, "x"}, {:literal, :undefined}}
+      assert parse_positionless(tokens) == {:ok, expected}
+    end
+
+    test "parses undefined as the right operand of !==" do
+      {:ok, tokens} = Lexer.tokenize("x !== undefined")
+
+      expected = {:comparison, :strict_ne, {:identifier, "x"}, {:literal, :undefined}}
+      assert parse_positionless(tokens) == {:ok, expected}
+    end
+
+    test "parses undefined as the right operand of ==" do
+      {:ok, tokens} = Lexer.tokenize("x == undefined")
+
+      expected = {:comparison, :equal_equal, {:identifier, "x"}, {:literal, :undefined}}
+      assert parse_positionless(tokens) == {:ok, expected}
+    end
+
+    test "parses undefined negated with !" do
+      {:ok, tokens} = Lexer.tokenize("!undefined")
+
+      assert parse_positionless(tokens) == {:ok, {:logical_not, {:literal, :undefined}}}
+    end
+
+    test "parses undefined cast with ::string" do
+      {:ok, tokens} = Lexer.tokenize("undefined::string")
+
+      assert parse_positionless(tokens) == {:ok, {:cast, {:literal, :undefined}, "string"}}
     end
   end
 

@@ -404,17 +404,17 @@ instructions visitor matches the `:literal` tag generically (`:174-176`) and
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green.
-- [ ] New and changed lines stay above the 90% coverage minimum in
+- [x] `mix quality` is green.
+- [x] New and changed lines stay above the 90% coverage minimum in
       `coveralls.json` (the gate's coverage stage decides this).
-- [ ] `test/predicator/visitor_clause_coverage_test.exs` still passes with
+- [x] `test/predicator/visitor_clause_coverage_test.exs` still passes with
       `@constructor_count 23` unchanged - no AST constructor was added.
-- [ ] `test/predicator/isa_sync_test.exs` still passes with no edit to it -
+- [x] `test/predicator/isa_sync_test.exs` still passes with no edit to it -
       no opcode, version, or tier moved.
-- [ ] A test in `test/predicator/integration/full_pipeline_test.exs` asserts
+- [x] A test in `test/predicator/integration/full_pipeline_test.exs` asserts
       `Predicator.compile("x === undefined") ==
       {:ok, [["load","x"],["lit",:undefined],["compare","STRICT_EQ"]]}`.
-- [ ] A test in `test/predicator/visitors/string_visitor_test.exs` asserts the
+- [x] A test in `test/predicator/visitors/string_visitor_test.exs` asserts the
       `parse -> decompile` round-trip of `"x === undefined"` is `"x === undefined"`.
 
 #### Manual Verification:
@@ -747,3 +747,30 @@ In `test/predicator/integration/`, through `Predicator.evaluate/3` and
   bead. When this lands, `st-unt` gets a note that the workaround is
   revertible. px-a2w (filed during this planning, `area:docs`, P3) carries the
   plain-JSON round-trip question out of scope.
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] `Predicator.parse("user.undefined")` and
+      `Predicator.parse("{undefined: 1}")` return `{:error, message, line, col}`
+      tuples - not a `FunctionClauseError`. This is the `format_token/2` clause
+      being real, and a raise here is the ADR-0004 breach.
+- [ ] The three breakage messages read as helpful to someone who used
+      `undefined` as a variable name, and match the `true`/`false` shapes in
+      the table above.
+- [ ] `mix quality`'s dialyzer stage raised nothing about the widened
+      `classify_identifier/1` and `value()` specs.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits and
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---

@@ -155,4 +155,83 @@ defmodule Predicator.ReservedWordsTest do
       assert Predicator.parse("while > 1") == {:error, expression_message("while"), 1, 1}
     end
   end
+
+  @undefined_assign_expr_message "'=' is not an equality operator - use '==' for equality. " <>
+                                   "Assignment is only valid at the start of a statement."
+  @undefined_assign_program_message "Left side of '=' must be an assignable location - an " <>
+                                      "identifier, a property access, or a bracket access."
+
+  describe "'undefined' used as a variable name, from every entry point" do
+    test "Predicator.parse/2" do
+      assert Predicator.parse("undefined = 3") == {:error, @undefined_assign_expr_message, 1, 11}
+    end
+
+    test "Predicator.parse_program/2" do
+      assert Predicator.parse_program("undefined = 3") ==
+               {:error, @undefined_assign_program_message, 1, 11}
+    end
+
+    test "Predicator.evaluate/3" do
+      assert {:error, %ParseError{message: @undefined_assign_expr_message, position: {1, 11}}} =
+               Predicator.evaluate("undefined = 3", %{})
+    end
+
+    test "Predicator.compile/1" do
+      assert Predicator.compile("undefined = 3") ==
+               {:error, "#{@undefined_assign_expr_message} at line 1, column 11"}
+    end
+  end
+
+  @user_undefined_message "Expected property name after '.' but found 'undefined'"
+
+  describe "'user.undefined' as a bare property name, from every entry point" do
+    test "Predicator.parse/2" do
+      assert Predicator.parse("user.undefined") == {:error, @user_undefined_message, 1, 6}
+    end
+
+    test "Predicator.parse_program/2" do
+      assert Predicator.parse_program("user.undefined") ==
+               {:error, @user_undefined_message, 1, 6}
+    end
+
+    test "Predicator.evaluate/3" do
+      assert {:error, %ParseError{message: @user_undefined_message, position: {1, 6}}} =
+               Predicator.evaluate("user.undefined", %{})
+    end
+
+    test "Predicator.compile/1" do
+      assert Predicator.compile("user.undefined") ==
+               {:error, "#{@user_undefined_message} at line 1, column 6"}
+    end
+  end
+
+  @undefined_key_message "Expected identifier or string for object key but found 'undefined'"
+
+  describe "'{undefined: 1}' as a bare object key, from every entry point" do
+    test "Predicator.parse/2" do
+      assert Predicator.parse("{undefined: 1}") == {:error, @undefined_key_message, 1, 2}
+    end
+
+    test "Predicator.parse_program/2" do
+      assert Predicator.parse_program("{undefined: 1}") ==
+               {:error, @undefined_key_message, 1, 2}
+    end
+
+    test "Predicator.evaluate/3" do
+      assert {:error, %ParseError{message: @undefined_key_message, position: {1, 2}}} =
+               Predicator.evaluate("{undefined: 1}", %{})
+    end
+
+    test "Predicator.compile/1" do
+      assert Predicator.compile("{undefined: 1}") ==
+               {:error, "#{@undefined_key_message} at line 1, column 2"}
+    end
+  end
+
+  test ~s({"undefined": 1} still parses - a quoted object key is not a reserved word) do
+    assert {:ok,
+            {:object,
+             [{{:object_key, "undefined", :double, _key_pos}, {:literal, 1, _value_pos}}],
+             _pos}} = Predicator.parse(~s({"undefined": 1}))
+  end
 end
