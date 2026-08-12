@@ -63,6 +63,72 @@ different source's instructions. See
 store/check/run lifecycle, including what to do when a stored artifact
 predates a retired opcode.
 
+## Embedding Predicator in a host application
+
+The pattern most host applications need: a function provider that reads state
+from the evaluation context's `host` slot, and a caller that swaps that slot
+in O(1) as its own state changes. This mirrors how a state machine library
+wires an SCXML `In(stateId)` guard into a running machine - the guard reads
+current state through `context.host` rather than the caller re-threading it
+as an ordinary predicate argument.
+
+Define a provider module implementing `Predicator.FunctionProvider`, whose
+callback reads `context.host`:
+
+```elixir
+defmodule MyApp.StateFunctions do
+  @behaviour Predicator.FunctionProvider
+
+  @impl Predicator.FunctionProvider
+  def functions, do: %{"In" => {1, :call_in}}
+
+  def call_in([state_id], context), do: {:ok, context.host.current_state == state_id}
+end
+```
+
+Build the context once, wiring the provider in with `providers:`, and store
+it in the embedder's own struct:
+
+```elixir
+defmodule MyApp.Machine do
+  defstruct [:context]
+
+  def new(initial_state) do
+    context =
+      Predicator.Context.new(%{},
+        providers: [MyApp.StateFunctions],
+        host: %{current_state: initial_state}
+      )
+
+    %__MODULE__{context: context}
+  end
+
+  def transition(%__MODULE__{context: context} = machine, new_state) do
+    %{machine | context: Predicator.Context.put_host(context, %{current_state: new_state})}
+  end
+end
+```
+
+Each state change calls `put_host/2` - a single `Map.put/3`, not a context
+rebuild - leaving `data` and the resolved function dispatch map untouched:
+
+```elixir
+iex> context = Predicator.Context.new(%{}, host: %{current_state: :idle})
+iex> context = Predicator.Context.put_host(context, %{current_state: :running})
+iex> context.host
+%{current_state: :running}
+```
+
+A context built only from `providers:` is the form worth persisting or
+handing to another process: a provider is a module atom and `host` is plain
+data, so the whole context is ordinary Erlang term data. An inline
+`functions:` closure works the same way at evaluation time but cannot be
+serialized - `:erlang.term_to_binary/1` has no way to hand a `fun` back to a
+different run. See [Custom functions](docs/guides/custom-functions.md) for
+the full provider API and the host slot, and [Embedding compiled
+programs](docs/guides/embedding.md#persisting-a-context-alongside-a-program)
+for storing a context alongside a compiled program.
+
 ## Documentation
 
 - [Language reference](docs/reference/language.md) - operators, builtin
