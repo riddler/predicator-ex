@@ -685,9 +685,9 @@ What a reader might expect to find here and will not:
 | v1 | everything not listed below | - | up to 3.6.x |
 | v2 | `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list` | - | 3.7.0 |
 | v3 | `store`, `pop` | `and`, `or` | 4.0.0 |
-| v4 | `cast` | - | 4.1.0 |
-| v5 | `jump`, `pop_jump_if_falsy` | - | 4.1.0 |
-| v6 | `jump_backward` | - | 4.1.0 |
+| v4 | `cast` | - | 5.0.0 |
+| v5 | `jump`, `pop_jump_if_falsy` | - | 5.0.0 |
+| v6 | `jump_backward` | - | 5.0.0 |
 
 This table records the release each opcode was *introduced* in, and, now that
 an opcode has been retired, the release each was *removed* in - both ends of
