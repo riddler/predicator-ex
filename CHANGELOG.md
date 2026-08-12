@@ -19,18 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `else` block whose sole statement is the nested `if`, so
   `if a { A } else if b { B }` and the hand-nested form produce the same
   tree. `if` is statement-position only - `Predicator.parse/2` rejects it
-  with a message naming `parse_program/2`. **Parsing only for now**:
-  lowering an `if` needs the ISA v5 jump opcodes, so
-  `Predicator.execute/2,3` and `Predicator.decompile/2` now return an
-  `{:error, ...}` tuple naming the unsupported construct instead of accepting
-  a program containing one (ADR-0013).
+  with a message naming `parse_program/2`. **`if`/`else` now lowers to
+  instructions and runs**: `Predicator.execute/2,3` compiles an `if`
+  statement to the ISA v5 jump opcodes below and executes it, with an
+  unbound or non-boolean condition following the standing `on_unbound`/
+  `TypeMismatchError` rules. `Predicator.decompile/2` still returns an
+  `{:error, ...}` tuple naming the unsupported construct for a program
+  containing one, until `StringVisitor` learns the nodes (`px-3so.5`,
+  ADR-0013).
 - **ISA v5: `jump` and `pop_jump_if_falsy`.** Two new opcodes, tier 8
   (control flow) - `jump` is an unconditional relative forward jump; `pop_jump_if_falsy`
   pops the stack top always and jumps to it when falsy, unlike
   `jump_if_falsy_or_pop`, which preserves the value on the taken branch. Both
-  are what `if`/`else` statement lowering needs (ADR-0013). **The compiler
-  does not emit either opcode yet** - this bead mints the ISA version only;
-  lowering `if`/`else` onto them is a follow-on. Every ISA v5 instruction
+  are what `if`/`else` statement lowering needs (ADR-0013), and the compiler
+  now emits both when lowering an `if` statement. Every ISA v5 instruction
   list still provably halts in at most `length(program)` steps, since neither
   opcode introduces a backward jump.
 - **Type casts (`::`).** A postfix `expr::type` operator converts a value to

@@ -41,12 +41,15 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       iex> ast = {:function_call, "len", [{:identifier, "name", nil}], nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["load", "name"], ["call", "len", 1]]
+
+      iex> ast = {:if, {:literal, true, nil}, {:block, [], nil}, nil, nil}
+      iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
+      [["lit", true], ["pop_jump_if_falsy", 1]]
   """
 
   @behaviour Predicator.Visitor
 
-  alias Predicator.{Errors, Parser, Types}
-  alias Predicator.Errors.EvaluationError
+  alias Predicator.{Parser, Types}
 
   @typedoc """
   One instruction paired with the source position of the node that emitted it.
@@ -74,19 +77,14 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
   ## Returns
 
-  List of instructions in the format `[["operation", ...args]]`, or
-  `{:error, struct()}` when `ast_node` contains a node this visitor has no
-  clause for - currently `{:if, ...}` and `{:block, ...}` (ADR-0013's control
-  flow, not yet lowered).
+  List of instructions in the format `[["operation", ...args]]`.
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.visitable(), keyword()) :: [[binary() | term()]] | {:error, struct()}
+  @spec visit(Parser.visitable(), keyword()) :: [[binary() | term()]]
   def visit(ast_node, opts \\ []) do
     ast_node
     |> visit_annotated(opts)
     |> Enum.map(&elem(&1, 0))
-  catch
-    {:unsupported_node, error} -> {:error, error}
   end
 
   @doc """
@@ -105,18 +103,12 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
       iex> Predicator.Visitors.InstructionsVisitor.visit_with_positions({:literal, 42, nil})
       {[["lit", 42]], %{}}
-
-  Returns `{:error, struct()}` instead when `ast_node` contains a node this
-  visitor has no clause for - see `visit/2`.
   """
   @spec visit_with_positions(Parser.visitable(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}
-          | {:error, struct()}
   def visit_with_positions(ast_node, opts \\ []) do
     {instructions, positions, _segment_positions} = tables(visit_annotated(ast_node, opts))
     {instructions, positions}
-  catch
-    {:unsupported_node, error} -> {:error, error}
   end
 
   @doc """
@@ -138,18 +130,12 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       {[["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]],
        %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 7}, 3 => {1, 1}},
        %{3 => [{1, 1}, {1, 3}]}}
-
-  Returns `{:error, struct()}` instead when `ast_node` contains a node this
-  visitor has no clause for - see `visit/2`.
   """
   @spec visit_with_segment_positions(Parser.visitable(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table(),
            Types.segment_position_table()}
-          | {:error, struct()}
   def visit_with_segment_positions(ast_node, opts \\ []) do
     tables(visit_annotated(ast_node, opts))
-  catch
-    {:unsupported_node, error} -> {:error, error}
   end
 
   # One walk of the annotated list builds all three tables together, so the
@@ -353,14 +339,39 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     duration_instructions ++ [{["relative_date", direction_str], position}]
   end
 
-  # ISA v5's jump opcodes are px-3so.3's work, so control flow has no lowering
-  # yet. Declining explicitly keeps the contract a value (ADR-0004) instead of
-  # a FunctionClauseError; px-3so.3 replaces this clause with the real one.
-  defp visit_annotated({:if, _condition, _then_block, _else_block, annotation}, _opts),
-    do: unsupported_node("if", annotation)
+  # ADR-0013:  if c { A }  ->  c; pop_jump_if_falsy +(lenA + 1); A
+  # The block's statements are stack-neutral (each ends in a store or a pop),
+  # so the jump target is one past A and nothing needs mopping up.
+  defp visit_annotated({:if, condition, then_block, nil, position}, opts) do
+    condition_instructions = visit_annotated(condition, opts)
+    then_instructions = visit_annotated(then_block, opts)
+    offset = length(then_instructions) + 1
 
-  defp visit_annotated({:block, _statements, annotation}, _opts),
-    do: unsupported_node("block", annotation)
+    condition_instructions ++
+      [{["pop_jump_if_falsy", offset], position}] ++
+      then_instructions
+  end
+
+  # ADR-0013:  if c { A } else { B }
+  #   ->  c; pop_jump_if_falsy +(lenA + 2); A; jump +(lenB + 1); B
+  # The +2 clears A and the unconditional jump that ends it; the +1 clears B.
+  defp visit_annotated({:if, condition, then_block, else_block, position}, opts) do
+    condition_instructions = visit_annotated(condition, opts)
+    then_instructions = visit_annotated(then_block, opts)
+    else_instructions = visit_annotated(else_block, opts)
+
+    condition_instructions ++
+      [{["pop_jump_if_falsy", length(then_instructions) + 2], position}] ++
+      then_instructions ++
+      [{["jump", length(else_instructions) + 1], position}] ++
+      else_instructions
+  end
+
+  # A block is a statement sequence with no scope of its own (ADR-0013) - the
+  # same body as {:program, ...}, and the reason each block is stack-neutral.
+  defp visit_annotated({:block, statements, _position}, opts) do
+    Enum.flat_map(statements, &visit_statement(&1, opts))
+  end
 
   defp visit_annotated({:program, statements, _position}, opts) do
     Enum.flat_map(statements, &visit_statement(&1, opts))
@@ -403,6 +414,14 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   @spec visit_statement(Parser.statement(), keyword()) :: [annotated()]
   defp visit_statement({:assignment, _lhs, _rhs, _position} = assignment, opts) do
     visit_annotated(assignment, opts)
+  end
+
+  # An `if` is stack-neutral by construction - its condition is consumed by
+  # pop_jump_if_falsy and its blocks end stack-neutral - so unlike a bare
+  # expression statement it takes no trailing pop. Without this clause the
+  # catch-all below would emit one against an empty stack.
+  defp visit_statement({:if, _condition, _then_block, _else_block, _position} = node, opts) do
+    visit_annotated(node, opts)
   end
 
   defp visit_statement(expression, opts) do
@@ -516,23 +535,4 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
   @spec key_position(Parser.object_key()) :: Types.position() | nil
   defp key_position({:object_key, _value, _style, position}), do: position
-
-  # Escapes to each public entry point's `catch`, converting a node this
-  # visitor has no clause for into an {:error, struct()} at the boundary
-  # instead of a FunctionClauseError - the same throw/catch shape checked in
-  # at lib/predicator/duration.ex:76-109.
-  #
-  # The message names the construct and nothing else. What the lowering will
-  # need - ISA v5's jump opcodes, per ADR-0013 and px-3so.3 - is a contributor
-  # concern, and the host reading this error has only `language.md` in hand.
-  @spec unsupported_node(binary(), Types.position() | Types.span() | nil) :: no_return()
-  defp unsupported_node(construct, annotation) do
-    error =
-      EvaluationError.new(
-        "'#{construct}' does not compile to instructions yet",
-        "unsupported_node"
-      )
-
-    throw({:unsupported_node, Errors.put_position(error, annotation)})
-  end
 end

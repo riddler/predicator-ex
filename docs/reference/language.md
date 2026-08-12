@@ -268,13 +268,11 @@ iex> Predicator.parse("if x { }")
 {:error, "'if' is a statement keyword, not an expression - control flow is only valid in a program (Predicator.parse_program/2).", 1, 1}
 ```
 
-> **`if`/`else` parses but does not execute yet.** This section describes the
-> semantics ADR-0013 settles, and `parse_program/2` builds the tree for them
-> today. Lowering an `if` to instructions needs the ISA v5 jump opcodes, so
-> until those land `Predicator.execute/2,3` and `Predicator.decompile/2`
-> return an `{:error, ...}` tuple naming the unsupported construct for a
-> program containing one, instead of running or rendering it. Everything
-> below is the grammar and the meaning, not a promise about what runs today.
+> **`if`/`else` runs, but does not decompile yet.** `Predicator.execute/2,3`
+> lowers an `if` statement to the ISA v5 jump opcodes (ADR-0013) and runs it.
+> `Predicator.decompile/2` still returns an `{:error, ...}` tuple naming the
+> unsupported construct for a program containing one, instead of rendering
+> it, until `StringVisitor` learns the nodes (`px-3so.5`).
 
 ### `if`/`else`
 

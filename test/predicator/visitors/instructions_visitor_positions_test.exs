@@ -369,6 +369,42 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
     end
   end
 
+  describe "visit_with_positions/2 - if/else (ADR-0013)" do
+    test "both new instructions carry the if node's own position, not the condition's" do
+      {instructions, positions} = program_table("if a { x = 1 }")
+
+      assert instructions == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 4],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1]
+             ]
+
+      # "if" is at column 1, "a" (the condition) is at column 4 - the
+      # pop_jump_if_falsy takes the if's own position, not the condition's.
+      assert positions[0] == {1, 4}
+      assert positions[1] == {1, 1}
+    end
+
+    test "the jump instruction also carries the if node's own position" do
+      {instructions, positions} = program_table("if a { x = 1 } else { x = 2 }")
+
+      jump_index = Enum.find_index(instructions, &(&1 == ["jump", 4]))
+
+      assert positions[jump_index] == {1, 1}
+    end
+
+    test "span mode carries the if node's span" do
+      {:ok, program} = Predicator.parse_program("if a { x = 1 }", spans: true)
+      {instructions, positions} = InstructionsVisitor.visit_with_positions(program)
+
+      pop_jump_index = Enum.find_index(instructions, &(&1 == ["pop_jump_if_falsy", 4]))
+
+      assert positions[pop_jump_index] == {{1, 1}, {1, 15}}
+    end
+  end
+
   describe "visit_with_segment_positions/2" do
     defp segment_table(source, opts \\ []) do
       {:ok, program} = Predicator.parse_program(source, opts)
