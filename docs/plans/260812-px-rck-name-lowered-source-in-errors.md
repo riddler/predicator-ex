@@ -224,10 +224,10 @@ becomes `assert msg =~ "Logical OR"`.
       `coveralls.json`
 
 #### Manual Verification:
-- [ ] `mix run` on the six sources in the Current State table shows the Desired
+- [x] `mix run` on the six sources in the Current State table shows the Desired
       End State messages, with `:in` unchanged
-- [ ] The `and` case no longer reads as though it were about `or`
-- [ ] No regression in the arithmetic, unary, or bracket-access messages
+- [x] The `and` case no longer reads as though it were about `or`
+- [x] No regression in the arithmetic, unary, or bracket-access messages
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
 full `mix quality` as the phase gate. In interactive execution, pause here for
@@ -310,9 +310,9 @@ shape, under `### Changed`:
       `conformance/` (no corpus move to explain under ADR-0003)
 
 #### Manual Verification:
-- [ ] The changelog entry reads correctly to someone who did not write the
+- [x] The changelog entry reads correctly to someone who did not write the
       change, and states the `:in` decision
-- [ ] Sabotaging one new assertion (e.g. reverting the `:store` clause) turns
+- [x] Sabotaging one new assertion (e.g. reverting the `:store` clause) turns
       the new tests red, confirming they bind what they claim to
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
@@ -368,10 +368,10 @@ before considering the plan fully landed.
 
 ### Phase 1
 
-- [ ] `mix run` on the six sources in the Current State table shows the Desired
+- [x] `mix run` on the six sources in the Current State table shows the Desired
       End State messages, with `:in` unchanged
-- [ ] The `and` case no longer reads as though it were about `or`
-- [ ] No regression in the arithmetic, unary, or bracket-access messages
+- [x] The `and` case no longer reads as though it were about `or`
+- [x] No regression in the arithmetic, unary, or bracket-access messages
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
 full `mix quality` as the phase gate. In interactive execution, pause here for
@@ -384,9 +384,9 @@ surfaced once at the end.
 
 ### Phase 2
 
-- [ ] The changelog entry reads correctly to someone who did not write the
+- [x] The changelog entry reads correctly to someone who did not write the
       change, and states the `:in` decision
-- [ ] Sabotaging one new assertion (e.g. reverting the `:store` clause) turns
+- [x] Sabotaging one new assertion (e.g. reverting the `:store` clause) turns
       the new tests red, confirming they bind what they claim to
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
