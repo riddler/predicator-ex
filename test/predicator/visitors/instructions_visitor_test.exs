@@ -984,51 +984,104 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
   end
 
-  describe "visit/2, visit_with_positions/2, visit_with_segment_positions/2 - unsupported nodes" do
-    test "visit/2 declines an if node instead of raising" do
-      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 1}}
-
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"} = error} =
-               InstructionsVisitor.visit(ast, [])
-
-      assert error.position == {1, 1}
+  describe "visit/2 - if/else lowering (ADR-0013)" do
+    defp visit_program(source) do
+      {:ok, program} = Predicator.parse_program(source)
+      InstructionsVisitor.visit(program, [])
     end
 
-    test "visit/2 declines a bare block node - the hand-built-AST case" do
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               InstructionsVisitor.visit({:block, [], nil}, [])
+    test "if with no else" do
+      assert visit_program("if a { x = 1 }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 4],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1]
+             ]
     end
 
-    test "visit_with_positions/2 declines an if node and carries its position" do
-      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 4}}
-
-      assert {:error,
-              %Predicator.Errors.EvaluationError{reason: "unsupported_node", position: {1, 4}}} =
-               InstructionsVisitor.visit_with_positions(ast, [])
+    test "if with an else" do
+      assert visit_program("if a { x = 1 } else { x = 2 }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 5],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["jump", 4],
+               ["lit", "x"],
+               ["lit", 2],
+               ["store", 1]
+             ]
     end
 
-    test "visit_with_positions/2 carries a span in span mode" do
-      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {{1, 1}, {1, 9}}}
-
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"} = error} =
-               InstructionsVisitor.visit_with_positions(ast, [])
-
-      assert error.span == {{1, 1}, {1, 9}}
-      assert error.position == {1, 1}
+    test "a chained else-if" do
+      assert visit_program("if a { } else if b { }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 2],
+               ["jump", 3],
+               ["load", "b"],
+               ["pop_jump_if_falsy", 1]
+             ]
     end
 
-    test "visit_with_segment_positions/2 declines an if node" do
-      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 1}}
-
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               InstructionsVisitor.visit_with_segment_positions(ast, [])
+    test "an if nested inside a then block" do
+      assert visit_program("if a { if b { x = 1 } }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 6],
+               ["load", "b"],
+               ["pop_jump_if_falsy", 4],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1]
+             ]
     end
 
-    test "an if nested inside an else block is caught at depth, not only at the top" do
-      {:ok, program} = Predicator.parse_program("if a { } else if b { }")
+    test "an if nested inside an else block" do
+      assert visit_program("if a { } else { if b { x = 1 } }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 2],
+               ["jump", 6],
+               ["load", "b"],
+               ["pop_jump_if_falsy", 4],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1]
+             ]
+    end
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               InstructionsVisitor.visit(program, [])
+    test "an empty then block jumps past nothing but the block's own end" do
+      assert visit_program("if a { }") == [["load", "a"], ["pop_jump_if_falsy", 1]]
+    end
+
+    test "an empty else block still gets a jump" do
+      assert visit_program("if a { x = 1 } else { }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 5],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["jump", 1]
+             ]
+    end
+
+    test "a multi-statement block exercises the lenA arithmetic" do
+      assert visit_program("if a { x = 1; y = 2 }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 7],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["lit", "y"],
+               ["lit", 2],
+               ["store", 1]
+             ]
+    end
+
+    test "an if statement takes no trailing pop, even as a program's last statement" do
+      instructions = visit_program("if a { x = 1 }")
+
+      assert List.last(instructions) == ["store", 1]
+      refute Enum.any?(instructions, &(&1 == ["pop"]))
     end
 
     test "negative control: an ordinary program still returns a plain instruction list" do

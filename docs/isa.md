@@ -240,8 +240,8 @@ feature tags, not by tiers.
 | `store` | n (int >= 0) | n + 1 | 0 | v3 | 6 | yes | - |
 | `pop` | - | 1 | 0 | v3 | 6 | yes | - |
 | `cast` | type name (string) | 1 | 1 | v4 | 7 | yes | - |
-| `jump` | offset (int > 0) | 0 | 0 | v5 | 8 | no | - |
-| `pop_jump_if_falsy` | offset (int > 0) | 1 | 0 | v5 | 8 | no | - |
+| `jump` | offset (int > 0) | 0 | 0 | v5 | 8 | yes | - |
+| `pop_jump_if_falsy` | offset (int > 0) | 1 | 0 | v5 | 8 | yes | - |
 
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` pop 0 or 1 values and push
 0: on the taken branch they leave the value on the stack (net 0 change), and

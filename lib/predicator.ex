@@ -204,25 +204,23 @@ defmodule Predicator do
     evaluate_instructions(instructions, context, opts)
   end
 
-  # Compiles a parsed expression and evaluates it, or passes through a
-  # {:error, struct()} from a node the InstructionsVisitor has no clause for
-  # (currently {:if, ...} and {:block, ...}) instead of destructuring it.
+  # Compiles a parsed expression and evaluates it. Compiling can no longer
+  # fail here - `parse/2`'s expression grammar never produces {:if, ...} or
+  # {:block, ...} (those are statement-position only, ADR-0013), and every
+  # other node has a clause - so an {:error, struct()} return is entirely
+  # from evaluate_instructions/3's runtime evaluation, not from compiling.
   @spec evaluate_ast(Parser.ast(), Types.context() | Context.t(), keyword()) ::
           {:ok, Types.value()} | {:error, struct()}
   defp evaluate_ast(ast, context, opts) do
-    case Compiler.to_instructions_with_positions(ast) do
-      {:error, error} ->
-        {:error, error}
+    {instructions, positions} = Compiler.to_instructions_with_positions(ast)
 
-      {instructions, positions} ->
-        evaluate_instructions(
-          instructions,
-          context,
-          opts
-          |> Keyword.put(:positions, positions)
-          |> Keyword.put(:segment_positions, %{})
-        )
-    end
+    evaluate_instructions(
+      instructions,
+      context,
+      opts
+      |> Keyword.put(:positions, positions)
+      |> Keyword.put(:segment_positions, %{})
+    )
   end
 
   # Helper function to evaluate instructions and convert errors to new format
@@ -491,26 +489,24 @@ defmodule Predicator do
     execute_instructions(instructions, context, opts)
   end
 
-  # Compiles a parsed program and runs it, or passes through a
-  # {:error, struct(), Context.t()} for a node the InstructionsVisitor has no
-  # clause for (currently {:if, ...} and {:block, ...}) instead of
-  # destructuring it.
+  # Compiles a parsed program and runs it. Compiling can no longer fail here -
+  # the InstructionsVisitor lowers every node `parse_program/2` can produce,
+  # including {:if, ...} and {:block, ...} (ADR-0013, px-3so.3) - so an
+  # {:error, struct(), Context.t()} return is entirely from
+  # execute_instructions/3's runtime evaluation, not from compiling.
   @spec execute_value_ast(Parser.program(), Types.context() | Context.t(), keyword()) ::
           {:ok, Types.value(), Context.t()} | {:error, struct(), Context.t()}
   defp execute_value_ast(ast, context, opts) do
-    case Compiler.to_instructions_with_segment_positions(ast) do
-      {:error, error} ->
-        {:error, error, normalize_context(context, opts)}
+    {instructions, positions, segment_positions} =
+      Compiler.to_instructions_with_segment_positions(ast)
 
-      {instructions, positions, segment_positions} ->
-        execute_instructions(
-          instructions,
-          context,
-          opts
-          |> Keyword.put(:positions, positions)
-          |> Keyword.put(:segment_positions, segment_positions)
-        )
-    end
+    execute_instructions(
+      instructions,
+      context,
+      opts
+      |> Keyword.put(:positions, positions)
+      |> Keyword.put(:segment_positions, segment_positions)
+    )
   end
 
   # Shared by both tokenize- and parse-stage failures in execute_value/3: a
@@ -783,13 +779,10 @@ defmodule Predicator do
           | {:error, binary(), pos_integer(), pos_integer()}
         ) :: {:ok, Compiled.t()} | {:error, binary()}
   defp build_compiled_result({:ok, ast}) do
-    case Compiler.to_instructions_with_segment_positions(ast) do
-      {instructions, positions, segment_positions} ->
-        {:ok, Compiled.new(instructions, positions, segment_positions)}
+    {instructions, positions, segment_positions} =
+      Compiler.to_instructions_with_segment_positions(ast)
 
-      {:error, error} ->
-        {:error, error.message}
-    end
+    {:ok, Compiled.new(instructions, positions, segment_positions)}
   end
 
   defp build_compiled_result({:error, message, line, column}) do

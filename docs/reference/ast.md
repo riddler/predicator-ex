@@ -127,21 +127,36 @@ token, and under `spans: true` it is the nested `if`'s span, which already
 starts at the same token and runs through the same final `}`.
 
 Neither `if` nor `block` is a member of `t:ast/0`, the same as `program` and
-`assignment`. `InstructionsVisitor` does not yet compile them - that lands
-with the ISA v5 opcodes (`px-3so.3`); until then a `{:if, ...}` in a parsed
-tree only exists to be read back or re-decompiled, never executed.
+`assignment`.
 
-`InstructionsVisitor` compiles the `program` and `assignment` nodes today. A
-`{:program, statements, pos}` compiles each statement in order, concatenating
-the results. An
-`{:assignment, lhs, rhs, pos}` compiles to the `lhs` chain's segments
-(root-to-leaf), then `rhs`, then `["store", n]`, where `n` is the chain's
-segment depth; any other statement compiles to its own instructions followed
-by `["pop"]`. That trailing `["pop"]` is emitted uniformly, including after
-the program's last statement, so the stack is empty at every statement
-boundary. In point mode the compiled `["store", n]` instruction is annotated
-with the `lhs` root segment's own position rather than the assignment node's
-`=`, so a store failure's caret lands on the location being written; under
+`InstructionsVisitor` compiles the `program`, `assignment`, `if`, and `block`
+nodes today. A `{:program, statements, pos}` compiles each statement in
+order, concatenating the results; a `{:block, statements, pos}` compiles the
+same way - a block introduces no scope of its own, so it is a plain statement
+sequence. An `{:assignment, lhs, rhs, pos}` compiles to the `lhs` chain's
+segments (root-to-leaf), then `rhs`, then `["store", n]`, where `n` is the
+chain's segment depth; any other statement compiles to its own instructions
+followed by `["pop"]`. That trailing `["pop"]` is emitted uniformly, including
+after the program's last statement, so the stack is empty at every statement
+boundary - **except an `if` statement**, which unlike every other
+non-assignment statement takes no trailing `["pop"]`: its condition is
+consumed by `pop_jump_if_falsy` and its blocks are already stack-neutral by
+construction, so nothing is left for a `pop` to remove
+([ADR-0013](../adr/0013-control-flow-lowers-to-new-jump-opcodes.md)).
+
+`{:if, condition, then_block, nil, pos}` (no `else`) lowers to `condition`'s
+instructions, then `["pop_jump_if_falsy", offset]` sized to land one past the
+then block, then the then block's own instructions.
+`{:if, condition, then_block, else_block, pos}` (with an `else`) lowers to
+`condition`, `["pop_jump_if_falsy", offset]` sized to land one past an
+unconditional `["jump", offset]` appended after the then block, the then
+block, that `jump` (sized to land one past the else block), then the else
+block. Both the `pop_jump_if_falsy` and the `jump` carry the `if` node's own
+position, not the condition's.
+
+In point mode the compiled `["store", n]` instruction is annotated with the
+`lhs` root segment's own position rather than the assignment node's `=`, so a
+store failure's caret lands on the location being written; under
 `spans: true` it keeps the assignment's span, whose start is already that same
 token.
 

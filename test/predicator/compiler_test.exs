@@ -297,27 +297,27 @@ defmodule Predicator.CompilerTest do
     end
   end
 
-  describe "to_instructions/2 and friends - unsupported nodes (if/block)" do
-    test "a bare block node returns {:error, ...} instead of raising" do
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               Compiler.to_instructions({:block, [], nil})
+  describe "to_instructions/2 and friends - if/block lowering (ADR-0013)" do
+    test "a bare block node compiles like a program's statement list" do
+      block = {:block, [{:assignment, {:identifier, "x", nil}, {:literal, 1, nil}, nil}], nil}
+
+      assert Compiler.to_instructions(block) == [["lit", "x"], ["lit", 1], ["store", 1]]
     end
 
-    test "a bare if node returns {:error, ...} instead of raising" do
+    test "a bare if node lowers to a condition and a pop_jump_if_falsy" do
       ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, nil}
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               Compiler.to_instructions(ast)
+      assert Compiler.to_instructions(ast) == [["load", "a"], ["pop_jump_if_falsy", 1]]
     end
 
-    test "to_instructions_with_positions/2 and to_instructions_with_segment_positions/2 also decline" do
+    test "to_instructions_with_positions/2 and to_instructions_with_segment_positions/2 also lower" do
       ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 1}}
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               Compiler.to_instructions_with_positions(ast)
+      assert Compiler.to_instructions_with_positions(ast) ==
+               {[["load", "a"], ["pop_jump_if_falsy", 1]], %{1 => {1, 1}}}
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               Compiler.to_instructions_with_segment_positions(ast)
+      assert Compiler.to_instructions_with_segment_positions(ast) ==
+               {[["load", "a"], ["pop_jump_if_falsy", 1]], %{1 => {1, 1}}, %{}}
     end
   end
 

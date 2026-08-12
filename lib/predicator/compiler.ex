@@ -37,9 +37,7 @@ defmodule Predicator.Compiler do
 
   ## Returns
 
-  List of instructions in the format `[["operation", ...args]]`, or
-  `{:error, struct()}` when `ast` contains a node the InstructionsVisitor has
-  no clause for - currently `{:if, ...}` and `{:block, ...}`.
+  List of instructions in the format `[["operation", ...args]]`.
 
   ## Examples
 
@@ -88,8 +86,6 @@ defmodule Predicator.Compiler do
       iex> Predicator.Compiler.to_instructions_with_positions(program)
       {[["lit", "x"], ["lit", 1], ["store", 1]], %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 1}}}
 
-  Returns `{:error, struct()}` instead when `ast` contains a node the
-  InstructionsVisitor has no clause for - see `to_instructions/2`.
   """
   @spec to_instructions_with_positions(Parser.visitable(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}
@@ -117,8 +113,6 @@ defmodule Predicator.Compiler do
        %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 7}, 3 => {1, 1}},
        %{3 => [{1, 1}, {1, 3}]}}
 
-  Returns `{:error, struct()}` instead when `ast` contains a node the
-  InstructionsVisitor has no clause for - see `to_instructions/2`.
   """
   @spec to_instructions_with_segment_positions(Parser.visitable(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table(),
