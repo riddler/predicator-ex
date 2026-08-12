@@ -172,6 +172,32 @@ defmodule Predicator.ExecuteTest do
     end
   end
 
+  describe "execute/2,3 and execute_value/2,3 - unsupported nodes (if/block)" do
+    test "execute/2,3 returns an error tuple instead of raising, with the context unchanged" do
+      assert {:error, %Errors.EvaluationError{reason: "unsupported_node"}, ctx} =
+               Predicator.execute("x = 1; if x > 0 { y = 2 }", %{})
+
+      assert ctx.data == %{}
+    end
+
+    test "execute_value/3 returns the identical three-tuple shape" do
+      assert {:error, %Errors.EvaluationError{reason: "unsupported_node"}, ctx} =
+               Predicator.execute_value("x = 1; if x > 0 { y = 2 }", %{})
+
+      assert ctx.data == %{}
+    end
+
+    test "an if reached through an else block is caught at depth" do
+      assert {:error, %Errors.EvaluationError{reason: "unsupported_node"}, _ctx} =
+               Predicator.execute("if a { } else if b { }", %{"a" => true, "b" => true})
+    end
+
+    test "negative control: an ordinary program still returns {:ok, ...}" do
+      assert {:ok, ctx} = Predicator.execute("x = 1; x + 1", %{})
+      assert ctx.data == %{"x" => 1}
+    end
+  end
+
   describe "execute/2,3 - halt shapes" do
     test "an expression-only program halts with an empty stack and succeeds" do
       assert {:ok, ctx} = Predicator.execute("1; 2; 3", %{"seed" => 1})
@@ -207,6 +233,17 @@ defmodule Predicator.ExecuteTest do
       assert compiled.instructions == [["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]]
       assert compiled.positions != %{}
       assert compiled.segment_positions == %{3 => [{1, 1}, {1, 3}]}
+    end
+
+    test "compile_program/1 returns {:error, binary()} for a program containing an if" do
+      assert {:error, message} = Predicator.compile_program("if a { x = 1 }")
+      assert is_binary(message)
+      assert message =~ "if"
+    end
+
+    test "compile_program_with_positions/1 returns {:error, binary()} for a program containing an if" do
+      assert {:error, message} = Predicator.compile_program_with_positions("if a { x = 1 }")
+      assert is_binary(message)
     end
   end
 

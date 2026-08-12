@@ -213,6 +213,13 @@ defmodule Predicator.Parser do
   @type statement :: assignment() | if_statement() | ast()
 
   @typedoc """
+  Anything a visitor accepts: a whole program, any single statement, or the
+  block an if statement holds. Wider than `t:ast/0`, which is the expression
+  layer only.
+  """
+  @type visitable :: program() | statement() | block()
+
+  @typedoc """
   A parsed statement sequence: `statement (";" statement)* [";"]`.
 
   Produced only by `parse_program/2`. A program is never an `t:ast/0`: the

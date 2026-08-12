@@ -37,7 +37,9 @@ defmodule Predicator.Compiler do
 
   ## Returns
 
-  List of instructions in the format `[["operation", ...args]]`
+  List of instructions in the format `[["operation", ...args]]`, or
+  `{:error, struct()}` when `ast` contains a node the InstructionsVisitor has
+  no clause for - currently `{:if, ...}` and `{:block, ...}`.
 
   ## Examples
 
@@ -53,7 +55,8 @@ defmodule Predicator.Compiler do
       iex> Predicator.Compiler.to_instructions(program)
       [["lit", "x"], ["lit", 1], ["store", 1]]
   """
-  @spec to_instructions(Parser.ast() | Parser.program(), keyword()) :: [[binary() | term()]]
+  @spec to_instructions(Parser.visitable(), keyword()) ::
+          [[binary() | term()]] | {:error, struct()}
   def to_instructions(ast, opts \\ []) do
     Visitor.accept(ast, InstructionsVisitor, opts)
   end
@@ -84,9 +87,13 @@ defmodule Predicator.Compiler do
       iex> {:ok, program} = Predicator.parse_program("x = 1", spans: false)
       iex> Predicator.Compiler.to_instructions_with_positions(program)
       {[["lit", "x"], ["lit", 1], ["store", 1]], %{0 => {1, 1}, 1 => {1, 5}, 2 => {1, 1}}}
+
+  Returns `{:error, struct()}` instead when `ast` contains a node the
+  InstructionsVisitor has no clause for - see `to_instructions/2`.
   """
-  @spec to_instructions_with_positions(Parser.ast() | Parser.program(), keyword()) ::
+  @spec to_instructions_with_positions(Parser.visitable(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table()}
+          | {:error, struct()}
   def to_instructions_with_positions(ast, opts \\ []) do
     InstructionsVisitor.visit_with_positions(ast, opts)
   end
@@ -109,10 +116,14 @@ defmodule Predicator.Compiler do
       {[["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]],
        %{0 => {1, 1}, 1 => {1, 3}, 2 => {1, 7}, 3 => {1, 1}},
        %{3 => [{1, 1}, {1, 3}]}}
+
+  Returns `{:error, struct()}` instead when `ast` contains a node the
+  InstructionsVisitor has no clause for - see `to_instructions/2`.
   """
-  @spec to_instructions_with_segment_positions(Parser.ast() | Parser.program(), keyword()) ::
+  @spec to_instructions_with_segment_positions(Parser.visitable(), keyword()) ::
           {[[binary() | term()]], Types.position_table() | Types.span_table(),
            Types.segment_position_table()}
+          | {:error, struct()}
   def to_instructions_with_segment_positions(ast, opts \\ []) do
     InstructionsVisitor.visit_with_segment_positions(ast, opts)
   end

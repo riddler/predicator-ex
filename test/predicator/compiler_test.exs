@@ -296,4 +296,28 @@ defmodule Predicator.CompilerTest do
       assert Compiler.to_string(positioned) == "score > 85"
     end
   end
+
+  describe "to_instructions/2 and friends - unsupported nodes (if/block)" do
+    test "a bare block node returns {:error, ...} instead of raising" do
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               Compiler.to_instructions({:block, [], nil})
+    end
+
+    test "a bare if node returns {:error, ...} instead of raising" do
+      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, nil}
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               Compiler.to_instructions(ast)
+    end
+
+    test "to_instructions_with_positions/2 and to_instructions_with_segment_positions/2 also decline" do
+      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 1}}
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               Compiler.to_instructions_with_positions(ast)
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               Compiler.to_instructions_with_segment_positions(ast)
+    end
+  end
 end

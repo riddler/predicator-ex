@@ -191,19 +191,8 @@ defmodule Predicator do
     case Lexer.tokenize(expression) do
       {:ok, tokens} ->
         case Parser.parse(tokens, opts) do
-          {:ok, ast} ->
-            {instructions, positions} = Compiler.to_instructions_with_positions(ast)
-
-            evaluate_instructions(
-              instructions,
-              context,
-              opts
-              |> Keyword.put(:positions, positions)
-              |> Keyword.put(:segment_positions, %{})
-            )
-
-          {:error, message, line, column} ->
-            {:error, ParseError.new(message, line, column)}
+          {:ok, ast} -> evaluate_ast(ast, context, opts)
+          {:error, message, line, column} -> {:error, ParseError.new(message, line, column)}
         end
 
       {:error, message, line, column} ->
@@ -213,6 +202,27 @@ defmodule Predicator do
 
   def evaluate(instructions, context, opts) when is_list(instructions) and is_map(context) do
     evaluate_instructions(instructions, context, opts)
+  end
+
+  # Compiles a parsed expression and evaluates it, or passes through a
+  # {:error, struct()} from a node the InstructionsVisitor has no clause for
+  # (currently {:if, ...} and {:block, ...}) instead of destructuring it.
+  @spec evaluate_ast(Parser.ast(), Types.context() | Context.t(), keyword()) ::
+          {:ok, Types.value()} | {:error, struct()}
+  defp evaluate_ast(ast, context, opts) do
+    case Compiler.to_instructions_with_positions(ast) do
+      {:error, error} ->
+        {:error, error}
+
+      {instructions, positions} ->
+        evaluate_instructions(
+          instructions,
+          context,
+          opts
+          |> Keyword.put(:positions, positions)
+          |> Keyword.put(:segment_positions, %{})
+        )
+    end
   end
 
   # Helper function to evaluate instructions and convert errors to new format
@@ -466,28 +476,55 @@ defmodule Predicator do
       {:ok, tokens} ->
         case Parser.parse_program(tokens, opts) do
           {:ok, ast} ->
-            {instructions, positions, segment_positions} =
-              Compiler.to_instructions_with_segment_positions(ast)
-
-            execute_instructions(
-              instructions,
-              context,
-              opts
-              |> Keyword.put(:positions, positions)
-              |> Keyword.put(:segment_positions, segment_positions)
-            )
+            execute_value_ast(ast, context, opts)
 
           {:error, message, line, column} ->
-            {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
+            execute_value_parse_error(message, line, column, context, opts)
         end
 
       {:error, message, line, column} ->
-        {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
+        execute_value_parse_error(message, line, column, context, opts)
     end
   end
 
   def execute_value(instructions, context, opts) when is_list(instructions) and is_map(context) do
     execute_instructions(instructions, context, opts)
+  end
+
+  # Compiles a parsed program and runs it, or passes through a
+  # {:error, struct(), Context.t()} for a node the InstructionsVisitor has no
+  # clause for (currently {:if, ...} and {:block, ...}) instead of
+  # destructuring it.
+  @spec execute_value_ast(Parser.program(), Types.context() | Context.t(), keyword()) ::
+          {:ok, Types.value(), Context.t()} | {:error, struct(), Context.t()}
+  defp execute_value_ast(ast, context, opts) do
+    case Compiler.to_instructions_with_segment_positions(ast) do
+      {:error, error} ->
+        {:error, error, normalize_context(context, opts)}
+
+      {instructions, positions, segment_positions} ->
+        execute_instructions(
+          instructions,
+          context,
+          opts
+          |> Keyword.put(:positions, positions)
+          |> Keyword.put(:segment_positions, segment_positions)
+        )
+    end
+  end
+
+  # Shared by both tokenize- and parse-stage failures in execute_value/3: a
+  # parse failure never built an evaluator, so the three-tuple's context is
+  # just the input, normalized.
+  @spec execute_value_parse_error(
+          binary(),
+          pos_integer(),
+          pos_integer(),
+          Types.context() | Context.t(),
+          keyword()
+        ) :: {:error, struct(), Context.t()}
+  defp execute_value_parse_error(message, line, column, context, opts) do
+    {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
   end
 
   # A parse failure never built an evaluator, so there is no run to have
@@ -645,14 +682,7 @@ defmodule Predicator do
   """
   @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile(expression) when is_binary(expression) do
-    case parse(expression) do
-      {:ok, ast} ->
-        instructions = Compiler.to_instructions(ast)
-        {:ok, instructions}
-
-      {:error, message, line, column} ->
-        {:error, "#{message} at line #{line}, column #{column}"}
-    end
+    expression |> parse() |> build_instructions_result()
   end
 
   @doc """
@@ -723,14 +753,7 @@ defmodule Predicator do
   """
   @spec compile_program(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile_program(source) when is_binary(source) do
-    case parse_program(source) do
-      {:ok, ast} ->
-        instructions = Compiler.to_instructions(ast)
-        {:ok, instructions}
-
-      {:error, message, line, column} ->
-        {:error, "#{message} at line #{line}, column #{column}"}
-    end
+    source |> parse_program() |> build_instructions_result()
   end
 
   @doc """
@@ -760,13 +783,34 @@ defmodule Predicator do
           | {:error, binary(), pos_integer(), pos_integer()}
         ) :: {:ok, Compiled.t()} | {:error, binary()}
   defp build_compiled_result({:ok, ast}) do
-    {instructions, positions, segment_positions} =
-      Compiler.to_instructions_with_segment_positions(ast)
+    case Compiler.to_instructions_with_segment_positions(ast) do
+      {instructions, positions, segment_positions} ->
+        {:ok, Compiled.new(instructions, positions, segment_positions)}
 
-    {:ok, Compiled.new(instructions, positions, segment_positions)}
+      {:error, error} ->
+        {:error, error.message}
+    end
   end
 
   defp build_compiled_result({:error, message, line, column}) do
+    {:error, "#{message} at line #{line}, column #{column}"}
+  end
+
+  # Shared by compile/1 and compile_program/1: each differs only in how it
+  # parses (an expression vs a program), never in how the parse result
+  # becomes an instruction list or a binary error.
+  @spec build_instructions_result(
+          {:ok, Parser.ast() | Parser.program()}
+          | {:error, binary(), pos_integer(), pos_integer()}
+        ) :: {:ok, Types.instruction_list()} | {:error, binary()}
+  defp build_instructions_result({:ok, ast}) do
+    case Compiler.to_instructions(ast) do
+      {:error, error} -> {:error, error.message}
+      instructions -> {:ok, instructions}
+    end
+  end
+
+  defp build_instructions_result({:error, message, line, column}) do
     {:error, "#{message} at line #{line}, column #{column}"}
   end
 
