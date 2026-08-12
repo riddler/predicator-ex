@@ -467,9 +467,12 @@ iex> Predicator.decompile(ast, parentheses: :explicit)
 
 ## Contexts and key normalization
 
-`Predicator.Context.new/2` builds a persistent bound context: it merges the
-builtin function maps with `opts[:functions]` once, at construction, rather
-than re-merging on every `evaluate/3` call. `bind/3` is an O(1) rebind of a
+`Predicator.Context.new/2` builds a persistent bound context: it resolves the
+function dispatch map once, at construction, from builtins, `opts[:providers]`,
+and `opts[:functions]` (each later source shadowing an earlier same-named
+entry), rather than re-resolving it on every `evaluate/3` call - see the
+[custom functions guide](../guides/custom-functions.md) for the provider
+mechanism. `bind/3` is an O(1) rebind of a
 single key onto that context's data. `assign/3` writes through
 `Predicator.ContextLocation.put/3`, the same auto-vivifying algorithm the
 [location expressions guide](../guides/location-expressions.md) documents.
