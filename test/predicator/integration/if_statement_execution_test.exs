@@ -45,6 +45,13 @@ defmodule Predicator.Integration.IfStatementExecutionTest do
       assert error.got == :integer
     end
 
+    test "a non-boolean condition blames the if keyword, not the condition" do
+      assert {:error, %TypeMismatchError{operation: :pop_jump_if_falsy} = error, _ctx} =
+               Predicator.execute(~s|if "a" { y = 1 }|, %{})
+
+      assert error.position == {1, 1}
+    end
+
     test "an unbound condition takes the falsy path, not an error" do
       assert {:ok, ctx} = Predicator.execute("if unbound { x = 1 } else { x = 2 }", %{})
       assert ctx.data == %{"x" => 2}
