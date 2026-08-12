@@ -1,9 +1,43 @@
 defmodule PredicatorTest do
   use ExUnit.Case, async: true
 
-  alias Predicator.Errors.UndefinedVariableError
+  alias Predicator.Errors.{EvaluationError, UndefinedVariableError}
 
   doctest Predicator
+
+  describe "evaluate/3 - :loop_budget (ISA v6, ADR-0013)" do
+    # An unconditionally infinite loop - the condition is always true, so it
+    # exhausts any finite budget, including the default. No compiler emits
+    # jump_backward yet, so this is a hand-built instruction list.
+    @infinite_loop [["lit", true], ["pop_jump_if_falsy", 2], ["jump_backward", 2]]
+
+    test "loop_budget: 5 exhausts after five back edges" do
+      assert {:error, %EvaluationError{reason: "loop_budget_exceeded"}} =
+               Predicator.evaluate(@infinite_loop, %{}, loop_budget: 5)
+    end
+
+    test "loop_budget: 0 exhausts on the first back edge" do
+      assert {:error, %EvaluationError{reason: "loop_budget_exceeded"}} =
+               Predicator.evaluate(@infinite_loop, %{}, loop_budget: 0)
+    end
+
+    test "with no option, the default budget is honored" do
+      assert {:error, %EvaluationError{reason: "loop_budget_exceeded"}} =
+               Predicator.evaluate(@infinite_loop, %{})
+    end
+
+    test "loop_budget: -1 raises ArgumentError" do
+      assert_raise ArgumentError, fn ->
+        Predicator.evaluate(@infinite_loop, %{}, loop_budget: -1)
+      end
+    end
+
+    test "loop_budget: :lots raises ArgumentError" do
+      assert_raise ArgumentError, fn ->
+        Predicator.evaluate(@infinite_loop, %{}, loop_budget: :lots)
+      end
+    end
+  end
 
   describe "evaluate/2 with string expressions" do
     test "evaluates simple comparison" do

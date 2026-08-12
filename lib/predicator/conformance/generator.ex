@@ -48,7 +48,8 @@ defmodule Predicator.Conformance.Generator do
     5 => "functions",
     6 => "statements",
     7 => "casts",
-    8 => "control flow"
+    8 => "control flow",
+    9 => "loops"
   }
 
   @doc """
