@@ -983,4 +983,66 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       assert result == [["load", "x"], ["lit", 1], ["add"], ["cast", "integer"]]
     end
   end
+
+  describe "visit/2, visit_with_positions/2, visit_with_segment_positions/2 - unsupported nodes" do
+    test "visit/2 declines an if node instead of raising" do
+      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 1}}
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"} = error} =
+               InstructionsVisitor.visit(ast, [])
+
+      assert error.position == {1, 1}
+    end
+
+    test "visit/2 declines a bare block node - the hand-built-AST case" do
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               InstructionsVisitor.visit({:block, [], nil}, [])
+    end
+
+    test "visit_with_positions/2 declines an if node and carries its position" do
+      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 4}}
+
+      assert {:error,
+              %Predicator.Errors.EvaluationError{reason: "unsupported_node", position: {1, 4}}} =
+               InstructionsVisitor.visit_with_positions(ast, [])
+    end
+
+    test "visit_with_positions/2 carries a span in span mode" do
+      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {{1, 1}, {1, 9}}}
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"} = error} =
+               InstructionsVisitor.visit_with_positions(ast, [])
+
+      assert error.span == {{1, 1}, {1, 9}}
+      assert error.position == {1, 1}
+    end
+
+    test "visit_with_segment_positions/2 declines an if node" do
+      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 1}}
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               InstructionsVisitor.visit_with_segment_positions(ast, [])
+    end
+
+    test "an if nested inside an else block is caught at depth, not only at the top" do
+      {:ok, program} = Predicator.parse_program("if a { } else if b { }")
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               InstructionsVisitor.visit(program, [])
+    end
+
+    test "negative control: an ordinary program still returns a plain instruction list" do
+      {:ok, program} = Predicator.parse_program("x = 1; x + 1")
+
+      assert InstructionsVisitor.visit(program, []) == [
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["load", "x"],
+               ["lit", 1],
+               ["add"],
+               ["pop"]
+             ]
+    end
+  end
 end

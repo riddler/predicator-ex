@@ -109,7 +109,7 @@ defmodule Predicator.Visitors.StringVisitor do
     - `:verbose` - extra spacing: "score  >  85"
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.ast() | Parser.program(), keyword()) :: binary()
+  @spec visit(Parser.visitable(), keyword()) :: binary()
   def visit(ast_node, opts \\ []) do
     do_visit(ast_node, opts)
   end
