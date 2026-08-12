@@ -450,12 +450,15 @@ defmodule Predicator.Visitors.StringVisitor do
   # for into an {:error, struct()} at the boundary instead of a
   # FunctionClauseError - the same throw/catch shape checked in at
   # lib/predicator/duration.ex:76-109 and mirrored in InstructionsVisitor.
+  #
+  # The message names the construct and nothing else. What the rendering will
+  # need - ADR-0013's else-if printing rule, per px-3so.5 - is a contributor
+  # concern, and the host reading this error has only `language.md` in hand.
   @spec unsupported_node(binary(), Types.position() | Types.span() | nil) :: no_return()
   defp unsupported_node(construct, annotation) do
     error =
       EvaluationError.new(
-        "'#{construct}' does not decompile to source yet - rendering control " <>
-          "flow needs the else-if printing rule (ADR-0013)",
+        "'#{construct}' does not decompile to source yet",
         "unsupported_node"
       )
 

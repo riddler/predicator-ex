@@ -521,12 +521,15 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   # visitor has no clause for into an {:error, struct()} at the boundary
   # instead of a FunctionClauseError - the same throw/catch shape checked in
   # at lib/predicator/duration.ex:76-109.
+  #
+  # The message names the construct and nothing else. What the lowering will
+  # need - ISA v5's jump opcodes, per ADR-0013 and px-3so.3 - is a contributor
+  # concern, and the host reading this error has only `language.md` in hand.
   @spec unsupported_node(binary(), Types.position() | Types.span() | nil) :: no_return()
   defp unsupported_node(construct, annotation) do
     error =
       EvaluationError.new(
-        "'#{construct}' does not compile to instructions yet - lowering control " <>
-          "flow needs the ISA v5 jump opcodes (ADR-0013)",
+        "'#{construct}' does not compile to instructions yet",
         "unsupported_node"
       )
 
