@@ -35,6 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now emits both when lowering an `if` statement. Every ISA v5 instruction
   list still provably halts in at most `length(program)` steps, since neither
   opcode introduces a backward jump.
+- **Conformance corpus: tier 8 covers else-if chains, nesting, and empty
+  blocks.** `conformance/cases/control_flow.json` gains eleven if/else
+  statement-shaped cases exercising ADR-0013's full lowering: an else-if
+  chain taking each of its three branches, a nested if/else inside a then-
+  branch (both inner branches, plus the outer else skipping the nested
+  check entirely), an empty then-block and an empty else-block each taken
+  and not taken, and a non-boolean condition raising `TypeMismatchError`
+  inside the full if/else lowering rather than a bare `pop_jump_if_falsy`.
+  Tier 8's case count moves from 6 to 17 and the corpus hash advances
+  (`px-3so.6`).
 - **Type casts (`::`).** A postfix `expr::type` operator converts a value to
   one of the seven scalar types - `string`, `integer`, `float`, `boolean`,
   `date`, `datetime`, `duration` - and chains, so `"42"::integer::float` casts
