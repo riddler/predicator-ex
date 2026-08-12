@@ -56,12 +56,15 @@ defmodule Predicator.Visitors.StringVisitor do
       iex> {:ok, ast} = Predicator.parse(~s({"first name": "John"}))
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       ~s({"first name": "John"})
+
+      iex> {:ok, ast} = Predicator.parse_program("if a { x = 1 } else if b { x = 2 }")
+      iex> Predicator.Visitors.StringVisitor.visit(ast, [])
+      "if a { x = 1 } else if b { x = 2 }"
   """
 
   @behaviour Predicator.Visitor
 
-  alias Predicator.{Errors, Parser, Types}
-  alias Predicator.Errors.EvaluationError
+  alias Predicator.Parser
 
   # Precedence levels, loosest to tightest, matching the grammar in
   # docs/architecture.md's "Grammar with Operator Precedence" section:
@@ -95,10 +98,7 @@ defmodule Predicator.Visitors.StringVisitor do
 
   ## Returns
 
-  String representation of the AST node, or `{:error, struct()}` when
-  `ast_node` contains a node this visitor has no clause for - currently
-  `{:if, ...}` and `{:block, ...}` (ADR-0013's control flow, not yet
-  rendered).
+  String representation of the AST node.
 
   ## Options
 
@@ -113,12 +113,8 @@ defmodule Predicator.Visitors.StringVisitor do
     - `:verbose` - extra spacing: "score  >  85"
   """
   @impl Predicator.Visitor
-  @spec visit(Parser.visitable(), keyword()) :: binary() | {:error, struct()}
-  def visit(ast_node, opts \\ []) do
-    do_visit(ast_node, opts)
-  catch
-    {:unsupported_node, error} -> {:error, error}
-  end
+  @spec visit(Parser.visitable(), keyword()) :: binary()
+  def visit(ast_node, opts \\ []), do: do_visit(ast_node, opts)
 
   @spec do_visit(Parser.visitable(), keyword()) :: binary()
   defp do_visit(ast_node, opts)
@@ -286,14 +282,18 @@ defmodule Predicator.Visitors.StringVisitor do
     end
   end
 
-  # Rendering control flow back to source is px-3so.5's work, including
-  # ADR-0013's else-if printing rule. Declining explicitly keeps the contract a
-  # value (ADR-0004) rather than a FunctionClauseError.
-  defp do_visit({:if, _condition, _then_block, _else_block, annotation}, _opts),
-    do: unsupported_node("if", annotation)
+  # ADR-0013's control flow renders single-line, like {:program, ...} above:
+  # the statement layer's punctuation is fixed and ignores :spacing.
+  defp do_visit({:if, condition, then_block, else_block, _position}, opts) do
+    "if #{do_visit(condition, opts)} #{do_visit(then_block, opts)}" <>
+      render_else(else_block, opts)
+  end
 
-  defp do_visit({:block, _statements, annotation}, _opts),
-    do: unsupported_node("block", annotation)
+  defp do_visit({:block, [], _position}, _opts), do: "{ }"
+
+  defp do_visit({:block, statements, _position}, opts) do
+    "{ " <> Enum.map_join(statements, "; ", &do_visit(&1, opts)) <> " }"
+  end
 
   defp do_visit({:program, statements, _position}, opts) do
     Enum.map_join(statements, "; ", &do_visit(&1, opts))
@@ -421,6 +421,8 @@ defmodule Predicator.Visitors.StringVisitor do
   defp precedence({:unary, _op, _operand, _position}), do: @level_unary
   defp precedence({:program, _statements, _position}), do: @level_statement
   defp precedence({:assignment, _lhs, _rhs, _position}), do: @level_statement
+  defp precedence({:if, _condition, _then_block, _else_block, _position}), do: @level_statement
+  defp precedence({:block, _statements, _position}), do: @level_statement
   defp precedence(_atom_or_postfix_node), do: @level_primary
 
   @spec get_spacing(keyword()) :: binary()
@@ -446,22 +448,16 @@ defmodule Predicator.Visitors.StringVisitor do
   defp format_object_key({:object_key, value, :single, _position}),
     do: ~s('#{String.replace(value, "'", "\\'")}')
 
-  # Escapes to visit/2's `catch`, converting a node this visitor has no clause
-  # for into an {:error, struct()} at the boundary instead of a
-  # FunctionClauseError - the same throw/catch shape checked in at
-  # lib/predicator/duration.ex:76-109 and mirrored in InstructionsVisitor.
-  #
-  # The message names the construct and nothing else. What the rendering will
-  # need - ADR-0013's else-if printing rule, per px-3so.5 - is a contributor
-  # concern, and the host reading this error has only `language.md` in hand.
-  @spec unsupported_node(binary(), Types.position() | Types.span() | nil) :: no_return()
-  defp unsupported_node(construct, annotation) do
-    error =
-      EvaluationError.new(
-        "'#{construct}' does not decompile to source yet",
-        "unsupported_node"
-      )
+  # ADR-0013: `else if` is parser sugar with no AST node of its own - the
+  # else slot is a synthetic block holding exactly one `if`
+  # (parser.ex:679-694). Printing that shape back as `else if` is what makes
+  # the natural spelling round-trip; a block with any other contents prints
+  # as an ordinary `else { ... }`.
+  @spec render_else(Parser.block() | nil, keyword()) :: binary()
+  defp render_else(nil, _opts), do: ""
 
-    throw({:unsupported_node, Errors.put_position(error, annotation)})
-  end
+  defp render_else({:block, [{:if, _c, _t, _e, _p} = nested], _position}, opts),
+    do: " else " <> do_visit(nested, opts)
+
+  defp render_else(block, opts), do: " else " <> do_visit(block, opts)
 end

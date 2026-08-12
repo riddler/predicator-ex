@@ -321,17 +321,11 @@ defmodule Predicator.CompilerTest do
     end
   end
 
-  describe "to_string/2 - unsupported nodes (if/block)" do
-    test "a bare block node returns {:error, ...} instead of raising" do
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               Compiler.to_string({:block, [], nil})
-    end
-
-    test "a bare if node returns {:error, ...} instead of raising" do
+  describe "to_string/2 - if/block rendering (ADR-0013)" do
+    test "a hand-built, nil-slot if node returns a binary" do
       ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, nil}
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               Compiler.to_string(ast)
+      assert Compiler.to_string(ast) == "if a { }"
     end
   end
 end
