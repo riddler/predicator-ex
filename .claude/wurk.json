@@ -1,6 +1,8 @@
 {
   "wurk": 1,
 
+  "repo": { "default_branch": "main" },
+
   "beads": {
     "prefix": "px",
     "topology": "beads",
@@ -17,7 +19,8 @@
         "area:docs",
         "area:build"
       ],
-      "lands_alone": ["area:build"]
+      "lands_alone": ["area:build"],
+      "always_batchable": ["upstream"]
     }
   },
 
@@ -52,6 +55,8 @@
   },
 
   "tmux": { "session": "predicator-ex", "model": "opus" },
+
+  "models": { "direction": "opus" },
 
   "artifacts": {
     "plans": "docs/plans",

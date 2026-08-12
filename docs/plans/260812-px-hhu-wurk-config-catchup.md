@@ -470,9 +470,9 @@ layout. No other section moves.
 
 #### Automated Verification:
 
-- [ ] `ruby ~/.claude/skills/wurk:kit/scripts/lib/manifest.rb check` reports
+- [x] `ruby ~/.claude/skills/wurk:kit/scripts/lib/manifest.rb check` reports
       `ok: true` with no `blocked` entries and no unknown-key warnings.
-- [ ] The three fields load with the intended values:
+- [x] The three fields load with the intended values:
 
       ```sh
       ruby -rjson -e 'm = JSON.parse(File.read(".claude/wurk.json"))
@@ -481,15 +481,15 @@ layout. No other section moves.
       ```
 
       prints `"main"`, `"opus"`, `["upstream"]`.
-- [ ] The fields deliberately left off are absent:
+- [x] The fields deliberately left off are absent:
       `ruby -rjson -e 'm = JSON.parse(File.read(".claude/wurk.json")); g = m["gate"]
         p m.key?("judge"), m.key?("rebase"), g.key?("attest"),
           g.key?("guard_ledger"), g.key?("sabotage")'`
       prints five `false` values.
-- [ ] `ruby ~/.claude/skills/wurk:kit/scripts/gate.rb` reports `ok: true`, with
+- [x] `ruby ~/.claude/skills/wurk:kit/scripts/gate.rb` reports `ok: true`, with
       `data.sabotage.enabled` still `false` and a stated `reason`, and
       `attested: false`.
-- [ ] The kit's own accessor returns the new value - the field is read through
+- [x] The kit's own accessor returns the new value - the field is read through
       the loader, not merely present in the file:
 
       ```sh
@@ -628,6 +628,27 @@ blocking here.
       would re-role an agent (ADR-0011 point 5).
 - [ ] Nothing removed from `research.md` is now unreachable by the
       `/wurk:research` flow.
+
+**Implementation Note**: Use the project's loop gate between edits while
+iterating; run the full gate as the phase gate. In interactive execution,
+pause here for the human to confirm the manual testing before moving to the
+next phase. In looped (`--loop`) execution, this phase's Automated
+Verification gates advancement automatically (via `/wurk:commit --auto`), and
+Manual Verification items are deferred and surfaced once at the end instead of
+blocking here.
+
+---
+
+### Phase 3
+
+- [ ] Each row of the decision table is defensible on its own terms, and the
+      three "leave off" rows state a reason specific to this repo rather than
+      copying statifier-ex's column.
+- [ ] The `gate.sabotage` row's disagreement with wurk `docs/manifest.md`
+      ("predicator-ex ... ha[s] no sabotage-discipline corpus") is understood
+      as a granularity mismatch, not an oversight in either document.
+- [ ] A future `upstream` bead is reported by `/wurk:next` as the `upstream`
+      verdict rather than being handed a worktree.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution,
