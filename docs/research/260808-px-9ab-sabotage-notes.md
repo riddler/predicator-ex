@@ -276,3 +276,13 @@ are unaffected.
   the sabotage window. `:while` appearing correctly in the constructor list
   and in neither "missing" list during this run is itself evidence the new
   clauses in both visitors and the typespec are wired together correctly.
+
+  Re-verified after rebasing onto `px-3so.5`, which landed `StringVisitor`'s
+  real `{:if, ...}` and `{:block, ...}` clauses and conflicted with this bead
+  in the same file's moduledoc. The merged moduledoc asserts something neither
+  side asserted alone - that *both* visitors now cover every constructor,
+  `:while` included - so the pass was taken again against the merged file
+  rather than carried over. Same outcome, and the `StringVisitor` failure
+  naming only `:sabotage_probe` as missing is the evidence for the merged
+  claim: had the conflict resolution dropped a clause, that list would name it
+  too.
