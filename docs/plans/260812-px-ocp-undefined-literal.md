@@ -639,11 +639,11 @@ or quoting the key; only the lowercase spelling is reserved.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green - `test/predicator/isa_sync_test.exs` in
+- [x] `mix quality` is green - `test/predicator/isa_sync_test.exs` in
       particular, since `docs/isa.md` was edited.
-- [ ] `grep -n "undefined" docs/architecture.md docs/reference/language.md
+- [x] `grep -n "undefined" docs/architecture.md docs/reference/language.md
       CHANGELOG.md` shows a hit in each of the four sites above.
-- [ ] `git diff docs/isa.md` shows no changed line beginning with `| \``  -
+- [x] `git diff docs/isa.md` shows no changed line beginning with `| \``  -
       no opcode-table, tier-table, or version-history row moved.
 
 #### Manual Verification:
@@ -793,5 +793,26 @@ the human to confirm the manual testing before moving to the next phase. In
 looped (`--loop`) execution, this phase's Automated Verification gates
 advancement automatically (via `/wurk:commit --auto`), and Manual Verification
 items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 3
+
+- [ ] The `x == undefined` versus `x === undefined` distinction is
+      unambiguous to a reader who has not read this plan.
+- [ ] The `on_unbound: :error` boundary is stated honestly - a reader must not
+      come away believing `x === undefined` rescues a genuinely unbound root
+      under `:error`.
+- [ ] The changelog break entry gives a fix, matching the tone of the
+      `if`/`else`/`while` entry.
+- [ ] The grammar production reads correctly against the rest of the EBNF.
+
+**Implementation Note**: This phase touches no Elixir code, so per CLAUDE.md
+it may commit on review of the diff alone - but `mix quality` is still run,
+because `docs/isa.md` is under a binding test. In interactive execution, pause
+here for the human to confirm the manual testing. In looped (`--loop`)
+execution, this phase's Automated Verification gates advancement automatically
+(via `/wurk:commit --auto`), and Manual Verification items are deferred and
+surfaced once at the end.
 
 ---

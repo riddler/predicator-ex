@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **An `undefined` literal.** `undefined` is now a literal keyword, parsing
+  to `{:literal, :undefined, pos}` and compiling to `["lit", :undefined]` -
+  the same instruction an absent map key or a normalized `nil` already
+  produced, now with a source spelling an author can write directly. That
+  makes `x === undefined` a boundness test that works under both
+  `on_unbound` policies (`{:ok, true}`/`{:ok, false}`, never an error, since
+  the literal compiles to `lit` rather than `load` and only `load` consults
+  the policy); `x == undefined` is not the same test and keeps propagating -
+  it evaluates to `:undefined` rather than answering, since `==` is a
+  non-strict comparison operator. **The ISA version does not move**: surface
+  syntax is outside the ISA (`docs/isa.md` §6), and `lit`'s operand already
+  admitted `:undefined` per §3's value domain, so this is a new spelling for
+  an instruction that already existed, not a new opcode or a widened one.
+  `Predicator.decompile/2` renders the literal back as `undefined`.
 - **`if`/`else` statements parse.** `Predicator.parse_program/2` accepts
   `if cond { ... }` with an optional `else` block, producing two new AST
   nodes - `{:if, condition, then_block, else_block, pos}` and
@@ -152,6 +166,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   similar stay ordinary identifiers. All three words are reserved together
   even though `while` does not gain real grammar until a later release, so
   the break lands once instead of twice (ADR-0013).
+- **`undefined` is a reserved word.** The lexer now classifies it as a
+  literal keyword rather than a plain identifier, so a predicate that used it
+  as a variable name (`undefined = 3`), a bare property name
+  (`user.undefined`), or a bare object key (`{undefined: 1}`) is now a parse
+  error. The fix is renaming the variable or, for an object key, quoting it
+  (`{"undefined": 1}`, which still parses). Only the lowercase spelling is
+  reserved - `UNDEFINED` and `Undefined` stay ordinary identifiers.
 - **Published ADR set.** The API documentation now carries every ADR its pages
   cite - ADR-0009 (the compiled envelope) and ADR-0011 (casts are an opcode)
   join 0001-0003 - so those citations resolve on hexdocs instead of 404ing.

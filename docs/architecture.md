@@ -37,7 +37,7 @@ multiplication → unary ( ( "*" | "/" | "%" ) unary )*
 unary        → ( "-" | "!" ) unary | postfix
 postfix      → primary ( "[" expression "]" | "." IDENTIFIER | "::" TYPE_NAME )*
 TYPE_NAME    → "integer" | "float" | "string" | "boolean" | "date" | "datetime" | "duration"
-primary      → NUMBER | FLOAT | STRING | BOOLEAN | DATE | DATETIME | IDENTIFIER | duration | relative_date | list | object | function_call | "(" expression ")"
+primary      → NUMBER | FLOAT | STRING | BOOLEAN | UNDEFINED | DATE | DATETIME | IDENTIFIER | duration | relative_date | list | object | function_call | "(" expression ")"
 function_call → FUNCTION_NAME "(" ( expression ( "," expression )* )? ")"
 list         → "[" ( expression ( "," expression )* )? "]"
 object       → "{" ( object_entry ( "," object_entry )* )? "}"
