@@ -9,7 +9,7 @@
       ["jump_backward", 9],
       ["load", "i"]
     ],
-    "notes": "the ADR-0013 while-lowering shape (c is indices 3-5, lenC 3; A is indices 7-11, lenA 5): pop_jump_if_falsy at index 6 takes lenA + 2 = 7 and lands on index 13; jump_backward at index 12 takes lenC + lenA + 1 = 9 and lands on index 3, the condition's first instruction. No compiler emits jump_backward yet (ISA v6, tier 9), so this is hand-authored rather than source-based."
+    "notes": "the ADR-0013 while-lowering shape (c is indices 3-5, lenC 3; A is indices 7-11, lenA 5): pop_jump_if_falsy at index 6 takes lenA + 2 = 7 and lands on index 13; jump_backward at index 12 takes lenC + lenA + 1 = 9 and lands on index 3, the condition's first instruction. Authored as instructions rather than as a `while` source string deliberately: the case pins the lowering shape itself, so it stays a check on any implementation's evaluator even where the surface syntax differs or the compiler does not emit jump_backward at all."
   },
   {
     "id": "loops/zero-iterations-when-condition-starts-falsy",
