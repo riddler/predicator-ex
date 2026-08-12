@@ -68,5 +68,27 @@
     "source": "true == !false",
     "expected": { "result": true },
     "notes": "! at a non-top-level unary position compiles to unary_bang; NOT/top-level ! compile to the not opcode instead (see legacy.json for the bare and/or opcodes and short_circuit.json for the jump opcodes)"
+  },
+  {
+    "id": "core/literal-undefined",
+    "source": "undefined",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the undefined literal (px-ocp): a source spelling for a lit operand the ISA's value domain already admitted (docs/isa.md section 3), so no ISA version moves - surface syntax is outside the ISA (section 6)"
+  },
+  {
+    "id": "core/undefined-strict-eq-undefined",
+    "source": "undefined === undefined",
+    "expected": { "result": true }
+  },
+  {
+    "id": "core/undefined-strict-ne-int",
+    "source": "undefined !== 1",
+    "expected": { "result": true }
+  },
+  {
+    "id": "core/undefined-eq-propagates",
+    "source": "undefined == undefined",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "the non-strict operators propagate :undefined rather than answering (docs/reference/language.md, reject vs. propagate) - === is the boundness test, == is not"
   }
 ]

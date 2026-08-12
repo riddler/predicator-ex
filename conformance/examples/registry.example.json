@@ -2,7 +2,7 @@
 "claims": [
 {"surface":"evaluator","tier":1}
 ],
-"corpus_hash": "sha256:cf9822bda5af5dbf7fb49dfb6849fffb9025bcd2ff1a51eb89b7c1fb35b99d02",
+"corpus_hash": "sha256:317064a91567afe91e5ebb6c7239234f233e45b8521bf12057141854919bca40",
 "entries": [
 {"case_id":"comparison/eq-string-true","surface":"compiler","tier":1},
 {"case_id":"comparison/gt-int-boundary","surface":"compiler","tier":1},
@@ -30,6 +30,10 @@
 {"case_id":"comparison/type-mismatch-is-undefined-not-error","surface":"evaluator","tier":1},
 {"case_id":"core/literal-integer","surface":"evaluator","tier":1},
 {"case_id":"core/literal-true","surface":"evaluator","tier":1},
+{"case_id":"core/literal-undefined","surface":"evaluator","tier":1},
+{"case_id":"core/undefined-eq-propagates","surface":"evaluator","tier":1},
+{"case_id":"core/undefined-strict-eq-undefined","surface":"evaluator","tier":1},
+{"case_id":"core/undefined-strict-ne-int","surface":"evaluator","tier":1},
 {"case_id":"dates/gt-date-true","surface":"evaluator","tier":1},
 {"case_id":"dates/gte-date-boundary-true","surface":"evaluator","tier":1},
 {"case_id":"dates/lt-datetime-true","surface":"evaluator","tier":1},
