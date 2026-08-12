@@ -86,6 +86,35 @@ instructions produces no error - just a confidently wrong position, which is
 worse than the honest `nil` a bare instruction list reports
 (`lib/predicator/compiled.ex`).
 
+## Persisting a context alongside a program
+
+The instruction list is not the only thing a long-lived host may want to
+store or hand to another process - the `%Predicator.Context{}` it evaluates
+against is a candidate too, if functions are wired in through `providers:`
+rather than `functions:`. A provider is a module atom, and a `host` term is
+whatever plain data the host put there, so a context built that way is
+ordinary Erlang term data:
+
+```elixir
+iex> context = Predicator.Context.new(
+...>   %{"score" => 92},
+...>   providers: [Predicator.Functions.MathFunctions],
+...>   builtins: false,
+...>   host: %{tenant: "acme"}
+...> )
+iex> binary = :erlang.term_to_binary(context)
+iex> restored = :erlang.binary_to_term(binary)
+iex> Predicator.evaluate("Math.max(score, 0) > 85", restored)
+{:ok, true}
+```
+
+A context carrying an inline `functions:` closure evaluates identically but
+is not storable this way - `:erlang.term_to_binary/1` has no way to hand a
+`fun` back to a different run or a different node, so it is only ever safe to
+call on a providers-only context. See the [custom functions
+guide](custom-functions.md#the-host-slot) for the provider + host pattern
+this depends on.
+
 ## Check the ISA version before you run a stored program
 
 `Predicator.Instructions.required_isa/1` gives the minimum ISA version an
