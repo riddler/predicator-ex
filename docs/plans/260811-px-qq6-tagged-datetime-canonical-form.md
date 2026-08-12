@@ -390,15 +390,15 @@ carries the canonical form in **two** places - the `lit` operand and
 
 #### Automated Verification:
 
-- [ ] Full `mix quality` passes, including the schema-validation and
+- [x] Full `mix quality` passes, including the schema-validation and
       corpus-freshness binding tests.
-- [ ] `mix corpus.generate` is a fixpoint: running it twice leaves the tree
+- [x] `mix corpus.generate` is a fixpoint: running it twice leaves the tree
       clean the second time.
-- [ ] `grep '10:30:00\.500000Z' conformance/corpus/tier-7.json` finds the new
+- [x] `grep '10:30:00\.500000Z' conformance/corpus/tier-7.json` finds the new
       case's tagged `value`, and the same line's `lit` operand carries it too.
-- [ ] `conformance/manifest.json`'s `isa_version` is still `4`, and its tier-7
+- [x] `conformance/manifest.json`'s `isa_version` is still `4`, and its tier-7
       `case_count` is 57.
-- [ ] `git diff --stat docs/isa.md` is still empty.
+- [x] `git diff --stat docs/isa.md` is still empty.
 
 #### Manual Verification:
 
@@ -503,5 +503,32 @@ to confirm the manual testing before moving to the next phase. In looped
 (`--loop`) execution, this phase's Automated Verification gates advancement
 automatically (via `/wurk:commit --auto`), and Manual Verification items are
 deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] The generator accepted the authored `expected` without a mismatch error,
+      confirming the authored form is what the real pipeline computes rather
+      than something the author guessed.
+- [ ] The corpus diff is exactly one added line plus the manifest's hash and
+      count - nothing else moved.
+- [ ] The commit message and PR body explain the corpus diff and what it pins
+      (ADR-0003), and say that `corpus_hash` moved for an added case rather than
+      for a changed expectation, so no sibling's existing expectation is
+      invalidated.
+- [ ] The case reads as pinning the *encoding*, not the `cast` opcode, to
+      someone who finds it in `casts.json`.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits and the
+full gate as the phase gate. In interactive execution, pause here for the human
+to confirm the manual testing. In looped (`--loop`) execution, this phase's
+Automated Verification gates advancement automatically, and Manual Verification
+items are deferred and surfaced once at the end.
+
+If the corpus diff turns out to be unwanted - the direction record records this
+as the cheap fallback - dropping this phase entirely leaves every consequence of
+Phase 1 intact, at the cost of leaving the six-digit half pinned only by the
+Elixir suite.
 
 ---

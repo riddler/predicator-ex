@@ -73,6 +73,14 @@
     "notes": "identity clause: a datetime already of the target type passes through unchanged"
   },
   {
+    "id": "casts/datetime-identity-non-zero-fraction-encodes-six-digits",
+    "source": "#2026-08-09T10:30:00.500Z#::datetime",
+    "expected": {
+      "result": { "$type": "datetime", "value": "2026-08-09T10:30:00.500000Z" }
+    },
+    "notes": "the tagged datetime encoding carries the same canonical fractional-seconds form as datetime::string: omitted entirely when the sub-second component is zero and exactly six digits when it is not (conformance/README.md, px-qq6). The literal's own three digits are not what is exported - a variable digit count is the cross-language hazard the form exists to remove, since a Date-backed JavaScript sibling can only produce three and Ruby's iso8601(n) cannot trim. The pinned value is expressible in milliseconds deliberately, so such a sibling can construct the input at all. Every other datetime in the corpus is zero-fraction, so without this case the six-digit half of the form is pinned only by the reference implementation's own suite"
+  },
+  {
     "id": "casts/duration-to-duration-identity",
     "source": "3d::duration",
     "expected": {
