@@ -78,6 +78,11 @@ defmodule Predicator.ASTShape do
   def strip({:program, statements, _slot}), do: {:program, Enum.map(statements, &strip/1)}
   def strip({:assignment, lhs, rhs, _slot}), do: {:assignment, strip(lhs), strip(rhs)}
 
+  def strip({:if, condition, then_block, else_block, _slot}),
+    do: {:if, strip(condition), strip(then_block), strip(else_block)}
+
+  def strip({:block, statements, _slot}), do: {:block, Enum.map(statements, &strip/1)}
+
   def strip(node), do: node
 
   defp strip_entry({{:object_key, value, style, _slot}, node}),

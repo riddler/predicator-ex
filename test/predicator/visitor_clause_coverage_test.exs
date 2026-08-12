@@ -7,9 +7,10 @@ defmodule Predicator.VisitorClauseCoverageTest do
   `if_statement/0`, `block/0`, and `ast/0`) to a fixed set of tuple
   constructors: whatever a visitor can be handed. `StringVisitor.do_visit/2`
   and `InstructionsVisitor.visit_annotated/2` are each a private, exhaustive-
-  looking case over that set, with two declining clauses (`{:if, ...}` and
-  `{:block, ...}`) standing in for the control-flow lowering px-3so.3 and
-  px-3so.5 have not landed yet. Nothing at compile time keeps a visitor's
+  looking case over that set - both visitors have real clauses for every
+  constructor, including `{:if, ...}` and `{:block, ...}`, since px-3so.3 and
+  px-3so.5 landed the control-flow lowering and rendering. Nothing at compile
+  time keeps a visitor's
   clause heads in sync with the typespec: `visitable/0` is a union of tuple
   shapes, not a behaviour callback, so a 23rd constructor added there compiles
   cleanly and only fails at run time, as a `FunctionClauseError`, the first

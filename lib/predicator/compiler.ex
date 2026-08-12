@@ -140,9 +140,7 @@ defmodule Predicator.Compiler do
 
   ## Returns
 
-  String representation of the AST, or `{:error, struct()}` when `ast`
-  contains a node the StringVisitor has no clause for - currently
-  `{:if, ...}` and `{:block, ...}`.
+  String representation of the AST.
 
   ## Examples
 
@@ -158,7 +156,7 @@ defmodule Predicator.Compiler do
       iex> Predicator.Compiler.to_string(ast, parentheses: :explicit)
       "(age > 21)"
   """
-  @spec to_string(Parser.visitable(), keyword()) :: binary() | {:error, struct()}
+  @spec to_string(Parser.visitable(), keyword()) :: binary()
   def to_string(ast, opts \\ []) do
     Visitor.accept(ast, StringVisitor, opts)
   end

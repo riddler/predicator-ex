@@ -1195,54 +1195,79 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "a corpus of precedence-sensitive expressions round-trips under default :minimal" do
       for source <- @precedence_corpus do
-        {:ok, ast} = Predicator.parse_program(source)
-        decompiled = Predicator.decompile(ast)
-
-        assert {:ok, reparsed} = Predicator.parse_program(decompiled)
-
-        assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast),
-               "Failed round-trip for: #{source} -> #{decompiled}"
+        assert_tree_fixpoint(source)
       end
     end
   end
 
-  describe "visit/2 - unsupported nodes (if/block)" do
-    test "declines a bare if node instead of raising" do
-      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, {1, 1}}
+  describe "visit/2 - if/block rendering (ADR-0013)" do
+    @control_flow_corpus [
+      "if a { x = 1 }",
+      "if a { }",
+      "if a { x = 1 } else { x = 2 }",
+      "if a { } else { }",
+      "if a { x = 1; y = 2 } else { x = 2 }",
+      "if a { x = 1 } else if b { x = 2 }",
+      "if a { x = 1 } else if b { x = 2 } else { x = 3 }",
+      "if a { x = 1 } else if b { x = 2 } else if c { x = 3 } else { x = 4 }",
+      "if a { if b { x = 1 } }",
+      "if a { if b { x = 1 } else { x = 2 } } else { x = 3 }",
+      "if a > 1 AND b < 2 { x = 1 }",
+      "z = 0; if a { x = 1 }; y = 2",
+      "if a { x = 1 } if b { y = 2 }"
+    ]
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"} = error} =
-               StringVisitor.visit(ast, [])
-
-      assert error.position == {1, 1}
+    test "a corpus of control-flow programs round-trips (tree fixpoint)" do
+      for source <- @control_flow_corpus do
+        assert_tree_fixpoint(source)
+      end
     end
 
-    test "declines a bare block node - the hand-built-AST case" do
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               StringVisitor.visit({:block, [], nil}, [])
+    test "a corpus of control-flow programs round-trips (string fixpoint)" do
+      for source <- @control_flow_corpus do
+        assert_string_fixpoint(source)
+      end
     end
 
-    test "decompile/2 declines a program containing a bare if" do
+    test "renders a bare if with no else" do
       {:ok, ast} = Predicator.parse_program("if a { x = 1 }")
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"} = error} =
-               Predicator.decompile(ast)
-
-      [{:if, _condition, _then_block, _else_block, if_annotation}] = elem(ast, 1)
-      assert error.position == if_annotation
+      assert Predicator.decompile(ast) == "if a { x = 1 }"
     end
 
-    test "decompile/2 declines a program containing an if/else" do
+    test "renders an empty block as '{ }'" do
+      {:ok, ast} = Predicator.parse_program("if a { }")
+
+      assert Predicator.decompile(ast) == "if a { }"
+    end
+
+    test "renders an if/else" do
       {:ok, ast} = Predicator.parse_program("if a { x = 1 } else { x = 2 }")
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               Predicator.decompile(ast)
+      assert Predicator.decompile(ast) == "if a { x = 1 } else { x = 2 }"
     end
 
-    test "decompile/2 declines an else-if chain - the nested case" do
-      {:ok, ast} = Predicator.parse_program("if a { x = 1 } else if b { x = 2 }")
+    test "prints an else slot holding a single hand-nested if as 'else if'" do
+      {:ok, ast} = Predicator.parse_program("if a { x = 1 } else { if b { x = 2 } }")
 
-      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
-               Predicator.decompile(ast)
+      decompiled = Predicator.decompile(ast)
+      assert decompiled == "if a { x = 1 } else if b { x = 2 }"
+
+      assert {:ok, reparsed} = Predicator.parse_program(decompiled)
+      assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast)
+    end
+
+    test "keeps braces when the else block holds more than a single if" do
+      {:ok, ast} = Predicator.parse_program("if a { x = 1 } else { if b { x = 2 }; y = 3 }")
+
+      assert Predicator.decompile(ast) == "if a { x = 1 } else { if b { x = 2 }; y = 3 }"
+    end
+
+    test "statement-layer punctuation ignores :spacing" do
+      {:ok, ast} = Predicator.parse_program("if a { x = 1 }")
+
+      assert Predicator.decompile(ast, spacing: :compact) == "if a { x = 1 }"
+      assert Predicator.decompile(ast, spacing: :verbose) == "if a { x = 1 }"
     end
 
     test "negative control: decompile/2 on an ordinary expression still returns a binary" do
@@ -1256,5 +1281,29 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       assert Predicator.decompile(ast) == "a = 1; b = 2"
     end
+  end
+
+  # Shared by the precedence-sensitive and control-flow corpus tests above:
+  # parse -> decompile -> reparse, then compare the stripped trees (tree
+  # fixpoint) or the two decompiled strings (string fixpoint).
+  defp assert_tree_fixpoint(source) do
+    {:ok, ast} = Predicator.parse_program(source)
+    decompiled = Predicator.decompile(ast)
+
+    assert {:ok, reparsed} = Predicator.parse_program(decompiled)
+
+    assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast),
+           "Failed round-trip for: #{source} -> #{decompiled}"
+  end
+
+  defp assert_string_fixpoint(source) do
+    {:ok, ast} = Predicator.parse_program(source)
+    decompiled = Predicator.decompile(ast)
+
+    {:ok, reparsed} = Predicator.parse_program(decompiled)
+    redecompiled = Predicator.decompile(reparsed)
+
+    assert redecompiled == decompiled,
+           "String fixpoint failed for: #{source} -> #{decompiled} -> #{redecompiled}"
   end
 end
