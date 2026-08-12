@@ -16,6 +16,18 @@ defmodule Predicator.ContextTest do
       assert map_size(context.functions) > 0
     end
 
+    test "defaults host to nil" do
+      context = Context.new()
+
+      assert context.host == nil
+    end
+
+    test "stores the given host term without normalization" do
+      context = Context.new(%{}, host: %{a: nil})
+
+      assert context.host == %{a: nil}
+    end
+
     test "stores the given data" do
       context = Context.new(%{"a" => 1})
 
@@ -122,6 +134,31 @@ defmodule Predicator.ContextTest do
 
       assert bound.data == %{"user" => %{"role" => :undefined}}
     end
+
+    test "preserves host" do
+      context = Context.new(%{}, host: %{conn: :db})
+      bound = Context.bind(context, "a", 1)
+
+      assert bound.host === context.host
+    end
+  end
+
+  describe "put_host/2" do
+    test "replaces host" do
+      context = Context.new(%{})
+      updated = Context.put_host(context, %{conn: :db})
+
+      assert updated.host == %{conn: :db}
+    end
+
+    test "leaves data, functions, and on_unbound identical" do
+      context = Context.new(%{"a" => 1}, on_unbound: :error)
+      updated = Context.put_host(context, %{conn: :db})
+
+      assert updated.data === context.data
+      assert updated.functions === context.functions
+      assert updated.on_unbound === context.on_unbound
+    end
   end
 
   describe "bound?/2" do
@@ -189,6 +226,13 @@ defmodule Predicator.ContextTest do
 
       assert bound.data == %{"user" => %{"profile" => %{"name" => "Ada"}}}
     end
+
+    test "preserves host" do
+      context = Context.new(%{}, host: %{conn: :db})
+      assert {:ok, bound} = Context.assign(context, "user", "Ada")
+
+      assert bound.host === context.host
+    end
   end
 
   describe "assign/3 with an already-resolved path" do
@@ -213,6 +257,19 @@ defmodule Predicator.ContextTest do
 
       assert {:error, %LocationError{type: :not_a_container}} =
                Context.assign(context, "user.name", "Ada")
+    end
+  end
+
+  describe "host is invisible to predicate text" do
+    test "a name matching a host key evaluates to :undefined" do
+      # Wrapped in an object literal, not evaluated bare: a bare unbound root
+      # is itself ambiguous - ADR-driven behavior (px-8um.7) turns that case
+      # into an UndefinedVariableError rather than {:ok, :undefined}. Wrapping
+      # sidesteps that ambiguity and isolates what this test is about - "conn"
+      # resolves from host, not from data.
+      context = Context.new(%{}, host: %{"conn" => :db})
+
+      assert Predicator.evaluate("{value: conn}", context) == {:ok, %{"value" => :undefined}}
     end
   end
 
