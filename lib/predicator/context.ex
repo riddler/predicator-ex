@@ -6,6 +6,15 @@ defmodule Predicator.Context do
   times, and rebind cheaply with `bind/3` between evaluations - the builtin
   function maps merge once, at construction, not on every evaluate call.
 
+  ## The `host` slot
+
+  `host` is an opaque carrier for whatever a function provider needs at call
+  time - a database connection, a request struct, a tenant id. It is stored
+  exactly as given, with no normalization: unlike `data`, atom keys and `nil`
+  values inside a `host` term are never touched. It is never readable from
+  predicate text - there is no syntax that reaches it - and it is never
+  merged into `data`. Set it with `new/2`'s `:host` option or `put_host/2`.
+
   ## Examples
 
       iex> context = Predicator.Context.new(%{"score" => 85})
@@ -39,10 +48,11 @@ defmodule Predicator.Context do
   @type t :: %__MODULE__{
           data: Types.context(),
           functions: %{binary() => {Evaluator.function_arity(), function()}},
-          on_unbound: on_unbound()
+          on_unbound: on_unbound(),
+          host: term()
         }
 
-  defstruct data: %{}, functions: %{}, on_unbound: :undefined
+  defstruct data: %{}, functions: %{}, on_unbound: :undefined, host: nil
 
   @doc """
   Builds a context, merging the builtin function maps once.
@@ -51,14 +61,18 @@ defmodule Predicator.Context do
 
   - `data` - the bound-variable map (default `%{}`)
   - `opts` - `:functions` (custom functions merged over the builtins,
-    same as `Predicator.evaluate/3`'s `:functions` option) and `:on_unbound`
+    same as `Predicator.evaluate/3`'s `:functions` option), `:on_unbound`
     (`:undefined` (default) | `:error` - see `t:on_unbound/0`; any other
-    value raises `ArgumentError`)
+    value raises `ArgumentError`), and `:host` (default `nil` - see the
+    "The `host` slot" section above)
 
   `data` is normalized deeply before it is stored: atom keys become string
   keys (a string key wins if both are present at the same level) and `nil`
   values become the `:undefined` sentinel, recursing through nested maps and
   lists. `Date`, `DateTime`, and any other struct pass through unchanged.
+
+  `host`, by contrast, is stored exactly as given - no normalization, atom
+  keys and `nil`s intact.
 
   ## Examples
 
@@ -81,7 +95,8 @@ defmodule Predicator.Context do
     %__MODULE__{
       data: normalize_value(data),
       functions: Evaluator.merge_functions(opts),
-      on_unbound: validate_on_unbound!(Keyword.get(opts, :on_unbound, :undefined))
+      on_unbound: validate_on_unbound!(Keyword.get(opts, :on_unbound, :undefined)),
+      host: Keyword.get(opts, :host)
     }
   end
 
@@ -103,7 +118,7 @@ defmodule Predicator.Context do
   `:undefined`, recursing through nested maps and lists; structs pass through
   unchanged.
 
-  `functions` and `on_unbound` are carried over unchanged.
+  `functions`, `on_unbound`, and `host` are carried over unchanged.
 
   ## Examples
 
@@ -119,6 +134,20 @@ defmodule Predicator.Context do
   def bind(%__MODULE__{data: data} = context, name, value) when is_binary(name) do
     %{context | data: Map.put(data, name, normalize_value(value))}
   end
+
+  @doc """
+  Replaces `context`'s `host` term, leaving `data`, `functions`, and
+  `on_unbound` untouched. The new `host` is stored exactly as given - no
+  normalization, same as `new/2`'s `:host` option.
+
+  ## Examples
+
+      iex> context = Predicator.Context.new(%{})
+      iex> Predicator.Context.put_host(context, %{conn: :db}).host
+      %{conn: :db}
+  """
+  @spec put_host(t(), term()) :: t()
+  def put_host(%__MODULE__{} = context, host), do: %{context | host: host}
 
   @doc """
   Answers whether `name` is bound in `context`'s data, resolved by
@@ -156,7 +185,8 @@ defmodule Predicator.Context do
   already-resolved `t:Predicator.ContextLocation.location_path/0`. Writes
   through `Predicator.ContextLocation.put/3` - the same auto-vivifying write
   algorithm as `Predicator.context_assign/4` and the future `store` opcode
-  (`px-tbv.2`).
+  (`px-tbv.2`). `functions`, `on_unbound`, and `host` are carried over
+  unchanged.
 
   ## Examples
 
