@@ -22,7 +22,9 @@ defmodule Predicator.Functions.DateFunctions do
       {:ok, %DateTime{}}
   """
 
-  alias Predicator.Types
+  @behaviour Predicator.FunctionProvider
+
+  alias Predicator.{Context, Types}
 
   @type function_result :: {:ok, Types.value()} | {:error, binary()}
 
@@ -54,9 +56,29 @@ defmodule Predicator.Functions.DateFunctions do
     }
   end
 
+  @doc """
+  Returns all date functions as a `Predicator.FunctionProvider` map.
+
+  Same names and arities as `all_functions/0`, naming each implementation by
+  atom instead of closure.
+  """
+  @impl Predicator.FunctionProvider
+  @spec functions() :: %{
+          Predicator.FunctionProvider.name() => Predicator.FunctionProvider.entry()
+        }
+  def functions do
+    %{
+      "Date.year" => {1, :call_year},
+      "Date.month" => {1, :call_month},
+      "Date.day" => {1, :call_day},
+      "Date.now" => {0, :call_date_now}
+    }
+  end
+
   # Date function implementations
 
-  @spec call_year([Types.value()], Types.context()) :: function_result()
+  @doc "Extracts the year from a date or datetime."
+  @spec call_year([Types.value()], Context.t() | Types.context()) :: function_result()
   def call_year([%Date{year: year}], _context) do
     {:ok, year}
   end
@@ -73,7 +95,8 @@ defmodule Predicator.Functions.DateFunctions do
     {:error, "Date.year() expects exactly 1 argument"}
   end
 
-  @spec call_month([Types.value()], Types.context()) :: function_result()
+  @doc "Extracts the month from a date or datetime."
+  @spec call_month([Types.value()], Context.t() | Types.context()) :: function_result()
   def call_month([%Date{month: month}], _context) do
     {:ok, month}
   end
@@ -90,7 +113,8 @@ defmodule Predicator.Functions.DateFunctions do
     {:error, "Date.month() expects exactly 1 argument"}
   end
 
-  @spec call_day([Types.value()], Types.context()) :: function_result()
+  @doc "Extracts the day from a date or datetime."
+  @spec call_day([Types.value()], Context.t() | Types.context()) :: function_result()
   def call_day([%Date{day: day}], _context) do
     {:ok, day}
   end
@@ -107,7 +131,8 @@ defmodule Predicator.Functions.DateFunctions do
     {:error, "Date.day() expects exactly 1 argument"}
   end
 
-  @spec call_date_now([Types.value()], Types.context()) :: function_result()
+  @doc "Returns the current UTC datetime (alias for `Date.now()`)."
+  @spec call_date_now([Types.value()], Context.t() | Types.context()) :: function_result()
   def call_date_now([], _context) do
     # Return current UTC datetime
     {:ok, DateTime.utc_now()}
