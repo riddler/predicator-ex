@@ -20,14 +20,14 @@ defmodule Predicator.IsaSyncTest do
 
   alias Predicator.Instructions
 
-  # The opcode *table* size is 25 (docs/isa.md section 4) - retired rows
+  # The opcode *table* size is 30 (docs/isa.md section 4) - retired rows
   # included, since a retired opcode keeps its row (docs/isa.md section 4,
   # "Retired opcodes"). The evaluator clause-head count is derived from this
   # via opcode_set/1 below rather than asserted against this literal, because
   # that surface shrinks on retirement while the table does not. Both parsing
   # tests guard against a regex that silently matches nothing - and passes
   # vacuously - by asserting this literal count rather than only "non-empty".
-  @opcode_count 28
+  @opcode_count 30
 
   describe "docs/isa.md section 4 table versus the opcode map" do
     setup do

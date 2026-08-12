@@ -55,7 +55,7 @@ than re-arguing it.
   Each sibling publishes the version it supports in its own repository; this
   document maintains no support matrix.
 
-Current version: **ISA v4**.
+Current version: **ISA v5**.
 
 At runtime, `Predicator.isa_version/0` returns this build's version as an
 integer, and `Predicator.Instructions.required_isa/1` returns the minimum
@@ -181,7 +181,8 @@ subsections below the table.
 
 Every opcode is **ISA v1** except `jump_if_falsy_or_pop`,
 `jump_if_true_or_pop`, and `make_list`, which are **v2** (ADR-0001),
-`store` and `pop`, which are **v3**, and `cast`, which is **v4** (ADR-0011).
+`store` and `pop`, which are **v3**, `cast`, which is **v4** (ADR-0011), and
+`jump` and `pop_jump_if_falsy`, which are **v5** (ADR-0013).
 
 ### Tiers
 
@@ -199,6 +200,7 @@ row's tier does not depend on the value types the expression happens to use
 | 5 | functions | `call` |
 | 6 | statements | `store`, `pop` |
 | 7 | casts | `cast` |
+| 8 | control flow | `jump`, `pop_jump_if_falsy` |
 
 Tiers are defined by opcode, not by value. A date comparison
 (`[["lit", Date], ["lit", Date], ["compare", "GT"]]`) is tier 1 by opcode,
@@ -238,6 +240,8 @@ feature tags, not by tiers.
 | `store` | n (int >= 0) | n + 1 | 0 | v3 | 6 | yes | - |
 | `pop` | - | 1 | 0 | v3 | 6 | yes | - |
 | `cast` | type name (string) | 1 | 1 | v4 | 7 | yes | - |
+| `jump` | offset (int > 0) | 0 | 0 | v5 | 8 | no | - |
+| `pop_jump_if_falsy` | offset (int > 0) | 1 | 0 | v5 | 8 | no | - |
 
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` pop 0 or 1 values and push
 0: on the taken branch they leave the value on the stack (net 0 change), and
@@ -587,6 +591,36 @@ reference survives an edit above it.
   **No boolean/number bridge.** `1::boolean` and `true::integer` are
   `:undefined`. The ISA has no truthiness rule (§2) and `compare` refuses to
   bridge booleans and numbers; casts do not open a side door.
+- **`jump`** (`jump_to/2`) - unconditional jump to `index + offset`. Pops
+  nothing, pushes nothing. No error path beyond the standing malformed-operand
+  rule (a non-integer or non-positive offset falls through to
+  `unknown_instruction`). Statement-level control flow's only unconditional
+  jump - `if/else` uses it to skip the `else` branch once the `if` branch has
+  run. Worked example, `if c { A } else { B }`:
+  `c; ["pop_jump_if_falsy", lenA + 2]; A; ["jump", lenB + 1]; B` - after `A`
+  runs, `jump` skips past `B` to the instruction following it.
+- **`pop_jump_if_falsy`** (`execute_pop_jump_if_falsy/2`, `jump_to/2`) - pops
+  the stack top **always**. If the popped value is `false` or `:undefined`,
+  jump to `index + offset`; if it is exactly `true`, fall through to the next
+  instruction; any other value is `TypeMismatchError` (expected `boolean`). An
+  empty stack is `EvaluationError` insufficient operands.
+
+  **Contrast with `jump_if_falsy_or_pop`**: that opcode pops only on the
+  fall-through branch and *leaves the value on the stack* on the taken
+  branch, because it exists to make `a AND b` yield `a` as the expression's
+  result. `pop_jump_if_falsy` pops unconditionally - a statement's condition
+  is never a result, so there is nothing to preserve, and leaving it behind
+  would strand a value on the stack for the following statement to trip over.
+  CPython draws the same distinction between `JUMP_IF_FALSE_OR_POP` and
+  `POP_JUMP_IF_FALSE`, and this opcode is the latter's counterpart, not the
+  former's.
+
+  Worked example, `if c { A }` (no `else`):
+  `c; ["pop_jump_if_falsy", lenA + 1]; A` - a falsy `c` jumps past `A`
+  entirely; `A`'s length plus one lands on the instruction after `A`. Worked
+  example, `if c { A } else { B }` (continuing the `jump` example above):
+  a falsy `c` jumps over both `A` and the trailing `jump`, landing on `B`'s
+  first instruction, `lenA + 2` past the `pop_jump_if_falsy` itself.
 
 ## 6. Not in the ISA
 
@@ -616,6 +650,7 @@ What a reader might expect to find here and will not:
 | v2 | `jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list` | - | 3.7.0 |
 | v3 | `store`, `pop` | `and`, `or` | 4.0.0 |
 | v4 | `cast` | - | 4.1.0 |
+| v5 | `jump`, `pop_jump_if_falsy` | - | 4.1.0 |
 
 This table records the release each opcode was *introduced* in, and, now that
 an opcode has been retired, the release each was *removed* in - both ends of

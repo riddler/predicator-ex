@@ -47,7 +47,8 @@ defmodule Predicator.Conformance.Generator do
     4 => "rich types",
     5 => "functions",
     6 => "statements",
-    7 => "casts"
+    7 => "casts",
+    8 => "control flow"
   }
 
   @doc """

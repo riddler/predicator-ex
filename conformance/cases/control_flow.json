@@ -1,0 +1,64 @@
+[
+  {
+    "id": "control_flow/pop-jump-if-falsy-taken",
+    "instructions": [
+      ["lit", "x"], ["lit", 1], ["store", 1],
+      ["lit", false], ["pop_jump_if_falsy", 4],
+      ["lit", "x"], ["lit", 2], ["store", 1],
+      ["load", "x"]
+    ],
+    "notes": "pop_jump_if_falsy pops the false condition and jumps past the second store, so x keeps its first-assigned value (docs/isa.md section 5, ADR-0013)"
+  },
+  {
+    "id": "control_flow/pop-jump-if-falsy-falls-through",
+    "instructions": [
+      ["lit", "x"], ["lit", 1], ["store", 1],
+      ["lit", true], ["pop_jump_if_falsy", 4],
+      ["lit", "x"], ["lit", 2], ["store", 1],
+      ["load", "x"]
+    ],
+    "notes": "pop_jump_if_falsy pops a true condition and falls through, so the second store overwrites x - the mirror of pop-jump-if-falsy-taken"
+  },
+  {
+    "id": "control_flow/pop-jump-if-falsy-undefined-is-falsy",
+    "instructions": [
+      ["lit", "x"], ["lit", 1], ["store", 1],
+      ["load", "missing"], ["pop_jump_if_falsy", 4],
+      ["lit", "x"], ["lit", 2], ["store", 1],
+      ["load", "x"]
+    ],
+    "notes": "an unbound variable's load pushes :undefined, and pop_jump_if_falsy treats :undefined as falsy exactly as jump_if_falsy_or_pop does (docs/isa.md section 5)"
+  },
+  {
+    "id": "control_flow/pop-jump-if-falsy-non-boolean",
+    "instructions": [
+      ["lit", "x"], ["lit", 1], ["store", 1],
+      ["lit", 1], ["pop_jump_if_falsy", 4],
+      ["lit", "x"], ["lit", 2], ["store", 1],
+      ["load", "x"]
+    ],
+    "notes": "a non-boolean condition is a TypeMismatchError naming pop_jump_if_falsy and boolean, never a coercion (docs/isa.md section 5)"
+  },
+  {
+    "id": "control_flow/jump-skips-else",
+    "instructions": [
+      ["lit", true], ["pop_jump_if_falsy", 5],
+      ["lit", "x"], ["lit", 1], ["store", 1],
+      ["jump", 4],
+      ["lit", "x"], ["lit", 2], ["store", 1],
+      ["load", "x"]
+    ],
+    "notes": "ADR-0013's full if/else lowering with a true condition: pop_jump_if_falsy falls through into the if-branch, which ends with an unconditional jump past the else-branch"
+  },
+  {
+    "id": "control_flow/else-branch-runs",
+    "instructions": [
+      ["lit", false], ["pop_jump_if_falsy", 5],
+      ["lit", "x"], ["lit", 1], ["store", 1],
+      ["jump", 4],
+      ["lit", "x"], ["lit", 2], ["store", 1],
+      ["load", "x"]
+    ],
+    "notes": "the same if/else lowering with a false condition: pop_jump_if_falsy jumps directly to the else-branch's first instruction, past both the if-branch and its trailing jump"
+  }
+]
