@@ -560,6 +560,21 @@ defmodule Predicator.Evaluator do
     execute_jump_if_true_or_pop(evaluator, offset)
   end
 
+  # Unconditional forward jump (ISA v5, ADR-0013). Pops nothing, pushes
+  # nothing; the one instruction `if/else` needs to skip its else branch.
+  defp execute_instruction(%__MODULE__{} = evaluator, ["jump", offset])
+       when is_integer(offset) and offset > 0 do
+    {:ok, jump_to(evaluator, offset)}
+  end
+
+  # Statement-position conditional jump (ISA v5, ADR-0013): pops the top
+  # ALWAYS, unlike jump_if_falsy_or_pop, which preserves it on the taken
+  # branch.
+  defp execute_instruction(%__MODULE__{} = evaluator, ["pop_jump_if_falsy", offset])
+       when is_integer(offset) and offset > 0 do
+    execute_pop_jump_if_falsy(evaluator, offset)
+  end
+
   # Duration instruction
   defp execute_instruction(%__MODULE__{} = evaluator, ["duration", units]) when is_list(units) do
     execute_duration(evaluator, units)
@@ -1547,8 +1562,10 @@ defmodule Predicator.Evaluator do
   # (docs/isa.md §5). It also *retains* what it discarded in `last_value`,
   # which is how `Predicator.execute_value/2` answers with the last expression
   # statement's value without the compiled program having to differ (px-tbv.10).
-  # Only this opcode writes the field: `jump_if_falsy_or_pop` and
-  # `jump_if_true_or_pop` pop as part of a jump, not at a statement boundary.
+  # Only this opcode writes the field: `jump_if_falsy_or_pop`,
+  # `jump_if_true_or_pop`, and `pop_jump_if_falsy` all pop as part of a jump,
+  # not at a statement boundary - a condition is not a statement's value
+  # either.
   defp execute_pop(%__MODULE__{stack: [value | rest]} = evaluator) do
     {:ok, %__MODULE__{evaluator | stack: rest, last_value: value}}
   end
@@ -1607,6 +1624,30 @@ defmodule Predicator.Evaluator do
 
   defp execute_jump_if_true_or_pop(%__MODULE__{stack: []}, _offset) do
     {:error, EvaluationError.insufficient_operands(:jump_if_true_or_pop, 0, 1)}
+  end
+
+  # Pops the top ALWAYS, unlike jump_if_falsy_or_pop, which preserves the
+  # value on the taken branch. That is the whole difference: a condition in
+  # statement position has nothing further to do with the value once it has
+  # decided which branch runs (docs/isa.md §5, ADR-0013).
+  @spec execute_pop_jump_if_falsy(__MODULE__.t(), pos_integer()) ::
+          {:ok, __MODULE__.t()} | {:error, term()}
+  defp execute_pop_jump_if_falsy(%__MODULE__{stack: [top | rest]} = evaluator, offset)
+       when top == false or top == :undefined do
+    {:ok, jump_to(%{evaluator | stack: rest}, offset)}
+  end
+
+  defp execute_pop_jump_if_falsy(%__MODULE__{stack: [true | rest]} = evaluator, _offset) do
+    {:ok, %{evaluator | stack: rest}}
+  end
+
+  defp execute_pop_jump_if_falsy(%__MODULE__{stack: [top | _rest]}, _offset) do
+    got_type = get_value_type(top)
+    {:error, TypeMismatchError.unary(:pop_jump_if_falsy, :boolean, got_type, top)}
+  end
+
+  defp execute_pop_jump_if_falsy(%__MODULE__{stack: []}, _offset) do
+    {:error, EvaluationError.insufficient_operands(:pop_jump_if_falsy, 0, 1)}
   end
 
   # Sets instruction_pointer so that the unconditional +1 in

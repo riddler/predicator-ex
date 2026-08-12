@@ -24,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Predicator.execute/2,3` and `Predicator.decompile/2` now return an
   `{:error, ...}` tuple naming the unsupported construct instead of accepting
   a program containing one (ADR-0013).
+- **ISA v5: `jump` and `pop_jump_if_falsy`.** Two new opcodes, tier 8
+  (control flow) - `jump` is an unconditional relative forward jump; `pop_jump_if_falsy`
+  pops the stack top always and jumps to it when falsy, unlike
+  `jump_if_falsy_or_pop`, which preserves the value on the taken branch. Both
+  are what `if`/`else` statement lowering needs (ADR-0013). **The compiler
+  does not emit either opcode yet** - this bead mints the ISA version only;
+  lowering `if`/`else` onto them is a follow-on. Every ISA v5 instruction
+  list still provably halts in at most `length(program)` steps, since neither
+  opcode introduces a backward jump.
 - **Type casts (`::`).** A postfix `expr::type` operator converts a value to
   one of the seven scalar types - `string`, `integer`, `float`, `boolean`,
   `date`, `datetime`, `duration` - and chains, so `"42"::integer::float` casts
