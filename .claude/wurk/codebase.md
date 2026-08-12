@@ -11,9 +11,10 @@ compile to a flat instruction list run by a stack VM, with no `eval` anywhere.
   `lib/predicator/compiler.ex`, `lib/predicator/evaluator.ex`,
   `lib/predicator/duration.ex`, `lib/predicator/context.ex`,
   `lib/predicator/context_location.ex`, `lib/predicator/cast.ex`,
-  `lib/predicator/compiled.ex`, `lib/predicator/instructions.ex`,
-  `lib/predicator/undefined.ex`, `lib/predicator/visitor.ex`.
-- `lib/predicator/errors/` - five error structs:
+  `lib/predicator/compiled.ex`, `lib/predicator/instructions.ex` and its
+  `lib/predicator/instructions/upgrade.ex`, `lib/predicator/undefined.ex`,
+  `lib/predicator/visitor.ex`.
+- `lib/predicator/errors.ex` and `lib/predicator/errors/` - five error structs:
   `lib/predicator/errors/evaluation_error.ex`,
   `lib/predicator/errors/location_error.ex`,
   `lib/predicator/errors/parse_error.ex`,
@@ -25,8 +26,7 @@ compile to a flat instruction list run by a stack VM, with no `eval` anywhere.
   `lib/predicator/functions/math_functions.ex`,
   `lib/predicator/functions/system_functions.ex`,
   `lib/predicator/functions/provider.ex`.
-- `lib/predicator/visitors/` - `lib/predicator/visitors/instructions_visitor.ex`,
-  `lib/predicator/visitors/string_visitor.ex`.
+- `lib/predicator/visitors/` - `instructions_visitor.ex`, `string_visitor.ex`.
 - `lib/predicator/conformance/` and `lib/mix/tasks/corpus.generate.ex`,
   `lib/mix/tasks/corpus.coverage.ex` - the corpus tooling.
 - `conformance/` - `conformance/cases/` is authored source;
