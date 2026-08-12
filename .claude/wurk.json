@@ -39,7 +39,23 @@
     "not_applicable_skips": [
       "^:gettext not installed$",
       "^:sobelow not installed$"
-    ]
+    ],
+
+    "sabotage": {
+      "test_roots": [
+        "test/predicator/isa_sync_test.exs",
+        "test/predicator/conformance/corpus_freshness_test.exs",
+        "test/predicator/conformance/opcode_coverage_test.exs",
+        "test/predicator/conformance/function_coverage_test.exs",
+        "test/predicator/conformance/schema_validation_test.exs",
+        "test/predicator/conformance/ratchet_registry_test.exs",
+        "test/predicator/conformance/package_boundary_test.exs",
+        "test/docs_adr_links_test.exs",
+        "test/predicator/conformance/values_test.exs",
+        "test/predicator/visitor_clause_coverage_test.exs"
+      ],
+      "test_pattern": "\\btest\\s+\""
+    }
   },
 
   "parallelism": {
