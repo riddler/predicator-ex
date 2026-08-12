@@ -115,6 +115,50 @@ defmodule Predicator.Integration.OnUnboundTest do
     end
   end
 
+  describe "the undefined literal (px-ocp) - the boundness test under both policies" do
+    test "x === undefined with x bound to :undefined is true under either policy" do
+      assert Predicator.evaluate("x === undefined", %{"x" => :undefined}) == {:ok, true}
+
+      assert Predicator.evaluate(
+               "x === undefined",
+               Context.new(%{"x" => :undefined}, on_unbound: :error)
+             ) == {:ok, true}
+    end
+
+    test "x === undefined with x bound to nil is true under either policy - Context normalizes nil" do
+      assert Predicator.evaluate("x === undefined", %{"x" => nil}) == {:ok, true}
+
+      assert Predicator.evaluate(
+               "x === undefined",
+               Context.new(%{"x" => nil}, on_unbound: :error)
+             ) ==
+               {:ok, true}
+    end
+
+    test "x === undefined with x bound to 1 is false under either policy" do
+      assert Predicator.evaluate("x === undefined", %{"x" => 1}) == {:ok, false}
+
+      assert Predicator.evaluate("x === undefined", Context.new(%{"x" => 1}, on_unbound: :error)) ==
+               {:ok, false}
+    end
+
+    test "user.missing === undefined with user bound to %{} is true under either policy" do
+      assert Predicator.evaluate("user.missing === undefined", %{"user" => %{}}) == {:ok, true}
+
+      assert Predicator.evaluate(
+               "user.missing === undefined",
+               Context.new(%{"user" => %{}}, on_unbound: :error)
+             ) == {:ok, true}
+    end
+
+    test "x === undefined with x genuinely unbound - the honest boundary" do
+      assert Predicator.evaluate("x === undefined", %{}) == {:ok, true}
+
+      assert {:error, %UndefinedVariableError{variable: "x"}} =
+               Predicator.evaluate("x === undefined", %{}, on_unbound: :error)
+    end
+  end
+
   describe "the bare-map option form" do
     test "behaves identically to the %Context{} form" do
       assert {:error, %UndefinedVariableError{variable: "missing"}} =

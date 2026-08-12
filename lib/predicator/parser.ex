@@ -117,7 +117,7 @@ defmodule Predicator.Parser do
   @cast_type_names Cast.type_names()
 
   @typedoc """
-  A value that can appear in literals.
+  A value that can appear in literals, including the `undefined` literal.
   """
   @type value ::
           boolean()
@@ -127,6 +127,7 @@ defmodule Predicator.Parser do
           | Date.t()
           | DateTime.t()
           | Predicator.Types.duration()
+          | :undefined
 
   @typedoc """
   Abstract Syntax Tree node types.
@@ -1365,6 +1366,11 @@ defmodule Predicator.Parser do
     {:ok, {:literal, value, leaf_loc(state, token)}, advance(state)}
   end
 
+  # Parse the undefined literal
+  defp parse_primary_token(state, {:undefined, _line, _col, _len, _value} = token) do
+    {:ok, {:literal, :undefined, leaf_loc(state, token)}, advance(state)}
+  end
+
   # Parse date literal
   defp parse_primary_token(state, {:date, _line, _col, _len, value} = token) do
     {:ok, {:literal, value, leaf_loc(state, token)}, advance(state)}
@@ -1557,6 +1563,7 @@ defmodule Predicator.Parser do
   defp format_token(:float, value), do: "number '#{value}'"
   defp format_token(:string, value), do: "string \"#{value}\""
   defp format_token(:boolean, value), do: "boolean '#{value}'"
+  defp format_token(:undefined, _value), do: "'undefined'"
   defp format_token(:date, value), do: "date '#{Date.to_iso8601(value)}'"
   defp format_token(:datetime, value), do: "datetime '#{DateTime.to_iso8601(value)}'"
   defp format_token(:identifier, value), do: "identifier '#{value}'"

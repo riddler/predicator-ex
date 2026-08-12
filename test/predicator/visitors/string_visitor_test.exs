@@ -136,6 +136,20 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       assert result == "[]"
     end
+
+    test "converts the undefined literal to string" do
+      ast = {:literal, :undefined, nil}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "undefined"
+    end
+
+    test "converts undefined nested in a list literal" do
+      ast = {:literal, [1, :undefined], nil}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "[1, undefined]"
+    end
   end
 
   describe "visit/2 - identifier nodes" do
@@ -340,6 +354,28 @@ defmodule Predicator.Visitors.StringVisitorTest do
       result = StringVisitor.visit(ast, [])
 
       assert result == original
+    end
+
+    test "parse -> decompile -> parse fixpoint for the undefined literal" do
+      original = "x === undefined"
+      {:ok, ast} = Predicator.parse(original)
+
+      decompiled = Predicator.decompile(ast)
+      assert decompiled == original
+
+      assert {:ok, reparsed} = Predicator.parse(decompiled)
+      assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast)
+    end
+
+    test "parse -> decompile -> parse fixpoint for undefined in a list literal" do
+      original = "[undefined]"
+      {:ok, ast} = Predicator.parse(original)
+
+      decompiled = Predicator.decompile(ast)
+      assert decompiled == original
+
+      assert {:ok, reparsed} = Predicator.parse(decompiled)
+      assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast)
     end
 
     test "round-trip with all comparison operators" do
