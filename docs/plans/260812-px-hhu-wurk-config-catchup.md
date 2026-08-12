@@ -381,15 +381,15 @@ ADR-0011 exists to close.
 
 #### Automated Verification:
 
-- [ ] `.claude/wurk/codebase.md` exists and is under 85 lines
+- [x] `.claude/wurk/codebase.md` exists and is under 85 lines
       (`wc -l .claude/wurk/codebase.md`).
-- [ ] Every `lib/` and `test/` path the file names resolves: extracting the
+- [x] Every `lib/` and `test/` path the file names resolves: extracting the
       backticked paths and checking each with `test -e` reports no misses.
-- [ ] `.claude/wurk/research.md` no longer contains the headings "The pipeline
+- [x] `.claude/wurk/research.md` no longer contains the headings "The pipeline
       vocabulary", "The tree map", or "Good search keys", and does contain a
       reference to `codebase.md`
       (`grep -c 'codebase.md' .claude/wurk/research.md` is at least 1).
-- [ ] `ruby ~/.claude/skills/wurk:kit/scripts/gate.rb` reports `ok: true`.
+- [x] `ruby ~/.claude/skills/wurk:kit/scripts/gate.rb` reports `ok: true`.
 
 #### Manual Verification:
 
@@ -605,6 +605,29 @@ before considering the plan fully landed.
       standing gap and does **not** recite Gettext or Sobelow.
 - [ ] The two moved stages read as permanently inapplicable to a reviewer, not
       merely unaddressed - the decision table above is the argument.
+
+**Implementation Note**: Use the project's loop gate between edits while
+iterating; run the full gate as the phase gate. In interactive execution,
+pause here for the human to confirm the manual testing before moving to the
+next phase. In looped (`--loop`) execution, this phase's Automated
+Verification gates advancement automatically (via `/wurk:commit --auto`), and
+Manual Verification items are deferred and surfaced once at the end instead of
+blocking here.
+
+---
+
+### Phase 2
+
+- [ ] Spawn a `wurk-codebase-locator` on a question whose answer depends on
+      orientation ("where do new opcodes get implemented and tested") with the
+      file's content pasted under "Project orientation, from
+      .claude/wurk/codebase.md", and confirm the answer names
+      `lib/predicator/instructions.ex`, `evaluator.ex`, and `docs/isa.md`
+      without a discovery detour.
+- [ ] The file reads as facts and search guidance, with no judgment rule that
+      would re-role an agent (ADR-0011 point 5).
+- [ ] Nothing removed from `research.md` is now unreachable by the
+      `/wurk:research` flow.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution,
