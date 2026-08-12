@@ -59,5 +59,12 @@ defmodule Predicator.ErrorsTest do
       assert Predicator.Errors.operation_display_name(:run_or_fail) == "Run OR Fail"
       assert Predicator.Errors.operation_display_name(:is_not_valid) == "Is NOT Valid"
     end
+
+    test "formats lowering opcodes as the source construct they came from" do
+      assert Predicator.Errors.operation_display_name(:pop_jump_if_falsy) == "Condition"
+      assert Predicator.Errors.operation_display_name(:jump_if_falsy_or_pop) == "Logical AND"
+      assert Predicator.Errors.operation_display_name(:jump_if_true_or_pop) == "Logical OR"
+      assert Predicator.Errors.operation_display_name(:store) == "Assignment"
+    end
   end
 end

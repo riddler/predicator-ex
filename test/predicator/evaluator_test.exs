@@ -443,7 +443,7 @@ defmodule Predicator.EvaluatorTest do
       instructions = [["lit", 42], ["jump_if_falsy_or_pop", 2], ["lit", 5]]
       result = Evaluator.evaluate(instructions)
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
-      assert msg =~ "Jump If Falsy OR Pop"
+      assert msg =~ "Logical AND"
     end
 
     test "jump_if_falsy_or_pop with empty stack is an insufficient-operands error" do
@@ -472,7 +472,7 @@ defmodule Predicator.EvaluatorTest do
       instructions = [["lit", 42], ["jump_if_true_or_pop", 2], ["lit", 5]]
       result = Evaluator.evaluate(instructions)
       assert {:error, %Predicator.Errors.TypeMismatchError{message: msg}} = result
-      assert msg =~ "Jump If True OR Pop"
+      assert msg =~ "Logical OR"
     end
 
     test "jump_if_true_or_pop with empty stack is an insufficient-operands error" do

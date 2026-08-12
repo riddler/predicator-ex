@@ -116,7 +116,7 @@ defmodule Predicator.Evaluator.StoreTest do
       assert {:error, %TypeMismatchError{message: message}} =
                Evaluator.run(%Evaluator{instructions: instructions, context: %{}})
 
-      assert message == "Store requires a string or an integer, got true (boolean)"
+      assert message == "Assignment requires a string or an integer, got true (boolean)"
     end
   end
 
