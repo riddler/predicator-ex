@@ -113,6 +113,9 @@ defmodule Predicator.Errors do
 
       iex> Predicator.Errors.operation_display_name(:unary_bang)
       "Logical NOT"
+
+      iex> Predicator.Errors.operation_display_name(:pop_jump_if_falsy)
+      "Condition"
   """
   @spec operation_display_name(atom()) :: String.t()
   def operation_display_name(:add), do: "Arithmetic add"
@@ -126,6 +129,16 @@ defmodule Predicator.Errors do
   def operation_display_name(:logical_and), do: "Logical AND"
   def operation_display_name(:logical_or), do: "Logical OR"
   def operation_display_name(:bracket_access), do: "Bracket access"
+
+  # Opcodes that exist only as the lowering of a source construct render the
+  # construct's name, never their own: an author who wrote `if` never typed
+  # `pop_jump_if_falsy` and cannot act on it. The wording is deliberately
+  # construct-neutral for :pop_jump_if_falsy, which `if` and `while` share -
+  # the error's position already names the keyword (px-ij7).
+  def operation_display_name(:pop_jump_if_falsy), do: "Condition"
+  def operation_display_name(:jump_if_falsy_or_pop), do: "Logical AND"
+  def operation_display_name(:jump_if_true_or_pop), do: "Logical OR"
+  def operation_display_name(:store), do: "Assignment"
 
   def operation_display_name(op) do
     op

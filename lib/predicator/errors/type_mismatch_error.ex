@@ -72,7 +72,7 @@ defmodule Predicator.Errors.TypeMismatchError do
 
       iex> error = Predicator.Errors.TypeMismatchError.unary(:store, :string, :boolean, true, "a string or an integer")
       iex> {error.expected, error.message}
-      {:string, "Store requires a string or an integer, got true (boolean)"}
+      {:string, "Assignment requires a string or an integer, got true (boolean)"}
   """
   @spec unary(atom(), atom(), atom(), any(), String.t()) :: t()
   def unary(operation, expected, got, value, expected_text) do

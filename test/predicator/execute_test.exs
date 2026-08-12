@@ -201,7 +201,7 @@ defmodule Predicator.ExecuteTest do
               %Errors.TypeMismatchError{
                 expected: :string,
                 position: {1, 3},
-                message: "Store requires a string or an integer, got true (boolean)"
+                message: "Assignment requires a string or an integer, got true (boolean)"
               }, _ctx} = Predicator.execute("a[true] = 1", %{"a" => %{}})
     end
   end
