@@ -31,7 +31,9 @@
     "also_gated_paths": ["conformance/"],
     "moving_files": [".quality.exs", ".credo.exs", "coveralls.json"],
     "project_level_skips": [
-      "^:doctor not installed$",
+      "^:doctor not installed$"
+    ],
+    "not_applicable_skips": [
       "^:gettext not installed$",
       "^:sobelow not installed$"
     ]
