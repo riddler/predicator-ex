@@ -2,6 +2,10 @@
 
 Status: accepted (2026-08-07)
 
+Amended in place by ADR-0014, which replaces this ADR's description of the
+function-registry mechanism (the "closed by construction" consequence); the
+decision itself is unchanged.
+
 ## Context
 
 Predicator's first sentence in `README.md` is a security claim: "there is no
