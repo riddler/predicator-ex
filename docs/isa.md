@@ -55,7 +55,7 @@ than re-arguing it.
   Each sibling publishes the version it supports in its own repository; this
   document maintains no support matrix.
 
-Current version: **ISA v5**.
+Current version: **ISA v6**.
 
 At runtime, `Predicator.isa_version/0` returns this build's version as an
 integer, and `Predicator.Instructions.required_isa/1` returns the minimum
@@ -87,10 +87,19 @@ each row.
 - **What "falsy" means at a jump**: `false` or `:undefined`, and nothing
   else. "True" means exactly `true`. This is ECMAScript-aligned,
   deliberately not symmetric-Kleene (ADR-0001).
-- **Jumps are relative and forward-only.** The operand is a positive integer
-  offset from the jump instruction's own index; the target instruction index
-  is `jump_index + offset`. There is no backward jump and no absolute jump
-  in the ISA.
+- **Jumps are relative; the operand is always a positive integer.** `jump`,
+  `jump_if_falsy_or_pop`, and `jump_if_true_or_pop` target `index + offset`;
+  `jump_backward` (ISA v6) targets `index - offset`. There is no absolute
+  jump in the ISA.
+- **Execution of a list containing `jump_backward` must be bounded.** An
+  implementation charges a per-execution budget on each back edge taken and,
+  on exhaustion, stops with an `EvaluationError` whose reason is
+  `"loop_budget_exceeded"`. The budget's default value and the option that
+  configures it are implementation-local, as `on_unbound` is - only the
+  bound's *existence* and the exhaustion reason are normative. The derived
+  guarantee: between consecutive back edges the instruction pointer strictly
+  increases, so total work is at most `(budget + 1) * length(program)`
+  instructions.
 - **`:undefined` is a first-class value**, not an absence. Some opcodes
   propagate it (`compare` under a non-strict operator, `in`, `contains`),
   some reject it (`not`, the arithmetic five, `unary_minus`, `unary_bang`,
@@ -181,8 +190,9 @@ subsections below the table.
 
 Every opcode is **ISA v1** except `jump_if_falsy_or_pop`,
 `jump_if_true_or_pop`, and `make_list`, which are **v2** (ADR-0001),
-`store` and `pop`, which are **v3**, `cast`, which is **v4** (ADR-0011), and
-`jump` and `pop_jump_if_falsy`, which are **v5** (ADR-0013).
+`store` and `pop`, which are **v3**, `cast`, which is **v4** (ADR-0011),
+`jump` and `pop_jump_if_falsy`, which are **v5** (ADR-0013), and
+`jump_backward`, which is **v6** (ADR-0013).
 
 ### Tiers
 
@@ -201,6 +211,7 @@ row's tier does not depend on the value types the expression happens to use
 | 6 | statements | `store`, `pop` |
 | 7 | casts | `cast` |
 | 8 | control flow | `jump`, `pop_jump_if_falsy` |
+| 9 | loops | `jump_backward` |
 
 Tiers are defined by opcode, not by value. A date comparison
 (`[["lit", Date], ["lit", Date], ["compare", "GT"]]`) is tier 1 by opcode,
@@ -242,6 +253,7 @@ feature tags, not by tiers.
 | `cast` | type name (string) | 1 | 1 | v4 | 7 | yes | - |
 | `jump` | offset (int > 0) | 0 | 0 | v5 | 8 | yes | - |
 | `pop_jump_if_falsy` | offset (int > 0) | 1 | 0 | v5 | 8 | yes | - |
+| `jump_backward` | offset (int > 0) | 0 | 0 | v6 | 9 | no | - |
 
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` pop 0 or 1 values and push
 0: on the taken branch they leave the value on the stack (net 0 change), and
@@ -621,6 +633,30 @@ reference survives an edit above it.
   example, `if c { A } else { B }` (continuing the `jump` example above):
   a falsy `c` jumps over both `A` and the trailing `jump`, landing on `B`'s
   first instruction, `lenA + 2` past the `pop_jump_if_falsy` itself.
+- **`jump_backward`** (`execute_jump_backward/2`, `jump_backward_to/2`) - the
+  one back edge in the ISA (ISA v6, ADR-0013). Unconditional jump to
+  `index - offset`. Pops nothing, pushes nothing. A non-integer offset, a
+  non-positive offset, or a target before index 0 is `unknown_instruction`,
+  the standing malformed-operand rule (§2).
+
+  The opcode has its own name rather than being a negative `jump` offset
+  deliberately: it keeps opcode-name scanning a sound version check, and the
+  *absence* of `jump_backward` in a list remains a termination proof - a list
+  without it still halts in at most `length(program)` steps, since every
+  other jump is forward-only (§2).
+
+  Every execution of a back edge charges a per-execution loop budget (§2). On
+  exhaustion, the instruction returns an `EvaluationError` with reason
+  `"loop_budget_exceeded"`, carrying the `jump_backward` instruction's own
+  source position - the same position-attachment every other opcode's error
+  gets, with no special-case plumbing.
+
+  Worked example, `while c { A }`:
+  `c; ["pop_jump_if_falsy", lenA + 2]; A; ["jump_backward", lenC + lenA + 1]`
+  - the `pop_jump_if_falsy` skips past `A` *and* the trailing
+  `jump_backward` once `c` goes falsy (the `+2`); the `jump_backward` at the
+  end targets the condition's first instruction, `lenC` instructions before
+  `A` began, so its offset counts both `lenC` and `lenA`.
 
 ## 6. Not in the ISA
 
@@ -639,8 +675,8 @@ What a reader might expect to find here and will not:
   outside the conformance corpus's scope.
 - The builtin function set - see
   [Language Reference](reference/language.md).
-- Backward jumps and absolute jumps. Every jump in the ISA is relative and
-  forward-only.
+- Absolute jumps. Every jump in the ISA is relative. Backward jumps entered
+  at v6 as exactly one opcode, `jump_backward` - see §5.
 
 ## 7. Version history
 
@@ -651,6 +687,7 @@ What a reader might expect to find here and will not:
 | v3 | `store`, `pop` | `and`, `or` | 4.0.0 |
 | v4 | `cast` | - | 4.1.0 |
 | v5 | `jump`, `pop_jump_if_falsy` | - | 4.1.0 |
+| v6 | `jump_backward` | - | 4.1.0 |
 
 This table records the release each opcode was *introduced* in, and, now that
 an opcode has been retired, the release each was *removed* in - both ends of

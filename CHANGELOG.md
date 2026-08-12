@@ -35,6 +35,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now emits both when lowering an `if` statement. Every ISA v5 instruction
   list still provably halts in at most `length(program)` steps, since neither
   opcode introduces a backward jump.
+- **ISA v6: `jump_backward`, the only back edge, and the loop budget.** A new
+  opcode, tier 9 (loops) - an unconditional relative jump to `index - offset`,
+  distinct from `jump` rather than a negative offset on it, so opcode-name
+  scanning stays a sound version check and the *absence* of `jump_backward`
+  in a list remains a termination proof. Execution of a list containing it is
+  bounded: a per-execution loop budget is charged on every back edge taken,
+  by default 10,000, shared across every loop in the program, configurable
+  per call with the new `:loop_budget` evaluation option (`evaluate/3`,
+  `execute/3`, `Predicator.Evaluator.evaluate/3`) - a non-negative integer, or
+  `0` to forbid back edges entirely; anything else raises `ArgumentError`, the
+  same line `:on_unbound` draws. Exhaustion stops execution with an
+  `EvaluationError` whose reason is `"loop_budget_exceeded"`, carrying the
+  failing `jump_backward` instruction's position. The compiler does not emit
+  `jump_backward` yet - `docs/isa.md`'s "Emitted by compiler" column reads
+  `no` until `while` lowers onto it.
+- **Conformance corpus: tier 9 (loops) covers `jump_backward` and budget
+  exhaustion.** Six hand-authored cases in `conformance/cases/loops.json` -
+  no compiler emits the opcode yet, so these are instruction lists rather than
+  source - covering a counted loop running to completion, a loop whose
+  condition is falsy from the start, that the back edge is unconditional, an
+  unconditionally infinite loop exhausting the default budget with reason
+  `"loop_budget_exceeded"`, and a zero offset and a target before index 0
+  each falling through to `unknown_instruction`.
 - **Conformance corpus: tier 8 covers else-if chains, nesting, and empty
   blocks.** `conformance/cases/control_flow.json` gains eleven if/else
   statement-shaped cases exercising ADR-0013's full lowering: an else-if

@@ -2,7 +2,7 @@
 "claims": [
 {"surface":"evaluator","tier":1}
 ],
-"corpus_hash": "sha256:7ba6b6f468982c06f35ed4b63efad79eb65377cabe7e4e8d9a5dc03049377345",
+"corpus_hash": "sha256:9bf37f04b10bf33f772baaea7533f2d35df64cf07a579324ec4e1cf763a5a589",
 "entries": [
 {"case_id":"comparison/eq-string-true","surface":"compiler","tier":1},
 {"case_id":"comparison/gt-int-boundary","surface":"compiler","tier":1},
@@ -60,5 +60,5 @@
 {"case_id":"short_circuit/or-worked-example","surface":"evaluator","tier":1}
 ],
 "implementation": "predicator-example",
-"isa_version": 5
+"isa_version": 6
 }

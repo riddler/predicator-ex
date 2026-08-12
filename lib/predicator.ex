@@ -124,6 +124,12 @@ defmodule Predicator do
       span's start. Ignored for instruction-list input, which has no source;
       such a caller passes `compile_with_spans/1`'s struct, or `positions:`
       from `compiled.positions`.
+    - `:loop_budget` - the number of back edges (`jump_backward`, ISA v6) a
+      single execution may take, default
+      `Predicator.Evaluator.default_loop_budget/0` (`10_000`), shared across
+      every loop in the program. Exhaustion returns
+      `{:error, %Predicator.Errors.EvaluationError{reason: "loop_budget_exceeded"}}`.
+      Must be a non-negative integer; anything else raises `ArgumentError`.
 
   ## Returns
 
@@ -223,17 +229,26 @@ defmodule Predicator do
     )
   end
 
-  # Helper function to evaluate instructions and convert errors to new format
-  defp evaluate_instructions(instructions, %Context{} = context, opts) do
-    evaluator = %Evaluator{
+  # Shared by evaluate_instructions/3 and execute_instructions/3: every field
+  # both build from context and opts, in one place so the two entry points
+  # cannot drift apart on what a %Context{} or an option contributes.
+  @spec build_evaluator(Types.instruction_list(), Context.t(), keyword()) :: Evaluator.t()
+  defp build_evaluator(instructions, %Context{} = context, opts) do
+    %Evaluator{
       instructions: instructions,
       context: context.data,
       functions: context.functions,
       host: context.host,
       positions: Keyword.get(opts, :positions, %{}),
       segment_positions: Keyword.get(opts, :segment_positions, %{}),
-      on_unbound: context.on_unbound
+      on_unbound: context.on_unbound,
+      loop_budget: Evaluator.loop_budget_from_opts(opts)
     }
+  end
+
+  # Helper function to evaluate instructions and convert errors to new format
+  defp evaluate_instructions(instructions, %Context{} = context, opts) do
+    evaluator = build_evaluator(instructions, context, opts)
 
     case Evaluator.run_prepared(evaluator) do
       {:error, error_struct, final_evaluator} when is_struct(error_struct) ->
@@ -348,8 +363,8 @@ defmodule Predicator do
     from `compile_program_with_positions/1`
   - `context` - a bare map or a `t:Predicator.Context.t/0` (default `%{}`)
   - `opts` - same options `evaluate/3` accepts (`:functions`, `:providers`,
-    `:builtins`, `:host`, `:positions`, `:segment_positions`, `:on_unbound`);
-    `:positions` or `:segment_positions`
+    `:builtins`, `:host`, `:positions`, `:segment_positions`, `:on_unbound`,
+    `:loop_budget`); `:positions` or `:segment_positions`
     alongside a `%Compiled{}` raises `ArgumentError`, same as `evaluate/3`.
     Unlike `evaluate/3`, a program can compile a `store`, so
     `:segment_positions` - the table from `compiled.segment_positions` - can
@@ -537,15 +552,7 @@ defmodule Predicator do
   @spec execute_instructions(Types.instruction_list(), Context.t() | Types.context(), keyword()) ::
           {:ok, Types.value(), Context.t()} | {:error, struct(), Context.t()}
   defp execute_instructions(instructions, %Context{} = context, opts) do
-    evaluator = %Evaluator{
-      instructions: instructions,
-      context: context.data,
-      functions: context.functions,
-      host: context.host,
-      positions: Keyword.get(opts, :positions, %{}),
-      segment_positions: Keyword.get(opts, :segment_positions, %{}),
-      on_unbound: context.on_unbound
-    }
+    evaluator = build_evaluator(instructions, context, opts)
 
     case Evaluator.run_state(evaluator) do
       {:ok, final} ->
@@ -647,7 +654,7 @@ defmodule Predicator do
   ## Examples
 
       iex> Predicator.isa_version()
-      5
+      6
   """
   @spec isa_version() :: pos_integer()
   defdelegate isa_version(), to: Instructions

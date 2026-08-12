@@ -43,7 +43,8 @@ defmodule Predicator.Evaluator do
           on_unbound: Predicator.Context.on_unbound(),
           last_value: Types.value(),
           size: non_neg_integer() | nil,
-          host: term()
+          host: term(),
+          loop_budget: non_neg_integer()
         }
 
   @typedoc "A function's accepted argument count(s): a fixed arity, or a set of arities for optional/variadic-style args"
@@ -59,6 +60,11 @@ defmodule Predicator.Evaluator do
   `Predicator.Errors.put_position/2`, which discriminates the three.
   """
   @type unbound_load :: {binary(), Types.position() | Types.span() | nil}
+
+  # The default number of back edges a single execution may take (ISA v6,
+  # ADR-0013). A program with no jump_backward never touches this counter, so
+  # the v5 termination-by-construction property is unaffected.
+  @default_loop_budget 10_000
 
   defstruct [
     :instructions,
@@ -76,7 +82,8 @@ defmodule Predicator.Evaluator do
     # literal default below.
     last_value: :undefined,
     on_unbound: :undefined,
-    host: nil
+    host: nil,
+    loop_budget: @default_loop_budget
   ]
 
   @doc """
@@ -222,6 +229,35 @@ defmodule Predicator.Evaluator do
   def last_value(%__MODULE__{last_value: value}), do: value
 
   @doc """
+  The default number of back edges a single execution may take.
+
+  ADR-0013: a program with no `jump_backward` never touches this counter, so
+  the v5 termination-by-construction property is unaffected. The value is
+  implementation-local, exactly as `:on_unbound` is - ISA v6 makes only the
+  *existence* of a bound and the `"loop_budget_exceeded"` reason normative.
+  """
+  @spec default_loop_budget() :: non_neg_integer()
+  def default_loop_budget, do: @default_loop_budget
+
+  @doc """
+  Reads and validates the `:loop_budget` evaluation option.
+
+  Raises `ArgumentError` for anything that is not a non-negative integer -
+  host-API misuse, not a predicate-derived failure (ADR-0004), the same line
+  `Predicator.Context.new/2` draws for a malformed `:on_unbound`.
+  """
+  @spec loop_budget_from_opts(keyword()) :: non_neg_integer()
+  def loop_budget_from_opts(opts) do
+    case Keyword.get(opts, :loop_budget, @default_loop_budget) do
+      budget when is_integer(budget) and budget >= 0 ->
+        budget
+
+      other ->
+        raise ArgumentError, "loop_budget must be a non-negative integer, got: #{inspect(other)}"
+    end
+  end
+
+  @doc """
   Evaluates a list of instructions with the given context and options.
 
   Returns the top value on the stack when evaluation completes,
@@ -262,6 +298,11 @@ defmodule Predicator.Evaluator do
       pushing `:undefined`. Unlike `Predicator.Context.new/2`, this option is
       not validated here: any value other than `:error` behaves as
       `:undefined`.
+    - `:loop_budget` - the number of back edges (`jump_backward`, ISA v6) a
+      single execution may take, default `#{@default_loop_budget}`, shared
+      across every loop in the program. Exhaustion returns
+      `{:error, %Predicator.Errors.EvaluationError{reason: "loop_budget_exceeded"}}`.
+      Must be a non-negative integer; anything else raises `ArgumentError`.
 
   ## Examples
 
@@ -287,7 +328,8 @@ defmodule Predicator.Evaluator do
       host: Keyword.get(opts, :host),
       positions: Keyword.get(opts, :positions, %{}),
       segment_positions: Keyword.get(opts, :segment_positions, %{}),
-      on_unbound: Keyword.get(opts, :on_unbound, :undefined)
+      on_unbound: Keyword.get(opts, :on_unbound, :undefined),
+      loop_budget: loop_budget_from_opts(opts)
     })
   end
 
@@ -573,6 +615,15 @@ defmodule Predicator.Evaluator do
   defp execute_instruction(%__MODULE__{} = evaluator, ["pop_jump_if_falsy", offset])
        when is_integer(offset) and offset > 0 do
     execute_pop_jump_if_falsy(evaluator, offset)
+  end
+
+  # The one back edge in the ISA (ISA v6, ADR-0013). Guarded on a positive
+  # integer offset AND on a target at or after index 0, so a malformed or
+  # out-of-range operand falls through to the catch-all and reports
+  # unknown_instruction - docs/isa.md §2's standing rule.
+  defp execute_instruction(%__MODULE__{} = evaluator, ["jump_backward", offset])
+       when is_integer(offset) and offset > 0 and evaluator.instruction_pointer - offset >= 0 do
+    execute_jump_backward(evaluator, offset)
   end
 
   # Duration instruction
@@ -1655,6 +1706,32 @@ defmodule Predicator.Evaluator do
   @spec jump_to(__MODULE__.t(), pos_integer()) :: __MODULE__.t()
   defp jump_to(%__MODULE__{instruction_pointer: ip} = evaluator, offset) do
     %{evaluator | instruction_pointer: ip + offset - 1}
+  end
+
+  # The only place the loop budget is charged. A program with no back edge
+  # never reaches this function, so ISA v5's termination-by-construction
+  # property survives verbatim (ADR-0013).
+  @spec execute_jump_backward(__MODULE__.t(), pos_integer()) ::
+          {:ok, __MODULE__.t()} | {:error, struct()}
+  defp execute_jump_backward(%__MODULE__{loop_budget: budget} = evaluator, offset)
+       when budget > 0 do
+    {:ok, jump_backward_to(%{evaluator | loop_budget: budget - 1}, offset)}
+  end
+
+  defp execute_jump_backward(%__MODULE__{} = _evaluator, _offset) do
+    {:error,
+     EvaluationError.new(
+       "loop budget exhausted - execution stopped at a backward jump",
+       "loop_budget_exceeded",
+       :jump_backward
+     )}
+  end
+
+  # Mirror of jump_to/2: advance_instruction_pointer/1's unconditional +1
+  # means the target lands on ip - offset.
+  @spec jump_backward_to(__MODULE__.t(), pos_integer()) :: __MODULE__.t()
+  defp jump_backward_to(%__MODULE__{instruction_pointer: ip} = evaluator, offset) do
+    %{evaluator | instruction_pointer: ip - offset - 1}
   end
 
   @spec execute_duration(__MODULE__.t(), [[integer() | binary()]]) ::

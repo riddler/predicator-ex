@@ -7,8 +7,8 @@ defmodule Predicator.InstructionsTest do
   alias Predicator.Instructions
 
   describe "isa_version/0" do
-    test "returns 4" do
-      assert Instructions.isa_version() == 5
+    test "returns 6" do
+      assert Instructions.isa_version() == 6
     end
 
     test "returns an integer, not a string or a Version struct" do
@@ -68,11 +68,11 @@ defmodule Predicator.InstructionsTest do
       assert MapSet.size(Instructions.opcode_set(2)) == 25
     end
 
-    test "opcode_set(2) equals Map.keys(opcodes()) minus the v3-, v4-, and v5-only opcodes - and/or are still members of v2's set" do
+    test "opcode_set(2) equals Map.keys(opcodes()) minus the v3-, v4-, v5-, and v6-only opcodes - and/or are still members of v2's set" do
       assert Instructions.opcode_set(2) ==
                MapSet.new(
                  Map.keys(Instructions.opcodes()) --
-                   ["store", "pop", "cast", "jump", "pop_jump_if_falsy"]
+                   ["store", "pop", "cast", "jump", "pop_jump_if_falsy", "jump_backward"]
                )
     end
 
@@ -220,6 +220,17 @@ defmodule Predicator.InstructionsTest do
     test "pop is an ISA v3 tier-6 opcode" do
       assert {:ok, 3} = Instructions.required_isa([["pop"]])
       assert {:ok, 6} = Instructions.tier("pop")
+    end
+
+    # ISA v6, ADR-0013: jump_backward is the only back edge, tier 9.
+    test "jump_backward is an ISA v6 tier-9 opcode" do
+      assert {:ok, 6} = Instructions.required_isa([["jump_backward", 1]])
+      assert {:ok, 9} = Instructions.tier("jump_backward")
+    end
+
+    test "opcode_set(5) excludes jump_backward and opcode_set(6) includes it" do
+      refute MapSet.member?(Instructions.opcode_set(5), "jump_backward")
+      assert MapSet.member?(Instructions.opcode_set(6), "jump_backward")
     end
 
     test "the first bad opcode wins when there are two" do

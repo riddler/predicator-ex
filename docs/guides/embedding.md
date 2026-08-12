@@ -137,7 +137,7 @@ iex> Predicator.Instructions.required_isa([])
 
 ```elixir
 iex> Predicator.isa_version()
-5
+6
 ```
 
 **A bare `required_isa(list) <= isa_version()` comparison is not enough once
