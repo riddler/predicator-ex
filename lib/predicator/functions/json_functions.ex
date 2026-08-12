@@ -24,6 +24,12 @@ defmodule Predicator.Functions.JSONFunctions do
       %{"status" => "ok"}
   """
 
+  @behaviour Predicator.FunctionProvider
+
+  alias Predicator.{Context, Types}
+
+  @type function_result :: {:ok, Types.value()} | {:error, binary()}
+
   @spec all_functions() :: %{binary() => {non_neg_integer(), function()}}
   def all_functions do
     %{
@@ -32,16 +38,37 @@ defmodule Predicator.Functions.JSONFunctions do
     }
   end
 
+  @doc """
+  Returns all JSON functions as a `Predicator.FunctionProvider` map.
+
+  Same names and arities as `all_functions/0`, naming each implementation by
+  atom instead of closure.
+  """
+  @impl Predicator.FunctionProvider
+  @spec functions() :: %{
+          Predicator.FunctionProvider.name() => Predicator.FunctionProvider.entry()
+        }
+  def functions do
+    %{
+      "JSON.stringify" => {1, :call_stringify},
+      "JSON.parse" => {1, :call_parse}
+    }
+  end
+
   # JSON.encode!/1 raises for anything it cannot represent - tuples, PIDs,
   # refs, funs, non-string map keys, invalid UTF-8. All of those fall back to
   # inspect/1, which is what a predicate has always seen for such values.
-  defp call_stringify([value], _context) do
+  @doc "Converts a value to a JSON string."
+  @spec call_stringify([Types.value()], Context.t() | Types.context()) :: function_result()
+  def call_stringify([value], _context) do
     {:ok, JSON.encode!(value)}
   rescue
     _error -> {:ok, inspect(value)}
   end
 
-  defp call_parse([json_string], _context) when is_binary(json_string) do
+  @doc "Parses a JSON string into a value."
+  @spec call_parse([Types.value()], Context.t() | Types.context()) :: function_result()
+  def call_parse([json_string], _context) when is_binary(json_string) do
     case JSON.decode(json_string) do
       {:ok, value} ->
         {:ok, value}
@@ -51,7 +78,7 @@ defmodule Predicator.Functions.JSONFunctions do
     end
   end
 
-  defp call_parse([_value], _context) do
+  def call_parse([_value], _context) do
     {:error, "JSON.parse expects a string argument"}
   end
 
