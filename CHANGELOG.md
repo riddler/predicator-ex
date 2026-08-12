@@ -101,6 +101,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   join 0001-0003 - so those citations resolve on hexdocs instead of 404ing.
   The governance ADRs stay unpublished and the ADR index links them by
   absolute GitHub URL.
+- **`Predicator.decompile/2`'s return type widens to `binary() | {:error,
+  struct()}`.** A tree containing an `{:if, ...}` or `{:block, ...}` node -
+  ADR-0013's control flow, not yet rendered - now returns an `{:error, ...}`
+  tuple naming the unsupported construct instead of raising
+  `FunctionClauseError`. Every AST that previously returned a binary still
+  does; a caller with a `binary()`-typed variable will see a new dialyzer
+  union (px-aen).
 
 ### Removed
 

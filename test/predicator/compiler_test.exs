@@ -320,4 +320,18 @@ defmodule Predicator.CompilerTest do
                Compiler.to_instructions_with_segment_positions(ast)
     end
   end
+
+  describe "to_string/2 - unsupported nodes (if/block)" do
+    test "a bare block node returns {:error, ...} instead of raising" do
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               Compiler.to_string({:block, [], nil})
+    end
+
+    test "a bare if node returns {:error, ...} instead of raising" do
+      ast = {:if, {:identifier, "a", nil}, {:block, [], nil}, nil, nil}
+
+      assert {:error, %Predicator.Errors.EvaluationError{reason: "unsupported_node"}} =
+               Compiler.to_string(ast)
+    end
+  end
 end

@@ -271,9 +271,10 @@ iex> Predicator.parse("if x { }")
 > **`if`/`else` parses but does not execute yet.** This section describes the
 > semantics ADR-0013 settles, and `parse_program/2` builds the tree for them
 > today. Lowering an `if` to instructions needs the ISA v5 jump opcodes, so
-> until those land `Predicator.execute/2,3` and `Predicator.decompile/2` do
-> not accept a program containing one. Everything below is the grammar and
-> the meaning, not a promise about what runs today.
+> until those land `Predicator.execute/2,3` and `Predicator.decompile/2`
+> return an `{:error, ...}` tuple naming the unsupported construct for a
+> program containing one, instead of running or rendering it. Everything
+> below is the grammar and the meaning, not a promise about what runs today.
 
 ### `if`/`else`
 
