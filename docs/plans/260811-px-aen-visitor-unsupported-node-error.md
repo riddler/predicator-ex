@@ -675,15 +675,29 @@ Manual verification items are deferred during looped (--loop) execution and
 surfaced here once, rather than blocking after each phase. Confirm these
 before considering the plan fully landed.
 
+**All six verified 2026-08-11.** Two findings came out of the pass:
+
+- The messages named ISA v5's jump opcodes and ADR-0013's else-if printing
+  rule, which are contributor concerns reaching a host that has only read
+  `language.md`. Trimmed to name the construct and nothing else; the
+  rationale moved to a comment on each `unsupported_node/2`.
+- The last item's confirmation was done as a set-difference of
+  `Parser.visitable/0`'s 22 constructors against each visitor's clause tags,
+  not just by re-running the two reproductions: both come back empty, so
+  coverage is exact with no gaps and no dead clauses. That exhaustiveness is
+  enumerated rather than enforced, though - the clauses match `{:if, ...}`
+  and `{:block, ...}` specifically rather than catching all - so a 23rd
+  constructor would reintroduce the crash silently. Filed as px-kbe.
+
 ### Phase 1
 
-- [ ] In `iex -S mix`, the bead's first reproduction -
+- [x] In `iex -S mix`, the bead's first reproduction -
       `Predicator.execute("x = 1; if x > 0 { y = 2 }")` - returns a
       three-tuple, and the message reads sensibly to someone who has not read
       this plan.
-- [ ] The error's `position` points at the `if` keyword, not at the enclosing
+- [x] The error's `position` points at the `if` keyword, not at the enclosing
       statement or the `=`, when checked against the source by eye.
-- [ ] No regression in the statement-mode integration suite's behaviour when
+- [x] No regression in the statement-mode integration suite's behaviour when
       exercised by hand (`test/predicator/integration/statements_test.exs`
       cases re-run in `iex`).
 
@@ -698,13 +712,13 @@ items are deferred and surfaced once at the end instead of blocking here.
 
 ### Phase 2
 
-- [ ] In `iex -S mix`, the bead's second reproduction -
+- [x] In `iex -S mix`, the bead's second reproduction -
       `{:ok, ast} = Predicator.parse_program("if a { x = 1 }")` then
       `Predicator.decompile(ast)` - returns `{:error, error}` and
       `error.message` reads sensibly.
-- [ ] `docs/reference/language.md`'s callout, read end to end, now matches
+- [x] `docs/reference/language.md`'s callout, read end to end, now matches
       what the two entry points actually do.
-- [ ] Both bead reproductions are re-run together after both phases have
+- [x] Both bead reproductions are re-run together after both phases have
       landed, confirming neither visitor can still be reached with a node it
       has no clause for - the confirmation px-aen's description asks whichever
       resolver lands last to perform.
