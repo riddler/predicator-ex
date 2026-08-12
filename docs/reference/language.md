@@ -11,6 +11,8 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 - **Strings**: `'hello'`, `'world'` (single-quoted) or `"hello"`, `"world"`
   (double-quoted, with escape sequences)
 - **Booleans**: `true`, `false` (or plain identifiers like `active`, `expired`)
+- **Undefined**: `undefined` - the absent/unset value; see "Undefined and
+  Sparse Data" below
 - **Dates**: `#2024-01-15#` (ISO 8601 date format)
 - **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with
   timezone)
@@ -395,6 +397,13 @@ line `:on_unbound` draws.
 as a variable name, a bare property name (`user.if`), or a bare object key
 (`{if: 1}`) - only a quoted key (`{"if": 1}`) still works.
 
+`undefined` is reserved too, joining `true`/`false` as a literal keyword
+rather than the statement keywords above: `undefined = 3`, `user.undefined`,
+and `{undefined: 1}` are all parse errors, the same shapes `true`/`false`
+produce. A quoted key still works (`{"undefined": 1}` parses), and only the
+lowercase spelling is reserved - `UNDEFINED` and `Undefined` stay ordinary
+identifiers.
+
 ## Builtin Functions
 
 ### String Functions
@@ -583,6 +592,18 @@ boundary - and `Predicator.Types.undefined?/1` delegates to it.
   {:ok, :undefined}
   ```
 
+- **The `undefined` literal** - written directly in source - compiles to
+  `["lit", :undefined]` and evaluates to `:undefined` unconditionally. It is
+  the one source in this list that is not a `load`: `lit` pushes its operand
+  unchanged and has no error path (`docs/isa.md` §5), so the literal is never
+  affected by `on_unbound` - only `load` consults that policy. See "testing
+  whether a value is undefined" below for what that makes it useful for.
+
+  ```elixir
+  iex> Predicator.evaluate("undefined", %{})
+  {:ok, :undefined}
+  ```
+
 The first two cases produce the same value in isolation, but they are **not**
 treated the same at the top level - see "Unbound roots vs. missing paths"
 below.
@@ -660,6 +681,58 @@ operator does: a missing key or index always produces `:undefined` rather
 than erroring (see "Where `:undefined` comes from" above), and a function
 receives whatever `:undefined`-or-not value its arguments evaluated to - a
 custom function decides for itself what to do with one.
+
+### Testing whether a value is undefined
+
+`x === undefined` is the boundness test, and it answers plainly - `true` or
+`false`:
+
+```elixir
+iex> Predicator.evaluate("x === undefined", %{"x" => :undefined})
+{:ok, true}
+iex> Predicator.evaluate("x === undefined", %{"x" => 1})
+{:ok, false}
+iex> Predicator.evaluate("user.missing === undefined", %{"user" => %{}})
+{:ok, true}
+```
+
+`x == undefined` is **not** the same test. `==` is a non-strict comparison
+operator, and non-strict operators propagate an `:undefined` operand rather
+than answering with a boolean (see "Reject vs. propagate, per operator"
+above), so `x == undefined` itself evaluates to `:undefined` - which is
+falsy at a jump, but not the `true`/`false` a boundness check needs:
+
+```elixir
+iex> Predicator.evaluate("x == undefined", %{"x" => 1})
+{:ok, :undefined}
+```
+
+If `x` is an unbound root rather than a bound value, the outcome is the same
+either way regardless of which comparison is used: the top-level result is
+`Predicator.Errors.UndefinedVariableError` under both `on_unbound` policies,
+via the trace-back rewrite described in "Unbound roots vs. missing paths"
+below.
+
+The literal itself is never affected by `on_unbound`, under either
+comparison operator - it compiles to `lit`, not `load`, and only `load`
+consults the policy (see "Where `:undefined` comes from" above).
+
+**The honest boundary.** `x === undefined` on a genuinely unbound root still
+errors under `on_unbound: :error` - the boundness test does not rescue it,
+because the `load` of `x` fails before the comparison ever runs:
+
+```elixir
+iex> {:error, err} = Predicator.evaluate("x === undefined", %{}, on_unbound: :error)
+iex> err.variable
+"x"
+```
+
+To test whether a variable that may not exist at all is undefined under
+`:error`, bind it as declared-but-undefined (`Predicator.Context.new(%{"x" =>
+nil})`, which normalizes to `:undefined`) rather than leaving it absent, or
+reach it through a bound container (`ctx.maybe === undefined`), where a
+missing nested path evaluates to `:undefined` under either policy instead of
+erroring.
 
 ### Unbound roots vs. missing paths, and `on_unbound`
 

@@ -281,7 +281,10 @@ implement it: the `execute_instruction/2` clause matching its name, plus the
 helper it delegates to. Function names rather than line numbers, so a
 reference survives an edit above it.
 
-- **`lit`** - pushes the operand unchanged. No error path.
+- **`lit`** - pushes the operand unchanged. No error path. The operand may be
+  any value in §3's value domain, `:undefined` included; a source spelling
+  for that operand (the `undefined` literal keyword) exists as of the change
+  that added this sentence.
 - **`load`** (`load_from_context/2`) - string-key lookup in the context; an
   absent key pushes `:undefined`. Atom keys are not read: the context is
   normalized to string keys before evaluation. This is the only opcode that
@@ -672,7 +675,10 @@ What a reader might expect to find here and will not:
   compile to `["compare", "EQ"]`, so no instruction-level divergence exists
   between them: the difference is a parse error in expression position and an
   assignment in statement position, entirely at the parser layer, and it is
-  outside the conformance corpus's scope.
+  outside the conformance corpus's scope. The `undefined` literal keyword is
+  the same shape: it compiles to the existing `["lit", :undefined]`, an
+  instruction this ISA's value domain (§3) already admitted, so the new
+  spelling attaches to no opcode name and moves no version.
 - The builtin function set - see
   [Language Reference](reference/language.md).
 - Absolute jumps. Every jump in the ISA is relative. Backward jumps entered
