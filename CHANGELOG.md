@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-08-12
+
 ### Added
 
 - **An `undefined` literal.** `undefined` is now a literal keyword, parsing
@@ -157,9 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one-off calls and tests, still called under the same `(args, context)`
   convention, but a context carrying one is not serializable (a context built
   only from `providers:` is - `:erlang.term_to_binary/1` round-trips it).
-  This is a breaking change and ships as 5.0.0 once released; version
-  mechanics stay human-gated (ADR-0006), so this entry lands under
-  `## [Unreleased]` and waits (ADR-0014).
+  This is a breaking change and ships as 5.0.0 (ADR-0014).
 - **`if`, `else` and `while` are reserved words.** The lexer now classifies
   all three as keywords rather than plain identifiers, so a predicate that
   used one as a variable name (`if = 3`), a bare property name (`user.if`),
