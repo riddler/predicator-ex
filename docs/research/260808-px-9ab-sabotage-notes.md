@@ -195,3 +195,41 @@ are unaffected.
   which is the resolve-then-classify ordering proving itself. That is the
   mutation to re-run if this test is ever reshaped; the single-mutation form is
   a weaker check wearing the same clothes.
+
+- 2026-08-11 (`px-qq6`): `test/predicator/conformance/values_test.exs`. The
+  tagged encoding `Predicator.Conformance.Values` produces is an exported
+  cross-language artifact in the same sense as the corpus - `conformance/
+  README.md` documents it as the wire form a Ruby or JavaScript sibling reads
+  - and the `describe "datetime canonicalization: ..."` block plus the
+  `describe "from_json/1 - datetime precision canonicalization on decode"`
+  block are what binds the fractional-seconds form (px-qq6) to the code.
+  Nine files now.
+
+  Sabotage pass verified 2026-08-11, two mutations, each reverted after:
+
+  1. Dropped the `canonicalize_microsecond/1` call from `to_json/1`'s
+     `%DateTime{}` clause (helper and the `from_json/1` call left in place).
+     Reddened four: the `to_json/1` doctest for `~U[2026-08-06T12:00:00.5Z]`
+     (`left: "...12:00:00.5Z", right: "...12:00:00.500000Z"`), the
+     "DateTime with a non-zero sub-second component encodes as exactly six
+     digits" test with the identical mismatch, and both encode-touching rows
+     of the canonicalization `describe` block - the `.000000Z` case
+     (`left: "...12:00:00.000000Z", right: "...12:00:00Z"`) and the `.5` case
+     (same mismatch as above). 4 failures, exactly the predicted set.
+  2. Dropped the call from `from_json/1`'s `"datetime"` clause instead
+     (`{:ok, datetime, _utc_offset} -> {:ok, datetime}`). Reddened both
+     hand-authored decode tests as predicted - `"...00.000Z"` decoded to
+     `{0, 3}` instead of `{0, 0}`, `"...00.5Z"` decoded to `{500000, 1}`
+     instead of `{500_000, 6}`. **It did not** redden the canonicalization
+     `describe` block's own precision-field assertions, which is a finding
+     worth recording rather than glossing over: those two tests call
+     `to_json/1` first, and `to_json/1`'s own canonicalization (still intact
+     under this mutation) always emits an already-canonical string - `DateTime.
+     from_iso8601/1` sets precision `{0, 0}` for a bare `Z` and `{us, 6}` for
+     six digits with no help from `from_json/1`'s own call. A round trip
+     through `to_json/1` therefore cannot discriminate decode-side
+     canonicalization at all; it is the two hand-authored-JSON tests, which
+     call `from_json/1` directly on a non-canonical string, that are the only
+     tests actually binding this half of the decision. This is the same shape
+     of finding as the `px-ir1` entry above: a test that reads as covering a
+     direction and does not.

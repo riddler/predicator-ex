@@ -24,6 +24,7 @@ defmodule Predicator.Conformance.ValuesTest do
     %{"nested" => %{"deep" => %{"deeper" => :undefined}}},
     ~D[2026-08-06],
     ~U[2026-08-06T12:00:00Z],
+    ~U[2026-08-06T12:00:00.500000Z],
     Predicator.Duration.new(days: 3),
     Predicator.Duration.new(days: 3, hours: 8, minutes: 30),
     Predicator.Duration.new(seconds: 1, milliseconds: 500),
@@ -31,7 +32,7 @@ defmodule Predicator.Conformance.ValuesTest do
     :undefined
   ]
 
-  describe "round-trip: from_json(to_json(v)) == {:ok, v}" do
+  describe "round-trip: from_json(to_json(v)) == {:ok, v}, for every canonical value" do
     test "holds for every ISA value type, nested lists and maps, and both duration shapes" do
       for value <- @round_trip_values do
         assert {:ok, encoded} = Values.to_json(value),
@@ -56,6 +57,11 @@ defmodule Predicator.Conformance.ValuesTest do
     test "DateTime" do
       assert Values.to_json(~U[2026-08-06T12:00:00Z]) ==
                {:ok, %{"$type" => "datetime", "value" => "2026-08-06T12:00:00Z"}}
+    end
+
+    test "DateTime with a non-zero sub-second component encodes as exactly six digits" do
+      assert Values.to_json(~U[2026-08-06T12:00:00.5Z]) ==
+               {:ok, %{"$type" => "datetime", "value" => "2026-08-06T12:00:00.500000Z"}}
     end
 
     test "duration without milliseconds carries the seven-key map and no milliseconds key" do
@@ -99,6 +105,71 @@ defmodule Predicator.Conformance.ValuesTest do
     test "plain maps encode member-wise with string keys" do
       assert Values.to_json(%{"a" => 1, "b" => :undefined}) ==
                {:ok, %{"a" => 1, "b" => %{"$type" => "undefined"}}}
+    end
+  end
+
+  # sabotage: dropping canonicalize_microsecond/1 from to_json/1 reddens the
+  # encode rows below (the .000000Z and .5 cases) plus the six-digit sibling
+  # of "to_json/1 - tagged encoding shape" > "DateTime with a non-zero
+  # sub-second component encodes as exactly six digits". Dropping it from
+  # from_json/1 does NOT redden this block - to_json/1 alone already emits a
+  # canonical string, and DateTime.from_iso8601/1 derives canonical precision
+  # from a canonical string with no help from this clause - so decode-side
+  # canonicalization is bound only by
+  # "from_json/1 - datetime precision canonicalization on decode" below, which
+  # feeds non-canonical strings directly. See
+  # docs/research/260808-px-9ab-sabotage-notes.md for the recorded failures.
+  describe "datetime canonicalization: the tagged encoding is a function of the instant alone" do
+    test "a zero sub-second component spelled with six digits encodes with no fraction and round-trips to {0, 0}" do
+      datetime = ~U[2026-08-06T12:00:00.000000Z]
+
+      assert Values.to_json(datetime) ==
+               {:ok, %{"$type" => "datetime", "value" => "2026-08-06T12:00:00Z"}}
+
+      assert {:ok, encoded} = Values.to_json(datetime)
+      assert {:ok, decoded} = Values.from_json(encoded)
+      assert DateTime.compare(decoded, datetime) == :eq
+      assert decoded.microsecond == {0, 0}
+    end
+
+    test "a one-digit non-zero fraction encodes as exactly six digits and round-trips to {500_000, 6}" do
+      datetime = ~U[2026-08-06T12:00:00.5Z]
+
+      assert Values.to_json(datetime) ==
+               {:ok, %{"$type" => "datetime", "value" => "2026-08-06T12:00:00.500000Z"}}
+
+      assert {:ok, encoded} = Values.to_json(datetime)
+      assert {:ok, decoded} = Values.from_json(encoded)
+      assert DateTime.compare(decoded, datetime) == :eq
+      assert decoded.microsecond == {500_000, 6}
+    end
+
+    test "a fraction already at six digits is the identity" do
+      datetime = ~U[2026-08-06T12:00:00.500000Z]
+
+      assert Values.to_json(datetime) ==
+               {:ok, %{"$type" => "datetime", "value" => "2026-08-06T12:00:00.500000Z"}}
+
+      assert {:ok, encoded} = Values.to_json(datetime)
+      assert {:ok, decoded} = Values.from_json(encoded)
+      assert DateTime.compare(decoded, datetime) == :eq
+      assert decoded.microsecond == {500_000, 6}
+    end
+  end
+
+  describe "from_json/1 - datetime precision canonicalization on decode" do
+    test "a hand-authored zero fraction spelled with three digits decodes to {0, 0}" do
+      assert {:ok, decoded} =
+               Values.from_json(%{"$type" => "datetime", "value" => "2026-08-06T12:00:00.000Z"})
+
+      assert decoded.microsecond == {0, 0}
+    end
+
+    test "a hand-authored one-digit non-zero fraction decodes to {500_000, 6}" do
+      assert {:ok, decoded} =
+               Values.from_json(%{"$type" => "datetime", "value" => "2026-08-06T12:00:00.5Z"})
+
+      assert decoded.microsecond == {500_000, 6}
     end
   end
 
