@@ -20,7 +20,7 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
 
     test "handles type mismatch in arithmetic" do
       instructions = [["lit", "string"], ["lit", 5], ["add"]]
-      result = Evaluator.evaluate(instructions, %{}, functions: SystemFunctions.all_functions())
+      result = Evaluator.evaluate(instructions, %{}, providers: [SystemFunctions])
       # String concatenation should work
       assert result == "string5"
     end
@@ -52,8 +52,7 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
     test "handles function call with wrong arity" do
       # Call len with 2 args, but len expects 1
       instructions = [["call", "len", 2]]
-      functions = SystemFunctions.all_functions()
-      result = Evaluator.evaluate(instructions, %{}, functions: functions)
+      result = Evaluator.evaluate(instructions, %{}, providers: [SystemFunctions])
       assert match?({:error, _}, result)
     end
 

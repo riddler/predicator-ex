@@ -1,139 +1,134 @@
 defmodule Predicator.Functions.SystemFunctionsCoverageTest do
   use ExUnit.Case, async: true
 
+  alias Predicator.Context
   alias Predicator.Functions.{DateFunctions, SystemFunctions}
+
+  @context Context.new()
 
   describe "error cases for function arity and types" do
     test "len/2 with wrong number of arguments" do
-      {1, len_func} = SystemFunctions.all_functions()["len"]
-
       # Test with no arguments
-      assert {:error, "len() expects exactly 1 argument"} = len_func.([], %{})
+      assert {:error, "len() expects exactly 1 argument"} = SystemFunctions.call_len([], @context)
 
       # Test with too many arguments
-      assert {:error, "len() expects exactly 1 argument"} = len_func.(["a", "b"], %{})
+      assert {:error, "len() expects exactly 1 argument"} =
+               SystemFunctions.call_len(["a", "b"], @context)
     end
 
     test "upper/2 with wrong number of arguments" do
-      {1, upper_func} = SystemFunctions.all_functions()["upper"]
-
       # Test with no arguments
-      assert {:error, "upper() expects exactly 1 argument"} = upper_func.([], %{})
+      assert {:error, "upper() expects exactly 1 argument"} =
+               SystemFunctions.call_upper([], @context)
 
       # Test with too many arguments
-      assert {:error, "upper() expects exactly 1 argument"} = upper_func.(["a", "b"], %{})
+      assert {:error, "upper() expects exactly 1 argument"} =
+               SystemFunctions.call_upper(["a", "b"], @context)
     end
 
     test "lower/2 with wrong number of arguments" do
-      {1, lower_func} = SystemFunctions.all_functions()["lower"]
-
       # Test with no arguments
-      assert {:error, "lower() expects exactly 1 argument"} = lower_func.([], %{})
+      assert {:error, "lower() expects exactly 1 argument"} =
+               SystemFunctions.call_lower([], @context)
 
       # Test with too many arguments
-      assert {:error, "lower() expects exactly 1 argument"} = lower_func.(["a", "b"], %{})
+      assert {:error, "lower() expects exactly 1 argument"} =
+               SystemFunctions.call_lower(["a", "b"], @context)
     end
 
     test "trim/2 with wrong number of arguments" do
-      {1, trim_func} = SystemFunctions.all_functions()["trim"]
-
       # Test with no arguments
-      assert {:error, "trim() expects exactly 1 argument"} = trim_func.([], %{})
+      assert {:error, "trim() expects exactly 1 argument"} =
+               SystemFunctions.call_trim([], @context)
 
       # Test with too many arguments
-      assert {:error, "trim() expects exactly 1 argument"} = trim_func.(["a", "b"], %{})
+      assert {:error, "trim() expects exactly 1 argument"} =
+               SystemFunctions.call_trim(["a", "b"], @context)
     end
 
     test "year/2 with wrong number of arguments" do
-      {1, year_func} = DateFunctions.all_functions()["Date.year"]
-
       # Test with no arguments
-      assert {:error, "Date.year() expects exactly 1 argument"} = year_func.([], %{})
+      assert {:error, "Date.year() expects exactly 1 argument"} =
+               DateFunctions.call_year([], @context)
 
       # Test with too many arguments
       date = Date.from_iso8601!("2024-01-15")
-      assert {:error, "Date.year() expects exactly 1 argument"} = year_func.([date, date], %{})
+
+      assert {:error, "Date.year() expects exactly 1 argument"} =
+               DateFunctions.call_year([date, date], @context)
     end
 
     test "month/2 with wrong number of arguments" do
-      {1, month_func} = DateFunctions.all_functions()["Date.month"]
-
       # Test with no arguments
-      assert {:error, "Date.month() expects exactly 1 argument"} = month_func.([], %{})
+      assert {:error, "Date.month() expects exactly 1 argument"} =
+               DateFunctions.call_month([], @context)
 
       # Test with too many arguments
       date = Date.from_iso8601!("2024-01-15")
-      assert {:error, "Date.month() expects exactly 1 argument"} = month_func.([date, date], %{})
+
+      assert {:error, "Date.month() expects exactly 1 argument"} =
+               DateFunctions.call_month([date, date], @context)
     end
 
     test "day/2 with wrong number of arguments" do
-      {1, day_func} = DateFunctions.all_functions()["Date.day"]
-
       # Test with no arguments
-      assert {:error, "Date.day() expects exactly 1 argument"} = day_func.([], %{})
+      assert {:error, "Date.day() expects exactly 1 argument"} =
+               DateFunctions.call_day([], @context)
 
       # Test with too many arguments
       date = Date.from_iso8601!("2024-01-15")
-      assert {:error, "Date.day() expects exactly 1 argument"} = day_func.([date, date], %{})
+
+      assert {:error, "Date.day() expects exactly 1 argument"} =
+               DateFunctions.call_day([date, date], @context)
     end
 
     test "starts_with/2 with wrong number of arguments" do
-      {2, starts_with_func} = SystemFunctions.all_functions()["starts_with"]
-
-      assert {:error, "starts_with() expects exactly 2 arguments"} = starts_with_func.([], %{})
+      assert {:error, "starts_with() expects exactly 2 arguments"} =
+               SystemFunctions.call_starts_with([], @context)
 
       assert {:error, "starts_with() expects exactly 2 arguments"} =
-               starts_with_func.(["a", "b", "c"], %{})
+               SystemFunctions.call_starts_with(["a", "b", "c"], @context)
     end
 
     test "ends_with/2 with wrong number of arguments" do
-      {2, ends_with_func} = SystemFunctions.all_functions()["ends_with"]
-
-      assert {:error, "ends_with() expects exactly 2 arguments"} = ends_with_func.([], %{})
+      assert {:error, "ends_with() expects exactly 2 arguments"} =
+               SystemFunctions.call_ends_with([], @context)
 
       assert {:error, "ends_with() expects exactly 2 arguments"} =
-               ends_with_func.(["a", "b", "c"], %{})
+               SystemFunctions.call_ends_with(["a", "b", "c"], @context)
     end
 
     test "index_of/2 with wrong number of arguments" do
-      {2, index_of_func} = SystemFunctions.all_functions()["index_of"]
-
-      assert {:error, "index_of() expects exactly 2 arguments"} = index_of_func.([], %{})
+      assert {:error, "index_of() expects exactly 2 arguments"} =
+               SystemFunctions.call_index_of([], @context)
 
       assert {:error, "index_of() expects exactly 2 arguments"} =
-               index_of_func.(["a", "b", "c"], %{})
+               SystemFunctions.call_index_of(["a", "b", "c"], @context)
     end
 
     test "substring/2 with wrong number of arguments" do
-      {[2, 3], substring_func} = SystemFunctions.all_functions()["substring"]
-
-      assert {:error, "substring() expects 2 or 3 arguments"} = substring_func.([], %{})
+      assert {:error, "substring() expects 2 or 3 arguments"} =
+               SystemFunctions.call_substring([], @context)
 
       assert {:error, "substring() expects 2 or 3 arguments"} =
-               substring_func.(["a"], %{})
+               SystemFunctions.call_substring(["a"], @context)
     end
   end
 
   describe "date functions with DateTime objects" do
     test "year/2 with DateTime" do
-      {1, year_func} = DateFunctions.all_functions()["Date.year"]
-
       datetime = ~U[2024-01-15 10:30:00Z]
-      assert {:ok, 2024} = year_func.([datetime], %{})
+      assert {:ok, 2024} = DateFunctions.call_year([datetime], @context)
     end
 
     test "month/2 with DateTime" do
-      {1, month_func} = DateFunctions.all_functions()["Date.month"]
-
       datetime = ~U[2024-01-15 10:30:00Z]
-      assert {:ok, 1} = month_func.([datetime], %{})
+      assert {:ok, 1} = DateFunctions.call_month([datetime], @context)
     end
 
     test "day/2 with DateTime" do
-      {1, day_func} = DateFunctions.all_functions()["Date.day"]
-
       datetime = ~U[2024-01-15 10:30:00Z]
-      assert {:ok, 15} = day_func.([datetime], %{})
+      assert {:ok, 15} = DateFunctions.call_day([datetime], @context)
     end
   end
 end

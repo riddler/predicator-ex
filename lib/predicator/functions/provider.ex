@@ -9,9 +9,10 @@ defmodule Predicator.FunctionProvider do
   is what lets a caller resolve `module` and `atom` separately - `apply/3`
   against the pair - instead of carrying a `function()` value around.
 
-  This is additive: the four builtin modules keep their existing
-  `all_functions/0` closure maps and `functions/0` side by side. Nothing
-  downstream reads `functions/0` yet.
+  `Predicator.Context.new/2`'s `:providers` option resolves a list of provider
+  modules into the evaluator's dispatch map; the four builtin modules
+  (`SystemFunctions`, `DateFunctions`, `JSONFunctions`, `MathFunctions`) are
+  the default provider list, named by `builtin_providers/0`.
   """
 
   @typedoc "A function name, as it appears in a predicator expression."
@@ -28,4 +29,24 @@ defmodule Predicator.FunctionProvider do
   `{:ok, Types.value()} | {:error, binary()}`.
   """
   @callback functions() :: %{name() => entry()}
+
+  @doc """
+  The four builtin provider modules, in shadowing order.
+
+  `Predicator.Context.new/2` resolves this list first when `builtins: true`
+  (the default), so a later entry - a `:providers` module, then the inline
+  `:functions` map - overrides a same-named builtin. This is the one place
+  the default list is written down; conformance tooling that needs "every
+  registered name" calls `Predicator.Context.new().functions` rather than
+  duplicating it.
+  """
+  @spec builtin_providers() :: [module()]
+  def builtin_providers do
+    [
+      Predicator.Functions.SystemFunctions,
+      Predicator.Functions.DateFunctions,
+      Predicator.Functions.JSONFunctions,
+      Predicator.Functions.MathFunctions
+    ]
+  end
 end

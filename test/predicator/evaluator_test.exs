@@ -1,8 +1,20 @@
+defmodule Predicator.EvaluatorTest.RaisingProvider do
+  @moduledoc false
+  @behaviour Predicator.FunctionProvider
+
+  @impl Predicator.FunctionProvider
+  def functions, do: %{"boom" => {1, :call_boom}}
+
+  @spec call_boom([term()], Predicator.Context.t()) :: no_return()
+  def call_boom([_arg], _context), do: raise("provider exploded")
+end
+
 defmodule Predicator.EvaluatorTest do
   use ExUnit.Case, async: true
 
   alias Predicator.Errors.UndefinedVariableError
   alias Predicator.Evaluator
+  alias Predicator.EvaluatorTest.RaisingProvider
 
   doctest Predicator.Evaluator
 
@@ -1524,6 +1536,64 @@ defmodule Predicator.EvaluatorTest do
       assert_raise RuntimeError, fn ->
         Evaluator.evaluate!([["load", "x"]], %{}, on_unbound: :error)
       end
+    end
+  end
+
+  describe "call_function/4 dispatch - MFA entries alongside closures" do
+    test "an MFA entry (from a resolved provider) dispatches via apply/3" do
+      instructions = [["lit", "x"], ["call", "len", 1]]
+
+      assert Evaluator.evaluate(instructions, %{}) == 1
+    end
+
+    test "a closure entry (from :functions) still dispatches directly" do
+      instructions = [["lit", 21], ["call", "double", 1]]
+      functions = %{"double" => {1, fn [n], _context -> {:ok, n * 2} end}}
+
+      assert Evaluator.evaluate(instructions, %{}, functions: functions) == 42
+    end
+
+    test "an MFA entry's arity-mismatch message matches a closure entry's, byte for byte" do
+      instructions = [["lit", "a"], ["lit", "b"], ["call", "len", 2]]
+
+      assert {:error, %{message: mfa_message}} =
+               Evaluator.evaluate(instructions, %{},
+                 providers: [Predicator.Functions.SystemFunctions]
+               )
+
+      closure_functions = %{"len" => {1, fn [_arg], _ctx -> {:ok, 0} end}}
+
+      assert {:error, %{message: closure_message}} =
+               Evaluator.evaluate(instructions, %{},
+                 functions: closure_functions,
+                 builtins: false
+               )
+
+      assert mfa_message == closure_message
+      assert mfa_message == "Function len() expects 1 arguments, got 2"
+    end
+
+    test "an unknown function reports the same message regardless of what else is registered" do
+      instructions = [["call", "nope", 0]]
+
+      assert Evaluator.evaluate(instructions, %{}) ==
+               {:error,
+                %Predicator.Errors.EvaluationError{
+                  message: "Unknown function: nope",
+                  reason: "Unknown function: nope",
+                  operation: :function_call,
+                  position: nil
+                }}
+    end
+
+    test "an MFA entry that raises is rescued into the same error shape a closure raise produces" do
+      instructions = [["lit", 1], ["call", "boom", 1]]
+
+      assert {:error, %{message: mfa_message}} =
+               Evaluator.evaluate(instructions, %{}, providers: [RaisingProvider])
+
+      assert mfa_message =~ "Function boom() raised:"
+      assert mfa_message =~ "provider exploded"
     end
   end
 end

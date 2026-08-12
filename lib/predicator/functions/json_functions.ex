@@ -13,13 +13,13 @@ defmodule Predicator.Functions.JSONFunctions do
 
       iex> {:ok, result} = Predicator.evaluate("JSON.stringify(user)",
       ...>   %{"user" => %{"name" => "John", "age" => 30}},
-      ...>   functions: Predicator.Functions.JSONFunctions.all_functions())
+      ...>   providers: [Predicator.Functions.JSONFunctions])
       iex> result
       ~s({"age":30,"name":"John"})
 
       iex> {:ok, result} = Predicator.evaluate("JSON.parse(data)",
       ...>   %{"data" => ~s({"status":"ok"})},
-      ...>   functions: Predicator.Functions.JSONFunctions.all_functions())
+      ...>   providers: [Predicator.Functions.JSONFunctions])
       iex> result
       %{"status" => "ok"}
   """
@@ -30,19 +30,8 @@ defmodule Predicator.Functions.JSONFunctions do
 
   @type function_result :: {:ok, Types.value()} | {:error, binary()}
 
-  @spec all_functions() :: %{binary() => {non_neg_integer(), function()}}
-  def all_functions do
-    %{
-      "JSON.stringify" => {1, &call_stringify/2},
-      "JSON.parse" => {1, &call_parse/2}
-    }
-  end
-
   @doc """
   Returns all JSON functions as a `Predicator.FunctionProvider` map.
-
-  Same names and arities as `all_functions/0`, naming each implementation by
-  atom instead of closure.
   """
   @impl Predicator.FunctionProvider
   @spec functions() :: %{
@@ -59,7 +48,7 @@ defmodule Predicator.Functions.JSONFunctions do
   # refs, funs, non-string map keys, invalid UTF-8. All of those fall back to
   # inspect/1, which is what a predicate has always seen for such values.
   @doc "Converts a value to a JSON string."
-  @spec call_stringify([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_stringify([Types.value()], Context.t()) :: function_result()
   def call_stringify([value], _context) do
     {:ok, JSON.encode!(value)}
   rescue
@@ -67,7 +56,7 @@ defmodule Predicator.Functions.JSONFunctions do
   end
 
   @doc "Parses a JSON string into a value."
-  @spec call_parse([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_parse([Types.value()], Context.t()) :: function_result()
   def call_parse([json_string], _context) when is_binary(json_string) do
     case JSON.decode(json_string) do
       {:ok, value} ->

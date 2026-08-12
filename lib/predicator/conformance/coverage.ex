@@ -64,9 +64,9 @@ defmodule Predicator.Conformance.Coverage do
     excluded from the coverage rule"). Shown inline with a note rather than as
     a bare `corpus: 0` row.
   - `:suite_local` - a `call:<name>` whose name is not a key of the caller-
-    supplied builtin registry (in practice `Predicator.Evaluator.
-    merge_functions([])`), so it was registered by an individual ExUnit test
-    via its own `opts[:functions]` map and can never become a corpus case.
+    supplied builtin registry (in practice `Predicator.Context.new().
+    functions`), so it was registered by an individual ExUnit test via its
+    own `opts[:functions]` map and can never become a corpus case.
     `format_report/1` moves these to a trailing labelled section rather than
     dropping them silently - the report is a heuristic instrument, and a
     reader who remembers writing a test for one of these names should be able
@@ -74,9 +74,8 @@ defmodule Predicator.Conformance.Coverage do
 
   Classification is deliberately **not** a hardcoded name list on the "this is
   a builtin" side: `classify/2` takes the registry as data from the caller
-  (`mix corpus.coverage` passes `Predicator.Evaluator.merge_functions([])`'s
-  keys) so a new builtin needs no update here to stop showing up as
-  suite-local.
+  (`mix corpus.coverage` passes `Predicator.Context.new().functions`'s keys)
+  so a new builtin needs no update here to stop showing up as suite-local.
 
   Report only: nothing here writes a case or fails a gate.
   """
@@ -339,7 +338,7 @@ defmodule Predicator.Conformance.Coverage do
 
   `builtin_names` is the set of function names the classifier treats as
   real builtins - in practice the caller passes
-  `Predicator.Evaluator.merge_functions([])`'s keys, so this module never
+  `Predicator.Context.new().functions`'s keys, so this module never
   hardcodes "what is a builtin" itself. A gap whose pattern is not a
   `call:<name>` pattern (i.e. not tier 5) is `:gap` unless it is the
   documented opcode exclusion `relative_date`.

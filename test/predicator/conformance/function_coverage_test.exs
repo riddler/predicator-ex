@@ -1,7 +1,7 @@
 defmodule Predicator.Conformance.FunctionCoverageTest do
   @moduledoc """
   The function-level sibling of `opcode_coverage_test.exs` (`px-1ka`): every
-  builtin registered in `Predicator.Evaluator.merge_functions([])` appears in
+  builtin registered in `Predicator.Context.new().functions` appears in
   at least one authored case's `instructions` as a `call` operand, except the
   documented non-deterministic exclusions.
 
@@ -54,6 +54,14 @@ defmodule Predicator.Conformance.FunctionCoverageTest do
   end
 
   # sabotage: coverage.ex @documented_exclusion_functions "Date.now" -> "Date.nowww" -> red
+  #
+  # Re-verified px-e1n.1: registered_functions/0 switched its source from
+  # `Predicator.Evaluator.merge_functions([])` to `Predicator.Context.new().
+  # functions`. Sabotaging the new source (`registered_functions/0` returning
+  # `MapSet.new()`) reproduces the same red - the exclusion list then names
+  # functions absent from the (empty) registered set, tripping this
+  # assertion - confirming the switch is still load-bearing, not a name that
+  # happens to agree by coincidence. Restoring the real source is green again.
   test "the exclusion list only names functions that are actually registered" do
     stale_names =
       Coverage.documented_exclusion_functions()
@@ -62,12 +70,12 @@ defmodule Predicator.Conformance.FunctionCoverageTest do
     assert MapSet.new() == stale_names,
            "Coverage.documented_exclusion_functions/0 names " <>
              "#{inspect(MapSet.to_list(stale_names))}, which is not a key of " <>
-             "Predicator.Evaluator.merge_functions([]) - the exclusion is stale"
+             "Predicator.Context.new().functions - the exclusion is stale"
   end
 
   @spec registered_functions() :: MapSet.t(String.t())
   defp registered_functions do
-    [] |> Predicator.Evaluator.merge_functions() |> Map.keys() |> MapSet.new()
+    Predicator.Context.new().functions |> Map.keys() |> MapSet.new()
   end
 
   @spec covered_functions() :: MapSet.t(String.t())

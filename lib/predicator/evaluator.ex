@@ -14,7 +14,6 @@ defmodule Predicator.Evaluator do
   keeps their rows.
   """
 
-  alias Predicator.Functions.{DateFunctions, JSONFunctions, MathFunctions, SystemFunctions}
   alias Predicator.{Cast, ContextLocation, Duration, Instructions, Types, Undefined}
 
   alias Predicator.Errors.{
@@ -36,14 +35,15 @@ defmodule Predicator.Evaluator do
           instruction_pointer: non_neg_integer(),
           stack: [Types.value()],
           context: Types.context(),
-          functions: %{binary() => {function_arity(), function()}},
+          functions: %{binary() => {function_arity(), Predicator.Context.function_entry()}},
           positions: Types.position_table() | Types.span_table(),
           segment_positions: Types.segment_position_table(),
           halted: boolean(),
           unbound_loads: [unbound_load()],
           on_unbound: Predicator.Context.on_unbound(),
           last_value: Types.value(),
-          size: non_neg_integer() | nil
+          size: non_neg_integer() | nil,
+          host: term()
         }
 
   @typedoc "A function's accepted argument count(s): a fixed arity, or a set of arities for optional/variadic-style args"
@@ -75,24 +75,9 @@ defmodule Predicator.Evaluator do
     # requires compile-time literals; it is that atom, matching `on_unbound`'s
     # literal default below.
     last_value: :undefined,
-    on_unbound: :undefined
+    on_unbound: :undefined,
+    host: nil
   ]
-
-  @doc """
-  Merges the builtin function maps with `opts[:functions]`.
-
-  Builtins are `SystemFunctions`, `DateFunctions`, `JSONFunctions`, and
-  `MathFunctions`, in that order; `opts[:functions]` is merged last, so
-  custom functions can shadow a builtin of the same name.
-  """
-  @spec merge_functions(keyword()) :: %{binary() => {function_arity(), function()}}
-  def merge_functions(opts \\ []) do
-    SystemFunctions.all_functions()
-    |> Map.merge(DateFunctions.all_functions())
-    |> Map.merge(JSONFunctions.all_functions())
-    |> Map.merge(MathFunctions.all_functions())
-    |> Map.merge(Keyword.get(opts, :functions, %{}))
-  end
 
   @doc """
   Runs an already-built evaluator to completion, returning its result **and**
@@ -247,7 +232,14 @@ defmodule Predicator.Evaluator do
   - `instructions` - List of instructions to execute
   - `context` - Context map with variable bindings (default: `%{}`)
   - `opts` - Options keyword list:
-    - `:functions` - Map of custom functions `%{name => {arity, function}}`
+    - `:functions`, `:providers`, `:builtins` - resolved into the dispatch
+      map the same way `Predicator.Context.new/2` resolves them (see
+      `Predicator.Context.resolve_functions/1`): the builtin providers
+      (unless `builtins: false`), then `:providers` left to right, then the
+      inline `:functions` closure map `%{name => {arity, function}}`, each
+      shadowing a same-named entry from an earlier source
+    - `:host` - opaque term threaded to every function call's `%Context{}`
+      as `context.host` (default `nil`)
     - `:positions` - Side table mapping a 0-based instruction index to the
       `{line, column}` of the AST node that emitted it, as produced by
       `Predicator.Compiler.to_instructions_with_positions/2` and carried in a
@@ -291,7 +283,8 @@ defmodule Predicator.Evaluator do
     evaluate_prepared(%__MODULE__{
       instructions: instructions,
       context: context,
-      functions: merge_functions(opts),
+      functions: Predicator.Context.resolve_functions(opts),
+      host: Keyword.get(opts, :host),
       positions: Keyword.get(opts, :positions, %{}),
       segment_positions: Keyword.get(opts, :segment_positions, %{}),
       on_unbound: Keyword.get(opts, :on_unbound, :undefined)
@@ -1186,7 +1179,7 @@ defmodule Predicator.Evaluator do
 
   @spec execute_function_call(t(), binary(), non_neg_integer()) :: {:ok, t()} | {:error, term()}
   defp execute_function_call(
-         %__MODULE__{stack: stack, functions: functions} = evaluator,
+         %__MODULE__{stack: stack} = evaluator,
          function_name,
          arg_count
        ) do
@@ -1196,7 +1189,7 @@ defmodule Predicator.Evaluator do
       # Reverse args to get correct order (stack is LIFO)
       function_args = Enum.reverse(args)
 
-      case call_function(functions, function_name, function_args, evaluator.context) do
+      case call_function(evaluator, function_name, function_args) do
         {:ok, result} ->
           {:ok, %__MODULE__{evaluator | stack: [result | remaining_stack]}}
 
@@ -1213,20 +1206,29 @@ defmodule Predicator.Evaluator do
     end
   end
 
-  # Call a function from the functions map
-  @spec call_function(
-          %{binary() => {function_arity(), function()}},
-          binary(),
-          [Types.value()],
-          Types.context()
-        ) ::
-          {:ok, Types.value()} | {:error, binary()}
-  defp call_function(functions, function_name, args, context) do
+  # Looks `function_name` up in `evaluator.functions` and dispatches it. Both
+  # entry shapes - `{arity, {module, atom}}` from a resolved provider and
+  # `{arity, fun}` from an inline closure - receive the same second argument:
+  # a `%Predicator.Context{}` built from the evaluator's current state, not a
+  # bare data map. Built at call time (not carried on the struct) because
+  # `evaluator.context` is load-bearing as the run's *data* map
+  # (`Predicator.execute_instructions/3` reads it back with
+  # `%{context | data: final.context}`), so a function that calls `store`
+  # earlier in the run sees that write here.
+  @spec call_function(t(), binary(), [Types.value()]) :: {:ok, Types.value()} | {:error, binary()}
+  defp call_function(%__MODULE__{functions: functions} = evaluator, function_name, args) do
     case Map.get(functions, function_name) do
-      {arity, function} ->
+      {arity, entry} ->
         if arity_matches?(arity, length(args)) do
+          context = %Predicator.Context{
+            data: evaluator.context,
+            functions: evaluator.functions,
+            host: evaluator.host,
+            on_unbound: evaluator.on_unbound
+          }
+
           try do
-            function.(args, context)
+            dispatch(entry, args, context)
           rescue
             error ->
               {:error, "Function #{function_name}() raised: #{inspect(error)}"}
@@ -1239,6 +1241,16 @@ defmodule Predicator.Evaluator do
       nil ->
         {:error, "Unknown function: #{function_name}"}
     end
+  end
+
+  @spec dispatch({module(), atom()} | function(), [Types.value()], Predicator.Context.t()) ::
+          {:ok, Types.value()} | {:error, binary()}
+  defp dispatch({module, fun_atom}, args, context) when is_atom(module) and is_atom(fun_atom) do
+    apply(module, fun_atom, [args, context])
+  end
+
+  defp dispatch(fun, args, context) when is_function(fun, 2) do
+    fun.(args, context)
   end
 
   @spec arity_matches?(function_arity(), non_neg_integer()) :: boolean()

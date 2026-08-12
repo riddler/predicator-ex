@@ -330,8 +330,8 @@ defmodule Predicator.Conformance.CoverageTest do
       assert [%{status: :gap}] = Coverage.classify(gaps, MapSet.new())
     end
 
-    test "classifying against the real builtin registry matches merge_functions/1's keys" do
-      builtin_names = Predicator.Evaluator.merge_functions([]) |> Map.keys() |> MapSet.new()
+    test "classifying against the real builtin registry matches Context.new/2's resolved keys" do
+      builtin_names = Predicator.Context.new().functions |> Map.keys() |> MapSet.new()
 
       gaps = [
         %{tier: 5, tier_name: "functions", pattern: "call:len", suite_count: 1, corpus_count: 0},
