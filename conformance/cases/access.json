@@ -80,5 +80,12 @@
     "instructions": [["make_list", 0]],
     "expected": { "result": [] },
     "notes": "count: 0 is reachable only from a hand-built instruction list - the compiler never emits make_list for an empty literal list, which compiles to [\"lit\", []] instead"
+  },
+  {
+    "id": "access/missing-key-strict-eq-undefined-literal",
+    "source": "user.missing === undefined",
+    "context": { "user": {} },
+    "expected": { "result": true },
+    "notes": "an absent key compared against the undefined literal - the boundness test px-ocp exists for. The literal lowers to lit, never load, so it is unaffected by on_unbound (an evaluation option outside this corpus's scope)"
   }
 ]

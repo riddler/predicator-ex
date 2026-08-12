@@ -526,14 +526,14 @@ trailing newline), then delete the script.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green - in particular
+- [x] `mix quality` is green - in particular
       `test/predicator/conformance/corpus_freshness_test.exs` (the corpus on
       disk is byte-identical to what `mix corpus.generate` writes) and
       `test/predicator/conformance/ratchet_registry_test.exs` (schema, pin,
       canonical encoding, R5 completeness).
-- [ ] `mix corpus.generate` run a second time produces no diff.
-- [ ] `conformance/manifest.json` still reports `"isa_version":6`.
-- [ ] `git diff --stat conformance/` touches only `cases/core.json`,
+- [x] `mix corpus.generate` run a second time produces no diff.
+- [x] `conformance/manifest.json` still reports `"isa_version":6`.
+- [x] `git diff --stat conformance/` touches only `cases/core.json`,
       `cases/access.json`, `corpus/tier-1.json`, `corpus/tier-3.json`,
       `manifest.json`, and `examples/registry.example.json`.
 
@@ -765,6 +765,27 @@ before considering the plan fully landed.
       the table above.
 - [ ] `mix quality`'s dialyzer stage raised nothing about the widened
       `classify_identifier/1` and `value()` specs.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits and
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] The corpus diff is reviewed line by line and is exactly the five new
+      cases plus the manifest's hash and two case counts - no unrelated case
+      re-ordered or re-encoded.
+- [ ] The commit message and the PR body explain the corpus diff, per
+      ADR-0003 and CLAUDE.md's conventions, stating that the exported
+      specification gained a source spelling and that the ISA version did not
+      move.
+- [ ] A sibling reading `core/literal-undefined` can tell from `instructions`
+      and `notes` that no new opcode is involved.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits and
 full `mix quality` as the phase gate. In interactive execution, pause here for
