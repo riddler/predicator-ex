@@ -315,7 +315,17 @@ it is visible after the block and in `execute/2`'s result, whether or not the
 branch that wrote it was the one taken - `x = 1; if x > 0 { y = 2 } else
 { y = 3 }` leaves both `x` and `y` bound at the top level, the same as if the
 assignment inside the taken branch had been written without the surrounding
-`if` at all.
+`if` at all:
+
+```elixir
+iex> {:ok, ctx} = Predicator.execute("x = 1; if x > 0 { y = 2 } else { y = 3 }", %{})
+iex> ctx.data
+%{"x" => 1, "y" => 2}
+```
+
+The same holds for a `while` body, which is why a counted loop can
+accumulate at all: `i` in `i = 0; while i < 3 { i = i + 1 }` is one binding
+the body rewrites, not a fresh one per iteration.
 
 See [ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md)
 for why: the statement layer has no declaration form to hang a scope on, and
