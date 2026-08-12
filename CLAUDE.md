@@ -315,3 +315,8 @@ and Elixir matching what CI builds with.
   exported artifact to its source are verified by breaking what they cover and
   confirming they go red. Ordinary tests need no note. The list and the
   reasoning are in `docs/research/260808-px-9ab-sabotage-notes.md`.
+  `gate.sabotage.test_roots` in `.claude/wurk.json` is that same list, in
+  machine-readable form, and the scan reads nothing else: **a binding test in
+  a file not named there is invisible to it.** Adding a binding test therefore
+  means adding its path to `test_roots` in the same change, and the scan's
+  silence about a file is never evidence that file is clean.
