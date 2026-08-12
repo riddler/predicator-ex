@@ -53,48 +53,26 @@ defmodule Predicator.Functions.SystemFunctions do
 
   @behaviour Predicator.FunctionProvider
 
-  alias Predicator.{Context, Evaluator, Types}
+  alias Predicator.{Context, Types}
 
   @type function_result :: {:ok, Types.value()} | {:error, binary()}
 
   @doc """
-  Returns all system functions as a map in the format expected by the evaluator.
+  Returns all system functions as a `Predicator.FunctionProvider` map.
 
   ## Returns
 
-  A map where keys are function names and values are `{arity, function}` tuples.
+  A map where keys are function names and values are `{arity, atom}` pairs -
+  `atom` naming a public `call_*/2` function on this module.
 
   ## Examples
 
-      iex> functions = Predicator.Functions.SystemFunctions.all_functions()
+      iex> functions = Predicator.Functions.SystemFunctions.functions()
       iex> Map.has_key?(functions, "len")
       true
-      iex> {arity, _function} = functions["len"]
+      iex> {arity, _atom} = functions["len"]
       iex> arity
       1
-  """
-  @spec all_functions() :: %{binary() => {Evaluator.function_arity(), function()}}
-  def all_functions do
-    %{
-      # String functions
-      "len" => {1, &call_len/2},
-      "upper" => {1, &call_upper/2},
-      "lower" => {1, &call_lower/2},
-      "trim" => {1, &call_trim/2},
-      "starts_with" => {2, &call_starts_with/2},
-      "ends_with" => {2, &call_ends_with/2},
-      "substring" => {[2, 3], &call_substring/2},
-      "index_of" => {2, &call_index_of/2},
-      # List functions
-      "concat" => {2, &call_concat/2}
-    }
-  end
-
-  @doc """
-  Returns all system functions as a `Predicator.FunctionProvider` map.
-
-  Same names and arities as `all_functions/0`, naming each implementation by
-  atom instead of closure.
   """
   @impl Predicator.FunctionProvider
   @spec functions() :: %{
@@ -119,7 +97,7 @@ defmodule Predicator.Functions.SystemFunctions do
   # String function implementations
 
   @doc "Returns the length of a string."
-  @spec call_len([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_len([Types.value()], Context.t()) :: function_result()
   def call_len([value], _context) when is_binary(value) do
     {:ok, String.length(value)}
   end
@@ -133,7 +111,7 @@ defmodule Predicator.Functions.SystemFunctions do
   end
 
   @doc "Converts a string to uppercase."
-  @spec call_upper([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_upper([Types.value()], Context.t()) :: function_result()
   def call_upper([value], _context) when is_binary(value) do
     {:ok, String.upcase(value)}
   end
@@ -147,7 +125,7 @@ defmodule Predicator.Functions.SystemFunctions do
   end
 
   @doc "Converts a string to lowercase."
-  @spec call_lower([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_lower([Types.value()], Context.t()) :: function_result()
   def call_lower([value], _context) when is_binary(value) do
     {:ok, String.downcase(value)}
   end
@@ -161,7 +139,7 @@ defmodule Predicator.Functions.SystemFunctions do
   end
 
   @doc "Removes leading and trailing whitespace from a string."
-  @spec call_trim([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_trim([Types.value()], Context.t()) :: function_result()
   def call_trim([value], _context) when is_binary(value) do
     {:ok, String.trim(value)}
   end
@@ -175,7 +153,7 @@ defmodule Predicator.Functions.SystemFunctions do
   end
 
   @doc "Tests whether a string starts with a prefix."
-  @spec call_starts_with([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_starts_with([Types.value()], Context.t()) :: function_result()
   def call_starts_with([value, prefix], _context)
       when is_binary(value) and is_binary(prefix) do
     {:ok, String.starts_with?(value, prefix)}
@@ -190,7 +168,7 @@ defmodule Predicator.Functions.SystemFunctions do
   end
 
   @doc "Tests whether a string ends with a suffix."
-  @spec call_ends_with([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_ends_with([Types.value()], Context.t()) :: function_result()
   def call_ends_with([value, suffix], _context)
       when is_binary(value) and is_binary(suffix) do
     {:ok, String.ends_with?(value, suffix)}
@@ -205,7 +183,7 @@ defmodule Predicator.Functions.SystemFunctions do
   end
 
   @doc "Extracts a substring from a start index, with an optional length."
-  @spec call_substring([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_substring([Types.value()], Context.t()) :: function_result()
   def call_substring([value, start], _context)
       when is_binary(value) and is_integer(start) and start >= 0 do
     {:ok, String.slice(value, start, String.length(value))}
@@ -239,7 +217,7 @@ defmodule Predicator.Functions.SystemFunctions do
   end
 
   @doc "Finds the index of a substring, or -1 if it is not present."
-  @spec call_index_of([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_index_of([Types.value()], Context.t()) :: function_result()
   def call_index_of([value, ""], _context) when is_binary(value) do
     {:ok, 0}
   end
@@ -262,7 +240,7 @@ defmodule Predicator.Functions.SystemFunctions do
   # List function implementations
 
   @doc "Concatenates two lists."
-  @spec call_concat([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_concat([Types.value()], Context.t()) :: function_result()
   def call_concat([a, b], _context) when is_list(a) and is_list(b) do
     {:ok, a ++ b}
   end

@@ -3,8 +3,21 @@ defmodule Predicator.Context do
   A bound evaluation context: data, functions, and the unbound-variable policy.
 
   Build one with `new/2`, evaluate `Predicator.evaluate/3` against it many
-  times, and rebind cheaply with `bind/3` between evaluations - the builtin
-  function maps merge once, at construction, not on every evaluate call.
+  times, and rebind cheaply with `bind/3` between evaluations - functions
+  resolve once, at construction, not on every evaluate call.
+
+  ## Functions
+
+  `functions` is a closed dispatch map, resolved once by `new/2` from three
+  sources, folded left so a later one shadows an earlier same-named entry:
+  the four builtin provider modules (`:builtins`, default `true`), then
+  `:providers` - a list of `Predicator.FunctionProvider` modules, left to
+  right - then `:functions`, an inline `%{name => {arity, fun}}` closure map
+  merged last. A provider module is validated at construction
+  (`ArgumentError` on a bad one - host API misuse, not a predicate-derived
+  failure); a resolved entry is either `{arity, {module, atom}}` or
+  `{arity, fun}`, and the evaluator dispatches both the same way, handing the
+  function `(args, context)`.
 
   ## The `host` slot
 
@@ -27,7 +40,7 @@ defmodule Predicator.Context do
       {:ok, 90}
   """
 
-  alias Predicator.{ContextLocation, Evaluator, Types, Undefined}
+  alias Predicator.{ContextLocation, Evaluator, FunctionProvider, Types, Undefined}
 
   @typedoc """
   Policy for a load of an unbound root variable.
@@ -44,10 +57,13 @@ defmodule Predicator.Context do
   """
   @type on_unbound :: :undefined | :error
 
+  @typedoc "A function entry the evaluator can dispatch: an MFA pair or a closure."
+  @type function_entry :: {module(), atom()} | function()
+
   @typedoc "A bound evaluation context."
   @type t :: %__MODULE__{
           data: Types.context(),
-          functions: %{binary() => {Evaluator.function_arity(), function()}},
+          functions: %{binary() => {Evaluator.function_arity(), function_entry()}},
           on_unbound: on_unbound(),
           host: term()
         }
@@ -55,16 +71,27 @@ defmodule Predicator.Context do
   defstruct data: %{}, functions: %{}, on_unbound: :undefined, host: nil
 
   @doc """
-  Builds a context, merging the builtin function maps once.
+  Builds a context, resolving its function dispatch map once.
 
   ## Parameters
 
   - `data` - the bound-variable map (default `%{}`)
-  - `opts` - `:functions` (custom functions merged over the builtins,
-    same as `Predicator.evaluate/3`'s `:functions` option), `:on_unbound`
-    (`:undefined` (default) | `:error` - see `t:on_unbound/0`; any other
-    value raises `ArgumentError`), and `:host` (default `nil` - see the
-    "The `host` slot" section above)
+  - `opts`:
+    - `:builtins` - `true` (default) includes the four builtin provider
+      modules; `false` drops them, leaving only `:providers` and
+      `:functions`
+    - `:providers` - a list of `Predicator.FunctionProvider` modules,
+      resolved left to right (a later module shadows an earlier one's
+      same-named entry), after the builtins and before `:functions`. A
+      module that fails to load, does not export `functions/0`, or names an
+      atom not exported at arity 2 raises `ArgumentError`, naming the module
+      and the offending entry
+    - `:functions` - an inline `%{name => {arity, fun}}` closure map, merged
+      last (shadows both builtins and `:providers`) - same as
+      `Predicator.evaluate/3`'s `:functions` option
+    - `:on_unbound` - `:undefined` (default) | `:error` - see
+      `t:on_unbound/0`; any other value raises `ArgumentError`
+    - `:host` - default `nil` - see the "The `host` slot" section above
 
   `data` is normalized deeply before it is stored: atom keys become string
   keys (a string key wins if both are present at the same level) and `nil`
@@ -89,15 +116,89 @@ defmodule Predicator.Context do
       iex> {:error, error} = Predicator.evaluate("missing OR true", context)
       iex> {error.variable, error.position}
       {"missing", {1, 1}}
+
+      iex> Predicator.Context.new(%{}, builtins: false).functions
+      %{}
   """
   @spec new(Types.context(), keyword()) :: t()
   def new(data \\ %{}, opts \\ []) when is_map(data) do
     %__MODULE__{
       data: normalize_value(data),
-      functions: Evaluator.merge_functions(opts),
+      functions: resolve_functions(opts),
       on_unbound: validate_on_unbound!(Keyword.get(opts, :on_unbound, :undefined)),
       host: Keyword.get(opts, :host)
     }
+  end
+
+  @doc """
+  Resolves `opts`'s `:builtins`, `:providers`, and `:functions` into a single
+  dispatch map - the same resolution `new/2` performs internally, exposed so
+  `Predicator.Evaluator.evaluate/3` can route its own `:functions`/
+  `:providers`/`:builtins` opts through it without going through the rest of
+  `new/2` (data normalization, `:on_unbound` validation, which `evaluate/3`
+  deliberately does not enforce).
+
+  Order: the builtin providers (`Predicator.FunctionProvider.builtin_providers/0`,
+  unless `builtins: false`), then `opts[:providers]` left to right, then
+  `opts[:functions]` merged last - each later source shadows a same-named
+  entry from an earlier one.
+
+  Raises `ArgumentError` under the same conditions `new/2` does, for the same
+  reason: a bad provider module is host API misuse, not a predicate-derived
+  failure (ADR-0004).
+  """
+  @spec resolve_functions(keyword()) :: %{
+          binary() => {Evaluator.function_arity(), function_entry()}
+        }
+  def resolve_functions(opts \\ []) do
+    builtins =
+      if Keyword.get(opts, :builtins, true), do: FunctionProvider.builtin_providers(), else: []
+
+    providers = Keyword.get(opts, :providers, [])
+
+    (builtins ++ providers)
+    |> resolve_providers()
+    |> Map.merge(Keyword.get(opts, :functions, %{}))
+  end
+
+  @spec resolve_providers([module()]) :: %{
+          binary() => {Evaluator.function_arity(), {module(), atom()}}
+        }
+  defp resolve_providers(providers) do
+    Enum.reduce(providers, %{}, fn module, acc ->
+      Map.merge(acc, validated_entries!(module))
+    end)
+  end
+
+  # Validates one provider module and resolves its `functions/0` map into
+  # `%{name => {arity, {module, atom}}}`. Raises `ArgumentError`, naming
+  # `module` and the offending entry, when: `module` does not load
+  # (`Code.ensure_loaded?/1` first - `function_exported?/3` answers `false`
+  # for an unloaded module, which would otherwise misreport a typo'd module
+  # name as "missing functions/0"), `module` does not export `functions/0`,
+  # or a `functions/0` entry names an atom not exported at arity 2.
+  @spec validated_entries!(module()) :: %{
+          binary() => {Evaluator.function_arity(), {module(), atom()}}
+        }
+  defp validated_entries!(module) do
+    unless Code.ensure_loaded?(module) do
+      raise ArgumentError, "function provider #{inspect(module)} could not be loaded"
+    end
+
+    unless function_exported?(module, :functions, 0) do
+      raise ArgumentError,
+            "function provider #{inspect(module)} does not export functions/0"
+    end
+
+    Map.new(module.functions(), fn {name, {arity, fun_atom}} ->
+      unless function_exported?(module, fun_atom, 2) do
+        raise ArgumentError,
+              "function provider #{inspect(module)} names #{inspect(fun_atom)} for " <>
+                "#{inspect(name)}, but #{inspect(module)} does not export #{fun_atom}/2"
+      end
+
+      {name, {arity, {module, fun_atom}}}
+    end)
   end
 
   @spec validate_on_unbound!(term()) :: on_unbound()

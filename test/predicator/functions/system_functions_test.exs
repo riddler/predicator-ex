@@ -312,9 +312,9 @@ defmodule Predicator.Functions.SystemFunctionsTest do
     end
   end
 
-  describe "all_functions/0" do
+  describe "functions/0" do
     test "returns map with expected functions" do
-      functions = SystemFunctions.all_functions()
+      functions = SystemFunctions.functions()
 
       # Check that all expected functions are present
       expected_functions = [
@@ -331,25 +331,25 @@ defmodule Predicator.Functions.SystemFunctionsTest do
 
       for func_name <- expected_functions do
         assert Map.has_key?(functions, func_name), "Missing function: #{func_name}"
-        {arity, function} = functions[func_name]
+        {arity, fun_atom} = functions[func_name]
         assert (is_integer(arity) and arity >= 0) or (is_list(arity) and arity != [])
-        assert is_function(function, 2)
+        assert function_exported?(SystemFunctions, fun_atom, 2)
       end
     end
 
     test "function arities are correct" do
-      functions = SystemFunctions.all_functions()
+      functions = SystemFunctions.functions()
 
       # Check specific arities
-      assert {1, _len_func} = functions["len"]
-      assert {1, _upper_func} = functions["upper"]
-      assert {1, _lower_func} = functions["lower"]
-      assert {1, _trim_func} = functions["trim"]
-      assert {2, _starts_with_func} = functions["starts_with"]
-      assert {2, _ends_with_func} = functions["ends_with"]
-      assert {[2, 3], _substring_func} = functions["substring"]
-      assert {2, _index_of_func} = functions["index_of"]
-      assert {2, _concat_func} = functions["concat"]
+      assert {1, :call_len} = functions["len"]
+      assert {1, :call_upper} = functions["upper"]
+      assert {1, :call_lower} = functions["lower"]
+      assert {1, :call_trim} = functions["trim"]
+      assert {2, :call_starts_with} = functions["starts_with"]
+      assert {2, :call_ends_with} = functions["ends_with"]
+      assert {[2, 3], :call_substring} = functions["substring"]
+      assert {2, :call_index_of} = functions["index_of"]
+      assert {2, :call_concat} = functions["concat"]
     end
   end
 end

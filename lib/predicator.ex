@@ -103,7 +103,15 @@ defmodule Predicator do
     threaded automatically
   - `context` - Optional context map with variable bindings (default: `%{}`)
   - `opts` - Optional keyword list of options:
-    - `:functions` - Map of custom functions to make available during evaluation
+    - `:functions` - Map of custom functions to make available during
+      evaluation, `%{name => {arity, fun}}`, called as `(args, context)`
+    - `:providers` - a list of `Predicator.FunctionProvider` modules,
+      resolved into the dispatch map alongside the builtins and `:functions`
+      - see `Predicator.Context.new/2`
+    - `:builtins` - `false` drops the four default builtin functions
+      (default `true`)
+    - `:host` - an opaque term threaded to every function call's context as
+      `context.host` (default `nil`) - see `Predicator.Context.put_host/2`
     - `:positions` - the table from `compiled.positions`, for a caller passing a
       **bare** instruction list, used to populate `:position` (and `:span`) on
       runtime errors. String input threads its own table automatically; an
@@ -213,6 +221,7 @@ defmodule Predicator do
       instructions: instructions,
       context: context.data,
       functions: context.functions,
+      host: context.host,
       positions: Keyword.get(opts, :positions, %{}),
       segment_positions: Keyword.get(opts, :segment_positions, %{}),
       on_unbound: context.on_unbound
@@ -330,8 +339,9 @@ defmodule Predicator do
     `parse/2`), a pre-compiled instruction list, or a `t:Predicator.Compiled.t/0`
     from `compile_program_with_positions/1`
   - `context` - a bare map or a `t:Predicator.Context.t/0` (default `%{}`)
-  - `opts` - same options `evaluate/3` accepts (`:functions`, `:positions`,
-    `:segment_positions`, `:on_unbound`); `:positions` or `:segment_positions`
+  - `opts` - same options `evaluate/3` accepts (`:functions`, `:providers`,
+    `:builtins`, `:host`, `:positions`, `:segment_positions`, `:on_unbound`);
+    `:positions` or `:segment_positions`
     alongside a `%Compiled{}` raises `ArgumentError`, same as `evaluate/3`.
     Unlike `evaluate/3`, a program can compile a `store`, so
     `:segment_positions` - the table from `compiled.segment_positions` - can
@@ -498,6 +508,7 @@ defmodule Predicator do
       instructions: instructions,
       context: context.data,
       functions: context.functions,
+      host: context.host,
       positions: Keyword.get(opts, :positions, %{}),
       segment_positions: Keyword.get(opts, :segment_positions, %{}),
       on_unbound: context.on_unbound

@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Corpus.Coverage do
   4. Diffs the two, keeping every pattern the suite hits more than the
      corpus.
   5. Classifies each tier-5 (`call:<name>`) gap against the real builtin
-     registry (`Predicator.Evaluator.merge_functions([])`'s keys) via
+     registry (`Predicator.Context.new().functions`'s keys) via
      `Coverage.classify/2`, and prints the result grouped by tier -
      `px-q1f`, so a test-registered function name (`boom`, `double`, ...)
      reads as "not a corpus candidate" rather than as an unauthored gap, and
@@ -52,7 +52,7 @@ defmodule Mix.Tasks.Corpus.Coverage do
   use Mix.Task
 
   alias Predicator.Conformance.Coverage
-  alias Predicator.Evaluator
+  alias Predicator.Context
 
   @test_glob "test/**/*.exs"
   @excluded_prefix "test/predicator/conformance/"
@@ -109,7 +109,7 @@ defmodule Mix.Tasks.Corpus.Coverage do
   # there by a test is exactly what should classify as suite-local.
   @spec builtin_function_names() :: MapSet.t(String.t())
   defp builtin_function_names do
-    [] |> Evaluator.merge_functions() |> Map.keys() |> MapSet.new()
+    Context.new().functions |> Map.keys() |> MapSet.new()
   end
 
   @spec decode_corpus_file(String.t()) :: [map()]

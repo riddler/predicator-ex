@@ -1,3 +1,59 @@
+defmodule Predicator.ContextTest.EchoProvider do
+  @moduledoc false
+  @behaviour Predicator.FunctionProvider
+
+  @impl Predicator.FunctionProvider
+  def functions, do: %{"echo" => {1, :call_echo}}
+
+  @spec call_echo([term()], Predicator.Context.t()) :: {:ok, term()}
+  def call_echo([value], _context), do: {:ok, value}
+end
+
+defmodule Predicator.ContextTest.HostReader do
+  @moduledoc false
+  @behaviour Predicator.FunctionProvider
+
+  @impl Predicator.FunctionProvider
+  def functions, do: %{"host_value" => {0, :call_host_value}}
+
+  @spec call_host_value([term()], Predicator.Context.t()) :: {:ok, term()}
+  def call_host_value([], context), do: {:ok, context.host}
+end
+
+defmodule Predicator.ContextTest.ProviderA do
+  @moduledoc false
+  @behaviour Predicator.FunctionProvider
+
+  @impl Predicator.FunctionProvider
+  def functions, do: %{"len" => {1, :call_len}}
+
+  @spec call_len([term()], Predicator.Context.t()) :: {:ok, atom()}
+  def call_len([_value], _context), do: {:ok, :from_a}
+end
+
+defmodule Predicator.ContextTest.ProviderB do
+  @moduledoc false
+  @behaviour Predicator.FunctionProvider
+
+  @impl Predicator.FunctionProvider
+  def functions, do: %{"len" => {1, :call_len}}
+
+  @spec call_len([term()], Predicator.Context.t()) :: {:ok, atom()}
+  def call_len([_value], _context), do: {:ok, :from_b}
+end
+
+defmodule Predicator.ContextTest.NoFunctionsProvider do
+  @moduledoc false
+end
+
+defmodule Predicator.ContextTest.BadArityProvider do
+  @moduledoc false
+  @behaviour Predicator.FunctionProvider
+
+  @impl Predicator.FunctionProvider
+  def functions, do: %{"broken" => {1, :not_exported}}
+end
+
 defmodule Predicator.ContextTest do
   use ExUnit.Case, async: true
 
@@ -6,6 +62,15 @@ defmodule Predicator.ContextTest do
   alias Predicator.Context
   alias Predicator.Errors.LocationError
   alias Predicator.Evaluator
+
+  alias Predicator.ContextTest.{
+    BadArityProvider,
+    EchoProvider,
+    HostReader,
+    NoFunctionsProvider,
+    ProviderA,
+    ProviderB
+  }
 
   describe "new/2" do
     test "defaults data, functions, and on_unbound" do
@@ -104,6 +169,100 @@ defmodule Predicator.ContextTest do
       context = Context.new(%{"d" => datetime})
 
       assert context.data == %{"d" => datetime}
+    end
+  end
+
+  describe "new/2 provider resolution" do
+    test "builtins: false drops the four default providers" do
+      assert Context.new(%{}, builtins: false).functions == %{}
+    end
+
+    test "builtins: false leaves a builtin name unknown" do
+      context = Context.new(%{}, builtins: false)
+
+      assert {:error, %{message: message}} = Predicator.evaluate("len('x')", context)
+      assert message =~ "Unknown function: len"
+    end
+
+    test "a provider resolves to an {arity, {module, atom}} entry" do
+      context = Context.new(%{}, providers: [EchoProvider], builtins: false)
+
+      assert context.functions["echo"] == {1, {EchoProvider, :call_echo}}
+    end
+
+    test "a provider's function evaluates via apply/3 dispatch" do
+      context = Context.new(%{"x" => 1}, providers: [EchoProvider])
+
+      assert Predicator.evaluate("echo(x)", context) == {:ok, 1}
+    end
+
+    test "a provider shadows a same-named builtin" do
+      context = Context.new(%{}, providers: [ProviderA])
+
+      assert Predicator.evaluate("len('x')", context) == {:ok, :from_a}
+    end
+
+    test "shadowing order: a later provider shadows an earlier provider" do
+      context = Context.new(%{}, providers: [ProviderA, ProviderB])
+
+      assert Predicator.evaluate("len('x')", context) == {:ok, :from_b}
+    end
+
+    test "shadowing order: :functions shadows both builtins and providers" do
+      context =
+        Context.new(%{},
+          providers: [ProviderA],
+          functions: %{"len" => {1, fn [_arg], _ctx -> {:ok, :from_inline} end}}
+        )
+
+      assert Predicator.evaluate("len('x')", context) == {:ok, :from_inline}
+    end
+
+    test "a provider function reads context.host" do
+      context = Context.new(%{}, providers: [HostReader], host: "first")
+
+      assert Predicator.evaluate("host_value()", context) == {:ok, "first"}
+    end
+
+    test "put_host/2 changes what a provider function reads next, without touching data" do
+      context = Context.new(%{"a" => 1}, providers: [HostReader], host: "first")
+      context = Context.put_host(context, "second")
+
+      assert Predicator.evaluate("host_value()", context) == {:ok, "second"}
+      assert context.data == %{"a" => 1}
+    end
+
+    test "an inline-closure context still evaluates" do
+      context = Context.new(%{}, functions: %{"double" => {1, fn [n], _ctx -> {:ok, n * 2} end}})
+
+      assert Predicator.evaluate("double(21)", context) == {:ok, 42}
+    end
+
+    test "a providers-only context round-trips through :erlang.term_to_binary/1 and evaluates" do
+      context = Context.new(%{"x" => 1}, providers: [EchoProvider], host: %{tenant: "acme"})
+
+      revived = context |> :erlang.term_to_binary() |> :erlang.binary_to_term()
+
+      assert revived == context
+      assert Predicator.evaluate("echo(x)", revived) == {:ok, 1}
+    end
+
+    test "raises ArgumentError naming a provider module that does not load" do
+      assert_raise ArgumentError, ~r/could not be loaded/, fn ->
+        Context.new(%{}, providers: [Predicator.ContextTest.NoSuchModule])
+      end
+    end
+
+    test "raises ArgumentError naming a provider module without functions/0" do
+      assert_raise ArgumentError, ~r/does not export functions\/0/, fn ->
+        Context.new(%{}, providers: [NoFunctionsProvider])
+      end
+    end
+
+    test "raises ArgumentError naming a functions/0 entry whose atom is not exported at arity 2" do
+      assert_raise ArgumentError, ~r/does not export not_exported\/2/, fn ->
+        Context.new(%{}, providers: [BadArityProvider])
+      end
     end
   end
 

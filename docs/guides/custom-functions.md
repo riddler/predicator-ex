@@ -9,13 +9,54 @@ iex> Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: cus
 {:ok, true}
 ```
 
-A function can read the evaluation context, not just its arguments:
+A function can read the evaluation context, not just its arguments. The
+second argument is a `%Predicator.Context{}`, and `context.data` is the
+bound-variable map:
 
 ```elixir
-iex> custom_functions = %{"user_role" => {0, fn [], context -> {:ok, Map.get(context, "current_user_role", "guest")} end}}
+iex> custom_functions = %{"user_role" => {0, fn [], context -> {:ok, Map.get(context.data, "current_user_role", "guest")} end}}
 iex> Predicator.evaluate("user_role() == 'admin'", %{"current_user_role" => "admin"}, functions: custom_functions)
 {:ok, true}
 ```
+
+## Providers and host state
+
+A closure captures whatever it needs when it is defined, which is fine for a
+one-off but does not scale to host state that changes between calls. A
+`Predicator.FunctionProvider` module names its functions by atom instead of
+closure, and is wired in with `providers:` instead of `functions:`:
+
+```elixir
+defmodule MyApp.Predicates do
+  @behaviour Predicator.FunctionProvider
+
+  @impl Predicator.FunctionProvider
+  def functions, do: %{"is_admin" => {0, :call_is_admin}}
+
+  def call_is_admin([], context), do: {:ok, context.host.role == :admin}
+end
+```
+
+`Predicator.Context.new/2`'s `host:` option carries whatever a provider
+needs - a request struct, a tenant id - separately from the evaluated data,
+and `put_host/2` replaces it in O(1) without touching `data`. The same
+`(args, context)` convention applies to an inline closure, so `host:` works
+there too:
+
+```elixir
+iex> custom_functions = %{"is_admin" => {0, fn [], context -> {:ok, context.host.role == :admin} end}}
+iex> context = Predicator.Context.new(%{}, functions: custom_functions, host: %{role: :admin})
+iex> Predicator.evaluate("is_admin()", context)
+{:ok, true}
+iex> context = Predicator.Context.put_host(context, %{role: :guest})
+iex> Predicator.evaluate("is_admin()", context)
+{:ok, false}
+```
+
+A context built only from `providers:` - no inline `functions:` closures - is
+serializable (`:erlang.term_to_binary/1` round-trips it), because a module
+atom and a host term are both plain data. A context carrying inline closures
+works identically but is not storable.
 
 A function that returns `{:error, message}` surfaces as an
 `EvaluationError`, not a bare string - see the [error shapes

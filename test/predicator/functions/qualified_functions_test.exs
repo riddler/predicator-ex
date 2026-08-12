@@ -97,7 +97,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
 
   describe "JSON functions" do
     setup do
-      %{functions: JSONFunctions.all_functions()}
+      %{functions: [JSONFunctions]}
     end
 
     test "JSON.stringify converts objects to JSON strings", %{functions: functions} do
@@ -107,7 +107,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.stringify(user)",
           %{"user" => data},
-          functions: functions
+          providers: functions
         )
 
       # Parse it back to verify it's valid JSON
@@ -120,7 +120,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.stringify(items)",
           %{"items" => [1, 2, "three", true]},
-          functions: functions
+          providers: functions
         )
 
       assert result == "[1,2,\"three\",true]"
@@ -139,7 +139,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
           Predicator.evaluate(
             "JSON.stringify(value)",
             %{"value" => input},
-            functions: functions
+            providers: functions
           )
 
         assert result == expected
@@ -151,7 +151,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.parse(json)",
           %{"json" => "{\"name\":\"Alice\",\"count\":5}"},
-          functions: functions
+          providers: functions
         )
 
       assert result == %{"name" => "Alice", "count" => 5}
@@ -162,7 +162,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.parse(json)",
           %{"json" => "[1, 2, \"three\"]"},
-          functions: functions
+          providers: functions
         )
 
       assert result == [1, 2, "three"]
@@ -182,7 +182,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
           Predicator.evaluate(
             "JSON.parse(json)",
             %{"json" => input},
-            functions: functions
+            providers: functions
           )
 
         assert result == expected
@@ -194,7 +194,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.parse(json)",
           %{"json" => "{invalid json}"},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Invalid JSON")
@@ -205,7 +205,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.parse(value)",
           %{"value" => 42},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "expects a string")
@@ -217,7 +217,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.stringify(value)",
           %{"value" => self()},
-          functions: functions
+          providers: functions
         )
 
       assert result == inspect(self())
@@ -231,7 +231,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.stringify(value)",
           %{"value" => bad},
-          functions: functions
+          providers: functions
         )
 
       assert result == inspect(bad)
@@ -242,7 +242,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.stringify(value)",
           %{"value" => {1, 2}},
-          functions: functions
+          providers: functions
         )
 
       assert result == inspect({1, 2})
@@ -253,7 +253,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.parse(json)",
           %{"json" => "not json"},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Invalid JSON: unexpected byte 0x6F at position 1")
@@ -264,7 +264,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.parse(json)",
           %{"json" => ~s({"a":)},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Invalid JSON: unexpected end of input at position 5")
@@ -277,7 +277,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.parse(JSON.stringify(data))",
           %{"data" => original},
-          functions: functions
+          providers: functions
         )
 
       assert result == original
@@ -286,10 +286,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
 
   describe "integration tests" do
     setup do
-      json_functions = JSONFunctions.all_functions()
-      math_functions = MathFunctions.all_functions()
-
-      %{functions: Map.merge(json_functions, math_functions)}
+      %{functions: [JSONFunctions, MathFunctions]}
     end
 
     test "complex expression with multiple qualified functions", %{functions: functions} do
@@ -302,7 +299,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "JSON.stringify({name: user.name, total: Math.pow(user.score, multiplier)})",
           context,
-          functions: functions
+          providers: functions
         )
 
       {:ok, parsed} = JSON.decode(result)
@@ -315,7 +312,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "Math.max(score, 0) > 50 AND JSON.stringify(user) != 'null'",
           %{"score" => 75, "user" => %{"active" => true}},
-          functions: functions
+          providers: functions
         )
 
       assert result == true
@@ -326,7 +323,7 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
         Predicator.evaluate(
           "Math.pow('not a number', 2)",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Math.pow expects two numeric arguments")

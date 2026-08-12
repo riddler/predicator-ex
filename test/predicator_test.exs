@@ -1789,11 +1789,12 @@ defmodule PredicatorTest do
 
     test "context-aware custom functions" do
       custom_functions = %{
-        "get_user_role" => {0, fn [], context -> {:ok, Map.get(context, "role", "guest")} end},
+        "get_user_role" =>
+          {0, fn [], context -> {:ok, Map.get(context.data, "role", "guest")} end},
         "multiply_by_factor" =>
           {1,
            fn [n], context ->
-             factor = Map.get(context, "factor", 1)
+             factor = Map.get(context.data, "factor", 1)
              {:ok, n * factor}
            end}
       }

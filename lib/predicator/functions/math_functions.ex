@@ -19,12 +19,12 @@ defmodule Predicator.Functions.MathFunctions do
   ## Examples
 
       iex> {:ok, result} = Predicator.evaluate("Math.pow(2, 3)",
-      ...>   %{}, functions: Predicator.Functions.MathFunctions.all_functions())
+      ...>   %{}, providers: [Predicator.Functions.MathFunctions])
       iex> result
       8.0
 
       iex> {:ok, result} = Predicator.evaluate("Math.sqrt(16)",
-      ...>   %{}, functions: Predicator.Functions.MathFunctions.all_functions())
+      ...>   %{}, providers: [Predicator.Functions.MathFunctions])
       iex> result
       4.0
   """
@@ -35,26 +35,8 @@ defmodule Predicator.Functions.MathFunctions do
 
   @type function_result :: {:ok, Types.value()} | {:error, binary()}
 
-  @spec all_functions() :: %{binary() => {non_neg_integer(), function()}}
-  def all_functions do
-    %{
-      "Math.pow" => {2, &call_pow/2},
-      "Math.sqrt" => {1, &call_sqrt/2},
-      "Math.abs" => {1, &call_abs/2},
-      "Math.floor" => {1, &call_floor/2},
-      "Math.ceil" => {1, &call_ceil/2},
-      "Math.round" => {1, &call_round/2},
-      "Math.min" => {2, &call_min/2},
-      "Math.max" => {2, &call_max/2},
-      "Math.random" => {0, &call_random/2}
-    }
-  end
-
   @doc """
   Returns all math functions as a `Predicator.FunctionProvider` map.
-
-  Same names and arities as `all_functions/0`, naming each implementation by
-  atom instead of closure.
   """
   @impl Predicator.FunctionProvider
   @spec functions() :: %{
@@ -75,7 +57,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Raises base to the power of exponent."
-  @spec call_pow([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_pow([Types.value()], Context.t()) :: function_result()
   def call_pow([base, exponent], _context) when is_number(base) and is_number(exponent) do
     {:ok, :math.pow(base, exponent)}
   end
@@ -85,7 +67,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Returns the square root of a number."
-  @spec call_sqrt([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_sqrt([Types.value()], Context.t()) :: function_result()
   def call_sqrt([value], _context) when is_number(value) and value >= 0 do
     {:ok, :math.sqrt(value)}
   end
@@ -99,7 +81,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Returns the absolute value of a number."
-  @spec call_abs([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_abs([Types.value()], Context.t()) :: function_result()
   def call_abs([value], _context) when is_number(value) do
     {:ok, abs(value)}
   end
@@ -109,7 +91,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Rounds a number down to the nearest integer."
-  @spec call_floor([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_floor([Types.value()], Context.t()) :: function_result()
   def call_floor([value], _context) when is_number(value) do
     {:ok, Float.floor(value * 1.0) |> trunc()}
   end
@@ -119,7 +101,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Rounds a number up to the nearest integer."
-  @spec call_ceil([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_ceil([Types.value()], Context.t()) :: function_result()
   def call_ceil([value], _context) when is_number(value) do
     {:ok, Float.ceil(value * 1.0) |> trunc()}
   end
@@ -129,7 +111,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Rounds a number to the nearest integer."
-  @spec call_round([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_round([Types.value()], Context.t()) :: function_result()
   def call_round([value], _context) when is_number(value) do
     {:ok, round(value)}
   end
@@ -139,7 +121,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Returns the smaller of two numbers."
-  @spec call_min([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_min([Types.value()], Context.t()) :: function_result()
   def call_min([a, b], _context) when is_number(a) and is_number(b) do
     {:ok, min(a, b)}
   end
@@ -149,7 +131,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Returns the larger of two numbers."
-  @spec call_max([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_max([Types.value()], Context.t()) :: function_result()
   def call_max([a, b], _context) when is_number(a) and is_number(b) do
     {:ok, max(a, b)}
   end
@@ -159,7 +141,7 @@ defmodule Predicator.Functions.MathFunctions do
   end
 
   @doc "Returns a random float between 0 and 1."
-  @spec call_random([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_random([Types.value()], Context.t()) :: function_result()
   def call_random([], _context) do
     {:ok, :rand.uniform()}
   end

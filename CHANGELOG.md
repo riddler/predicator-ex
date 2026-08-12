@@ -38,9 +38,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   renders a cast back to `::` syntax, parenthesizing the operand only when it
   binds looser than the postfix level (`(1 + 2)::string`, `(-1)::integer`), so
   casts round-trip losslessly.
+- **`Predicator.FunctionProvider` behaviour.** A module implements one
+  callback, `functions/0`, returning `%{name => {arity, atom}}` - the atom
+  names a public `(args, context)` function on the same module. The four
+  builtin modules (`SystemFunctions`, `DateFunctions`, `JSONFunctions`,
+  `MathFunctions`) implement it and are the default provider list, named by
+  `Predicator.FunctionProvider.builtin_providers/0`.
+- **`Context.new/2` gains `providers:`, `builtins:`, and `host:`.**
+  `providers:` is a list of `FunctionProvider` modules, resolved left to
+  right into the dispatch map after the builtins (unless `builtins: false`)
+  and before the inline `:functions` closure map - each later source shadows
+  a same-named entry from an earlier one. A provider module that fails to
+  load, lacks `functions/0`, or names an atom not exported at arity 2 raises
+  `ArgumentError` at construction, naming the module and the offending
+  entry - host API misuse, not a predicate-derived failure (ADR-0004).
+  `host:` carries an opaque term - a database connection, a request struct, a
+  tenant id - stored exactly as given, with no normalization, and never
+  reachable from predicate text. `Context.put_host/2` replaces it in O(1),
+  independent of the data map's size, leaving `data`, `functions`, and
+  `on_unbound` untouched.
 
 ### Changed
 
+- **Every custom function's second argument is now the `%Predicator.Context{}`
+  struct, not the bare data map.** Read the data namespace with
+  `context.data` (was: the second argument itself) and, for a provider
+  function, host state with `context.host`. The rewrite for an existing
+  closure is a one-line pattern-match change:
+  `fn [args], context -> ... Map.get(context, "x") ... end` becomes
+  `fn [args], context -> ... Map.get(context.data, "x") ... end`. Provider
+  registration (`providers:`) replaces the closure map as the primary
+  interface; an inline `:functions` closure map survives as a convenience for
+  one-off calls and tests, still called under the same `(args, context)`
+  convention, but a context carrying one is not serializable (a context built
+  only from `providers:` is - `:erlang.term_to_binary/1` round-trips it).
+  This is a breaking change and ships as 5.0.0 once released; version
+  mechanics stay human-gated (ADR-0006), so this entry lands under
+  `## [Unreleased]` and waits (ADR-0014).
 - **`if`, `else` and `while` are reserved words.** The lexer now classifies
   all three as keywords rather than plain identifiers, so a predicate that
   used one as a variable name (`if = 3`), a bare property name (`user.if`),
@@ -55,6 +89,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   join 0001-0003 - so those citations resolve on hexdocs instead of 404ing.
   The governance ADRs stay unpublished and the ADR index links them by
   absolute GitHub URL.
+
+### Removed
+
+- **`Evaluator.merge_functions/1`.** Replaced by provider resolution at
+  `Context.new/2`; the shadowing order (builtins first, then `providers:`
+  left to right, then `:functions`) is unchanged.
+- **`all_functions/0`** on the four builtin function modules. Each module's
+  `functions/0` (added non-breaking, ahead of this release) is the only
+  registration surface now; the underlying `call_*` implementations are
+  unchanged.
 
 ## [4.0.0] - 2026-08-08
 

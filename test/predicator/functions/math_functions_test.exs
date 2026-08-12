@@ -11,7 +11,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
 
   describe "Math functions" do
     setup do
-      %{functions: MathFunctions.all_functions()}
+      %{functions: [MathFunctions]}
     end
 
     test "Math.pow raises base to power", %{functions: functions} do
@@ -19,7 +19,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.pow(2, 3)",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert result == 8.0
@@ -30,7 +30,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.pow(2, -1)",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert result == 0.5
@@ -41,7 +41,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.pow('not', 'numbers')",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Math.pow expects two numeric arguments")
@@ -52,7 +52,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.sqrt(16)",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert result == 4.0
@@ -63,7 +63,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.sqrt(-1)",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Math.sqrt expects a non-negative number")
@@ -74,7 +74,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.sqrt('not_a_number')",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Math.sqrt expects a numeric argument")
@@ -93,7 +93,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
           Predicator.evaluate(
             "Math.abs(value)",
             %{"value" => input},
-            functions: functions
+            providers: functions
           )
 
         assert result == expected
@@ -105,7 +105,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.abs('not_a_number')",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Math.abs expects a numeric argument")
@@ -124,7 +124,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
           Predicator.evaluate(
             "Math.floor(value)",
             %{"value" => input},
-            functions: functions
+            providers: functions
           )
 
         assert result == expected
@@ -144,7 +144,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
           Predicator.evaluate(
             "Math.ceil(value)",
             %{"value" => input},
-            functions: functions
+            providers: functions
           )
 
         assert result == expected
@@ -165,7 +165,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
           Predicator.evaluate(
             "Math.round(value)",
             %{"value" => input},
-            functions: functions
+            providers: functions
           )
 
         assert result == expected
@@ -177,7 +177,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.min(5, 3)",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert result == 3
@@ -188,7 +188,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.max(5, 3)",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert result == 5
@@ -199,7 +199,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.min('not', 'numbers')",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message1, "Math.min expects two numeric arguments")
@@ -208,7 +208,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.max('not', 'numbers')",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message2, "Math.max expects two numeric arguments")
@@ -219,7 +219,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.random()",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert is_float(result)
@@ -232,7 +232,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.pow(Math.abs(-2), 3)",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert result == 8.0
@@ -243,7 +243,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.max(score, 0) > 50",
           %{"score" => 75},
-          functions: functions
+          providers: functions
         )
 
       assert result == true
@@ -254,7 +254,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.floor('not_a_number')",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Math.floor expects a numeric argument")
@@ -265,7 +265,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.ceil('not_a_number')",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Math.ceil expects a numeric argument")
@@ -276,7 +276,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
         Predicator.evaluate(
           "Math.round('not_a_number')",
           %{},
-          functions: functions
+          providers: functions
         )
 
       assert String.contains?(message, "Math.round expects a numeric argument")

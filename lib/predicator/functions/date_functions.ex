@@ -29,38 +29,22 @@ defmodule Predicator.Functions.DateFunctions do
   @type function_result :: {:ok, Types.value()} | {:error, binary()}
 
   @doc """
-  Returns all date functions as a map in the format expected by the evaluator.
+  Returns all date functions as a `Predicator.FunctionProvider` map.
 
   ## Returns
 
-  A map where keys are function names and values are `{arity, function}` tuples.
+  A map where keys are function names and values are `{arity, atom}` pairs -
+  `atom` naming a public `call_*/2` function on this module.
 
   ## Examples
 
-      iex> functions = Predicator.Functions.DateFunctions.all_functions()
-      iex> Map.has_key?(functions, "year")
+      iex> functions = Predicator.Functions.DateFunctions.functions()
+      iex> Map.has_key?(functions, "Date.year")
       true
 
-      iex> {arity, _function} = functions["year"]
+      iex> {arity, _atom} = functions["Date.year"]
       iex> arity
       1
-  """
-  @spec all_functions() :: %{binary() => {non_neg_integer(), function()}}
-  def all_functions do
-    %{
-      # Date functions
-      "Date.year" => {1, &call_year/2},
-      "Date.month" => {1, &call_month/2},
-      "Date.day" => {1, &call_day/2},
-      "Date.now" => {0, &call_date_now/2}
-    }
-  end
-
-  @doc """
-  Returns all date functions as a `Predicator.FunctionProvider` map.
-
-  Same names and arities as `all_functions/0`, naming each implementation by
-  atom instead of closure.
   """
   @impl Predicator.FunctionProvider
   @spec functions() :: %{
@@ -78,7 +62,7 @@ defmodule Predicator.Functions.DateFunctions do
   # Date function implementations
 
   @doc "Extracts the year from a date or datetime."
-  @spec call_year([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_year([Types.value()], Context.t()) :: function_result()
   def call_year([%Date{year: year}], _context) do
     {:ok, year}
   end
@@ -96,7 +80,7 @@ defmodule Predicator.Functions.DateFunctions do
   end
 
   @doc "Extracts the month from a date or datetime."
-  @spec call_month([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_month([Types.value()], Context.t()) :: function_result()
   def call_month([%Date{month: month}], _context) do
     {:ok, month}
   end
@@ -114,7 +98,7 @@ defmodule Predicator.Functions.DateFunctions do
   end
 
   @doc "Extracts the day from a date or datetime."
-  @spec call_day([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_day([Types.value()], Context.t()) :: function_result()
   def call_day([%Date{day: day}], _context) do
     {:ok, day}
   end
@@ -132,7 +116,7 @@ defmodule Predicator.Functions.DateFunctions do
   end
 
   @doc "Returns the current UTC datetime (alias for `Date.now()`)."
-  @spec call_date_now([Types.value()], Context.t() | Types.context()) :: function_result()
+  @spec call_date_now([Types.value()], Context.t()) :: function_result()
   def call_date_now([], _context) do
     # Return current UTC datetime
     {:ok, DateTime.utc_now()}
