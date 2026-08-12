@@ -233,3 +233,24 @@ are unaffected.
      tests actually binding this half of the decision. This is the same shape
      of finding as the `px-ir1` entry above: a test that reads as covering a
      direction and does not.
+
+- 2026-08-11 (`px-kbe`): `test/predicator/visitor_clause_coverage_test.exs`.
+  `Predicator.Parser`'s `t:visitable/0` typespec is the enumerated contract
+  for what `StringVisitor.do_visit/2` and `InstructionsVisitor.visit_annotated/2`
+  must each handle (ADR-0004: an unsupported node is an error value, never a
+  `FunctionClauseError`); nothing at compile time keeps a visitor's clause
+  heads in sync with that typespec, so a vacuous version of this test would
+  ship the same silent gap px-aen's manual verification found and closed by
+  hand. Ten files now.
+
+  Sabotage pass verified 2026-08-11. Added a throwaway `{:while, ast(),
+  block(), position()}` member to `ast/0`: all three tests went red, the
+  constructor-count test naming `:while` as the 23rd constructor and both
+  coverage tests naming `:while` as missing a clause in their respective
+  visitor. Reverted, confirmed green. Separately, renamed
+  `string_visitor.ex`'s `{:duration, ...}` `do_visit/2` clause head to
+  `:durationx`: the missing-direction assertion named `:duration`; verified
+  independently (ExUnit stops at a test's first failed assertion) that the
+  parsed clause-tag set contained `:durationx` and not `:duration`, confirming
+  the extra-direction assertion would have caught it too. Reverted, confirmed
+  green; `git diff lib/` empty throughout except during the sabotage window.
