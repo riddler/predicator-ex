@@ -76,6 +76,16 @@ Not required of you, per [`docs/isa.md`](../isa.md) section 6: surface syntax
 set beyond what your claimed tier exercises, and backward jumps - none of
 these exist in the ISA this document specifies.
 
+Also not required of you: how a host registers a function or passes it
+runtime state. The Elixir implementation's `Predicator.FunctionProvider`
+behaviour and the context's `host` slot
+([ADR-0014](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0014-functions-are-provided-by-modules.md))
+are host-side plumbing for *this* implementation's embedding API, not part of
+the instruction set - no opcode, corpus case, or conformance claim depends on
+either existing. Adopt an equivalent in your own runtime, or don't; either is
+correct, and on whatever schedule you choose
+([ADR-0003](../adr/0003-the-elixir-implementation-leads-the-isa.md)).
+
 ## Start with the evaluator surface
 
 This is the load-bearing decision in the whole guide. The corpus exercises

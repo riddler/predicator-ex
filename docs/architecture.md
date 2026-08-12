@@ -89,17 +89,32 @@ period.
 - **Visitors** (`lib/predicator/visitors/`): AST transformation modules
   - **StringVisitor**: Converts AST back to strings
   - **InstructionsVisitor**: Converts AST to executable instructions
-- **Functions** (`lib/predicator/functions/`): Function system components
-  - **SystemFunctions**: Built-in system functions (len, upper, abs, max, etc.) provided via `all_functions/0`
+- **Functions** (`lib/predicator/functions/`): Function system components.
+  Every function - builtin or host - is provided by a module implementing the
+  one-callback `Predicator.FunctionProvider` behaviour, `functions/0`,
+  returning `%{name => {arity, atom}}`. The four builtin modules
+  (**SystemFunctions**, **DateFunctions**, **JSONFunctions**,
+  **MathFunctions**) each implement it, and a host wires its own providers in
+  the same way, via `providers:`
 - **Main API** (`lib/predicator.ex`): Public interface with convenience functions
-- **Context** (`lib/predicator/context.ex`): A bound evaluation context - `data`,
-  `functions` (builtins merged with `opts[:functions]` once, at construction),
-  and an `on_unbound` policy (`:undefined` | `:error`). `new/2` builds one, `bind/3` rebinds
-  a key in O(1), `assign/3` writes through `ContextLocation.put/3`,
+- **Context** (`lib/predicator/context.ex`): A bound evaluation context -
+  `data`, `functions`, `host`, and an `on_unbound` policy (`:undefined` |
+  `:error`). `new/2` resolves `functions` once, at construction, folding three
+  sources left to right so a later one shadows an earlier same-named entry:
+  the builtin provider modules (`:builtins`, default `true`), then
+  `:providers` - a list of `Predicator.FunctionProvider` modules - then
+  `:functions`, an inline `%{name => {arity, fun}}` closure map merged last.
+  `host` is an opaque, unnormalized carrier for whatever a provider needs at
+  call time (a connection, a request struct); it is never readable from
+  predicate text. `bind/3` rebinds a data key in O(1), `put_host/2` replaces
+  `host` in O(1), `assign/3` writes through `ContextLocation.put/3`,
   `bound?/2` answers whether a root name is present in `data` (string or atom
   key). `evaluate/3` accepts a `%Context{}` directly (skipping the per-call
-  function merge) or a bare map (unchanged behavior, via an internal one-shot
-  `Context.new/2`)
+  function resolution) or a bare map (unchanged behavior, via an internal
+  one-shot `Context.new/2`). See
+  [ADR-0014](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0014-functions-are-provided-by-modules.md)
+  for the design and why a closure-map registry could not carry host state
+  cheaply
 - **Undefined** (`lib/predicator/undefined.ex`): The one public module that
   owns the `:undefined` sentinel - `value/0`, `undefined?/1`, and
   `to_nil/1`/`from_nil/1` normalizers for a JSON-shaped boundary.
