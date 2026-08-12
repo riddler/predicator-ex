@@ -1,23 +1,13 @@
 # Predicator-ex extension: /wurk:research
 
-This project's own pipeline vocabulary, its tree map, and where to point a
-sub-agent outside this repo. Adds only - see
+Where to point a sub-agent outside this repo, and the ownership rules that
+govern how a finding gets attributed. Adds only - see
 `~/.claude/skills/wurk:research/SKILL.md` for everything this does not repeat.
 
-## The pipeline vocabulary
-
-```
-source -> lexer -> parser -> AST -> compiler / InstructionsVisitor
-  -> flat instruction list -> stack VM evaluator
-```
-
-Plus the visitor round-trip path: AST -> `StringVisitor` -> source.
-
-## The tree map
-
-`lib/predicator/{lexer,parser,types,compiler,evaluator,duration,
-context_location,visitor}.ex`, `lib/predicator/functions/**`,
-`lib/predicator/visitors/**`, `conformance/**`.
+Project layout, the pipeline, module families, and search keys now live in
+`.claude/wurk/codebase.md`, the codebase-agent orientation file - it is
+forwarded into every `wurk-codebase-*` prompt this skill spawns, so it is the
+definition site rather than this file.
 
 ## Sibling-port guidance
 
@@ -38,13 +28,6 @@ and this one defers.
 ADR-0003 *amends* ADR-0001 without superseding it. Never resurface ADR-0001's
 cross-language-interchange framing as live. A decision's ISA effect is a
 versioning and stored-artifact question, never a sibling-readiness one.
-
-## Good search keys
-
-Opcode names (`lit`, `load`, `compare`, `object_new`, `jump_if_false`),
-`docs/isa.md` section numbers, AST node tags, and the terms "corpus",
-"conformance", "instruction", "visitor", "precedence", "short-circuit",
-"duration", "span", "on_unbound".
 
 ## Doc roots beyond `plans`/`research`
 
