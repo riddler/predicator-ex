@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   struct, not the bare data map.** Read the data namespace with
   `context.data` (was: the second argument itself) and, for a provider
   function, host state with `context.host`. The rewrite for an existing
-  closure is a one-line pattern-match change:
+  closure is a one-line change at each data read in the function body:
   `fn [args], context -> ... Map.get(context, "x") ... end` becomes
   `fn [args], context -> ... Map.get(context.data, "x") ... end`. Provider
   registration (`providers:`) replaces the closure map as the primary

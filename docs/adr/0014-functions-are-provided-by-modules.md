@@ -1,6 +1,6 @@
 # ADR-0014: Functions are provided by modules; the context carries a host slot
 
-Status: proposed (2026-08-11)
+Status: accepted (2026-08-11)
 
 Amends ADR-0004 in place, per the amendment rule in `docs/adr/README.md`. The
 sentences replaced are in ADR-0004's Consequences bullet "The function registry
