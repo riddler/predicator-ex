@@ -235,6 +235,21 @@ key's own blame position only when the key is a single token, as in
 
 A new node type follows this rule: point it at the token a reader would blame.
 
+The same rule governs a statement's compiled instructions, not just a node's
+own point position: **blame lands on the token carrying the type rule that was
+violated.** `if` and `while` each carry one (a boolean condition), the same way
+`*` carries one (numbers) and `and` carries one (booleans), so their
+`pop_jump_if_falsy` (and `if`'s `jump`, and `while`'s `jump_backward`) is
+annotated with the statement keyword's own position, not the condition's - see
+the `if` and `while` rows above and their lowering sentences earlier on this
+page. `store_annotation/2` looks like a counterexample - `["store", n]` is
+annotated with the `lhs` root's position, not the assignment's `=` - but `=`
+carries no type rule at all; an assignment accepts any rhs, so when a store
+fails the `=` has nothing to say about it and the location being written is
+the only token that does. That is a single, closed exception, not the first of
+a series: it is what happens when the operator has no rule to point at, not a
+license to move blame off any other operator with one.
+
 ## Which characters a node covers
 
 A point position tells a caller where to put a caret; a span tells it what to
