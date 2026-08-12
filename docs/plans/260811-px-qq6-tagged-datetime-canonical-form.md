@@ -484,15 +484,15 @@ before considering the plan fully landed.
 
 ### Phase 1
 
-- [ ] The sabotage mutations were actually run and confirmed red for the right
+- [x] The sabotage mutations were actually run and confirmed red for the right
       reason, and the recorded failure text is the real one.
-- [ ] `conformance/README.md`'s new paragraph reads correctly to someone
+- [x] `conformance/README.md`'s new paragraph reads correctly to someone
       implementing a sibling from that document alone - in particular the
       asymmetry between emitting and accepting.
-- [ ] The restated `@doc` property is accurate: check by hand that
+- [x] The restated `@doc` property is accurate: check by hand that
       `to_json(from_json(to_json(v))) == to_json(v)` is stated without
       exceptions and the structural form's one exception is named.
-- [ ] The commit message and PR body say explicitly that the corpus was
+- [x] The commit message and PR body say explicitly that the corpus was
       regenerated and deliberately did not move, and why (ADR-0003 obliges a
       corpus diff to be explained, and "there is no diff" is this phase's
       explanation).
@@ -508,16 +508,16 @@ deferred and surfaced once at the end instead of blocking here.
 
 ### Phase 2
 
-- [ ] The generator accepted the authored `expected` without a mismatch error,
+- [x] The generator accepted the authored `expected` without a mismatch error,
       confirming the authored form is what the real pipeline computes rather
       than something the author guessed.
-- [ ] The corpus diff is exactly one added line plus the manifest's hash and
+- [x] The corpus diff is exactly one added line plus the manifest's hash and
       count - nothing else moved.
-- [ ] The commit message and PR body explain the corpus diff and what it pins
+- [x] The commit message and PR body explain the corpus diff and what it pins
       (ADR-0003), and say that `corpus_hash` moved for an added case rather than
       for a changed expectation, so no sibling's existing expectation is
       invalidated.
-- [ ] The case reads as pinning the *encoding*, not the `cast` opcode, to
+- [x] The case reads as pinning the *encoding*, not the `cast` opcode, to
       someone who finds it in `casts.json`.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits and the
@@ -532,3 +532,37 @@ Phase 1 intact, at the cost of leaving the six-digit half pinned only by the
 Elixir suite.
 
 ---
+
+### Verification record (2026-08-11)
+
+Every Deferred Manual Verification item above was walked through by hand.
+Three carry an amendment worth keeping:
+
+- Both sabotage mutations were re-run independently of the pass that wrote
+  `docs/research/260808-px-9ab-sabotage-notes.md`, and reproduce it exactly:
+  4 failures for the encode mutation, 2 for the decode mutation, with the
+  recorded left/right values verbatim. The note's finding - that a `to_json/1`
+  round trip cannot discriminate decode-side canonicalization, leaving the two
+  hand-authored decode tests as the only binding for that half - reproduces
+  too.
+- Phase 2's "exactly one added line plus the manifest's hash and count" is
+  written too narrowly. The real diff is four files: `cases/casts.json`,
+  `corpus/tier-7.json`, `manifest.json`, and `examples/registry.example.json`,
+  the last because `ratchet_registry_test.exs` pins it to the manifest's global
+  hash. px-7t8's own corpus commit (`31ffb11`) has the identical four-file
+  shape, so this is the expected diff and not a stray edit.
+- `conformance/README.md`'s fractional-seconds paragraph cited `docs/isa.md`
+  section 5 as the authority for the *tagged encoding*, but section 5 specifies
+  `datetime::string`, and section 3 delegates the encoding to
+  `conformance/README.md` rather than restating it. A sibling implementor
+  following that link found a cast rule and no encoding rule. Corrected: the
+  README now names itself as where the field is specified, and cites section 5
+  only for the `datetime::string` form it deliberately matches.
+
+One judgment call was surfaced and deliberately left alone: the pinning case
+lives in tier 7, so a sibling that has not adopted `cast` never runs it, and
+the six-digit half is exported only to tier-7 runners. Note that Phase 2's
+stated reason for declining a tier-1 variant - that it would pin the `lit`
+operand as well as the result - is true of the tier-7 case too, since its own
+`lit` operand carries the canonical six-digit form. Worth revisiting if a
+sibling adopts tiers 1-6 without tier 7.
