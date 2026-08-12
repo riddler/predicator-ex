@@ -4,17 +4,17 @@ defmodule Predicator.VisitorClauseCoverageTest do
   dispatch clauses of both AST visitors.
 
   `visitable/0` expands (through `program/0`, `statement/0`, `assignment/0`,
-  `if_statement/0`, `block/0`, and `ast/0`) to a fixed set of tuple
-  constructors: whatever a visitor can be handed. `StringVisitor.do_visit/2`
-  and `InstructionsVisitor.visit_annotated/2` are each a private, exhaustive-
-  looking case over that set - both visitors have real clauses for every
-  constructor, including `{:if, ...}` and `{:block, ...}`, since px-3so.3 and
-  px-3so.5 landed the control-flow lowering and rendering. Nothing at compile
-  time keeps a visitor's
-  clause heads in sync with the typespec: `visitable/0` is a union of tuple
-  shapes, not a behaviour callback, so a 23rd constructor added there compiles
-  cleanly and only fails at run time, as a `FunctionClauseError`, the first
-  time some AST reaches the missing clause - the exact contract breach
+  `if_statement/0`, `while_statement/0`, `block/0`, and `ast/0`) to a fixed set
+  of tuple constructors: whatever a visitor can be handed. `StringVisitor.
+  do_visit/2` and `InstructionsVisitor.visit_annotated/2` are each a private,
+  exhaustive-looking case over that set - both visitors have real clauses for
+  every constructor, including `{:if, ...}`, `{:block, ...}`, and
+  `{:while, ...}`, since px-3so.3 and px-3so.5 landed the control-flow lowering
+  and rendering and px-3so.4 added the loop. Nothing at compile time keeps a
+  visitor's clause heads in sync with the typespec: `visitable/0` is a union of
+  tuple shapes, not a behaviour callback, so a 24th constructor added there
+  compiles cleanly and only fails at run time, as a `FunctionClauseError`, the
+  first time some AST reaches the missing clause - the exact contract breach
   ADR-0004 exists to prevent.
 
   This test computes both sides at test time instead of comparing against a
@@ -35,17 +35,17 @@ defmodule Predicator.VisitorClauseCoverageTest do
 
   alias Predicator.Parser
 
-  # `visitable/0`'s union expands to 22 tuple constructors today: the 18
+  # `visitable/0`'s union expands to 23 tuple constructors today: the 18
   # members of `ast/0` (literal, string_literal, identifier, comparison,
   # arithmetic, unary, membership, logical_and, logical_or, logical_not,
   # list, object, function_call, bracket_access, property_access, cast,
   # duration, relative_date) plus `program/0`, `assignment/0`, `if_statement/0`
-  # (tag `:if`), and `block/0`. Asserted as a literal rather than only
-  # "non-empty" so a typespec-expansion bug that silently walks past most of
-  # the union - or a source parse that silently matches nothing - fails
-  # loudly instead of passing vacuously, the same guard
-  # `isa_sync_test.exs` uses for `@opcode_count`.
-  @constructor_count 22
+  # (tag `:if`), `while_statement/0` (tag `:while`), and `block/0`. Asserted as
+  # a literal rather than only "non-empty" so a typespec-expansion bug that
+  # silently walks past most of the union - or a source parse that silently
+  # matches nothing - fails loudly instead of passing vacuously, the same
+  # guard `isa_sync_test.exs` uses for `@opcode_count`.
+  @constructor_count 23
 
   describe "Parser.visitable/0's constructor set" do
     setup do
@@ -55,10 +55,10 @@ defmodule Predicator.VisitorClauseCoverageTest do
        parser_types: Map.new(types, fn {_kind, {name, type_ast, _vars}} -> {name, type_ast} end)}
     end
 
-    # sabotage: added `| {:while, ast(), block(), position()}` to visitable/0's
-    # expansion (via a throwaway member on ast/0) -> constructor count went to
-    # 23 -> red, naming :while as unexpected
-    test "expands to exactly the 22 known tuple constructors", %{parser_types: parser_types} do
+    # sabotage: added `| {:sabotage_probe, ast(), block(), position()}` to
+    # visitable/0's expansion (via a throwaway member on ast/0) -> constructor
+    # count went to 24 -> red, naming :sabotage_probe as unexpected
+    test "expands to exactly the 23 known tuple constructors", %{parser_types: parser_types} do
       constructors = visitable_constructors(parser_types)
 
       assert constructors != MapSet.new(),
@@ -82,9 +82,10 @@ defmodule Predicator.VisitorClauseCoverageTest do
        source: File.read!("lib/predicator/visitors/string_visitor.ex")}
     end
 
-    # sabotage: added `| {:while, ast(), block(), position()}` to ast/0 with no
-    # matching do_visit/2 clause in string_visitor.ex -> the "missing" assertion
-    # went red, naming :while and pointing at StringVisitor
+    # sabotage: added `| {:sabotage_probe, ast(), block(), position()}` to
+    # ast/0 with no matching do_visit/2 clause in string_visitor.ex -> the
+    # "missing" assertion went red, naming :sabotage_probe and pointing at
+    # StringVisitor
     #
     # sabotage (reverse direction): renamed the `{:duration, ...}` do_visit/2
     # clause head's tag to `:durationx` -> the "missing" assertion went red on
@@ -132,10 +133,10 @@ defmodule Predicator.VisitorClauseCoverageTest do
        source: File.read!("lib/predicator/visitors/instructions_visitor.ex")}
     end
 
-    # sabotage: added `| {:while, ast(), block(), position()}` to ast/0 with no
-    # matching visit_annotated/2 clause in instructions_visitor.ex -> the
-    # "missing" assertion went red, naming :while and pointing at
-    # InstructionsVisitor
+    # sabotage: added `| {:sabotage_probe, ast(), block(), position()}` to
+    # ast/0 with no matching visit_annotated/2 clause in
+    # instructions_visitor.ex -> the "missing" assertion went red, naming
+    # :sabotage_probe and pointing at InstructionsVisitor
     #
     # sabotage (reverse direction): renamed the `{:duration, ...}`
     # visit_annotated/2 clause head's tag to `:durationx` -> the "missing"

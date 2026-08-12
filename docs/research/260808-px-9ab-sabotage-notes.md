@@ -254,3 +254,25 @@ are unaffected.
   parsed clause-tag set contained `:durationx` and not `:duration`, confirming
   the extra-direction assertion would have caught it too. Reverted, confirmed
   green; `git diff lib/` empty throughout except during the sabotage window.
+
+- 2026-08-12 (`px-3so.4`): `test/predicator/visitor_clause_coverage_test.exs`,
+  re-taken. `px-kbe`'s pass above used `{:while, ast(), block(), position()}`
+  as its mutation target - a fiction at the time, since `:while` did not yet
+  exist as an AST tag. This bead makes `while` real: `Parser.parse_statement/1`
+  now produces `{:while, condition, body, pos}`, `InstructionsVisitor` lowers
+  it, and `@constructor_count` moves to `23`. The old mutation is no longer a
+  probe of anything - `:while` is a genuine constructor with genuine clauses in
+  both visitors, so "mutate to add `:while`" would no longer redden the test at
+  all. The three sabotage comments in the test file were rewritten to a fresh
+  throwaway tag, `:sabotage_probe`, and the pass re-run against it.
+
+  Sabotage pass verified 2026-08-12. Added a throwaway `{:sabotage_probe,
+  ast(), block(), position()}` member to `ast/0`: all three tests went red -
+  the constructor-count test naming `:sabotage_probe` as the 24th constructor
+  (`got 24`, full sorted list including both `:while` and `:sabotage_probe`),
+  and both coverage tests naming `:sabotage_probe` as missing a clause in
+  their respective visitor (`StringVisitor` and `InstructionsVisitor`).
+  Reverted, confirmed green; `git diff lib/` empty throughout except during
+  the sabotage window. `:while` appearing correctly in the constructor list
+  and in neither "missing" list during this run is itself evidence the new
+  clauses in both visitors and the typespec are wired together correctly.

@@ -47,9 +47,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `0` to forbid back edges entirely; anything else raises `ArgumentError`, the
   same line `:on_unbound` draws. Exhaustion stops execution with an
   `EvaluationError` whose reason is `"loop_budget_exceeded"`, carrying the
-  failing `jump_backward` instruction's position. The compiler does not emit
-  `jump_backward` yet - `docs/isa.md`'s "Emitted by compiler" column reads
-  `no` until `while` lowers onto it.
+  failing `jump_backward` instruction's position.
+- **`while` statements parse, compile, and round-trip.**
+  `Predicator.parse_program/2` accepts `while cond { ... }`, producing a new
+  AST node - `{:while, condition, body, pos}`. `while` is statement-position
+  only, exactly like `if`: `Predicator.parse/2` rejects it with a message
+  naming `parse_program/2`. Braces are mandatory and the body block opens no
+  scope, so an assignment inside the loop writes to the same flat context as
+  one outside it. `while` lowers to the ISA v6 `jump_backward` opcode above -
+  `docs/isa.md`'s "Emitted by compiler" column now reads `yes` - and every
+  execution is bounded by the loop budget. `Predicator.decompile/2` now
+  round-trips `while`, rendering `while cond { ... }` and re-parsing to the
+  identical tree; `if`/`block` still decline pending `px-3so.5`. `while` was
+  already a reserved word from the v5 release (it could not be used as a
+  variable name, a bare property name, or a bare object key), so this is no
+  new grammar break.
 - **Conformance corpus: tier 9 (loops) covers `jump_backward` and budget
   exhaustion.** Six hand-authored cases in `conformance/cases/loops.json` -
   no compiler emits the opcode yet, so these are instruction lists rather than

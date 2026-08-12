@@ -82,15 +82,17 @@ pairs.
 ## Statement nodes
 
 `{:program, statements, pos}`, `{:assignment, lhs, rhs, pos}`,
-`{:if, condition, then_block, else_block, pos}`, and `{:block, statements, pos}`
-are produced only by `Predicator.Parser.parse_program/2`, the statement entry
-point alongside `parse/2`. None of the four is a member of `t:ast/0`: `parse/2`
+`{:if, condition, then_block, else_block, pos}`,
+`{:while, condition, body, pos}`, and `{:block, statements, pos}` are produced
+only by `Predicator.Parser.parse_program/2`, the statement entry point
+alongside `parse/2`. None of the five is a member of `t:ast/0`: `parse/2`
 never returns one, and an expression consumer never has to handle one.
 
 ```elixir
 {:program, [statement], pos}
 {:assignment, lhs, rhs, pos}
 {:if, condition, then_block, else_block, pos}
+{:while, condition, body, pos}
 {:block, [statement], pos}
 ```
 
@@ -127,10 +129,13 @@ token, and under `spans: true` it is the nested `if`'s span, which already
 starts at the same token and runs through the same final `}`.
 
 Neither `if` nor `block` is a member of `t:ast/0`, the same as `program` and
-`assignment`.
+`assignment`. `while` follows the same rule: `condition` in a while node is a
+bare expression, `body` is always a `{:block, statements, pos}`, and the body
+introduces no scope any more than an `if`'s blocks do - a `store` inside it is
+visible after the loop.
 
-`InstructionsVisitor` compiles the `program`, `assignment`, `if`, and `block`
-nodes today. A `{:program, statements, pos}` compiles each statement in
+`InstructionsVisitor` compiles the `program`, `assignment`, `if`, `while`, and
+`block` nodes today. A `{:program, statements, pos}` compiles each statement in
 order, concatenating the results; a `{:block, statements, pos}` compiles the
 same way - a block introduces no scope of its own, so it is a plain statement
 sequence. An `{:assignment, lhs, rhs, pos}` compiles to the `lhs` chain's
@@ -138,10 +143,12 @@ segments (root-to-leaf), then `rhs`, then `["store", n]`, where `n` is the
 chain's segment depth; any other statement compiles to its own instructions
 followed by `["pop"]`. That trailing `["pop"]` is emitted uniformly, including
 after the program's last statement, so the stack is empty at every statement
-boundary - **except an `if` statement**, which unlike every other
-non-assignment statement takes no trailing `["pop"]`: its condition is
-consumed by `pop_jump_if_falsy` and its blocks are already stack-neutral by
-construction, so nothing is left for a `pop` to remove
+boundary - **except an `if` or `while` statement**, neither of which, unlike
+every other non-assignment statement, takes a trailing `["pop"]`: an `if`'s
+condition is consumed by `pop_jump_if_falsy` and its blocks are already
+stack-neutral by construction, and a `while`'s condition is consumed by
+`pop_jump_if_falsy` on every iteration including the last, so in both cases
+nothing is left for a `pop` to remove
 ([ADR-0013](../adr/0013-control-flow-lowers-to-new-jump-opcodes.md)).
 
 `{:if, condition, then_block, nil, pos}` (no `else`) lowers to `condition`'s
@@ -153,6 +160,18 @@ unconditional `["jump", offset]` appended after the then block, the then
 block, that `jump` (sized to land one past the else block), then the else
 block. Both the `pop_jump_if_falsy` and the `jump` carry the `if` node's own
 position, not the condition's.
+
+`{:while, condition, body, pos}` lowers to `condition`, then
+`["pop_jump_if_falsy", offset]` sized to land one past a `["jump_backward",
+offset]` appended after the body, the body's own instructions, then that
+`jump_backward` - `c; ["pop_jump_if_falsy", lenA + 2]; A; ["jump_backward",
+lenC + lenA + 1]` for `while c { A }` (ISA v6, ADR-0013). The `jump_backward`'s
+offset is measured from its own index back to `condition`'s first
+instruction, which is why it counts `lenC` as well as `lenA`. Both the
+`pop_jump_if_falsy` and the `jump_backward` carry the `while` node's own
+position, not the condition's. Execution of any compiled program containing a
+`jump_backward` is bounded by the evaluator's loop budget (`docs/isa.md` §2,
+§5) - a normal, expected part of running a `while` loop, not an error path.
 
 In point mode the compiled `["store", n]` instruction is annotated with the
 `lhs` root segment's own position rather than the assignment node's `=`, so a
@@ -210,6 +229,7 @@ key's own blame position only when the key is a single token, as in
 | `duration` | its first number |
 | `relative_date` | the direction keyword (`ago`, `from`, `next`, `last`) |
 | `if` | the `if` keyword |
+| `while` | the `while` keyword |
 | `block` | the opening `{` token |
 | a desugared else-if's synthetic block | the nested `if` keyword |
 
@@ -247,6 +267,7 @@ characters to *underline*. A new node type needs a row in both:
 | `relative_date` (`next`, `last`) | the direction keyword token | duration end |
 | parenthesized expression | the `(` token | past the `)` token |
 | `if` | the `if` token | past the last block's `}` (the else block's if present, otherwise the then block's) |
+| `while` | the `while` token | past the body block's `}` |
 | `block` | the `{` token | past the `}` token |
 | a desugared else-if's synthetic block | the nested `if`'s own span start | the nested `if`'s own span end |
 

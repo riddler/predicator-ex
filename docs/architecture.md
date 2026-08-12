@@ -21,8 +21,9 @@ Expression String → Lexer → Parser → Compiler → Instructions → Evaluat
 
 ```text
 program      → statement ( ";" statement )* ( ";" )?
-statement    → if_statement | assignment | expression
+statement    → if_statement | while_statement | assignment | expression
 if_statement → "if" expression block ( "else" ( block | if_statement ) )?
+while_statement → "while" expression block
 block        → "{" ( statement ( ";" statement )* ( ";" )? )? "}"
 assignment   → location "=" expression
 location     → IDENTIFIER ( "." IDENTIFIER | "[" expression "]" )*
@@ -64,7 +65,10 @@ form - and they group statements without introducing a scope: a `store`
 inside a taken branch writes to the same flat context as one outside it.
 `else if c { B }` is parser sugar, not a grammar production of its own - it
 desugars to an `else` block whose sole statement is the nested `if`, with no
-chain node in the AST. See
+chain node in the AST. `while` is statement-position only on the same terms -
+`parse/2` rejects it exactly as it rejects `if`, and its body block opens no
+scope of its own either, so a `store` inside the loop body writes to the same
+flat context as one outside it. See
 [ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md)
 for all three.
 

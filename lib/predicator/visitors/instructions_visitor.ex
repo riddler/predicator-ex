@@ -367,6 +367,23 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       else_instructions
   end
 
+  # ADR-0013:  while c { A }
+  #   ->  c; pop_jump_if_falsy +(lenA + 2); A; jump_backward -(lenC + lenA + 1)
+  # The +2 clears A and the back edge that ends it; the back edge's offset is
+  # measured from its own index to the condition's first instruction, which is
+  # why it counts lenC as well.
+  defp visit_annotated({:while, condition, body, position}, opts) do
+    condition_instructions = visit_annotated(condition, opts)
+    body_instructions = visit_annotated(body, opts)
+
+    back_offset = length(condition_instructions) + length(body_instructions) + 1
+
+    condition_instructions ++
+      [{["pop_jump_if_falsy", length(body_instructions) + 2], position}] ++
+      body_instructions ++
+      [{["jump_backward", back_offset], position}]
+  end
+
   # A block is a statement sequence with no scope of its own (ADR-0013) - the
   # same body as {:program, ...}, and the reason each block is stack-neutral.
   defp visit_annotated({:block, statements, _position}, opts) do
@@ -421,6 +438,14 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   # expression statement it takes no trailing pop. Without this clause the
   # catch-all below would emit one against an empty stack.
   defp visit_statement({:if, _condition, _then_block, _else_block, _position} = node, opts) do
+    visit_annotated(node, opts)
+  end
+
+  # Stack-neutral by construction, exactly as an `if` is: the condition is
+  # consumed by pop_jump_if_falsy on every iteration including the last, and
+  # the body's statements each end in a store or a pop. Without this clause the
+  # catch-all would append a ["pop"] against an empty stack.
+  defp visit_statement({:while, _condition, _body, _position} = node, opts) do
     visit_annotated(node, opts)
   end
 

@@ -1098,4 +1098,77 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
              ]
     end
   end
+
+  describe "visit/2 - while lowering (ADR-0013, px-3so.4 Phase 2)" do
+    test "the canonical counted loop matches Phase 1's corpus case byte-identically" do
+      # conformance/cases/loops.json's "loops/counted-loop-runs-to-completion"
+      # case, minus its trailing hand-authored ["load", "i"] observation
+      # instruction - that instruction is not part of the while statement's
+      # own lowering, it exists only so the raw-instructions corpus case has
+      # something to observe on the stack.
+      assert visit_program("i = 0; while i < 3 { i = i + 1 }") == [
+               ["lit", "i"],
+               ["lit", 0],
+               ["store", 1],
+               ["load", "i"],
+               ["lit", 3],
+               ["compare", "LT"],
+               ["pop_jump_if_falsy", 7],
+               ["lit", "i"],
+               ["load", "i"],
+               ["lit", 1],
+               ["add"],
+               ["store", 1],
+               ["jump_backward", 9]
+             ]
+    end
+
+    test "an empty body" do
+      # lenC = 3, lenA = 0: pop_jump_if_falsy takes lenA + 2 = 2, landing one
+      # past jump_backward; jump_backward takes lenC + lenA + 1 = 4, landing
+      # back on the condition's first instruction.
+      assert visit_program("while i < 3 { }") == [
+               ["load", "i"],
+               ["lit", 3],
+               ["compare", "LT"],
+               ["pop_jump_if_falsy", 2],
+               ["jump_backward", 4]
+             ]
+    end
+
+    test "a multi-statement body" do
+      assert visit_program("while a { x = 1; y = 2 }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 8],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["lit", "y"],
+               ["lit", 2],
+               ["store", 1],
+               ["jump_backward", 8]
+             ]
+    end
+
+    test "a nested while - the inner back edge does not reach past the outer condition" do
+      assert visit_program("while a { while b { x = 1 } }") == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 8],
+               ["load", "b"],
+               ["pop_jump_if_falsy", 5],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["jump_backward", 5],
+               ["jump_backward", 8]
+             ]
+    end
+
+    test "a while statement takes no trailing pop, even as a program's last statement" do
+      instructions = visit_program("while a { x = 1 }")
+
+      assert List.last(instructions) == ["jump_backward", 5]
+      refute Enum.any?(instructions, &(&1 == ["pop"]))
+    end
+  end
 end

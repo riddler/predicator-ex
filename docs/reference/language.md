@@ -329,13 +329,61 @@ never required - and its value must be a boolean. `false` and `:undefined`
 skip the branch; `true` runs it; any other value is a `TypeMismatchError`
 rather than being coerced (see "Error Shapes" below).
 
+### `while`
+
+The `while_statement` production (see the grammar in
+[Architecture](../architecture.md)) is `while cond { ... }`. It runs its body
+block for as long as `cond` is `true`, checking the condition again before
+every iteration including the first:
+
+```elixir
+iex> {:ok, ast} = Predicator.parse_program("while i < 3 { i = i + 1 }")
+iex> ast
+{:program, [{:while, {:comparison, :lt, {:identifier, "i", {1, 7}}, {:literal, 3, {1, 11}}, {1, 9}}, {:block, [{:assignment, {:identifier, "i", {1, 15}}, {:arithmetic, :add, {:identifier, "i", {1, 19}}, {:literal, 1, {1, 23}}, {1, 21}}, {1, 17}}], {1, 13}}, {1, 1}}], {1, 1}}
+```
+
+```elixir
+iex> {:ok, ctx} = Predicator.execute("i = 0; while i < 3 { i = i + 1 }", %{})
+iex> ctx.data
+%{"i" => 3}
+```
+
+`while` is statement-position only, on the same terms as `if`: `parse/2`
+rejects it with the same message naming `parse_program/2`, braces are
+mandatory, and the body block opens no scope - a `store` inside it writes to
+the same flat context as one outside it (see "Braces introduce no scope"
+above). The condition follows the same boolean rule `if`'s does: `false`
+skips the body, `true` runs it, and any other value is a `TypeMismatchError`
+rather than being coerced.
+
+### The loop budget
+
+`while` compiles to the ISA v6 `jump_backward` opcode (ADR-0013), and
+execution of any program containing one is bounded: the evaluator charges a
+budget on every back edge taken, shared across every loop in the program, not
+per-loop. The default is 10,000 back edges per execution
+(`Predicator.Evaluator.default_loop_budget/0`). A caller configures it per
+call with the `:loop_budget` option on `evaluate/3`, `execute/3`, and
+`execute_value/3`:
+
+```elixir
+iex> {:error, error, _ctx} = Predicator.execute("while true { }", %{}, loop_budget: 5)
+iex> error.reason
+"loop_budget_exceeded"
+```
+
+Exhaustion stops execution with `{:error, %Predicator.Errors.EvaluationError{
+reason: "loop_budget_exceeded"}, context}` - an error value, never a raise or
+a hang (ADR-0004). A budget of `0` forbids back edges entirely, so the very
+first `jump_backward` a program takes fails; a malformed value (anything that
+is not a non-negative integer) raises `ArgumentError`, the same host-API-misuse
+line `:on_unbound` draws.
+
 ### Reserved words
 
 `if`, `else`, and `while` are reserved words: none of the three can be used
 as a variable name, a bare property name (`user.if`), or a bare object key
-(`{if: 1}`) - only a quoted key (`{"if": 1}`) still works. `while` is
-reserved from the same release as `if` and `else`, but it does not yet parse
-as a statement.
+(`{if: 1}`) - only a quoted key (`{"if": 1}`) still works.
 
 ## Builtin Functions
 
