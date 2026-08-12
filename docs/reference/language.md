@@ -268,12 +268,6 @@ iex> Predicator.parse("if x { }")
 {:error, "'if' is a statement keyword, not an expression - control flow is only valid in a program (Predicator.parse_program/2).", 1, 1}
 ```
 
-> **`if`/`else` runs, but does not decompile yet.** `Predicator.execute/2,3`
-> lowers an `if` statement to the ISA v5 jump opcodes (ADR-0013) and runs it.
-> `Predicator.decompile/2` still returns an `{:error, ...}` tuple naming the
-> unsupported construct for a program containing one, instead of rendering
-> it, until `StringVisitor` learns the nodes (`px-3so.5`).
-
 ### `if`/`else`
 
 The `if_statement` production (see the grammar in
@@ -321,9 +315,7 @@ it is visible after the block and in `execute/2`'s result, whether or not the
 branch that wrote it was the one taken - `x = 1; if x > 0 { y = 2 } else
 { y = 3 }` leaves both `x` and `y` bound at the top level, the same as if the
 assignment inside the taken branch had been written without the surrounding
-`if` at all. This is the settled rule rather than observable behavior yet:
-per the note above, `execute/2` does not accept an `if` program until the
-ISA v5 opcodes land.
+`if` at all.
 
 See [ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md)
 for why: the statement layer has no declaration form to hang a scope on, and
@@ -462,6 +454,17 @@ iex> Predicator.decompile(ast, spacing: :verbose)
 iex> {:ok, ast} = Predicator.parse("score > 85")
 iex> Predicator.decompile(ast, parentheses: :explicit)
 "(score > 85)"
+```
+
+It renders `if`/`else` too, applying the `else if` printing rule from
+above: an `else` block whose sole statement is an `if` prints as `else if`
+rather than nesting a new block, which is what makes the natural spelling
+round-trip through `parse_program/2` -> `decompile/2` -> `parse_program/2`.
+
+```elixir
+iex> {:ok, ast} = Predicator.parse_program("if a { x = 1 } else { if b { x = 2 } }")
+iex> Predicator.decompile(ast)
+"if a { x = 1 } else if b { x = 2 }"
 ```
 
 ## Contexts and key normalization

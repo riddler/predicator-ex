@@ -23,10 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instructions and runs**: `Predicator.execute/2,3` compiles an `if`
   statement to the ISA v5 jump opcodes below and executes it, with an
   unbound or non-boolean condition following the standing `on_unbound`/
-  `TypeMismatchError` rules. `Predicator.decompile/2` still returns an
-  `{:error, ...}` tuple naming the unsupported construct for a program
-  containing one, until `StringVisitor` learns the nodes (`px-3so.5`,
-  ADR-0013).
+  `TypeMismatchError` rules. **`Predicator.decompile/2` renders an `if`
+  statement back to source**: an `else` block whose sole statement is an
+  `if` prints as `else if` rather than nesting a new block, so
+  `parse_program |> decompile |> parse_program` is a fixpoint.
 - **ISA v5: `jump` and `pop_jump_if_falsy`.** Two new opcodes, tier 8
   (control flow) - `jump` is an unconditional relative forward jump; `pop_jump_if_falsy`
   pops the stack top always and jumps to it when falsy, unlike
@@ -122,13 +122,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   join 0001-0003 - so those citations resolve on hexdocs instead of 404ing.
   The governance ADRs stay unpublished and the ADR index links them by
   absolute GitHub URL.
-- **`Predicator.decompile/2`'s return type widens to `binary() | {:error,
-  struct()}`.** A tree containing an `{:if, ...}` or `{:block, ...}` node -
-  ADR-0013's control flow, not yet rendered - now returns an `{:error, ...}`
-  tuple naming the unsupported construct instead of raising
-  `FunctionClauseError`. Every AST that previously returned a binary still
-  does; a caller with a `binary()`-typed variable will see a new dialyzer
-  union (px-aen).
 
 ### Removed
 
