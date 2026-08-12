@@ -594,17 +594,21 @@ Manual verification items are deferred during looped (--loop) execution and
 surfaced here once, rather than blocking after each phase. Confirm these
 before considering the plan fully landed.
 
+All nine were walked with the user on 2026-08-12 and are resolved below.
+
 ### Phase 1
 
-- [ ] On the next branch that touches `lib/` or `test/`, a full `gate.rb` run
-      classifies Gettext and Sobelow as `not_applicable` with
-      `stage_skipped_not_applicable` warnings, and Doctor as `project_level`.
-      This is deferred by construction - the carve-out means it cannot be
-      observed from this branch.
-- [ ] A `/wurk:mr` request body drafted for this branch names Doctor as a
-      standing gap and does **not** recite Gettext or Sobelow.
-- [ ] The two moved stages read as permanently inapplicable to a reviewer, not
-      merely unaddressed - the decision table above is the argument.
+- [x] Verified on this branch, not deferred: the carve-out did not bite,
+      because the local `main` ref is behind and the diff picked up
+      `lib/`/`test/` files, so `gate.rb` reported `applicable: true` and ran.
+      `skipped_stages` classifies Doctor `project_level`, Gettext and Sobelow
+      `not_applicable`, with the matching `stage_skipped_*` warnings.
+- [x] `wurk:mr/SKILL.md:173-176` requires only `project_level` entries in the
+      request body and exempts `not_applicable`; against the classification
+      above that leaves Doctor alone.
+- [x] `mix.exs` carries **zero runtime dependencies** - no Phoenix, no Plug,
+      no Gettext - so neither a Sobelow scan nor an i18n stage can ever apply
+      here. Doctor stays a genuine gap for the same reason.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution,
@@ -618,16 +622,22 @@ blocking here.
 
 ### Phase 2
 
-- [ ] Spawn a `wurk-codebase-locator` on a question whose answer depends on
-      orientation ("where do new opcodes get implemented and tested") with the
-      file's content pasted under "Project orientation, from
-      .claude/wurk/codebase.md", and confirm the answer names
-      `lib/predicator/instructions.ex`, `evaluator.ex`, and `docs/isa.md`
-      without a discovery detour.
-- [ ] The file reads as facts and search guidance, with no judgment rule that
-      would re-role an agent (ADR-0011 point 5).
-- [ ] Nothing removed from `research.md` is now unreachable by the
-      `/wurk:research` flow.
+- [x] Run as specified. The locator named `instructions.ex`, `evaluator.ex`,
+      `instructions_visitor.ex`, `docs/isa.md` and `isa_sync_test.exs`, and
+      reported it needed no discovery pass - only confirming greps anchored on
+      `jump_backward`, which the "best search keys" line handed it. It also
+      surfaced two files the Layout section did not name,
+      `lib/predicator/errors.ex` and `lib/predicator/instructions/upgrade.ex`;
+      both were added, paid for by compressing the visitors bullet, so the
+      file is still 83 lines. A sweep of every `lib/**/*.ex` against the file
+      now leaves only `lib/predicator/conformance/*.ex`, which its directory
+      bullet covers.
+- [x] All four reading rules are descriptive constraints on how to *describe*
+      this code; none asks an agent to evaluate or propose.
+- [x] The removed sections all landed in `codebase.md`, which
+      `wurk:research/SKILL.md:124-125` pastes verbatim into every
+      `wurk-codebase-*` spawn, so the content is reachable on more paths than
+      before rather than fewer.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution,
@@ -641,14 +651,22 @@ blocking here.
 
 ### Phase 3
 
-- [ ] Each row of the decision table is defensible on its own terms, and the
-      three "leave off" rows state a reason specific to this repo rather than
-      copying statifier-ex's column.
-- [ ] The `gate.sabotage` row's disagreement with wurk `docs/manifest.md`
-      ("predicator-ex ... ha[s] no sabotage-discipline corpus") is understood
-      as a granularity mismatch, not an oversight in either document.
-- [ ] A future `upstream` bead is reported by `/wurk:next` as the `upstream`
-      verdict rather than being handed a worktree.
+- [x] Walked row by row with the user and accepted. Each "leave off" row cites
+      something local: no `mix gate.verify` task exists (`gate.attest`),
+      ADR-0008 plus the `settings.json` deny rules already cover what
+      `gate.guard_ledger` guards, there is no judged-text corpus (`judge`),
+      and `rebase.auto_resolve_paths` stays off per ADR-0010's default against
+      speculative opt-in.
+- [x] Understood as a granularity mismatch and filed against the kit as
+      **wu-4r7**, "Narrows gate.sabotage to enumerated binding tests": the
+      discipline exists here but covers only the enumerated binding tests,
+      while the kit's scan flags every new test declaration. `gate.sabotage`
+      stays off here until the kit can be scoped; the manifest row is revisited
+      when wu-4r7 lands.
+- [x] `Manifest.current.area_always_batchable` returns `["upstream"]`,
+      `Areas.upstream?(["upstream"])` is true and `["area:skills"]` false, and
+      `select_batch.rb:232` turns that into the informational `upstream`
+      verdict that never enters the recommended batch.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution,
