@@ -286,3 +286,83 @@ are unaffected.
   naming only `:sabotage_probe` as missing is the evidence for the merged
   claim: had the conflict resolution dropped a clause, that list would name it
   too.
+
+## Enforcement: gate.sabotage, from 2026-08-12 (px-lxs)
+
+- **The discipline is now enforced, not only written down.** `px-lxs` declared
+  `gate.sabotage` in `.claude/wurk.json`'s `gate` object, naming all ten files
+  in this document's class as `test_roots` (the original seven above plus the
+  three "Additions to the class" entries) and this repo's ExUnit
+  `test_pattern`. The ten paths, spelled out rather than brace-expanded so
+  they read as literal filenames in both places:
+  `test/predicator/isa_sync_test.exs`,
+  `test/predicator/conformance/corpus_freshness_test.exs`,
+  `test/predicator/conformance/opcode_coverage_test.exs`,
+  `test/predicator/conformance/function_coverage_test.exs`,
+  `test/predicator/conformance/schema_validation_test.exs`,
+  `test/predicator/conformance/ratchet_registry_test.exs`,
+  `test/predicator/conformance/package_boundary_test.exs`,
+  `test/docs_adr_links_test.exs`,
+  `test/predicator/conformance/values_test.exs`, and
+  `test/predicator/visitor_clause_coverage_test.exs`.
+  `ruby ~/.claude/skills/wurk:kit/scripts/gate.rb` now reports
+  `data.sabotage.enabled: true` on every run, and a diff touching a listed file
+  with an undocumented `test "..."` declaration surfaces as a
+  `sabotage_note_missing` warning. The scan is a report, never a gate - it
+  never flips `ok` - so a present note is still not evidence a mutation was
+  actually run; that judgment stays with `/wurk:commit`'s Step 0.
+
+- **This reverses `px-hhu`'s "leave off" row.**
+  `docs/plans/260812-px-hhu-wurk-config-catchup.md:436` left `gate.sabotage`
+  unset with the stated reason that narrowing the scan to the binding-test set
+  "would need `test_roots` granularity the field does not have." That claim
+  was false: wurk `wu-4r7` settled it as a documentation gap, not a real kit
+  limitation. `test_roots` entries are handed verbatim to `git diff` as a
+  pathspec, and a pathspec accepts exact file paths and bare globs, not only
+  directory prefixes - so the narrow allowlist form (ten exact paths, nothing
+  else) worked with no kit change. The landed plan is left as-is; it is a
+  dated record of what was decided and why, not a live document, and this
+  section is where the reversal is recorded instead.
+
+- **`test_roots` is a second copy of this document's class list, and the two
+  must move together.** A binding test added to a file not named in
+  `gate.sabotage.test_roots` is invisible to the scan - it is simply not among
+  the files the scan diffs. Extending the "Additions to the class" section
+  above without also adding the new file's path to `test_roots` in
+  `.claude/wurk.json` leaves the addition documented but unenforced, and the
+  scan's continued silence about that file is not evidence it is clean. The
+  two lists are added to in the same change, every time.
+
+- **Phase 1 hand-verification, 2026-08-12.** Both directions of the scan were
+  probed by hand, each as a real commit reset afterward (the scan reads
+  `main...HEAD`, so uncommitted work is invisible to it).
+
+  Negative probe: committed `test/predicator/scratch_probe_test.exs`
+  containing one undocumented `test "probe" do`, a file outside
+  `test_roots`. `ruby ~/.claude/skills/wurk:kit/scripts/gate.rb --profile loop`
+  reported:
+
+  ```json
+  "sabotage":{"enabled":true,"reason":null,"missing":[]}
+  ```
+
+  with no `sabotage_note_missing` warning - an ordinary test outside the
+  allowlist is not flagged, which is the narrow form's whole point. Reset with
+  `git reset --hard HEAD~1`.
+
+  Positive probe: committed an undocumented `test "probe" do` line inside
+  `test/predicator/isa_sync_test.exs`, a listed file. The same command
+  reported:
+
+  ```json
+  "sabotage":{"enabled":true,"reason":null,"missing":[{"file":"test/predicator/isa_sync_test.exs","text":"test \"probe\" do"}]}
+  ```
+
+  with the warning `test/predicator/isa_sync_test.exs: test "probe" do has no
+  \`# sabotage:\` note directly above it (a present note is not evidence the
+  mutation was run)` - exactly one entry, naming the file and the line. Reset
+  with `git reset --hard HEAD~1`. The negative probe alone could not
+  distinguish "correctly not flagged" from "scan silently doing nothing";
+  running both directions is what rules that out. `git status --porcelain`
+  was empty and `git log --oneline -1` was back at the manifest commit after
+  both probes, confirming no throwaway commit or probe file survived.

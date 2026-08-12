@@ -216,15 +216,15 @@ No other file changes in this phase. `exempt_prefixes` is deliberately absent
 
 #### Automated Verification:
 
-- [ ] `ruby ~/.claude/skills/wurk:kit/scripts/lib/manifest.rb check 2>/dev/null`
+- [x] `ruby ~/.claude/skills/wurk:kit/scripts/lib/manifest.rb check 2>/dev/null`
       emits `"valid":true` with `"errors":[]`. (Redirect stderr: running the
       kit's `manifest.rb` from a checkout that also has wurk on the load path
       prints harmless "already initialized constant" warnings.)
-- [ ] `ruby -rjson -e 'p JSON.parse(File.read(".claude/wurk.json"))["gate"]["sabotage"]["test_roots"].reject { |p| File.exist?(p) }'`
+- [x] `ruby -rjson -e 'p JSON.parse(File.read(".claude/wurk.json"))["gate"]["sabotage"]["test_roots"].reject { |p| File.exist?(p) }'`
       prints `[]` - every listed path exists on disk.
-- [ ] `ruby -rjson -e 'src = JSON.parse(File.read(".claude/wurk.json"))["gate"]["sabotage"]["test_pattern"]; abort("no match") unless %q(  test "x" do) =~ Regexp.new(src)'`
+- [x] `ruby -rjson -e 'src = JSON.parse(File.read(".claude/wurk.json"))["gate"]["sabotage"]["test_pattern"]; abort("no match") unless %q(  test "x" do) =~ Regexp.new(src)'`
       exits 0 - the pattern actually matches an ExUnit test declaration.
-- [ ] `ruby ~/.claude/skills/wurk:kit/scripts/gate.rb 2>/dev/null` reports
+- [x] `ruby ~/.claude/skills/wurk:kit/scripts/gate.rb 2>/dev/null` reports
       `data.sabotage.enabled: true` and `data.sabotage.reason: null`. On a
       branch touching only `.claude/` and `docs/` this returns without running
       `mix quality` (`gate.rb:313-318` precedes the carve-out return at
@@ -232,7 +232,7 @@ No other file changes in this phase. `exempt_prefixes` is deliberately absent
 
 #### Manual Verification:
 
-- [ ] **Negative probe (the bead's stated point).** On a clean tree with the
+- [x] **Negative probe (the bead's stated point).** On a clean tree with the
       manifest change committed, commit a throwaway ordinary test outside the
       allowlist - e.g. `test/predicator/scratch_probe_test.exs` with a single
       `test "probe" do` and no `# sabotage:` note - then run
@@ -241,14 +241,14 @@ No other file changes in this phase. `exempt_prefixes` is deliberately absent
       appears. Then `git reset --hard HEAD~1`. (`--profile loop` because the
       throwaway touches `test/`, which makes the run gate-applicable; the gate
       command's own result is not what is being read here.)
-- [ ] **Positive probe (that the scan is wired at all).** Same procedure, but
+- [x] **Positive probe (that the scan is wired at all).** Same procedure, but
       the throwaway commit adds an undocumented `test "probe" do` line inside
       `test/predicator/isa_sync_test.exs`. Confirm exactly one entry appears
       in `data.sabotage.missing`, naming that file and that line, with a
       matching `sabotage_note_missing` warning. Then `git reset --hard HEAD~1`.
       A negative probe alone cannot distinguish "correctly not flagged" from
       "scan silently doing nothing", which is why both directions are run.
-- [ ] `git status --porcelain` is empty after both probes, and
+- [x] `git status --porcelain` is empty after both probes, and
       `git log --oneline -1` is the manifest commit - no throwaway commit and
       no probe file survives.
 
@@ -325,31 +325,31 @@ with the probe results from Phase 1 quoted as they actually ran.
 
 #### Automated Verification:
 
-- [ ] `grep -n "test_roots" CLAUDE.md` and
+- [x] `grep -n "test_roots" CLAUDE.md` and
       `grep -n "gate.sabotage" docs/research/260808-px-9ab-sabotage-notes.md`
       each return at least one line - the trap is written in both places.
-- [ ] `ruby -rjson -e 'roots = JSON.parse(File.read(".claude/wurk.json"))["gate"]["sabotage"]["test_roots"]; doc = File.read("docs/research/260808-px-9ab-sabotage-notes.md"); missing = roots.reject { |p| doc.include?(File.basename(p)) }; abort(missing.inspect) unless missing.empty?'`
+- [x] `ruby -rjson -e 'roots = JSON.parse(File.read(".claude/wurk.json"))["gate"]["sabotage"]["test_roots"]; doc = File.read("docs/research/260808-px-9ab-sabotage-notes.md"); missing = roots.reject { |p| doc.include?(File.basename(p)) }; abort(missing.inspect) unless missing.empty?'`
       exits 0 - every path in `test_roots` is named somewhere in the research
       document, so the two copies of the class list agree.
-- [ ] `ruby ~/.claude/skills/wurk:kit/scripts/lib/manifest.rb check 2>/dev/null`
+- [x] `ruby ~/.claude/skills/wurk:kit/scripts/lib/manifest.rb check 2>/dev/null`
       still reports `"valid":true` (this phase touches no JSON, so it is a
       regression check).
-- [ ] `mix test test/docs_adr_links_test.exs` passes - `CLAUDE.md` is not in
+- [x] `mix test test/docs_adr_links_test.exs` passes - `CLAUDE.md` is not in
       its scope, but the run is cheap and confirms no documentation binding
       test was disturbed.
 
 #### Manual Verification:
 
-- [ ] Read the `CLAUDE.md` bullet cold: does it say plainly that the scan's
+- [x] Read the `CLAUDE.md` bullet cold: does it say plainly that the scan's
       silence about an unlisted file is not evidence of anything? That is the
       trap, and a reader who takes silence as coverage has been misled by the
       feature this bead turned on.
-- [ ] The research document's new section states the reversal of px-hhu's row
+- [x] The research document's new section states the reversal of px-hhu's row
       with its evidence, so a reader who finds that row first is not left
       believing the kit cannot do this.
-- [ ] The recorded probe results describe what actually ran in Phase 1, not
+- [x] The recorded probe results describe what actually ran in Phase 1, not
       what was expected to run.
-- [ ] No regressions in related features: `.claude/wurk/*.md` extensions are
+- [x] No regressions in related features: `.claude/wurk/*.md` extensions are
       untouched, and no `area:build` file appears in `git diff --name-only
       main...HEAD`.
 
