@@ -38,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   renders a cast back to `::` syntax, parenthesizing the operand only when it
   binds looser than the postfix level (`(1 + 2)::string`, `(-1)::integer`), so
   casts round-trip losslessly.
+- **The conformance corpus's tagged `datetime` encoding pins its
+  fractional-seconds form.** `{"$type": "datetime", "value": ...}` now
+  canonicalizes on both encode and decode, so the emitted `value` string is a
+  function of the instant alone: the fraction is omitted entirely when the
+  sub-second component is zero and is exactly six digits when it is not, the
+  same form `datetime::string` already carries. Previously the emitted digit
+  count tracked Elixir's internal `microsecond` precision field, so the same
+  instant could encode two different ways depending on which code path
+  produced it. Every tagged `datetime` value shipped in the 4.0.0 corpus is
+  already zero-fraction, so this makes precise a specification a sibling may
+  already be reading, without moving any byte currently on disk.
 - **`Predicator.FunctionProvider` behaviour.** A module implements one
   callback, `functions/0`, returning `%{name => {arity, atom}}` - the atom
   names a public `(args, context)` function on the same module. The four

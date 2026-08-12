@@ -9,6 +9,7 @@ defmodule Predicator.Conformance.Values do
 
       {"$type": "date", "value": "2026-08-06"}
       {"$type": "datetime", "value": "2026-08-06T12:00:00Z"}
+      {"$type": "datetime", "value": "2026-08-06T12:00:00.500000Z"}
       {"$type": "duration", "value": {"years":0,"months":0,"weeks":0,"days":3,"hours":0,"minutes":0,"seconds":0}}
       {"$type": "undefined"}
 
@@ -51,6 +52,12 @@ defmodule Predicator.Conformance.Values do
       iex> Predicator.Conformance.Values.to_json(~D[2026-08-06])
       {:ok, %{"$type" => "date", "value" => "2026-08-06"}}
 
+      iex> Predicator.Conformance.Values.to_json(~U[2026-08-06T12:00:00Z])
+      {:ok, %{"$type" => "datetime", "value" => "2026-08-06T12:00:00Z"}}
+
+      iex> Predicator.Conformance.Values.to_json(~U[2026-08-06T12:00:00.5Z])
+      {:ok, %{"$type" => "datetime", "value" => "2026-08-06T12:00:00.500000Z"}}
+
       iex> Predicator.Conformance.Values.to_json(42)
       {:ok, 42}
 
@@ -68,7 +75,8 @@ defmodule Predicator.Conformance.Values do
   end
 
   def to_json(%DateTime{} = datetime) do
-    {:ok, %{"$type" => "datetime", "value" => DateTime.to_iso8601(datetime)}}
+    value = datetime |> canonicalize_microsecond() |> DateTime.to_iso8601()
+    {:ok, %{"$type" => "datetime", "value" => value}}
   end
 
   def to_json(value) when is_map(value) and not is_struct(value) do
@@ -90,10 +98,12 @@ defmodule Predicator.Conformance.Values do
   @doc """
   Decodes a tagged-JSON term back into a predicator value.
 
-  The inverse of `to_json/1`: `from_json(to_json(v)) == {:ok, v}` for every
-  value `to_json/1` accepts. Returns `{:error, {:unknown_type, type}}` for an
-  object whose `$type` is not one of `"date"`, `"datetime"`, `"duration"`, or
-  `"undefined"`.
+  The inverse of `to_json/1` up to canonicalization: `to_json(from_json(to_json(v)))
+  == to_json(v)` for every value `to_json/1` accepts, and `from_json(to_json(v))
+  == {:ok, v}` for every value except a `DateTime` whose precision field
+  disagrees with its own sub-second component, which comes back canonicalized.
+  Returns `{:error, {:unknown_type, type}}` for an object whose `$type` is not
+  one of `"date"`, `"datetime"`, `"duration"`, or `"undefined"`.
 
   ## Examples
 
@@ -121,7 +131,7 @@ defmodule Predicator.Conformance.Values do
 
   def from_json(%{"$type" => "datetime", "value" => value}) when is_binary(value) do
     case DateTime.from_iso8601(value) do
-      {:ok, datetime, _utc_offset} -> {:ok, datetime}
+      {:ok, datetime, _utc_offset} -> {:ok, canonicalize_microsecond(datetime)}
       {:error, reason} -> {:error, {:invalid_datetime, reason}}
     end
   end
@@ -141,6 +151,21 @@ defmodule Predicator.Conformance.Values do
   end
 
   def from_json(value), do: {:error, {:undecodable, value}}
+
+  # The tagged datetime encoding carries the same canonical fractional-seconds
+  # form as datetime::string (docs/isa.md section 5, px-7t8): the fraction
+  # omitted entirely when the sub-second component is zero, exactly six digits
+  # when it is not. Elixir's precision field has no representation in the
+  # encoding, so canonicalizing on both directions is what makes the encoding a
+  # function of the instant rather than of whichever code path produced the
+  # struct. Deliberately duplicated from Cast's private clause rather than
+  # shared - see docs/research/260811-px-qq6-tagged-datetime-precision.md.
+  @spec canonicalize_microsecond(DateTime.t()) :: DateTime.t()
+  defp canonicalize_microsecond(%DateTime{microsecond: {0, _precision}} = datetime),
+    do: %{datetime | microsecond: {0, 0}}
+
+  defp canonicalize_microsecond(%DateTime{microsecond: {microseconds, _precision}} = datetime),
+    do: %{datetime | microsecond: {microseconds, 6}}
 
   @spec duration_map?(map()) :: boolean()
   defp duration_map?(value), do: Enum.all?(@duration_keys, &Map.has_key?(value, &1))

@@ -314,15 +314,15 @@ specification a sibling may already be reading being made precise.
 
 #### Automated Verification:
 
-- [ ] Full `mix quality` passes, including doctests for the new `@doc` examples.
-- [ ] `mix corpus.generate` leaves the working tree clean:
+- [x] Full `mix quality` passes, including doctests for the new `@doc` examples.
+- [x] `mix corpus.generate` leaves the working tree clean:
       `git diff --quiet conformance/` succeeds, i.e. `corpus_hash` and every
       tier file are byte-identical. This is the phase's central claim.
-- [ ] `test/predicator/conformance/corpus_freshness_test.exs` passes without
+- [x] `test/predicator/conformance/corpus_freshness_test.exs` passes without
       regeneration, which is the same claim checked from the other direction.
-- [ ] `Predicator.Conformance.Values` coverage stays above the 90% minimum in
+- [x] `Predicator.Conformance.Values` coverage stays above the 90% minimum in
       `coveralls.json` (both helper clauses are exercised).
-- [ ] `git diff --stat docs/isa.md` is empty.
+- [x] `git diff --stat docs/isa.md` is empty.
 
 #### Manual Verification:
 
@@ -475,3 +475,33 @@ test already runs on every gate.
   `docs/adr/0011-casts-are-an-opcode.md` (the cast semantics the form rides on)
 - Similar implementation: `lib/predicator/cast.ex:174-179`
 - Bead: `px-qq6`
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] The sabotage mutations were actually run and confirmed red for the right
+      reason, and the recorded failure text is the real one.
+- [ ] `conformance/README.md`'s new paragraph reads correctly to someone
+      implementing a sibling from that document alone - in particular the
+      asymmetry between emitting and accepting.
+- [ ] The restated `@doc` property is accurate: check by hand that
+      `to_json(from_json(to_json(v))) == to_json(v)` is stated without
+      exceptions and the structural form's one exception is named.
+- [ ] The commit message and PR body say explicitly that the corpus was
+      regenerated and deliberately did not move, and why (ADR-0003 obliges a
+      corpus diff to be explained, and "there is no diff" is this phase's
+      explanation).
+
+**Implementation Note**: Use `mix quality --profile loop` between edits and the
+full gate as the phase gate. In interactive execution, pause here for the human
+to confirm the manual testing before moving to the next phase. In looped
+(`--loop`) execution, this phase's Automated Verification gates advancement
+automatically (via `/wurk:commit --auto`), and Manual Verification items are
+deferred and surfaced once at the end instead of blocking here.
+
+---
