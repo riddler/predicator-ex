@@ -302,11 +302,11 @@ shape, under `### Changed`:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green
-- [ ] `mix test test/predicator/integration/statements_test.exs` passes with the
+- [x] `mix quality` is green
+- [x] `mix test test/predicator/integration/statements_test.exs` passes with the
       five new cases
-- [ ] `CHANGELOG.md` contains the new entry under `## [Unreleased]`
-- [ ] `git diff --name-only` for the branch touches no file under
+- [x] `CHANGELOG.md` contains the new entry under `## [Unreleased]`
+- [x] `git diff --name-only` for the branch touches no file under
       `conformance/` (no corpus move to explain under ADR-0003)
 
 #### Manual Verification:
@@ -379,5 +379,18 @@ the human to confirm the manual testing before moving to the next phase. In
 looped (`--loop`) execution, this phase's Automated Verification gates
 advancement automatically, and Manual Verification items are deferred and
 surfaced once at the end.
+
+---
+
+### Phase 2
+
+- [ ] The changelog entry reads correctly to someone who did not write the
+      change, and states the `:in` decision
+- [ ] Sabotaging one new assertion (e.g. reverting the `:store` clause) turns
+      the new tests red, confirming they bind what they claim to
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. Same interactive/looped handling as
+Phase 1.
 
 ---

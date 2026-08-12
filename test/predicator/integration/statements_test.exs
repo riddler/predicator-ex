@@ -78,4 +78,54 @@ defmodule Predicator.Integration.StatementsTest do
       assert ctx.data == %{"flag" => true}
     end
   end
+
+  describe "type-mismatch messages name the source construct, not the opcode" do
+    test "if blames the keyword and names the condition rule" do
+      assert {:error,
+              %Predicator.Errors.TypeMismatchError{
+                operation: :pop_jump_if_falsy,
+                position: {1, 1},
+                message: "Condition requires a boolean, got \"a\" (string)"
+              }, _ctx} = Predicator.execute(~s|if "a" { y = 1 }|, %{})
+    end
+
+    test "while blames the keyword and names the condition rule" do
+      assert {:error,
+              %Predicator.Errors.TypeMismatchError{
+                operation: :pop_jump_if_falsy,
+                position: {1, 1},
+                message: "Condition requires a boolean, got \"a\" (string)"
+              }, _ctx} = Predicator.execute(~s|while "a" { y = 1 }|, %{})
+    end
+
+    test "and names its rule Logical AND, not the short-circuit opcode" do
+      assert {:error,
+              %Predicator.Errors.TypeMismatchError{
+                operation: :jump_if_falsy_or_pop,
+                position: {1, 5},
+                message: "Logical AND requires a boolean, got \"a\" (string)"
+              }, _ctx} = Predicator.execute(~s|"a" and true|, %{})
+    end
+
+    test "or names its rule Logical OR, not the short-circuit opcode" do
+      assert {:error,
+              %Predicator.Errors.TypeMismatchError{
+                operation: :jump_if_true_or_pop,
+                position: {1, 5},
+                message: "Logical OR requires a boolean, got \"a\" (string)"
+              }, _ctx} = Predicator.execute(~s|"a" or true|, %{})
+    end
+
+    test "a failing store names the rule Assignment, not the opcode" do
+      # Duplicates test/predicator/execute_test.exs:204 by design - that test
+      # is about which segment is blamed, this one is about the construct
+      # name - so both stay.
+      assert {:error,
+              %Predicator.Errors.TypeMismatchError{
+                operation: :store,
+                position: {1, 3},
+                message: "Assignment requires a string or an integer, got true (boolean)"
+              }, _ctx} = Predicator.execute("a[true] = 1", %{})
+    end
+  end
 end

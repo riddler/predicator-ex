@@ -181,6 +181,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   join 0001-0003 - so those citations resolve on hexdocs instead of 404ing.
   The governance ADRs stay unpublished and the ADR index links them by
   absolute GitHub URL.
+- Type-mismatch errors raised by an instruction that only exists as the
+  lowering of a source construct now name the construct rather than the
+  opcode. `if "a" { y = 1 }` and `while "a" { y = 1 }` report `Condition
+  requires a boolean, got "a" (string)` instead of `Pop Jump If Falsy
+  requires ...`; `"a" and true` and `"a" or true` report `Logical AND` and
+  `Logical OR`, matching their non-short-circuit twins; a failing store
+  reports `Assignment requires a string or an integer, got true (boolean)`
+  instead of `Store requires ...`. Error positions, the instruction set, and
+  the conformance corpus are unchanged. `in` and `contains` keep their
+  existing `In` / `Contains` rendering deliberately - both are operators the
+  author types, so neither leaks an opcode name.
 
 ### Removed
 
