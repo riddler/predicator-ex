@@ -112,12 +112,13 @@ Everything else - integer, float, string, boolean, list, plain object -
 decodes to itself; a plain JSON object with no `$type` key is a predicator
 map.
 
-**The `DateTime` fractional-seconds field is normative** ([`docs/isa.md`
-section 5](../docs/isa.md)): the fraction is omitted entirely when the
-sub-second component is zero and is exactly six digits when it is not, never
-any other count and never a zero fraction spelled out. This is the same form
-`docs/isa.md` section 5 gives `datetime::string`, deliberately, so a sibling
-writes one datetime formatter rather than two. A decoder emits only those two
+**The `DateTime` fractional-seconds field is normative**, and this document is
+where it is specified - [`docs/isa.md` section 3](../docs/isa.md) delegates the
+tagged encoding here rather than restating it: the fraction is omitted entirely
+when the sub-second component is zero and is exactly six digits when it is not,
+never any other count and never a zero fraction spelled out. This is the same
+form [`docs/isa.md` section 5](../docs/isa.md) gives `datetime::string`,
+deliberately, so a sibling writes one datetime formatter rather than two. A decoder emits only those two
 shapes but should accept any ISO-8601 fraction, because a hand-authored case
 may contain one and the instant is unambiguous.
 
