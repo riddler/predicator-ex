@@ -295,6 +295,10 @@ defmodule Predicator.Visitors.StringVisitor do
     "{ " <> Enum.map_join(statements, "; ", &do_visit(&1, opts)) <> " }"
   end
 
+  defp do_visit({:while, condition, body, _annotation}, opts) do
+    "while #{do_visit(condition, opts)} #{render_block(body, opts)}"
+  end
+
   defp do_visit({:program, statements, _position}, opts) do
     Enum.map_join(statements, "; ", &do_visit(&1, opts))
   end
@@ -304,6 +308,17 @@ defmodule Predicator.Visitors.StringVisitor do
   end
 
   # Helper functions
+
+  # A block's own do_visit/2 clause still declines (px-3so.5 owns it), so the
+  # statement forms that contain a block render it through here: `{ }` when
+  # empty, `{ stmt; stmt }` otherwise, matching the flat, single-line style
+  # do_visit({:program, ...}) uses.
+  @spec render_block(Parser.block(), keyword()) :: binary()
+  defp render_block({:block, [], _annotation}, _opts), do: "{ }"
+
+  defp render_block({:block, statements, _annotation}, opts) do
+    "{ " <> Enum.map_join(statements, "; ", &do_visit(&1, opts)) <> " }"
+  end
 
   @spec format_operator(
           Parser.comparison_op()

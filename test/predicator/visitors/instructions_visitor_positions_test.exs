@@ -405,6 +405,41 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
     end
   end
 
+  describe "visit_with_positions/2 - while (ADR-0013, px-3so.4 Phase 2)" do
+    test "both emitted instructions carry the while node's own position, not the condition's" do
+      {instructions, positions} = program_table("while a { x = 1 }")
+
+      assert instructions == [
+               ["load", "a"],
+               ["pop_jump_if_falsy", 5],
+               ["lit", "x"],
+               ["lit", 1],
+               ["store", 1],
+               ["jump_backward", 5]
+             ]
+
+      pop_jump_index = Enum.find_index(instructions, &(&1 == ["pop_jump_if_falsy", 5]))
+      jump_backward_index = Enum.find_index(instructions, &(&1 == ["jump_backward", 5]))
+
+      # "while" is at column 1, "a" (the condition) is at column 7 - both
+      # emitted instructions take the while's own position, not the
+      # condition's.
+      assert positions[pop_jump_index] == {1, 1}
+      assert positions[jump_backward_index] == {1, 1}
+    end
+
+    test "span mode carries the while node's span on both emitted instructions" do
+      {:ok, program} = Predicator.parse_program("while a { x = 1 }", spans: true)
+      {instructions, positions} = InstructionsVisitor.visit_with_positions(program)
+
+      pop_jump_index = Enum.find_index(instructions, &(&1 == ["pop_jump_if_falsy", 5]))
+      jump_backward_index = Enum.find_index(instructions, &(&1 == ["jump_backward", 5]))
+
+      assert positions[pop_jump_index] == {{1, 1}, {1, 18}}
+      assert positions[jump_backward_index] == {{1, 1}, {1, 18}}
+    end
+  end
+
   describe "visit_with_segment_positions/2" do
     defp segment_table(source, opts \\ []) do
       {:ok, program} = Predicator.parse_program(source, opts)

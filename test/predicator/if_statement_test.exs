@@ -196,10 +196,10 @@ defmodule Predicator.IfStatementTest do
                {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", 1, 1}
     end
 
-    test "'while c { }' is reserved, not yet supported" do
-      assert Predicator.parse_program("while c { }") ==
-               {:error, "'while' is a reserved word - while statements are not supported yet.", 1,
-                1}
+    test "'while c { }' parses - while is a statement now, not a reserved-but-unsupported keyword" do
+      assert {:ok,
+              {:program, [{:while, {:identifier, "c", {1, 7}}, {:block, [], {1, 9}}, {1, 1}}],
+               {1, 1}}} = Predicator.parse_program("while c { }")
     end
 
     test "a dangling 'else' after a completed statement gets the dedicated message, not the generic one" do
@@ -207,10 +207,9 @@ defmodule Predicator.IfStatementTest do
                {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", 2, 1}
     end
 
-    test "a dangling 'while' after a completed statement gets the reserved-word message, not the generic one" do
+    test "a dangling 'while' with no separator gets the generic unexpected-token message, not the reserved-word one - the walker only consumes it after a brace-terminated statement" do
       assert Predicator.parse_program("x = 1\nwhile y { z = 2 }") ==
-               {:error, "'while' is a reserved word - while statements are not supported yet.", 2,
-                1}
+               {:error, "Unexpected token 'while' after statement", 2, 1}
     end
   end
 

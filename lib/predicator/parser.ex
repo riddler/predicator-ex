@@ -14,8 +14,9 @@ defmodule Predicator.Parser do
   The parser implements this grammar with proper operator precedence:
 
       program      → statement ( ";" statement )* ( ";" )?
-      statement    → if_statement | assignment | expression
+      statement    → if_statement | while_statement | assignment | expression
       if_statement → "if" expression block ( "else" ( block | if_statement ) )?
+      while_statement → "while" expression block
       block        → "{" ( statement ( ";" statement )* ( ";" )? )? "}"
       assignment   → location "=" expression
       location     → IDENTIFIER ( "." IDENTIFIER | "[" expression "]" )*
@@ -190,9 +191,10 @@ defmodule Predicator.Parser do
   @typedoc """
   A brace-delimited statement sequence: `"{" ( statement (";" statement)* (";")? )? "}"`.
 
-  Produced only as the then/else slot of an `t:if_statement/0` - a block has no
-  meaning without the `if` that holds it. Not a member of `t:ast/0`, the same
-  as `t:program/0` and `t:assignment/0`.
+  Produced only as the then/else slot of an `t:if_statement/0` or the body slot
+  of a `t:while_statement/0` - a block has no meaning without the statement
+  that holds it. Not a member of `t:ast/0`, the same as `t:program/0` and
+  `t:assignment/0`.
   """
   @type block :: {:block, [statement()], position()}
 
@@ -208,9 +210,19 @@ defmodule Predicator.Parser do
   @type if_statement :: {:if, ast(), block(), block() | nil, position()}
 
   @typedoc """
-  One statement: an if statement, an assignment, or a bare expression.
+  A while statement: `"while" expression block`.
+
+  Statement-position only, on the same terms as `t:if_statement/0`: braces are
+  mandatory and the body block opens no scope of its own (ADR-0013). Not a
+  member of `t:ast/0`.
   """
-  @type statement :: assignment() | if_statement() | ast()
+  @type while_statement :: {:while, ast(), block(), position()}
+
+  @typedoc """
+  One statement: an if statement, a while statement, an assignment, or a bare
+  expression.
+  """
+  @type statement :: assignment() | if_statement() | while_statement() | ast()
 
   @typedoc """
   Anything a visitor accepts: a whole program, any single statement, or the
@@ -453,8 +465,8 @@ defmodule Predicator.Parser do
       nil ->
         {:ok, {:program, statements, program_loc(state, start_point, statements)}}
 
-      {kw, line, col, _len, _value} when kw in [:else_kw, :while_kw] ->
-        {:error, statement_keyword_message(kw), line, col}
+      {:else_kw, line, col, _len, _value} ->
+        {:error, statement_keyword_message(:else_kw), line, col}
 
       {type, line, col, _len, value} ->
         {:error, "Unexpected token #{format_token(type, value)} after statement", line, col}
@@ -535,16 +547,16 @@ defmodule Predicator.Parser do
   # statement; every other statement still needs its `;` (ADR-0013).
   @spec brace_terminated?(statement()) :: boolean()
   defp brace_terminated?({:if, _cond, _then, _else, _pos}), do: true
+  defp brace_terminated?({:while, _cond, _body, _pos}), do: true
   defp brace_terminated?(_statement), do: false
 
   # The dedicated message for a statement keyword that cannot appear where it
   # was found - shared by parse_statement/1 (the keyword leads a statement)
   # and finish_program/4 (the keyword trails one), so the two can never say
-  # different things about the same token.
-  @spec statement_keyword_message(:while_kw | :else_kw) :: binary()
-  defp statement_keyword_message(:while_kw),
-    do: "'while' is a reserved word - while statements are not supported yet."
-
+  # different things about the same token. `while` no longer has a clause
+  # here - it is a statement the parser now consumes, not a reserved-but-
+  # unsupported keyword.
+  @spec statement_keyword_message(:else_kw) :: binary()
   defp statement_keyword_message(:else_kw),
     do: "Unexpected 'else' - an 'else' block must follow an 'if' block."
 
@@ -558,7 +570,7 @@ defmodule Predicator.Parser do
         parse_if_statement(state, {line, col})
 
       {:while_kw, line, col, _len, _value} ->
-        {:error, statement_keyword_message(:while_kw), line, col}
+        parse_while_statement(state, {line, col})
 
       {:else_kw, line, col, _len, _value} ->
         {:error, statement_keyword_message(:else_kw), line, col}
@@ -593,6 +605,29 @@ defmodule Predicator.Parser do
               error ->
                 error
             end
+
+          error ->
+            error
+        end
+
+      error ->
+        error
+    end
+  end
+
+  # Parses `"while" expression block`. The leading "while" is still unconsumed
+  # in `state`, which `point` already names - `advance/1` moves past it before
+  # the condition is parsed, mirroring parse_if_statement/2.
+  @spec parse_while_statement(parser_state(), Predicator.Types.position()) ::
+          {:ok, while_statement(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer()}
+  defp parse_while_statement(state, point) do
+    case parse_expression(advance(state)) do
+      {:ok, condition, after_cond} ->
+        case parse_block(after_cond) do
+          {:ok, body, final_state} ->
+            node = {:while, condition, body, while_loc(state, point, body)}
+            {:ok, node, final_state}
 
           error ->
             error
@@ -704,6 +739,13 @@ defmodule Predicator.Parser do
   @spec if_loc(parser_state(), Predicator.Types.position(), block(), block() | nil) :: position()
   defp if_loc(state, point, then_block, else_block) do
     loc(state, point, fn -> {point, node_end(else_block || then_block)} end)
+  end
+
+  # Point: the `while` keyword. Span: the `while` token through past the
+  # closing `}` of the body block.
+  @spec while_loc(parser_state(), Predicator.Types.position(), block()) :: position()
+  defp while_loc(state, point, body) do
+    loc(state, point, fn -> {point, node_end(body)} end)
   end
 
   # Probes for an assignment by parsing an `addition`-level candidate - one
@@ -1389,21 +1431,13 @@ defmodule Predicator.Parser do
     parse_relative_date_expression(state, :last, {line, col})
   end
 
-  # `if`/`else` are statement keywords, never valid in expression position -
-  # control flow only exists through Predicator.parse_program/2.
+  # `if`/`else`/`while` are statement keywords, never valid in expression
+  # position - control flow only exists through Predicator.parse_program/2.
   defp parse_primary_token(_state, {kw, line, col, _len, value})
-       when kw in [:if_kw, :else_kw] do
+       when kw in [:if_kw, :else_kw, :while_kw] do
     {:error,
      "'#{value}' is a statement keyword, not an expression - control flow is " <>
        "only valid in a program (Predicator.parse_program/2).", line, col}
-  end
-
-  # `while` is not a valid expression either, but pointing it at
-  # parse_program/2 would be a dead end - while statements aren't implemented
-  # there yet, so this uses the same reserved-word message statement position
-  # already gives it.
-  defp parse_primary_token(_state, {:while_kw, line, col, _len, _value}) do
-    {:error, statement_keyword_message(:while_kw), line, col}
   end
 
   # Handle unexpected tokens

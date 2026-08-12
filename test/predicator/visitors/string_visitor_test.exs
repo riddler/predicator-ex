@@ -916,6 +916,34 @@ defmodule Predicator.Visitors.StringVisitorTest do
     end
   end
 
+  describe "visit/2 - while round-trip (ADR-0013, px-3so.4 Phase 2)" do
+    test "a single-statement body round-trips" do
+      assert_program_round_trip("while c { x = 1 }")
+    end
+
+    test "an empty body round-trips" do
+      assert_program_round_trip("while c { }")
+    end
+
+    test "a multi-statement body round-trips" do
+      assert_program_round_trip("while c { x = 1; y = 2 }")
+    end
+
+    test "a nested while round-trips" do
+      assert_program_round_trip("while a { while b { x = 1 } }")
+    end
+
+    test "renders \"while <condition> { <statements> }\"" do
+      {:ok, ast} = Predicator.parse_program("while c { x = 1 }")
+      assert Predicator.decompile(ast) == "while c { x = 1 }"
+    end
+
+    test "an empty body renders \"{ }\"" do
+      {:ok, ast} = Predicator.parse_program("while c { }")
+      assert Predicator.decompile(ast) == "while c { }"
+    end
+  end
+
   describe "visit/2 - :eq renders as valid 4.0 source" do
     test "a hand-built :eq comparison renders \"==\"" do
       ast = {:comparison, :eq, {:identifier, "a", nil}, {:literal, 1, nil}, nil}
