@@ -893,18 +893,18 @@ is not otherwise touched.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full `mix quality` passes.
-- [ ] `mix test test/docs_examples_test.exs` passes - every Elixir block added to
+- [x] Full `mix quality` passes.
+- [x] `mix test test/docs_examples_test.exs` passes - every Elixir block added to
       `docs/reference/language.md` executes and produces the documented result.
-- [ ] `mix test test/predicator/isa_sync_test.exs` passes - `docs/isa.md` still
+- [x] `mix test test/predicator/isa_sync_test.exs` passes - `docs/isa.md` still
       agrees with `lib/predicator/instructions.ex`. No opcode was added, so this
       should be unmoved; a failure means §5 was edited in a way that changed the
       opcode table.
-- [ ] `mix test test/docs_adr_links_test.exs` passes - every ADR link added in
+- [x] `mix test test/docs_adr_links_test.exs` passes - every ADR link added in
       prose resolves.
-- [ ] `grep -n 'normalizes to `:undefined`' docs/reference/language.md` returns
+- [x] `grep -n 'normalizes to `:undefined`' docs/reference/language.md` returns
       nothing.
-- [ ] `## [Unreleased]` in `CHANGELOG.md` is non-empty and carries `### Changed`,
+- [x] `## [Unreleased]` in `CHANGELOG.md` is non-empty and carries `### Changed`,
       `### Added`, and `### Fixed`.
 
 #### Manual Verification:
@@ -1214,5 +1214,22 @@ rather than `top == nil` - credo prefers it and it reads unambiguously.
 **Implementation Note**: Use the loop gate between edits, full `mix quality` as
 the phase gate. Interactive execution pauses here; `--loop` defers the manual
 items.
+
+---
+
+### Phase 3
+
+- [ ] Read `docs/isa.md` §5 end to end: every entry that names `:undefined` also
+      names null, and no entry states a rule the evaluator does not implement.
+      Cross-check against D4's table.
+- [ ] The new language-reference subsection is usable by someone who has never
+      read this plan: it answers "how do I put a null in a context", "how does a
+      predicate tell null from undefined", and "why can't I write `null`".
+- [ ] The `### Changed` changelog entry is honest about the flipped answer and
+      states the migration.
+
+**Implementation Note**: Loop gate between edits, full `mix quality` as the phase
+gate. This phase changes no Elixir behavior, but it does add doctests via
+`docs_examples_test.exs`, so the gate is meaningful.
 
 ---

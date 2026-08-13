@@ -31,7 +31,11 @@ than re-arguing it.
   opcode names in a list" a sound answer to "what version does this list
   require".
 - Adding an operand form or widening an accepted type is a new version but
-  not a new name.
+  not a new name. This rule speaks to operand forms carried *in the
+  instruction list* - widening §3's value domain with a value that only a
+  host-supplied context can produce, and that no opcode can place on the
+  stack, moves no version, because no opcode-name scan can express it (§6's
+  `undefined` literal precedent, and line 415's, are the same shape).
 - An additive version - new opcodes only, every existing instruction list
   still valid - ships in a minor release.
 - **Retirement mints the next ISA integer**, in addition to taking a major
@@ -84,8 +88,8 @@ each row.
 - **Opcodes validate, they do not coerce.** There is no general truthiness
   rule; a boolean-expecting opcode handed a non-boolean is a
   `TypeMismatchError`.
-- **What "falsy" means at a jump**: `false` or `:undefined`, and nothing
-  else. "True" means exactly `true`. This is ECMAScript-aligned,
+- **What "falsy" means at a jump**: `false`, `null`, or `:undefined`, and
+  nothing else. "True" means exactly `true`. This is ECMAScript-aligned,
   deliberately not symmetric-Kleene (ADR-0001).
 - **Jumps are relative; the operand is always a positive integer.** `jump`,
   `jump_if_falsy_or_pop`, and `jump_if_true_or_pop` target `index + offset`;
@@ -104,7 +108,12 @@ each row.
   propagate it (`compare` under a non-strict operator, `in`, `contains`),
   some reject it (`not`, the arithmetic five, `unary_minus`, `unary_bang`,
   legacy `and`/`or`), and the jumps treat it as falsy. Each opcode's
-  subsection below says which.
+  subsection below says which. `null` is also a first-class value, and the
+  two are not the same thing: `:undefined` is an absence (no value was ever
+  supplied), while `null` is a value that is present and empty. The opcodes
+  treat them alike at a jump (both falsy) but differently under `===` and
+  membership (`null === undefined` is `false`, and `null` is only ever equal
+  to itself) - see §3 and §5.
 - **A malformed operand is an unknown instruction, not a bad operand.**
   Every opcode's clause is guarded on its operand's shape, so an
   out-of-range or wrong-typed operand falls through to the catch-all clause
@@ -165,7 +174,16 @@ change to this specification. `Predicator.execute/2` is that entry point.
 ## 3. Value types
 
 The value domain the opcodes operate over: integer, float, string, boolean,
-list, map (object), `Date`, `DateTime`, duration, and `:undefined`.
+list, map (object), `Date`, `DateTime`, duration, `null`, and `:undefined`.
+
+`null` and `:undefined` are both first-class values and neither is the
+other: `:undefined` is an absence - no value was ever supplied - while
+`null` is a value that is present and empty. `null` has no source spelling:
+unlike `:undefined`, which as of the change that added this sentence has a
+literal keyword (§5's `lit` entry, §6), no grammar production emits a null.
+It enters the value domain only through a host-supplied context, a `load`
+of a bound null, an `access`/`bracket_access` result, or a function return -
+never through `lit`.
 
 A duration's shape is normative, because `["duration", units]` produces one
 and `add`/`subtract` consume it: a map with the seven keys `years`,
@@ -332,7 +350,9 @@ reference survives an edit above it.
 - **`lit`** - pushes the operand unchanged. No error path. The operand may be
   any value in §3's value domain, `:undefined` included; a source spelling
   for that operand (the `undefined` literal keyword) exists as of the change
-  that added this sentence.
+  that added this sentence. `null` is legal under that same widened §3
+  domain in principle, but no source spelling exists for it: the compiler
+  never emits `["lit", nil]`, so no stored artifact can contain one (§3).
 - **`load`** (`load_from_context/2`) - string-key lookup in the context; an
   absent key pushes `:undefined`. Atom keys are not read: the context is
   normalized to string keys before evaluation. This is the only opcode that
@@ -342,7 +362,9 @@ reference survives an edit above it.
   pushes `target[property]`. A missing key, a property against a list (the
   compiler only ever emits a binary property, which a list never accepts as
   an index), or a target that is neither a map nor a list, all push
-  `:undefined` - never an error. An empty stack is `EvaluationError`
+  `:undefined` - never an error. A `null` target falls into that last case:
+  `null.foo` is `:undefined`, not a type error - indexing into a null is not
+  a rule this opcode enforces. An empty stack is `EvaluationError`
   insufficient operands.
 - **`compare`** (`execute_compare/2`, `compare_values/3`) - operand is one of
   `GT`, `LT`, `EQ`, `GTE`, `LTE`, `NE`, `STRICT_EQ`, `STRICT_NE`; any other
@@ -367,6 +389,16 @@ reference survives an edit above it.
   - **A type-mismatched pair under a non-strict operator pushes
     `:undefined`** - it is **not** an error. `1 > "a"` is `:undefined`, and
     so is `true == 1`.
+  - **`null`'s four-row matrix**: `null === undefined` is `false`; `null ==
+    undefined` is `:undefined`; `null === null` is `true`; `null == null` is
+    `:undefined`. No new clause implements this - `null` is not admitted by
+    `types_match/2`, so every non-strict comparison involving it falls to
+    the type-mismatch catch-all above, and `STRICT_EQ`/`STRICT_NE` already
+    work over every value. The rule in one sentence: `==` and the ordering
+    operators are typed comparisons and `null` has no type peer, so every
+    non-strict comparison involving `null` yields `:undefined`; `===` is the
+    operator that answers a boolean about `null`, exactly as it is for
+    `:undefined`.
   - Ordering on a matched pair, by type:
     - **numbers** - numeric order.
     - **strings** - lexicographic by Unicode codepoint, comparing the UTF-8
@@ -392,46 +424,57 @@ reference survives an edit above it.
   either is refused with reason `"retired_opcode"`, naming ISA v3 and
   pointing at `Predicator.Instructions.upgrade/1`, which is the migration
   ADR-0003 requires (`px-tbv.9`).
-- **`not`** (`execute_logical_not/1`) - boolean required; `:undefined` or any
-  other type is `TypeMismatchError` (operation `logical_not`, expected
-  `boolean`).
+- **`not`** (`execute_logical_not/1`) - boolean required; `:undefined`,
+  `null`, or any other type is `TypeMismatchError` (operation `logical_not`,
+  expected `boolean`).
 - **`in`** (`execute_membership/2`) - `left in right`. Either operand
   `:undefined` pushes `:undefined`. The right operand must be a list, else
   `TypeMismatchError` (operation `in`, expected `list`). Membership uses
   type-matched equality with chronological date comparison
-  (`values_equal?/2`), and `:undefined` is never equal to anything.
+  (`values_equal?/2`), and `:undefined` is never equal to anything. `null`
+  is the one place `null` behaves as a value rather than an absence:
+  `values_equal?(nil, nil)` is `true`, so `null in [null]` is `true` (and
+  `null in [1]` is `false`, matched against nothing) - `null` does **not**
+  propagate the way `:undefined` does. Note the resulting surface tension,
+  deliberate and documented rather than reconciled: `null == null` is
+  `:undefined` (above) while `null in [null]` is `true`. `==` and `in`
+  already disagree about `:undefined` in the opposite direction
+  (`undefined in [undefined]` propagates `:undefined` rather than answering
+  `false`), so the two operators were never one predicate.
 - **`contains`** (`execute_membership/2`) - `left contains right`. Mirror of
   `in`; the **left** operand must be the list, and the type mismatch is
-  reported against the left operand's type.
+  reported against the left operand's type. `null` on the right behaves as
+  it does under `in`: identity via `values_equal?/2`, not propagation.
 - **`add`** (`execute_arithmetic/2`) - number+number is numeric
   addition; string+string, string+number, and number+string concatenate
   (numbers are stringified); list+list concatenates; `Date`/`DateTime` +
   duration and duration + `Date`/`DateTime` do date arithmetic. Anything
-  else, including any `:undefined` operand, is `TypeMismatchError`
+  else, including any `:undefined` or `null` operand, is `TypeMismatchError`
   (operation `add`, expected `number_or_string`).
 - **`subtract`** (`execute_arithmetic/2`) - number-number is numeric
   subtraction; `Date`-`Date` yields a duration in days; `DateTime`-`DateTime`
   a duration in seconds; a mixed `Date`/`DateTime` pair coerces the `Date`
   to UTC midnight first; `Date`/`DateTime` - duration does date arithmetic.
   Else `TypeMismatchError` (operation `subtract`, expected
-  `number_or_date`). Note the asymmetry with `add`: subtraction does not
-  concatenate strings or lists.
+  `number_or_date`), `null` included. Note the asymmetry with `add`:
+  subtraction does not concatenate strings or lists.
 - **`multiply`** (`execute_arithmetic/2`) - numbers only, else
-  `TypeMismatchError` (expected `number`).
+  `TypeMismatchError` (expected `number`) - `:undefined` and `null` included.
 - **`divide`** (`execute_arithmetic/2`) - **the zero check runs before the
   type check**, so a right operand of integer `0` or float `0.0` is
   `EvaluationError` `"division_by_zero"` regardless of the left operand's
   type. Two integers use truncating integer division; any float operand
-  uses float division. Otherwise `TypeMismatchError` (expected `number`).
+  uses float division. Otherwise `TypeMismatchError` (expected `number`),
+  `null` included.
 - **`modulo`** (`execute_arithmetic/2`) - **integers only**, which is the one
   place `modulo` diverges from the other four arithmetic opcodes: a float
   operand is `TypeMismatchError` (expected `number`). A right operand of
   integer `0` is checked before the type check, as in `divide`, and is
   `EvaluationError` `"modulo_by_zero"`. There is **no float-zero clause** -
   unlike `divide`, a right operand of `0.0` is a `TypeMismatchError`, not
-  `"modulo_by_zero"`.
+  `"modulo_by_zero"`. `null` is `TypeMismatchError`, same as any non-integer.
 - **`unary_minus`** (`execute_unary/2`) - number required, else
-  `TypeMismatchError` (expected `number`).
+  `TypeMismatchError` (expected `number`) - `:undefined` and `null` included.
 - **`unary_bang`** (`execute_unary/2`) - boolean required, else
   `TypeMismatchError` (expected `boolean`). Semantically identical to
   `not`; the two differ only in which surface operator produced them and in
@@ -458,7 +501,8 @@ reference survives an edit above it.
     `:undefined`, float - is `TypeMismatchError` (operation `bracket_access`,
     expected `integer`).
   - Against a target that is neither map nor list: `:undefined`, whatever the
-    key.
+    key. A `null` target takes this branch - `null["x"]` is `:undefined`,
+    the same treatment as `access` above.
   - Fewer than two values on the stack is `EvaluationError`.
   - This bullet, not the ISA version, changed to state the above precisely:
     the list-with-a-non-integer-key case was previously unspecified here and
@@ -494,7 +538,7 @@ reference survives an edit above it.
   an all-literal list compiles to a single `["lit", [...]]` instead, which
   is why v1 siblings can still run most list expressions.
 - **`jump_if_falsy_or_pop`** (`execute_jump_if_falsy_or_pop/2`,
-  `jump_to/2`) - if the stack top is `false` or `:undefined`, jump to
+  `jump_to/2`) - if the stack top is `false`, `null`, or `:undefined`, jump to
   `index + offset`, **leaving the value on the
   stack** as the result of the expression; if it is exactly `true`, pop it
   and fall through to the next instruction; any other value is
@@ -506,8 +550,8 @@ reference survives an edit above it.
 - **`jump_if_true_or_pop`** (`execute_jump_if_true_or_pop/2`, `jump_to/2`) -
   mirror of
   `jump_if_falsy_or_pop`: jump on exactly `true`, leaving the value on the
-  stack; pop and fall through on `false` or `:undefined`; anything else is
-  `TypeMismatchError`. Worked example, `a OR b`:
+  stack; pop and fall through on `false`, `null`, or `:undefined`; anything
+  else is `TypeMismatchError`. Worked example, `a OR b`:
   `[["load","a"],["jump_if_true_or_pop",2],["load","b"]]`. State the
   ECMAScript alignment explicitly: `undefined AND x` short-circuits to
   `:undefined` without evaluating `x`, while `undefined OR x` falls through
@@ -534,8 +578,12 @@ reference survives an edit above it.
   value, so the stack holds the segments deepest-first, exactly as
   `make_list` does. Writes `path -> value` into the evaluator's context via
   the same write algorithm `Predicator.ContextLocation.put/3` implements: a
-  missing or `:undefined` interior slot is auto-vivified as a list when the
-  next segment is an integer and a map otherwise, an integer past a list's
+  missing, `null`, or `:undefined` interior slot is auto-vivified as a list
+  when the next segment is an integer and a map otherwise - writing through
+  a `null` intermediate vivifies it exactly as it would an `:undefined`
+  one, deliberately: "you cannot index into a null" is not a rule this ISA
+  enforces anywhere else (`access`/`bracket_access` above agree - a null
+  target is an ordinary miss, not a type error). An integer past a list's
   end pads with `:undefined`, and the leaf is always overwritten. **Pushes
   nothing.** Fewer than `n + 1` values on the stack is `EvaluationError`
   insufficient operands. A segment that is neither a string nor an integer
@@ -575,6 +623,13 @@ reference survives an edit above it.
      evaluation time is the data's half, and data problems go soft here, as
      at a `compare` mismatch or an `access` miss.
 
+  `null::T` is `:undefined` for every target `T`, via rule 2, **not** rule
+  1: `null` is not `:undefined` and does not propagate the way it does - a
+  `null` simply cannot produce a value of any target type, the same total
+  failure a list or a map hits below. `null::string` is `:undefined`, not
+  `"null"`. A cast is an explicit request for a typed value, and losing the
+  null/undefined distinction across one is the correct, accepted cost.
+
   The seven scalar type names are `integer`, `float`, `string`, `boolean`,
   `date`, `datetime`, `duration` (§3). `=` is identity, a word names a
   conversion, `-` is `:undefined`:
@@ -590,6 +645,7 @@ reference survives an edit above it.
   | duration | - | - | format | - | - | - | = |
   | list | - | - | - | - | - | - | - |
   | map | - | - | - | - | - | - | - |
+  | `null` | - | - | - | - | - | - | - |
   | `:undefined` | - | - | - | - | - | - | - |
 
   **Numeric conversions.**
@@ -663,10 +719,11 @@ reference survives an edit above it.
   `c; ["pop_jump_if_falsy", lenA + 2]; A; ["jump", lenB + 1]; B` - after `A`
   runs, `jump` skips past `B` to the instruction following it.
 - **`pop_jump_if_falsy`** (`execute_pop_jump_if_falsy/2`, `jump_to/2`) - pops
-  the stack top **always**. If the popped value is `false` or `:undefined`,
-  jump to `index + offset`; if it is exactly `true`, fall through to the next
-  instruction; any other value is `TypeMismatchError` (expected `boolean`). An
-  empty stack is `EvaluationError` insufficient operands.
+  the stack top **always**. If the popped value is `false`, `null`, or
+  `:undefined`, jump to `index + offset`; if it is exactly `true`, fall
+  through to the next instruction; any other value is `TypeMismatchError`
+  (expected `boolean`). An empty stack is `EvaluationError` insufficient
+  operands.
 
   **Contrast with `jump_if_falsy_or_pop`**: that opcode pops only on the
   fall-through branch and *leaves the value on the stack* on the taken
