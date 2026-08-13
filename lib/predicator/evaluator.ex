@@ -804,6 +804,10 @@ defmodule Predicator.Evaluator do
   @spec values_equal?(Types.value(), Types.value()) :: boolean()
   defp values_equal?(:undefined, _value), do: false
   defp values_equal?(_value, :undefined), do: false
+
+  # Null is a value, not an absence: membership of it is answerable, and the
+  # answer is identity. `:undefined` above is the opposite case (px-o9v).
+  defp values_equal?(nil, nil), do: true
   defp values_equal?(%Date{} = left, %Date{} = right), do: Date.compare(left, right) == :eq
 
   defp values_equal?(%DateTime{} = left, %DateTime{} = right),
@@ -1117,6 +1121,7 @@ defmodule Predicator.Evaluator do
   defp get_value_type(%DateTime{}), do: :datetime
 
   defp get_value_type(:undefined), do: Undefined.value()
+  defp get_value_type(nil), do: :null
 
   defp get_value_type(value) when is_map(value) do
     # Check if it's a duration map (has required duration keys)
@@ -1640,7 +1645,7 @@ defmodule Predicator.Evaluator do
   @spec execute_jump_if_falsy_or_pop(__MODULE__.t(), pos_integer()) ::
           {:ok, __MODULE__.t()} | {:error, term()}
   defp execute_jump_if_falsy_or_pop(%__MODULE__{stack: [top | _rest]} = evaluator, offset)
-       when top == false or top == :undefined do
+       when top == false or top == :undefined or is_nil(top) do
     {:ok, jump_to(evaluator, offset)}
   end
 
@@ -1664,7 +1669,7 @@ defmodule Predicator.Evaluator do
   end
 
   defp execute_jump_if_true_or_pop(%__MODULE__{stack: [top | rest]} = evaluator, _offset)
-       when top == false or top == :undefined do
+       when top == false or top == :undefined or is_nil(top) do
     {:ok, %{evaluator | stack: rest}}
   end
 
@@ -1684,7 +1689,7 @@ defmodule Predicator.Evaluator do
   @spec execute_pop_jump_if_falsy(__MODULE__.t(), pos_integer()) ::
           {:ok, __MODULE__.t()} | {:error, term()}
   defp execute_pop_jump_if_falsy(%__MODULE__{stack: [top | rest]} = evaluator, offset)
-       when top == false or top == :undefined do
+       when top == false or top == :undefined or is_nil(top) do
     {:ok, jump_to(%{evaluator | stack: rest}, offset)}
   end
 

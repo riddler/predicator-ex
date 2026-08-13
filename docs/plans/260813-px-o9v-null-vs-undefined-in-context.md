@@ -617,19 +617,19 @@ former crash sites gets an explicit assertion that the result is a
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full `mix quality` passes (format, compile, credo --strict, dialyzer, deps
+- [x] Full `mix quality` passes (format, compile, credo --strict, dialyzer, deps
       audit, suite with coverage).
-- [ ] Coverage stays above the 90% minimum in `coveralls.json` for
+- [x] Coverage stays above the 90% minimum in `coveralls.json` for
       `Predicator.Evaluator` and `Predicator.Types`.
-- [ ] `mix test test/predicator/evaluator_test.exs` covers all four D2 rows, all
+- [x] `mix test test/predicator/evaluator_test.exs` covers all four D2 rows, all
       three former crash sites (asserting an error *value*, not a raise), the
       three jump opcodes' falsy path, and `null in [null]` / `null in [1]`.
-- [ ] No existing test changes. `git diff --stat` on `test/` shows additions
+- [x] No existing test changes. `git diff --stat` on `test/` shows additions
       only, and `test/predicator/evaluator_test.exs:1523`,
       `test/predicator/context_location_test.exs:424`,
       `test/predicator/undefined_test.exs`, and `test/predicator/types_test.exs`
       are untouched and green.
-- [ ] `test/predicator/context_test.exs` is untouched and fully green - Phase 1
+- [x] `test/predicator/context_test.exs` is untouched and fully green - Phase 1
       changes no `Context` behavior.
 
 #### Manual Verification:
@@ -1173,3 +1173,29 @@ decision attached and only the follow-up action is outstanding.
 - Prior plans: `docs/plans/260805-px-8um.2-context-key-normalization.md` (the
   normalization this plan partly removes),
   `docs/plans/260812-px-ocp-undefined-literal.md` (the ISA-neutrality precedent)
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] `Predicator.Evaluator.evaluate([["load","x"],["not"]], %{"x" => nil})`
+      returns a `TypeMismatchError` naming `:null`, not a crash.
+- [ ] A short-circuit over a null reads correctly:
+      `Predicator.Evaluator.evaluate/3` on `"flag AND other"`-shaped
+      instructions with `%{"flag" => nil}` short-circuits rather than erroring.
+- [ ] No regressions in `:undefined`'s own behavior anywhere in the suite.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the manual confirmation. Under `--loop`, the automated criteria gate advancement
+and the manual items are deferred to the end.
+
+**A note on `is_nil/1` vs `== nil`**: the existing guards spell the test
+`top == false or top == :undefined`. Use `is_nil(top)` for the new disjunct
+rather than `top == nil` - credo prefers it and it reads unambiguously.
+
+---
