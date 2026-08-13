@@ -129,6 +129,8 @@ defmodule Predicator.Visitors.StringVisitor do
 
   defp do_visit({:literal, :undefined, _position}, _opts), do: "undefined"
 
+  defp do_visit({:literal, nil, _position}, _opts), do: "null"
+
   defp do_visit({:literal, value, _position}, _opts) when is_binary(value) do
     # For backwards compatibility with older AST nodes that still use {:literal, string}
     # Default to double quotes

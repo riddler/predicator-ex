@@ -13,6 +13,8 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 - **Booleans**: `true`, `false` (or plain identifiers like `active`, `expired`)
 - **Undefined**: `undefined` - the absent/unset value; see "Undefined and
   Sparse Data" below
+- **Null**: `null` - the present-but-empty value; see "Null and undefined"
+  below
 - **Dates**: `#2024-01-15#` (ISO 8601 date format)
 - **DateTimes**: `#2024-01-15T10:30:00Z#` (ISO 8601 datetime format with
   timezone)
@@ -403,6 +405,12 @@ and `{undefined: 1}` are all parse errors, the same shapes `true`/`false`
 produce. A quoted key still works (`{"undefined": 1}` parses), and only the
 lowercase spelling is reserved - `UNDEFINED` and `Undefined` stay ordinary
 identifiers.
+
+`null` is reserved the same way, as a literal keyword beside `undefined`:
+`null = 3`, `user.null`, and `{null: 1}` are all parse errors, the same
+shapes `true`/`false`/`undefined` produce. A quoted key still works
+(`{"null": 1}` parses), and only the lowercase spelling is reserved - `NULL`
+and `Null` stay ordinary identifiers.
 
 ## Builtin Functions
 
@@ -907,41 +915,37 @@ iex> Predicator.evaluate("x::string", %{"x" => nil})
 {:ok, :undefined}
 ```
 
-**There is currently no way to write a null literal in predicate text.**
-Unlike `:undefined`, which has the `undefined` keyword, null enters only
-through the host: a bound context value, a nested access, or a function
-return. A predicate cannot construct one itself, so the way to observe a
-null from inside a predicate is indirect - ask whether a bound value is
-`undefined` and get back `false`:
+**`null` is a literal keyword.** `x === null` is the direct boundness-against-
+null test: it asks whether `x` is bound to the present-but-empty value.
+`x === undefined` remains the separate question of whether anything was
+bound at all - the two are not restatements of each other, and give
+different answers for the same bound null:
 
 ```elixir
 iex> Predicator.evaluate("x === undefined", %{"x" => nil})
 {:ok, false}
 ```
 
-**Writing `null` anyway does not fail - it reads a variable.** `null` is not
-a reserved word, so it lexes as an ordinary identifier and compiles to a
-`load`, exactly like any other bare name. Under the default `on_unbound`
-policy that load yields `:undefined`, so `x === null` quietly answers
-`false` for a variable genuinely bound to null - the comparison that looks
-like it asks the question is really `null === undefined`:
+null and undefined are distinct values with their own comparison,
+membership, falsiness, and cast behavior, all shown above. Writing `null`
+compiles it straight to a `lit` operand, never a `load`, so there is no
+phantom variable and no dependence on `on_unbound`:
 
 ```elixir
 iex> Predicator.compile("x === null")
-{:ok, [["load", "x"], ["load", "null"], ["compare", "STRICT_EQ"]]}
+{:ok, [["load", "x"], ["lit", nil], ["compare", "STRICT_EQ"]]}
 iex> Predicator.evaluate("x === null", %{"x" => nil})
-{:ok, false}
+{:ok, true}
 ```
 
-Use `x === undefined` and read the answer inverted, as above. Evaluating
-under `on_unbound: :error` turns the silent case loud, since the phantom
-`null` variable is then an `UndefinedVariableError` naming it:
+Being a literal keyword, `null` is reserved the same way `undefined` is (see
+"Reserved words" above): `{null: 1}` is a parse error, not an object with a
+key named `null`.
 
 ```elixir
-iex> {:error, err} =
-...>   Predicator.evaluate("x === null", Predicator.Context.new(%{"x" => nil}, on_unbound: :error))
-iex> {err.__struct__, err.variable}
-{Predicator.Errors.UndefinedVariableError, "null"}
+iex> {:error, err} = Predicator.evaluate("{null: 1}", %{})
+iex> err.__struct__
+Predicator.Errors.ParseError
 ```
 
 ## Error Shapes

@@ -115,6 +115,59 @@ defmodule Predicator.LexerTest do
              ]
     end
 
+    test "tokenizes the null keyword" do
+      assert {:ok, tokens} = Lexer.tokenize("null")
+
+      assert tokens == [
+               {:null, 1, 1, 4, nil},
+               {:eof, 1, 5, 0, nil}
+             ]
+    end
+
+    test "does not classify NULL or Null as the null keyword" do
+      assert {:ok, tokens} = Lexer.tokenize("NULL")
+
+      assert tokens == [
+               {:identifier, 1, 1, 4, "NULL"},
+               {:eof, 1, 5, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("Null")
+
+      assert tokens == [
+               {:identifier, 1, 1, 4, "Null"},
+               {:eof, 1, 5, 0, nil}
+             ]
+    end
+
+    test "does not classify nullable or null_count as the null keyword" do
+      assert {:ok, tokens} = Lexer.tokenize("nullable")
+
+      assert tokens == [
+               {:identifier, 1, 1, 8, "nullable"},
+               {:eof, 1, 9, 0, nil}
+             ]
+
+      assert {:ok, tokens} = Lexer.tokenize("null_count")
+
+      assert tokens == [
+               {:identifier, 1, 1, 10, "null_count"},
+               {:eof, 1, 11, 0, nil}
+             ]
+    end
+
+    test "does not turn null( into a function_name" do
+      assert {:ok, tokens} = Lexer.tokenize("null(1)")
+
+      assert tokens == [
+               {:null, 1, 1, 4, nil},
+               {:lparen, 1, 5, 1, "("},
+               {:integer, 1, 6, 1, 1},
+               {:rparen, 1, 7, 1, ")"},
+               {:eof, 1, 8, 0, nil}
+             ]
+    end
+
     test "tokenizes uppercase logical operators" do
       assert {:ok, tokens} = Lexer.tokenize("AND")
 

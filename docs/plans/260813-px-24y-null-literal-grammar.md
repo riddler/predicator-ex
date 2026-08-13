@@ -554,23 +554,23 @@ rather than adjusted:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full `mix quality` is green, doctests included
+- [x] Full `mix quality` is green, doctests included
       (`test/docs_examples_test.exs` runs `docs/reference/language.md`).
-- [ ] New and changed lines stay above the 90% coverage minimum in
+- [x] New and changed lines stay above the 90% coverage minimum in
       `coveralls.json` (the gate's coverage stage decides this).
-- [ ] `test/predicator/visitor_clause_coverage_test.exs` passes with its
+- [x] `test/predicator/visitor_clause_coverage_test.exs` passes with its
       constructor count **unchanged at 23** and with no edit to the file - the
       literal reuses `{:literal, value, pos}` and adds no AST constructor.
-- [ ] `test/predicator/isa_sync_test.exs` passes with **no edit to it** - no
+- [x] `test/predicator/isa_sync_test.exs` passes with **no edit to it** - no
       opcode, version, or tier moved.
-- [ ] A test asserts `Predicator.compile("x === null") ==
+- [x] A test asserts `Predicator.compile("x === null") ==
       {:ok, [["load","x"],["lit",nil],["compare","STRICT_EQ"]]}`.
-- [ ] A test asserts the parse -> decompile round-trip of `"x === null"` is
+- [x] A test asserts the parse -> decompile round-trip of `"x === null"` is
       `"x === null"` and of `"[null]"` is `"[null]"` (the manifest's
       round-trip requirement for a new grammar node).
-- [ ] A test asserts `Predicator.tokenize("NULL")` and `"Null"` yield
+- [x] A test asserts `Predicator.tokenize("NULL")` and `"Null"` yield
       `:identifier` tokens.
-- [ ] `git diff --stat lib/` touches exactly `lexer.ex`, `parser.ex`, and
+- [x] `git diff --stat lib/` touches exactly `lexer.ex`, `parser.ex`, and
       `visitors/string_visitor.ex` - nothing else in `lib/`.
 
 #### Manual Verification:
@@ -969,3 +969,34 @@ items are deferred and surfaced once at the end instead of blocking here.
   `docs/adr/0003-*`, `docs/adr/0004-*`, `docs/adr/0011-*`, `docs/adr/0013-*`
 - ISA authority: `docs/isa.md` §§1, 3, 5, 6, 7
 - Bead: px-24y
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] `Predicator.parse("user.null")` and `Predicator.parse("{null: 1}")`
+      return error tuples, not a `FunctionClauseError`. This is the
+      `format_token/2` clause being real, and a raise here is the ADR-0004
+      breach.
+- [ ] The three breakage messages read as helpful to someone who used `null`
+      as a variable name, and match the `true`/`false`/`undefined` shapes.
+- [ ] `mix quality`'s dialyzer stage raised nothing about the widened
+      `classify_identifier/1` and `value()` specs, and nothing about the `nil`
+      value slot in the token tuple.
+- [ ] The rewritten "Null and undefined" section reads as one coherent
+      explanation, not as a patched one: no sentence still implies null is
+      unwritable, and the `x === undefined` advice that survives is presented
+      as a different question rather than a workaround.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits and
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---

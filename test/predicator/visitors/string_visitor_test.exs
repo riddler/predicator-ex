@@ -150,6 +150,20 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
       assert result == "[1, undefined]"
     end
+
+    test "converts the null literal to string" do
+      ast = {:literal, nil, nil}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "null"
+    end
+
+    test "converts null nested in a list literal" do
+      ast = {:literal, [1, nil], nil}
+      result = StringVisitor.visit(ast, [])
+
+      assert result == "[1, null]"
+    end
   end
 
   describe "visit/2 - identifier nodes" do
@@ -369,6 +383,28 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
     test "parse -> decompile -> parse fixpoint for undefined in a list literal" do
       original = "[undefined]"
+      {:ok, ast} = Predicator.parse(original)
+
+      decompiled = Predicator.decompile(ast)
+      assert decompiled == original
+
+      assert {:ok, reparsed} = Predicator.parse(decompiled)
+      assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast)
+    end
+
+    test "parse -> decompile -> parse fixpoint for the null literal" do
+      original = "x === null"
+      {:ok, ast} = Predicator.parse(original)
+
+      decompiled = Predicator.decompile(ast)
+      assert decompiled == original
+
+      assert {:ok, reparsed} = Predicator.parse(decompiled)
+      assert Predicator.ASTShape.strip(reparsed) == Predicator.ASTShape.strip(ast)
+    end
+
+    test "parse -> decompile -> parse fixpoint for null in a list literal" do
+      original = "[null]"
       {:ok, ast} = Predicator.parse(original)
 
       decompiled = Predicator.decompile(ast)

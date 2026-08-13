@@ -55,6 +55,30 @@ defmodule Predicator.ParserTest do
                {:ok, {:object, [{{:object_key, "k", :identifier}, {:literal, :undefined}}]}}
     end
 
+    test "parses the null literal" do
+      {:ok, tokens} = Lexer.tokenize("null")
+      assert parse_positionless(tokens) == {:ok, {:literal, nil}}
+    end
+
+    test "parses the null literal with its position" do
+      {:ok, tokens} = Lexer.tokenize("null")
+      assert Predicator.Parser.parse(tokens) == {:ok, {:literal, nil, {1, 1}}}
+    end
+
+    test "parses null inside a list literal" do
+      {:ok, tokens} = Lexer.tokenize("[null, 1]")
+
+      assert parse_positionless(tokens) ==
+               {:ok, {:list, [{:literal, nil}, {:literal, 1}]}}
+    end
+
+    test "parses null as an object value" do
+      {:ok, tokens} = Lexer.tokenize("{k: null}")
+
+      assert parse_positionless(tokens) ==
+               {:ok, {:object, [{{:object_key, "k", :identifier}, {:literal, nil}}]}}
+    end
+
     test "parses identifier" do
       {:ok, tokens} = Lexer.tokenize("score")
       assert parse_positionless(tokens) == {:ok, {:identifier, "score"}}

@@ -44,6 +44,7 @@ defmodule Predicator.Lexer do
           | {:string, pos_integer(), pos_integer(), pos_integer(), binary(), :double | :single}
           | {:boolean, pos_integer(), pos_integer(), pos_integer(), boolean()}
           | {:undefined, pos_integer(), pos_integer(), pos_integer(), :undefined}
+          | {:null, pos_integer(), pos_integer(), pos_integer(), nil}
           | {:date, pos_integer(), pos_integer(), pos_integer(), Date.t()}
           | {:datetime, pos_integer(), pos_integer(), pos_integer(), DateTime.t()}
           | {:gt, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -495,10 +496,11 @@ defmodule Predicator.Lexer do
     {identifier, remaining, count}
   end
 
-  @spec classify_identifier(binary()) :: {atom(), binary() | boolean() | :undefined}
+  @spec classify_identifier(binary()) :: {atom(), binary() | boolean() | :undefined | nil}
   defp classify_identifier("true"), do: {:boolean, true}
   defp classify_identifier("false"), do: {:boolean, false}
   defp classify_identifier("undefined"), do: {:undefined, :undefined}
+  defp classify_identifier("null"), do: {:null, nil}
   defp classify_identifier("AND"), do: {:and_op, "AND"}
   defp classify_identifier("OR"), do: {:or_op, "OR"}
   defp classify_identifier("NOT"), do: {:not_op, "NOT"}
