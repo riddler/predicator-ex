@@ -55,6 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   host that wants the previous behavior - a variable that reads as
   `:undefined` - should bind `Predicator.Undefined.value()` explicitly
   instead of `nil`.
+- **`Predicator.evaluate/3` can now return `{:ok, nil}`.** A null reaching
+  the top of the stack is the evaluation's result like any other value -
+  most easily via short-circuit, where `"flag AND other"` over a null `flag`
+  yields `{:ok, nil}`. Previously no evaluation could produce a bare `nil`
+  result, since the context boundary rewrote every `nil` before it could be
+  loaded. A caller that matches exhaustively on result values should add a
+  `nil` clause.
 
 ### Fixed
 
