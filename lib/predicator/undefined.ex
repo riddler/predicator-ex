@@ -48,7 +48,9 @@ defmodule Predicator.Undefined do
   through unchanged.
 
   For embedding at a boundary that speaks `nil` rather than `:undefined`
-  (JSON output, a host application's own representation of "missing").
+  (JSON output, a host application's own representation of "missing"). This
+  is an edge helper for a boundary that does not distinguish null from
+  undefined - `Predicator.Context` itself keeps them apart.
 
   ## Examples
 
@@ -67,7 +69,10 @@ defmodule Predicator.Undefined do
   through unchanged. The inverse of `to_nil/1`.
 
   For normalizing an incoming `nil` (JSON `null`, a host application's own
-  "missing") to predicator's sentinel at the edge.
+  "missing") to predicator's sentinel at the edge. This is an edge helper
+  for a boundary that does not distinguish null from undefined -
+  `Predicator.Context.new/2` no longer calls it: a `nil` in a context is now
+  the null value.
 
   ## Examples
 

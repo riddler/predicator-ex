@@ -763,15 +763,15 @@ present.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full `mix quality` passes.
-- [ ] Coverage stays above the 90% minimum for `Predicator.Context`.
-- [ ] `grep -n 'normalize_value(nil)' lib/` returns nothing.
-- [ ] All seven previously-red assertions are updated and green; the whole
+- [x] Full `mix quality` passes.
+- [x] Coverage stays above the 90% minimum for `Predicator.Context`.
+- [x] `grep -n 'normalize_value(nil)' lib/` returns nothing.
+- [x] All seven previously-red assertions are updated and green; the whole
       `test/predicator/context_test.exs` and
       `test/predicator/integration/on_unbound_test.exs` suites pass.
-- [ ] `test/predicator/undefined_test.exs` and `test/predicator/types_test.exs`
+- [x] `test/predicator/undefined_test.exs` and `test/predicator/types_test.exs`
       are untouched and green - `from_nil/1`'s behavior did not change.
-- [ ] `mix test test/docs_examples_test.exs` passes (it executes
+- [x] `mix test test/docs_examples_test.exs` passes (it executes
       `docs/reference/language.md`'s Elixir blocks; none puts a `nil` in a
       context today, so this should stay green through Phase 2 and is the guard
       that proves it).
@@ -1197,5 +1197,22 @@ and the manual items are deferred to the end.
 **A note on `is_nil/1` vs `== nil`**: the existing guards spell the test
 `top == false or top == :undefined`. Use `is_nil(top)` for the new disjunct
 rather than `top == nil` - credo prefers it and it reads unambiguously.
+
+---
+
+### Phase 2
+
+- [ ] `Predicator.evaluate("x === undefined", Predicator.Context.new(%{"x" => nil}))`
+      returns `{:ok, false}`, and the same predicate against `Context.new(%{})`
+      returns an `UndefinedVariableError`. This is acceptance criterion (a),
+      confirmed by hand.
+- [ ] A decoded JSON payload works end to end without host-side conversion:
+      `Jason.decode!(~s({"foo": null, "bar": 1}))` bound with `bind/3`, then
+      `_event.data.foo === undefined`-shaped access, answers `false`.
+- [ ] No regression in `on_unbound: :error` for a genuinely absent root.
+
+**Implementation Note**: Use the loop gate between edits, full `mix quality` as
+the phase gate. Interactive execution pauses here; `--loop` defers the manual
+items.
 
 ---
