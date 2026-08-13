@@ -80,17 +80,28 @@ defmodule Mix.Tasks.Corpus.GenerateTest do
 
       write_cases([%{"id" => "t/lit", "source" => "43"}])
 
-      assert_raise Mix.Error, ~r/out of date/, fn ->
-        capture_io(fn -> Task.run(["--check"]) end)
-      end
+      {_stdout, stderr} =
+        with_io(:stderr, fn ->
+          assert_raise Mix.Error, ~r/out of date/, fn ->
+            capture_io(fn -> Task.run(["--check"]) end)
+          end
+        end)
+
+      assert stderr =~ "stale: conformance/corpus/tier-1.json"
     end
 
     test "raises when the checked-in files are missing entirely" do
       write_cases([%{"id" => "t/lit", "source" => "42"}])
 
-      assert_raise Mix.Error, ~r/out of date/, fn ->
-        capture_io(fn -> Task.run(["--check"]) end)
-      end
+      {_stdout, stderr} =
+        with_io(:stderr, fn ->
+          assert_raise Mix.Error, ~r/out of date/, fn ->
+            capture_io(fn -> Task.run(["--check"]) end)
+          end
+        end)
+
+      assert stderr =~ "stale: conformance/corpus/tier-1.json"
+      assert stderr =~ "stale: conformance/manifest.json"
     end
   end
 
@@ -114,7 +125,7 @@ defmodule Mix.Tasks.Corpus.GenerateTest do
       File.write!("conformance/cases/bad.json", JSON.encode!(%{"not" => "a list"}))
 
       assert_raise Mix.Error, fn ->
-        capture_io(fn -> Task.run([]) end)
+        capture_io(:stderr, fn -> capture_io(fn -> Task.run([]) end) end)
       end
     end
 
@@ -122,7 +133,7 @@ defmodule Mix.Tasks.Corpus.GenerateTest do
       File.write!("conformance/cases/bad.json", "{not json")
 
       assert_raise Mix.Error, fn ->
-        capture_io(fn -> Task.run([]) end)
+        capture_io(:stderr, fn -> capture_io(fn -> Task.run([]) end) end)
       end
     end
   end
