@@ -136,6 +136,16 @@ instruction pushing a `Date` carries a tagged operand, not a raw one, because
 JSON has no way to distinguish `"2026-08-06"` the date from `"2026-08-06"` the
 string without it.
 
+A consumer of the library faces the same four-type problem whenever it
+persists an instruction list as plain JSON, and [`docs/isa.md`
+section 3](../docs/isa.md) points such a consumer here for an encoding that
+already solves it. That is a recommendation, not a promotion: this encoding
+remains corpus apparatus specified by this document, not a published
+serialization API, and a consumer adopting it copies it rather than calls it.
+Nothing about it becomes normative outside the corpus, and it stays free to
+be revised by regenerating the corpus, as `px-qq6` revised the `datetime`
+fraction.
+
 **How to hand-decode a duration case.** Take
 `conformance/corpus/tier-4.json`'s `durations/milliseconds-key-present-only-when-used`
 case: `instructions` is `[["duration",[[500,"ms"]]]]`, and `expected_result`
