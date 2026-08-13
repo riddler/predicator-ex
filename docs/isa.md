@@ -196,9 +196,9 @@ tagged-value JSON encoding is `px-35i.4`'s concern, not restated here.
 
 ### Crossing a plain-JSON boundary
 
-Six of those ten types are JSON's own - integer, float, string, boolean,
-list, map - and survive a JSON round trip unchanged. **The other four do
-not**, and because a `lit` operand may be any of them, an instruction list
+Seven of those eleven types are JSON's own - integer, float, string, boolean,
+list, map, `null` - and survive a JSON round trip unchanged. **The other four
+do not**, and because a `lit` operand may be any of them, an instruction list
 written out as plain JSON and read back is not necessarily the list that was
 written:
 
