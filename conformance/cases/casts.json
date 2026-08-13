@@ -19,6 +19,13 @@
     "notes": "the propagation rule (ADR-0011): :undefined::type is :undefined for every target. user.missing is a genuine :undefined from an access miss, not a load of an absent root, which errors under the default on_unbound policy (see errors.json) and is a separate concern from cast's own semantics"
   },
   {
+    "id": "casts/null-is-undefined",
+    "source": "x::string",
+    "context": { "x": null },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "px-o9v: null::string is :undefined, not \"null\" - a cast is an explicit request for a typed value, and null cannot produce a string of the target type any more than a list can (ADR-0011 rule 2, the total-failure catch-all)"
+  },
+  {
     "id": "casts/float-to-integer-truncates-toward-zero-at-negative",
     "source": "-1.5::integer",
     "expected": { "result": -1 },

@@ -2,10 +2,11 @@ defmodule Predicator.Conformance.Values do
   @moduledoc """
   The tagged-value codec for the conformance corpus (`px-35i.4`).
 
-  Plain JSON scalars, arrays, and objects mean themselves. `docs/isa.md`
-  section 3's value domain also includes `Date`, `DateTime`, duration, and
-  `:undefined`, none of which JSON can represent directly, so each is carried
-  as an object with a `$type` key:
+  Plain JSON scalars, arrays, and objects mean themselves - including a bare
+  JSON `null`, which decodes to predicator's null value with no tag of its own
+  (px-o9v). `docs/isa.md` section 3's value domain also includes `Date`,
+  `DateTime`, duration, and `:undefined`, none of which JSON can represent
+  directly, so each of those is carried as an object with a `$type` key:
 
       {"$type": "date", "value": "2026-08-06"}
       {"$type": "datetime", "value": "2026-08-06T12:00:00Z"}
@@ -70,6 +71,11 @@ defmodule Predicator.Conformance.Values do
   @spec to_json(term()) :: {:ok, json()} | {:error, {:unencodable, term()}}
   def to_json(:undefined), do: {:ok, %{"$type" => "undefined"}}
 
+  # Null is JSON-native: it encodes as a bare JSON null, with no $type tag.
+  # `:undefined` above needs a tag because JSON has no absence; null does not
+  # (px-o9v).
+  def to_json(nil), do: {:ok, nil}
+
   def to_json(%Date{} = date) do
     {:ok, %{"$type" => "date", "value" => Date.to_iso8601(date)}}
   end
@@ -121,6 +127,8 @@ defmodule Predicator.Conformance.Values do
   """
   @spec from_json(json()) :: {:ok, term()} | {:error, term()}
   def from_json(%{"$type" => "undefined"}), do: {:ok, :undefined}
+
+  def from_json(nil), do: {:ok, nil}
 
   def from_json(%{"$type" => "date", "value" => value}) when is_binary(value) do
     case Date.from_iso8601(value) do

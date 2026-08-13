@@ -108,6 +108,10 @@ and are carried as a JSON object with a `$type` key:
 | duration | `{"$type": "duration", "value": {"years":0,"months":0,"weeks":0,"days":3,"hours":0,"minutes":0,"seconds":0}}` |
 | `:undefined` | `{"$type": "undefined"}` |
 
+A bare JSON `null` decodes to predicator's null value, and is **not** the same
+as `{"$type": "undefined"}` - null and undefined are distinct values in the
+domain ([`docs/isa.md` section 3](../docs/isa.md)).
+
 Everything else - integer, float, string, boolean, list, plain object -
 decodes to itself; a plain JSON object with no `$type` key is a predicator
 map.
