@@ -47,8 +47,11 @@ defmodule Predicator.Types do
   - `Date.t()` - date values
   - `DateTime.t()` - datetime values
   - `duration()` - duration values for time spans
-  - `:undefined` - represents undefined/null values; see `Predicator.Undefined`
-    for the canonical definition of the sentinel
+  - `:undefined` - represents an absence: an unbound variable or a value that
+    could not be produced; see `Predicator.Undefined` for the canonical
+    definition of the sentinel
+  - `nil` - the null value: present, but with no content. Distinct from
+    `:undefined`, which is an absence. `nil === :undefined` is `false`.
   """
   @type value ::
           boolean()
@@ -60,6 +63,7 @@ defmodule Predicator.Types do
           | DateTime.t()
           | duration()
           | :undefined
+          | nil
 
   @typedoc """
   The evaluation context containing variable bindings.
