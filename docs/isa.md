@@ -32,10 +32,14 @@ than re-arguing it.
   require".
 - Adding an operand form or widening an accepted type is a new version but
   not a new name. This rule speaks to operand forms carried *in the
-  instruction list* - widening §3's value domain with a value that only a
-  host-supplied context can produce, and that no opcode can place on the
-  stack, moves no version, because no opcode-name scan can express it (§6's
-  `undefined` literal precedent, and line 415's, are the same shape).
+  instruction list* - what a conformant implementation must accept and
+  execute. Widening §3's value domain at the **host/context boundary** moves
+  no version, because no opcode-name scan can express it and no existing
+  instruction list changes meaning (px-o9v's null widening is this case). A
+  later **source spelling** for a value that domain already admits likewise
+  moves no version, because a spelling is surface syntax (§6) and attaches to
+  no opcode name - the `undefined` literal and the `null` literal are both
+  this case.
 - An additive version - new opcodes only, every existing instruction list
   still valid - ships in a minor release.
 - **Retirement mints the next ISA integer**, in addition to taking a major
@@ -178,12 +182,11 @@ list, map (object), `Date`, `DateTime`, duration, `null`, and `:undefined`.
 
 `null` and `:undefined` are both first-class values and neither is the
 other: `:undefined` is an absence - no value was ever supplied - while
-`null` is a value that is present and empty. `null` has no source spelling:
-unlike `:undefined`, which as of the change that added this sentence has a
-literal keyword (§5's `lit` entry, §6), no grammar production emits a null.
-It enters the value domain only through a host-supplied context, a `load`
-of a bound null, an `access`/`bracket_access` result, or a function return -
-never through `lit`.
+`null` is a value that is present and empty. Both read symmetrically at the
+surface: each has a literal keyword (`undefined`, `null`), and each compiles
+to the corresponding `lit` operand (§5, §6). `null` additionally enters the
+value domain through a host-supplied context, a `load` of a bound null, an
+`access`/`bracket_access` result, or a function return.
 
 A duration's shape is normative, because `["duration", units]` produces one
 and `add`/`subtract` consume it: a map with the seven keys `years`,
@@ -348,11 +351,11 @@ helper it delegates to. Function names rather than line numbers, so a
 reference survives an edit above it.
 
 - **`lit`** - pushes the operand unchanged. No error path. The operand may be
-  any value in §3's value domain, `:undefined` included; a source spelling
-  for that operand (the `undefined` literal keyword) exists as of the change
-  that added this sentence. `null` is legal under that same widened §3
-  domain in principle, but no source spelling exists for it: the compiler
-  never emits `["lit", nil]`, so no stored artifact can contain one (§3).
+  any value in §3's value domain, `:undefined` and `null` included, and a
+  source spelling exists for both as of the changes that added them (the
+  `undefined` and `null` literal keywords, §6). Worth naming the one
+  asymmetry: `["lit", nil]` survives a plain-JSON round trip, while
+  `["lit", :undefined]` does not (§3's lossy table).
 - **`load`** (`load_from_context/2`) - string-key lookup in the context; an
   absent key pushes `:undefined`. Atom keys are not read: the context is
   normalized to string keys before evaluation. This is the only opcode that
@@ -783,7 +786,10 @@ What a reader might expect to find here and will not:
   outside the conformance corpus's scope. The `undefined` literal keyword is
   the same shape: it compiles to the existing `["lit", :undefined]`, an
   instruction this ISA's value domain (§3) already admitted, so the new
-  spelling attaches to no opcode name and moves no version.
+  spelling attaches to no opcode name and moves no version. The `null`
+  literal keyword is the same shape again: `null` compiles to the existing
+  `["lit", nil]`, an operand §3's value domain already admitted, so this
+  spelling too attaches to no opcode name and moves no version.
 - The builtin function set - see
   [Language Reference](reference/language.md).
 - A serialization envelope. Four of §3's value types cannot round-trip
