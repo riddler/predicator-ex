@@ -548,13 +548,14 @@ single key onto that context's data. `assign/3` writes through
 `Predicator.evaluate/3` accepts either a `%Context{}` or a bare map - a bare
 map gets a one-shot `Context.new/2` internally.
 
-`new/2` and `bind/3` are the one edge where atom keys and `nil` values are
-accepted. Both convert **deeply and eagerly** - through nested maps and
-lists - before evaluation ever sees the data: an atom key becomes a string
-key (the string key wins on collision), and `nil` becomes `:undefined`. A
-`Date`, `DateTime`, or any other struct passes through unchanged; only plain
-maps have their keys touched. The evaluator consults string keys only after
-that point - it has no atom-key fallback.
+`new/2` and `bind/3` are the one edge where atom keys are accepted. Both
+convert **deeply and eagerly** - through nested maps and lists - before
+evaluation ever sees the data: an atom key becomes a string key (the string
+key wins on collision). A `nil` value is stored verbatim as the null value -
+see "Null and undefined" below - and a `Date`, `DateTime`, or any other
+struct passes through unchanged; only plain maps have their keys touched.
+The evaluator consults string keys only after that point - it has no
+atom-key fallback.
 
 Because the function merge happens once at construction rather than per
 call, reusing a `Context` across many `evaluate/3` calls (e.g. `bind/3` in a
@@ -742,11 +743,12 @@ iex> err.variable
 ```
 
 To test whether a variable that may not exist at all is undefined under
-`:error`, bind it as declared-but-undefined (`Predicator.Context.new(%{"x" =>
-nil})`, which normalizes to `:undefined`) rather than leaving it absent, or
-reach it through a bound container (`ctx.maybe === undefined`), where a
-missing nested path evaluates to `:undefined` under either policy instead of
-erroring.
+`:error`, bind it as declared-but-undefined
+(`Predicator.Context.new(%{"x" => Predicator.Undefined.value()})`) rather
+than leaving it absent - binding `nil` instead gives it the null value, not
+`:undefined` (see "Null and undefined" above) - or reach it through a bound
+container (`ctx.maybe === undefined`), where a missing nested path evaluates
+to `:undefined` under either policy instead of erroring.
 
 ### Unbound roots vs. missing paths, and `on_unbound`
 
@@ -821,6 +823,101 @@ the ones where the default *absorbs* the sentinel into a defined result:
 | `{'a': missing}` | `{:ok, %{"a" => :undefined}}` | `{:error, ...}` |
 | `missing`, `missing == 5`, `not missing`, `missing + 1` | `{:error, ...}` | same |
 | `false AND missing`, `true OR missing` | `{:ok, false}` / `{:ok, true}` | unchanged - never loaded |
+
+### Null and undefined
+
+Predicator also has a null value - Elixir `nil` - and it is not the same
+thing as `:undefined`. The rule in one sentence: **null is a value;
+undefined is an absence.** `:undefined` means no value was ever supplied;
+null means a value was supplied and it is empty. A `Context` bound from a
+JSON payload keeps the two distinguishable: a field explicitly sent as
+`null` stays null, and a field never sent at all stays undefined.
+
+```elixir
+iex> Predicator.evaluate("x === undefined", %{"x" => nil})
+{:ok, false}
+iex> Predicator.evaluate("x === undefined", %{})
+{:ok, true}
+```
+
+**Comparisons.** Predicator has two equality operators, `==` (non-strict)
+and `===` (strict), so "is null equal to undefined" is a four-way question,
+not a single answer:
+
+| Comparison | Result |
+|---|---|
+| `null === undefined` | `false` |
+| `null == undefined` | `:undefined` |
+| `null === null` | `true` |
+| `null == null` | `:undefined` |
+
+```elixir
+iex> Predicator.evaluate("x === undefined", %{"x" => nil})
+{:ok, false}
+iex> Predicator.evaluate("x == undefined", %{"x" => nil})
+{:ok, :undefined}
+iex> Predicator.evaluate("x === y", %{"x" => nil, "y" => nil})
+{:ok, true}
+iex> Predicator.evaluate("x == y", %{"x" => nil, "y" => nil})
+{:ok, :undefined}
+```
+
+`===` is the operator that answers a plain boolean about null, exactly as
+it is for `:undefined`: `==` and the ordering operators are typed
+comparisons, and null has no type peer, so every non-strict comparison
+involving it yields `:undefined` rather than `true` or `false`.
+
+**Membership is the one place null behaves as a value, not an absence.**
+`in` and `contains` test identity for null rather than propagating it the
+way they propagate `:undefined`:
+
+```elixir
+iex> Predicator.evaluate("x in [y]", %{"x" => nil, "y" => nil})
+{:ok, true}
+```
+
+That is a real surface tension worth naming rather than smoothing over:
+`null == null` is `:undefined` while `null in [null]` is `true`. `==` and
+`in` already disagreed about `:undefined` in the opposite direction, so the
+two operators were never one predicate to begin with.
+
+**Falsiness.** Null is falsy at a jump, joining `false` and `:undefined`,
+so `AND`/`OR` short-circuit over it the same way:
+
+```elixir
+iex> Predicator.evaluate("x AND true", %{"x" => nil})
+{:ok, nil}
+```
+
+**Rejected, not coerced.** `NOT`, unary minus, and the arithmetic operators
+require their usual types and treat a null operand as a type mismatch, the
+same as they treat `:undefined`:
+
+```elixir
+iex> {:error, err} = Predicator.evaluate("not x", %{"x" => nil})
+iex> {err.__struct__, err.got}
+{Predicator.Errors.TypeMismatchError, :null}
+```
+
+**Casts.** A cast is total, so `null::T` is `:undefined` for every target
+type - not `"null"`, not an error:
+
+```elixir
+iex> Predicator.evaluate("x::string", %{"x" => nil})
+{:ok, :undefined}
+```
+
+**There is currently no way to write a null literal in predicate text.**
+Unlike `:undefined`, which has the `undefined` keyword, null enters only
+through the host: a bound context value, a nested access, or a function
+return. A predicate cannot construct one itself, so the way to observe a
+null from inside a predicate is indirect - ask whether a bound value is
+`undefined` and get back `false`:
+
+```elixir
+iex> Predicator.evaluate("x === undefined", %{"x" => nil})
+{:ok, false}
+```
 
 ## Error Shapes
 

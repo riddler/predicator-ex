@@ -122,7 +122,10 @@ period.
 - **Undefined** (`lib/predicator/undefined.ex`): The one public module that
   owns the `:undefined` sentinel - `value/0`, `undefined?/1`, and
   `to_nil/1`/`from_nil/1` normalizers for a JSON-shaped boundary.
-  `Predicator.Types.undefined?/1` delegates to it
+  `Predicator.Types.undefined?/1` delegates to it. `nil` is a separate,
+  first-class null value, not this sentinel - a context stores a bound `nil`
+  verbatim rather than folding it into `:undefined`. See
+  [`docs/isa.md`](isa.md) §3 for the null-versus-`:undefined` distinction
 
 ## Cross-Language Siblings
 

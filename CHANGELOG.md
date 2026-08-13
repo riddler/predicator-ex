@@ -7,12 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Null joins the ISA value domain, distinct from `:undefined`.** A value
+  that is present and empty is now distinguishable from one that was never
+  supplied: null is falsy at a jump alongside `false` and `:undefined`;
+  it is rejected by `not`, unary minus, and the arithmetic opcodes, the same
+  as `:undefined`; every non-strict comparison involving it (`==` and the
+  ordering operators) yields `:undefined`, since null has no type peer; and
+  `===`/`!==` and membership (`in`/`contains`) answer a plain boolean about
+  it by identity - `null === null` is `true`, `null in [null]` is `true`.
+  There is no source spelling for null (no `null` keyword) - it enters only
+  through a host-supplied context, a nested access, or a function return.
+  See `docs/isa.md` §2, §3, and §5 for the full semantics. **The ISA version
+  does not move**: no opcode name changed and no *instruction-list* operand
+  form widened - null enters only at the host/context boundary, which §3
+  governs and §1's versioning rule does not (the same shape as the
+  `undefined` literal in 5.0.0).
+
 ### Documentation
 
 - **`docs/isa.md` states what happens to an instruction list stored as plain
   JSON.** Section 3 gains "Crossing a plain-JSON boundary": four of the value
-  domain's ten types - `Date`, `DateTime`, duration, and `:undefined` - have
-  no JSON-native form, so a `lit` operand carrying one decodes back as a
+  domain's eleven types - `Date`, `DateTime`, duration, and `:undefined` -
+  have no JSON-native form, so a `lit` operand carrying one decodes back as a
   string or a plain map, with no error on either side of the trip. The ISA
   defines no envelope and will not - section 6 now says so beside the other
   things it does not define - but the note names the two approaches that
@@ -24,6 +42,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/research/260813-px-a2w-plain-json-round-trip.md` for why promoting
   the corpus codec into a supported serialization API was weighed and
   rejected.
+
+### Changed
+
+- **`Context.new/2` and `bind/3` no longer rewrite a bound `nil` to
+  `:undefined`.** A context now stores a bound null verbatim, so it survives
+  distinguishably from an absent key. The observable consequence:
+  `x === undefined` on a variable bound to `nil` now answers `{:ok, false}`
+  where it previously answered `{:ok, true}`. This is not a breaking change:
+  `Predicator.Types.value()` never declared `nil` as an accepted input, so a
+  host relying on the old collapse was relying on undeclared behavior. A
+  host that wants the previous behavior - a variable that reads as
+  `:undefined` - should bind `Predicator.Undefined.value()` explicitly
+  instead of `nil`.
+
+### Fixed
+
+- **A `nil` operand no longer crashes the evaluator.** `not`, unary minus,
+  unary bang, the five arithmetic opcodes, and the three jump opcodes each
+  raised `FunctionClauseError` when handed a raw `nil` operand - a live
+  violation of "errors are values, never raised at a leaf" (ADR-0004),
+  reachable through several paths that already carried `nil` into
+  evaluation with no defined semantics (a bare map passed to `evaluate/3`,
+  a custom function returning `{:ok, nil}`, and others). Each now returns a
+  `TypeMismatchError` naming type `:null`, or, at a jump, treats the `nil`
+  as falsy - never a raise.
 
 ## [5.0.0] - 2026-08-12
 
