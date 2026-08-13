@@ -356,4 +356,39 @@ defmodule Predicator.IntegrationTest do
       assert context.data == %{"x" => :undefined}
     end
   end
+
+  describe "the null literal (px-24y)" do
+    test "compiles to lit nil, never a load" do
+      assert Predicator.compile("x === null") ==
+               {:ok, [["load", "x"], ["lit", nil], ["compare", "STRICT_EQ"]]}
+    end
+
+    test "x === null answers true for a variable genuinely bound to null" do
+      assert Predicator.evaluate("x === null", %{"x" => nil}) == {:ok, true}
+    end
+
+    test "null === null (px-o9v D2, observed through the literal)" do
+      assert Predicator.evaluate("null === null") == {:ok, true}
+    end
+
+    test "null == null propagates instead of answering (px-o9v D2)" do
+      assert Predicator.evaluate("null == null") == {:ok, :undefined}
+    end
+
+    test "null === undefined is false - null and undefined are distinct" do
+      assert Predicator.evaluate("null === undefined") == {:ok, false}
+    end
+
+    test "null in [null] tests identity" do
+      assert Predicator.evaluate("null in [null]") == {:ok, true}
+    end
+
+    test "null::string collapses to :undefined under any cast" do
+      assert Predicator.evaluate("null::string") == {:ok, :undefined}
+    end
+
+    test "not null is a TypeMismatchError" do
+      assert {:error, %Predicator.Errors.TypeMismatchError{}} = Predicator.evaluate("not null")
+    end
+  end
 end

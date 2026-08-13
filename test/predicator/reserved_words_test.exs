@@ -234,4 +234,80 @@ defmodule Predicator.ReservedWordsTest do
              [{{:object_key, "undefined", :double, _key_pos}, {:literal, 1, _value_pos}}],
              _pos}} = Predicator.parse(~s({"undefined": 1}))
   end
+
+  @null_assign_expr_message "'=' is not an equality operator - use '==' for equality. " <>
+                              "Assignment is only valid at the start of a statement."
+  @null_assign_program_message "Left side of '=' must be an assignable location - an " <>
+                                 "identifier, a property access, or a bracket access."
+
+  describe "'null' used as a variable name, from every entry point" do
+    test "Predicator.parse/2" do
+      assert Predicator.parse("null = 3") == {:error, @null_assign_expr_message, 1, 6}
+    end
+
+    test "Predicator.parse_program/2" do
+      assert Predicator.parse_program("null = 3") ==
+               {:error, @null_assign_program_message, 1, 6}
+    end
+
+    test "Predicator.evaluate/3" do
+      assert {:error, %ParseError{message: @null_assign_expr_message, position: {1, 6}}} =
+               Predicator.evaluate("null = 3", %{})
+    end
+
+    test "Predicator.compile/1" do
+      assert Predicator.compile("null = 3") ==
+               {:error, "#{@null_assign_expr_message} at line 1, column 6"}
+    end
+  end
+
+  @user_null_message "Expected property name after '.' but found 'null'"
+
+  describe "'user.null' as a bare property name, from every entry point" do
+    test "Predicator.parse/2" do
+      assert Predicator.parse("user.null") == {:error, @user_null_message, 1, 6}
+    end
+
+    test "Predicator.parse_program/2" do
+      assert Predicator.parse_program("user.null") == {:error, @user_null_message, 1, 6}
+    end
+
+    test "Predicator.evaluate/3" do
+      assert {:error, %ParseError{message: @user_null_message, position: {1, 6}}} =
+               Predicator.evaluate("user.null", %{})
+    end
+
+    test "Predicator.compile/1" do
+      assert Predicator.compile("user.null") ==
+               {:error, "#{@user_null_message} at line 1, column 6"}
+    end
+  end
+
+  @null_key_message "Expected identifier or string for object key but found 'null'"
+
+  describe "'{null: 1}' as a bare object key, from every entry point" do
+    test "Predicator.parse/2" do
+      assert Predicator.parse("{null: 1}") == {:error, @null_key_message, 1, 2}
+    end
+
+    test "Predicator.parse_program/2" do
+      assert Predicator.parse_program("{null: 1}") == {:error, @null_key_message, 1, 2}
+    end
+
+    test "Predicator.evaluate/3" do
+      assert {:error, %ParseError{message: @null_key_message, position: {1, 2}}} =
+               Predicator.evaluate("{null: 1}", %{})
+    end
+
+    test "Predicator.compile/1" do
+      assert Predicator.compile("{null: 1}") ==
+               {:error, "#{@null_key_message} at line 1, column 2"}
+    end
+  end
+
+  test ~s({"null": 1} still parses - a quoted object key is not a reserved word) do
+    assert {:ok,
+            {:object, [{{:object_key, "null", :double, _key_pos}, {:literal, 1, _value_pos}}],
+             _pos}} = Predicator.parse(~s({"null": 1}))
+  end
 end

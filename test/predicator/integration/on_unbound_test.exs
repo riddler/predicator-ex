@@ -161,6 +161,19 @@ defmodule Predicator.Integration.OnUnboundTest do
     end
   end
 
+  describe "the null literal (px-24y) - x === null is true for a bound null under both policies" do
+    test "x === null with x bound to nil is true under either policy" do
+      assert Predicator.evaluate("x === null", %{"x" => nil}) == {:ok, true}
+
+      # The literal lowers to `lit`, never `load` - there is no phantom `null`
+      # variable to be absorbed or to error on, so the :error policy agrees.
+      assert Predicator.evaluate(
+               "x === null",
+               Context.new(%{"x" => nil}, on_unbound: :error)
+             ) == {:ok, true}
+    end
+  end
+
   describe "the bare-map option form" do
     test "behaves identically to the %Context{} form" do
       assert {:error, %UndefinedVariableError{variable: "missing"}} =
