@@ -1032,19 +1032,19 @@ pin needs re-verification against the new hash. Point at
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full `mix quality` passes.
-- [ ] `mix corpus.generate` produces no diff on a second run (idempotent), and
+- [x] Full `mix quality` passes.
+- [x] `mix corpus.generate` produces no diff on a second run (idempotent), and
       `mix test test/predicator/conformance/corpus_freshness_test.exs` passes -
       the checked-in corpus byte-matches a regeneration.
-- [ ] `mix test test/predicator/conformance/schema_validation_test.exs` passes -
+- [x] `mix test test/predicator/conformance/schema_validation_test.exs` passes -
       every new authored case and the regenerated corpus and manifest validate.
-- [ ] `mix test test/predicator/conformance/values_test.exs` passes, including
+- [x] `mix test test/predicator/conformance/values_test.exs` passes, including
       the round-trip property over the three new entries.
-- [ ] `mix test test/predicator/conformance/opcode_coverage_test.exs` and
+- [x] `mix test test/predicator/conformance/opcode_coverage_test.exs` and
       `ratchet_registry_test.exs` and `package_boundary_test.exs` pass.
-- [ ] `git diff conformance/manifest.json` shows `corpus_hash` changed - the
+- [x] `git diff conformance/manifest.json` shows `corpus_hash` changed - the
       expected, explained rotation, not a surprise.
-- [ ] Coverage stays above the 90% minimum for
+- [x] Coverage stays above the 90% minimum for
       `Predicator.Conformance.Values`.
 
 #### Manual Verification:
@@ -1231,5 +1231,24 @@ items.
 **Implementation Note**: Loop gate between edits, full `mix quality` as the phase
 gate. This phase changes no Elixir behavior, but it does add doctests via
 `docs_examples_test.exs`, so the gate is meaningful.
+
+---
+
+### Phase 4
+
+- [ ] Hand-decode `core/null-strict-eq-undefined` out of the generated
+      `conformance/corpus/tier-1.json` and confirm a sibling implementer reading
+      only `conformance/README.md` would decode the bare `null` correctly and
+      not conflate it with `{"$type": "undefined"}`.
+- [ ] The commit message and PR body explain the corpus diff and the
+      `corpus_hash` rotation (ADR-0003).
+- [ ] `conformance/RATCHET.md`'s carve-out sentence is unambiguous read cold.
+
+**Implementation Note**: Loop gate between edits, full `mix quality` as the phase
+gate. This phase's sabotage-note obligation is already satisfied: every test it
+touches (`values_test.exs`, `corpus_freshness_test.exs`,
+`schema_validation_test.exs`) is already listed in `gate.sabotage.test_roots` in
+`.claude/wurk.json`, and this phase adds no test file. No `test_roots` edit is
+needed - confirm that before committing.
 
 ---

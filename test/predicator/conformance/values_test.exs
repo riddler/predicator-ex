@@ -6,8 +6,8 @@ defmodule Predicator.Conformance.ValuesTest do
   alias Predicator.Conformance.Values
 
   # Every ISA value type (docs/isa.md section 3), plus nested lists and maps,
-  # a duration with and without milliseconds, and :undefined - the exact set
-  # Phase 2's success criteria names for the round-trip property.
+  # a duration with and without milliseconds, and :undefined and null - the
+  # exact set Phase 2's success criteria names for the round-trip property.
   @round_trip_values [
     42,
     -7,
@@ -29,7 +29,10 @@ defmodule Predicator.Conformance.ValuesTest do
     Predicator.Duration.new(days: 3, hours: 8, minutes: 30),
     Predicator.Duration.new(seconds: 1, milliseconds: 500),
     Predicator.Duration.new(),
-    :undefined
+    :undefined,
+    nil,
+    [1, nil, 3],
+    %{"present" => nil, "absent" => :undefined}
   ]
 
   describe "round-trip: from_json(to_json(v)) == {:ok, v}, for every canonical value" do

@@ -90,5 +90,49 @@
     "source": "undefined == undefined",
     "expected": { "result": { "$type": "undefined" } },
     "notes": "the non-strict operators propagate :undefined rather than answering (docs/reference/language.md, reject vs. propagate) - === is the boundness test, == is not"
+  },
+  {
+    "id": "core/null-strict-eq-undefined",
+    "source": "x === undefined",
+    "context": { "x": null },
+    "expected": { "result": false },
+    "notes": "px-o9v: null and undefined are distinct values - === answers false rather than treating a bound null the same as an absent binding. There is no null literal in the grammar, so the null comes from context rather than a source spelling"
+  },
+  {
+    "id": "core/null-strict-eq-null",
+    "source": "x === y",
+    "context": { "x": null, "y": null },
+    "expected": { "result": true },
+    "notes": "px-o9v: null === null mirrors undefined === undefined"
+  },
+  {
+    "id": "core/null-eq-undefined-propagates",
+    "source": "x == undefined",
+    "context": { "x": null },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "px-o9v: == is a typed comparison and null has no type peer, so every non-strict comparison involving null propagates :undefined rather than answering - by exact symmetry with undefined == undefined"
+  },
+  {
+    "id": "core/null-eq-null-propagates",
+    "source": "x == y",
+    "context": { "x": null, "y": null },
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "px-o9v: null == null is :undefined, not true - null has no ordering and no == peer, unlike null === null (core/null-strict-eq-null)"
+  },
+  {
+    "id": "core/null-is-falsy-at-jump",
+    "source": "x and true",
+    "context": { "x": null },
+    "expected": { "result": null },
+    "notes": "px-o9v: null is falsy at a jump, joining false and :undefined - x short-circuits the AND and its own value (null) is the result, true is never evaluated"
+  },
+  {
+    "id": "core/null-rejected-by-not",
+    "source": "not x",
+    "context": { "x": null },
+    "expected": {
+      "error": { "type": "TypeMismatchError", "reason": "logical_not" }
+    },
+    "notes": "px-o9v: null is falsy at a jump but not is not a jump - not, unary_bang, unary_minus, and the arithmetic opcodes all reject null with a TypeMismatchError, the same as every non-boolean, non-jump operand"
   }
 ]

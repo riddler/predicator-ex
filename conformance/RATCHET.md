@@ -225,7 +225,11 @@ run(surface, tier_n):
 
 The pieces that do not fit in the pseudocode itself: `decode` points at
 [`conformance/README.md`](README.md)'s tagged-value table (`$type` of `date`,
-`datetime`, `duration`, `undefined`; everything else decodes as itself).
+`datetime`, `duration`, `undefined`; everything else decodes as itself). A
+bare JSON `null` is part of that "everything else": it decodes as itself, to
+predicator's null value, never to `:undefined` - a reference runner that maps
+a JSON `null` to its own undefined sentinel disagrees with the corpus and must
+not do so.
 `compare_value` checks `expected_result` structurally, or - when the case
 expects an error - `expected_error`'s `type` and `reason` fields, never the
 human-readable message. `compare_instructions` compares the compiler's output
