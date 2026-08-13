@@ -17,13 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ordering operators) yields `:undefined`, since null has no type peer; and
   `===`/`!==` and membership (`in`/`contains`) answer a plain boolean about
   it by identity - `null === null` is `true`, `null in [null]` is `true`.
-  There is no source spelling for null (no `null` keyword) - it enters only
-  through a host-supplied context, a nested access, or a function return.
-  See `docs/isa.md` §2, §3, and §5 for the full semantics. **The ISA version
-  does not move**: no opcode name changed and no *instruction-list* operand
-  form widened - null enters only at the host/context boundary, which §3
-  governs and §1's versioning rule does not (the same shape as the
-  `undefined` literal in 5.0.0).
+  It enters through a host-supplied context, a nested access, a function
+  return, or the `null` literal below. See `docs/isa.md` §2, §3, and §5 for
+  the full semantics. **The ISA version does not move**: no opcode name
+  changed and no *instruction-list* operand form widened - the value half of
+  this change enters only at the host/context boundary, which §3 governs
+  and §1's versioning rule does not (the same shape as the `undefined`
+  literal in 5.0.0).
+- **A `null` literal.** `null` is now a literal keyword: `x === null`
+  compiles to `[["load","x"],["lit",nil],["compare","STRICT_EQ"]]` and
+  answers the question the bullet above made answerable. Null's semantics
+  are unchanged (the bullet above); this is a spelling. **The ISA version
+  does not move** - §3's value domain already admitted null and §5's `lit`
+  already accepted it, so no opcode name changed and no instruction list a
+  conformant v6 build must run changed; surface syntax is outside the ISA
+  (§6), the same shape as the `undefined` literal in 5.0.0.
 
 ### Documentation
 
@@ -62,6 +70,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   result, since the context boundary rewrote every `nil` before it could be
   loaded. A caller that matches exhaustively on result values should add a
   `nil` clause.
+- **BREAKING: `null` is a reserved word.** The lexer now classifies it as a
+  literal keyword rather than a plain identifier. The silent case first,
+  because it is the one a grep will not find on its own: a predicate that
+  used `null` as a variable name in expression position does not fail - it
+  changes answer. `x === null` used to compile to
+  `[["load","x"],["load","null"],["compare","STRICT_EQ"]]` and load a
+  phantom variable named `null`, which yielded `:undefined` under the
+  default `on_unbound` policy and made the comparison `false` for a bound
+  null; it now compiles to `[["load","x"],["lit",nil],["compare","STRICT_EQ"]]`
+  and answers `true`. Anyone with a context key literally named `"null"`
+  stops reading it, and no automated check finds this - a consumer must grep
+  their stored predicates for `null` as a bare name. Then the loud cases,
+  which are self-announcing: a predicate that used `null` as a variable name
+  (`null = 3`), a bare property name (`user.null`), or a bare object key
+  (`{null: 1}`) is now a parse error. The fix is renaming the variable or,
+  for an object key, quoting it (`{"null": 1}`, which still parses). Only
+  the lowercase spelling is reserved - `NULL` and `Null` stay ordinary
+  identifiers. The Ruby and JavaScript lexers do not adopt a grammar break
+  automatically, so this is a deliberate, documented surface-syntax
+  divergence until they adopt it on their own schedule (ADR-0002's sibling
+  consequence, ADR-0003).
 
 ### Fixed
 

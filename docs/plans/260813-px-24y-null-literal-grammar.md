@@ -873,18 +873,18 @@ explicitly, so a reviewer does not read the absence as an oversight.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full `mix quality` is green - `test/predicator/isa_sync_test.exs` and
+- [x] Full `mix quality` is green - `test/predicator/isa_sync_test.exs` and
       `test/docs_adr_links_test.exs` in particular.
-- [ ] `test/predicator/isa_sync_test.exs` passes with **no edit to it**, and
+- [x] `test/predicator/isa_sync_test.exs` passes with **no edit to it**, and
       `git diff docs/isa.md` shows no change to line 62's
       `Current version: **ISA v6**.`, to §4's tables, or to §7's table.
-- [ ] `git diff mix.exs` is empty; `grep -n '@version' mix.exs` still reports
+- [x] `git diff mix.exs` is empty; `grep -n '@version' mix.exs` still reports
       `5.0.0`.
-- [ ] `grep -n 'no source spelling' docs/isa.md` returns nothing.
-- [ ] `grep -n 'no source spelling for null' CHANGELOG.md` returns nothing -
+- [x] `grep -n 'no source spelling' docs/isa.md` returns nothing.
+- [x] `grep -n 'no source spelling for null' CHANGELOG.md` returns nothing -
       px-o9v's still-unreleased bullet no longer contradicts the entry below
       it.
-- [ ] `CHANGELOG.md` has no new version header - the only heading touched is
+- [x] `CHANGELOG.md` has no new version header - the only heading touched is
       `## [Unreleased]`.
 
 #### Manual Verification:
@@ -1013,6 +1013,30 @@ items are deferred and surfaced once at the end instead of blocking here.
 - [ ] A sibling reading `core/literal-null` can tell from `instructions` and
       `notes` that no new opcode is involved and that its lexer, not its VM, is
       what needs work to pass.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits and
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 3
+
+- [ ] §1's rewritten bullet still states a rule someone could apply to a future
+      change, rather than a list of past cases. Re-read it against §1's
+      opcode-name sentence at `:29-32` and confirm the two agree.
+- [ ] §3's null paragraph and §5's `lit` entry now agree with each other and
+      with §6; no sentence anywhere in `docs/isa.md` still says null cannot be
+      written or cannot appear in a stored artifact.
+- [ ] The changelog's BREAKING entry leads with the silent case, not the loud
+      one - the loud cases are self-announcing and the silent one is what a
+      reader needs to be told.
+- [ ] The PR body carries the scheduling reasoning: the reservation is
+      implemented and marked breaking, no version was bumped, and the bump
+      remains a human decision.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits and
 full `mix quality` as the phase gate. In interactive execution, pause here for
