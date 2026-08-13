@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- **`docs/isa.md` states what happens to an instruction list stored as plain
+  JSON.** Section 3 gains "Crossing a plain-JSON boundary": four of the value
+  domain's ten types - `Date`, `DateTime`, duration, and `:undefined` - have
+  no JSON-native form, so a `lit` operand carrying one decodes back as a
+  string or a plain map, with no error on either side of the trip. The ISA
+  defines no envelope and will not - section 6 now says so beside the other
+  things it does not define - but the note names the two approaches that
+  work: the conformance corpus's tagged-value encoding, recommended and
+  pointed at rather than published as an API, and persisting the source to
+  recompile on load. **No ISA version change and no code change**: all four
+  types have been in the value domain since v1, and nothing in `lib/`
+  serializes an instruction list. See
+  `docs/research/260813-px-a2w-plain-json-round-trip.md` for why promoting
+  the corpus codec into a supported serialization API was weighed and
+  rejected.
+
 ## [5.0.0] - 2026-08-12
 
 ### Added

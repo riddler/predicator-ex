@@ -176,6 +176,54 @@ defaulting to `0`, plus an optional `milliseconds` key present only when a
 How these values cross a language boundary in the conformance corpus's
 tagged-value JSON encoding is `px-35i.4`'s concern, not restated here.
 
+### Crossing a plain-JSON boundary
+
+Six of those ten types are JSON's own - integer, float, string, boolean,
+list, map - and survive a JSON round trip unchanged. **The other four do
+not**, and because a `lit` operand may be any of them, an instruction list
+written out as plain JSON and read back is not necessarily the list that was
+written:
+
+| Value | Plain-JSON encoding | What it decodes back as |
+|---|---|---|
+| `Date` | `"2026-08-06"` | a string |
+| `DateTime` | `"2026-08-06T12:00:00Z"` | a string |
+| duration | `{"years":0,"days":3,...}` | a map |
+| `:undefined` | `"undefined"` | a string |
+
+Each right-hand value is itself a member of the domain above, so **the loss
+is silent in both directions**: the encode succeeds, the decode yields a
+well-formed instruction, and the program runs. It runs a different program.
+`["lit", :undefined]` stored and reloaded is `["lit", "undefined"]`, which
+turns the boundness test `x === undefined` into a string comparison that is
+always `false`. Nothing raises, and no version check catches it - the list
+requires the same ISA version either way, because no opcode changed.
+
+This is not new with any particular version. `Date`, `DateTime`, and duration
+have been in the domain since v1; `:undefined` joined the list of *spellings*
+in 5.0.0 without joining the domain, which it was already in (§6).
+
+**The ISA defines no envelope for this, and does not intend to.** Section 2's
+wire format is a plain JSON array and stays one; an envelope is something a
+consumer wraps around that array, and the right choice depends on the store -
+a consumer persisting to a JSON column has the problem, one persisting the
+source text or a language-native binary term does not have it at all. Two
+approaches work:
+
+- **The conformance corpus's tagged-value encoding**, specified in
+  [`conformance/README.md`](../conformance/README.md), carries exactly these
+  four as `{"$type": ...}` objects and is the encoding to reach for. It is
+  recommended, not normative outside the corpus: it is corpus apparatus, not
+  a published API, and a consumer adopting it copies it rather than calls it.
+  Its one caveat travels with it - a genuine predicator map containing a
+  literal `"$type"` key is ambiguous with the tag namespace, and the corpus
+  codec rejects such a map rather than emit a tag that would decode wrong.
+- **Persist the source and recompile on load.** Recompiling the same source
+  is deterministic, so this loses nothing, and it is already the recommended
+  way to get a position table back after a round trip
+  (`Predicator.Compiled`, ADR-0009). It costs a compile per load, which is
+  the trade against storing a compiled artifact at all.
+
 ## 4. The opcode table
 
 One row per opcode the ISA has ever contained, including opcodes the
@@ -681,6 +729,10 @@ What a reader might expect to find here and will not:
   spelling attaches to no opcode name and moves no version.
 - The builtin function set - see
   [Language Reference](reference/language.md).
+- A serialization envelope. Four of §3's value types cannot round-trip
+  through plain JSON, and choosing what to do about that is the consumer's
+  call, not the ISA's - see "Crossing a plain-JSON boundary" in §3 for the
+  four types and for the two approaches that work.
 - Absolute jumps. Every jump in the ISA is relative. Backward jumps entered
   at v6 as exactly one opcode, `jump_backward` - see §5.
 
