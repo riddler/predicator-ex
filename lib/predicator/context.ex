@@ -23,8 +23,8 @@ defmodule Predicator.Context do
 
   `host` is an opaque carrier for whatever a function provider needs at call
   time - a database connection, a request struct, a tenant id. It is stored
-  exactly as given, with no normalization: unlike `data`, atom keys and `nil`
-  values inside a `host` term are never touched. It is never readable from
+  exactly as given, with no normalization: unlike `data`, atom keys inside a
+  `host` term are never touched. It is never readable from
   predicate text - there is no syntax that reaches it - and it is never
   merged into `data`. Set it with `new/2`'s `:host` option or `put_host/2`.
 
@@ -40,7 +40,7 @@ defmodule Predicator.Context do
       {:ok, 90}
   """
 
-  alias Predicator.{ContextLocation, Evaluator, FunctionProvider, Types, Undefined}
+  alias Predicator.{ContextLocation, Evaluator, FunctionProvider, Types}
 
   @typedoc """
   Policy for a load of an unbound root variable.
@@ -94,12 +94,13 @@ defmodule Predicator.Context do
     - `:host` - default `nil` - see the "The `host` slot" section above
 
   `data` is normalized deeply before it is stored: atom keys become string
-  keys (a string key wins if both are present at the same level) and `nil`
-  values become the `:undefined` sentinel, recursing through nested maps and
-  lists. `Date`, `DateTime`, and any other struct pass through unchanged.
+  keys (a string key wins if both are present at the same level), recursing
+  through nested maps and lists. `Date`, `DateTime`, and any other struct
+  pass through unchanged. `nil` is preserved as-is - it is the null value,
+  distinct from the `:undefined` sentinel; see `docs/reference/language.md`.
 
   `host`, by contrast, is stored exactly as given - no normalization, atom
-  keys and `nil`s intact.
+  keys intact.
 
   ## Examples
 
@@ -107,7 +108,11 @@ defmodule Predicator.Context do
       %{"x" => 1}
 
       iex> Predicator.Context.new(%{user: %{name: nil}}).data
-      %{"user" => %{"name" => :undefined}}
+      %{"user" => %{"name" => nil}}
+
+      iex> context = Predicator.Context.new(%{"x" => nil})
+      iex> {Predicator.Context.bound?(context, "x"), Predicator.evaluate("x === undefined", context)}
+      {true, {:ok, false}}
 
       iex> Predicator.Context.new().on_unbound
       :undefined
@@ -215,9 +220,10 @@ defmodule Predicator.Context do
   `data` is already normalized from construction or a prior `bind/3`).
 
   `value` is normalized the same way `new/2` normalizes `data`: atom keys
-  become string keys (string keys win on collision) and `nil` becomes
-  `:undefined`, recursing through nested maps and lists; structs pass through
-  unchanged.
+  become string keys (string keys win on collision), recursing through
+  nested maps and lists; structs pass through unchanged. `nil` is preserved
+  as-is - it is the null value, distinct from the `:undefined` sentinel; see
+  `docs/reference/language.md`.
 
   `functions`, `on_unbound`, and `host` are carried over unchanged.
 
@@ -229,7 +235,7 @@ defmodule Predicator.Context do
 
       iex> context = Predicator.Context.new(%{})
       iex> Predicator.Context.bind(context, "user", %{name: nil}).data
-      %{"user" => %{"name" => :undefined}}
+      %{"user" => %{"name" => nil}}
   """
   @spec bind(t(), binary(), Types.value()) :: t()
   def bind(%__MODULE__{data: data} = context, name, value) when is_binary(name) do
@@ -287,7 +293,8 @@ defmodule Predicator.Context do
   through `Predicator.ContextLocation.put/3` - the same auto-vivifying write
   algorithm as `Predicator.context_assign/4` and the future `store` opcode
   (`px-tbv.2`). `functions`, `on_unbound`, and `host` are carried over
-  unchanged.
+  unchanged. `value` is stored verbatim, the same as `bind/3` stores a
+  scalar.
 
   ## Examples
 
@@ -318,14 +325,14 @@ defmodule Predicator.Context do
     ContextLocation.resolve_expression(expression, data)
   end
 
-  # Deeply converts `nil` to `Undefined.value()` and, for plain maps, atom
-  # keys to string keys (string keys win on collision), recursing through
-  # nested maps and lists. Structs (`Date`, `DateTime`, and any other) pass
-  # through unchanged - `is_map/1` is true for structs too, which is why the
-  # struct clause must come before the plain-map clause below.
+  # Deeply converts, for plain maps, atom keys to string keys (string keys
+  # win on collision), recursing through nested maps and lists. Structs
+  # (`Date`, `DateTime`, and any other) pass through unchanged - `is_map/1`
+  # is true for structs too, which is why the struct clause must come before
+  # the plain-map clause below. `nil` falls through the scalar catch-all
+  # unchanged, along with `:undefined` itself, which a host may still bind
+  # explicitly.
   @spec normalize_value(term()) :: term()
-  defp normalize_value(nil), do: Undefined.value()
-
   defp normalize_value(list) when is_list(list) do
     Enum.map(list, &normalize_value/1)
   end

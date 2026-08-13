@@ -139,10 +139,10 @@ defmodule Predicator.ContextTest do
       assert context.data == %{"user" => %{"name" => "Jane"}}
     end
 
-    test "deeply converts nil to :undefined in nested maps" do
+    test "deeply converts atom keys to string keys in nested maps and nil survives" do
       context = Context.new(%{user: %{name: nil}})
 
-      assert context.data == %{"user" => %{"name" => :undefined}}
+      assert context.data == %{"user" => %{"name" => nil}}
     end
 
     test "prefers a string key over a same-named atom key at a nested level" do
@@ -151,10 +151,10 @@ defmodule Predicator.ContextTest do
       assert context.data == %{"user" => %{"name" => "Ada"}}
     end
 
-    test "converts atom keys and nil inside a list of maps" do
+    test "converts atom keys inside a list of maps and nil survives" do
       context = Context.new(%{items: [%{label: "a"}, %{label: nil}]})
 
-      assert context.data == %{"items" => [%{"label" => "a"}, %{"label" => :undefined}]}
+      assert context.data == %{"items" => [%{"label" => "a"}, %{"label" => nil}]}
     end
 
     test "passes a Date value through unchanged" do
@@ -287,11 +287,11 @@ defmodule Predicator.ContextTest do
       assert bound.on_unbound == :error
     end
 
-    test "normalizes the bound value's atom keys and nil" do
+    test "normalizes the bound value's atom keys and preserves nil" do
       context = Context.new(%{})
       bound = Context.bind(context, "user", %{role: nil})
 
-      assert bound.data == %{"user" => %{"role" => :undefined}}
+      assert bound.data == %{"user" => %{"role" => nil}}
     end
 
     test "preserves host" do
@@ -346,12 +346,10 @@ defmodule Predicator.ContextTest do
       assert Context.bound?(context, "score")
     end
 
-    test "true for a string key bound to nil, eagerly normalized to :undefined" do
-      # Presence, not definedness. px-8um.2 normalizes nil -> :undefined
-      # eagerly at Context.new/2, so `data` already holds :undefined by the
-      # time bound?/2 or evaluate/3 ever sees it.
+    test "true for a string key bound to nil, which stays null" do
+      # Presence, not definedness.
       context = Context.new(%{"x" => nil})
-      assert context.data == %{"x" => :undefined}
+      assert context.data == %{"x" => nil}
       assert Context.bound?(context, "x")
       assert Predicator.evaluate("x > 5", context) == {:ok, :undefined}
     end
@@ -441,6 +439,57 @@ defmodule Predicator.ContextTest do
       }
 
       assert Evaluator.evaluate_prepared(evaluator) == 42
+    end
+  end
+
+  describe "null is not undefined (px-o9v)" do
+    test "new/2 stores a top-level nil verbatim" do
+      assert Context.new(%{"x" => nil}).data == %{"x" => nil}
+    end
+
+    test "bind/3 stores nil verbatim" do
+      context = Context.new(%{})
+      assert Context.bind(context, "x", nil).data == %{"x" => nil}
+    end
+
+    test "assign/3 stores nil the same way bind/3 stores it nested" do
+      context = Context.new(%{})
+      assert {:ok, assigned} = Context.assign(context, "user.name", nil)
+
+      bound = Context.bind(context, "user", %{"name" => nil})
+
+      assert assigned.data == bound.data
+      assert assigned.data == %{"user" => %{"name" => nil}}
+    end
+
+    test "a host can still explicitly bind :undefined" do
+      assert Context.new(%{"x" => :undefined}).data == %{"x" => :undefined}
+    end
+
+    test "a nil-bound key and an unbound key are distinguishable via bound?/2" do
+      with_nil = Context.new(%{"x" => nil})
+      without = Context.new(%{})
+
+      assert Context.bound?(with_nil, "x")
+      refute Context.bound?(without, "x")
+    end
+
+    test "a nil-bound key and a genuinely unbound key are distinguishable via evaluate/2" do
+      with_nil = Context.new(%{"x" => nil}, on_unbound: :error)
+      without = Context.new(%{}, on_unbound: :error)
+
+      assert Predicator.evaluate("x === undefined", with_nil) == {:ok, false}
+
+      assert {:error, %Predicator.Errors.UndefinedVariableError{}} =
+               Predicator.evaluate("x === undefined", without)
+    end
+
+    test "a nested null is not undefined, but a genuinely missing nested key is" do
+      with_null = Context.new(%{"user" => %{"name" => nil}})
+      without = Context.new(%{"user" => %{}})
+
+      assert Predicator.evaluate("user.name === undefined", with_null) == {:ok, false}
+      assert Predicator.evaluate("user.name === undefined", without) == {:ok, true}
     end
   end
 end

@@ -125,14 +125,16 @@ defmodule Predicator.Integration.OnUnboundTest do
              ) == {:ok, true}
     end
 
-    test "x === undefined with x bound to nil is true under either policy - Context normalizes nil" do
-      assert Predicator.evaluate("x === undefined", %{"x" => nil}) == {:ok, true}
+    test "x === undefined with x bound to nil is false under either policy - null is not undefined" do
+      assert Predicator.evaluate("x === undefined", %{"x" => nil}) == {:ok, false}
 
+      # Under :error, x is present (bound to nil), so the load does not count
+      # as unbound and no UndefinedVariableError fires.
       assert Predicator.evaluate(
                "x === undefined",
                Context.new(%{"x" => nil}, on_unbound: :error)
              ) ==
-               {:ok, true}
+               {:ok, false}
     end
 
     test "x === undefined with x bound to 1 is false under either policy" do
