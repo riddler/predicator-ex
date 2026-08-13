@@ -633,12 +633,12 @@ former crash sites gets an explicit assertion that the result is a
       changes no `Context` behavior.
 
 #### Manual Verification:
-- [ ] `Predicator.Evaluator.evaluate([["load","x"],["not"]], %{"x" => nil})`
+- [x] `Predicator.Evaluator.evaluate([["load","x"],["not"]], %{"x" => nil})`
       returns a `TypeMismatchError` naming `:null`, not a crash.
-- [ ] A short-circuit over a null reads correctly:
+- [x] A short-circuit over a null reads correctly:
       `Predicator.Evaluator.evaluate/3` on `"flag AND other"`-shaped
       instructions with `%{"flag" => nil}` short-circuits rather than erroring.
-- [ ] No regressions in `:undefined`'s own behavior anywhere in the suite.
+- [x] No regressions in `:undefined`'s own behavior anywhere in the suite.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
 full `mix quality` as the phase gate. In interactive execution, pause here for
@@ -777,14 +777,14 @@ present.
       that proves it).
 
 #### Manual Verification:
-- [ ] `Predicator.evaluate("x === undefined", Predicator.Context.new(%{"x" => nil}))`
+- [x] `Predicator.evaluate("x === undefined", Predicator.Context.new(%{"x" => nil}))`
       returns `{:ok, false}`, and the same predicate against `Context.new(%{})`
       returns an `UndefinedVariableError`. This is acceptance criterion (a),
       confirmed by hand.
-- [ ] A decoded JSON payload works end to end without host-side conversion:
+- [x] A decoded JSON payload works end to end without host-side conversion:
       `Jason.decode!(~s({"foo": null, "bar": 1}))` bound with `bind/3`, then
       `_event.data.foo === undefined`-shaped access, answers `false`.
-- [ ] No regression in `on_unbound: :error` for a genuinely absent root.
+- [x] No regression in `on_unbound: :error` for a genuinely absent root.
 
 **Implementation Note**: Use the loop gate between edits, full `mix quality` as
 the phase gate. Interactive execution pauses here; `--loop` defers the manual
@@ -908,13 +908,13 @@ is not otherwise touched.
       `### Added`, and `### Fixed`.
 
 #### Manual Verification:
-- [ ] Read `docs/isa.md` §5 end to end: every entry that names `:undefined` also
+- [x] Read `docs/isa.md` §5 end to end: every entry that names `:undefined` also
       names null, and no entry states a rule the evaluator does not implement.
       Cross-check against D4's table.
-- [ ] The new language-reference subsection is usable by someone who has never
+- [x] The new language-reference subsection is usable by someone who has never
       read this plan: it answers "how do I put a null in a context", "how does a
       predicate tell null from undefined", and "why can't I write `null`".
-- [ ] The `### Changed` changelog entry is honest about the flipped answer and
+- [x] The `### Changed` changelog entry is honest about the flipped answer and
       states the migration.
 
 **Implementation Note**: Loop gate between edits, full `mix quality` as the phase
@@ -1048,13 +1048,13 @@ pin needs re-verification against the new hash. Point at
       `Predicator.Conformance.Values`.
 
 #### Manual Verification:
-- [ ] Hand-decode `core/null-strict-eq-undefined` out of the generated
+- [x] Hand-decode `core/null-strict-eq-undefined` out of the generated
       `conformance/corpus/tier-1.json` and confirm a sibling implementer reading
       only `conformance/README.md` would decode the bare `null` correctly and
       not conflate it with `{"$type": "undefined"}`.
-- [ ] The commit message and PR body explain the corpus diff and the
+- [x] The commit message and PR body explain the corpus diff and the
       `corpus_hash` rotation (ADR-0003).
-- [ ] `conformance/RATCHET.md`'s carve-out sentence is unambiguous read cold.
+- [x] `conformance/RATCHET.md`'s carve-out sentence is unambiguous read cold.
 
 **Implementation Note**: Loop gate between edits, full `mix quality` as the phase
 gate. This phase's sabotage-note obligation is already satisfied: every test it
@@ -1180,14 +1180,37 @@ Manual verification items are deferred during looped (--loop) execution and
 surfaced here once, rather than blocking after each phase. Confirm these
 before considering the plan fully landed.
 
+**All items confirmed on 2026-08-13** against the built code at `18cf92e`,
+with two results the boxes alone do not carry:
+
+- **Phase 2's first item is wrong as written.** It predicts an
+  `UndefinedVariableError` for `Context.new(%{})`, but `on_unbound` defaults
+  to `:undefined`, so that case answers `{:ok, true}`; the error appears only
+  under `on_unbound: :error`. Acceptance criterion (a) holds either way -
+  `{:ok, false}` for a bound null against `{:ok, true}` for an absent key is
+  the distinction the bead asked for - but the item misdescribes the default.
+- **Two gaps were found and closed in `7d631fc`**, neither of which any item
+  named. First, `null` is not a reserved word, so `x === null` lexes as an
+  identifier, compiles to `[["load","x"],["load","null"],["compare","STRICT_EQ"]]`,
+  and quietly answers `false`; `docs/reference/language.md` said no null
+  literal exists but not what happens to someone who writes one anyway, and
+  now pins both the compiled form and the `on_unbound: :error` variant as
+  doctests. Second, `Predicator.evaluate/3` can now return `{:ok, nil}` at the
+  top level, which no evaluation could produce before; the `### Changed`
+  changelog entry now says so, since that is where a host reads for migration.
+
+Phase 3's §5 item was confirmed by executing all fifteen semantic claims
+`docs/isa.md` §5 makes about null against the evaluator, not by reading alone.
+Phase 4's PR-body half is carried by the request opened for this branch.
+
 ### Phase 1
 
-- [ ] `Predicator.Evaluator.evaluate([["load","x"],["not"]], %{"x" => nil})`
+- [x] `Predicator.Evaluator.evaluate([["load","x"],["not"]], %{"x" => nil})`
       returns a `TypeMismatchError` naming `:null`, not a crash.
-- [ ] A short-circuit over a null reads correctly:
+- [x] A short-circuit over a null reads correctly:
       `Predicator.Evaluator.evaluate/3` on `"flag AND other"`-shaped
       instructions with `%{"flag" => nil}` short-circuits rather than erroring.
-- [ ] No regressions in `:undefined`'s own behavior anywhere in the suite.
+- [x] No regressions in `:undefined`'s own behavior anywhere in the suite.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
 full `mix quality` as the phase gate. In interactive execution, pause here for
@@ -1202,14 +1225,14 @@ rather than `top == nil` - credo prefers it and it reads unambiguously.
 
 ### Phase 2
 
-- [ ] `Predicator.evaluate("x === undefined", Predicator.Context.new(%{"x" => nil}))`
+- [x] `Predicator.evaluate("x === undefined", Predicator.Context.new(%{"x" => nil}))`
       returns `{:ok, false}`, and the same predicate against `Context.new(%{})`
       returns an `UndefinedVariableError`. This is acceptance criterion (a),
       confirmed by hand.
-- [ ] A decoded JSON payload works end to end without host-side conversion:
+- [x] A decoded JSON payload works end to end without host-side conversion:
       `Jason.decode!(~s({"foo": null, "bar": 1}))` bound with `bind/3`, then
       `_event.data.foo === undefined`-shaped access, answers `false`.
-- [ ] No regression in `on_unbound: :error` for a genuinely absent root.
+- [x] No regression in `on_unbound: :error` for a genuinely absent root.
 
 **Implementation Note**: Use the loop gate between edits, full `mix quality` as
 the phase gate. Interactive execution pauses here; `--loop` defers the manual
@@ -1219,13 +1242,13 @@ items.
 
 ### Phase 3
 
-- [ ] Read `docs/isa.md` §5 end to end: every entry that names `:undefined` also
+- [x] Read `docs/isa.md` §5 end to end: every entry that names `:undefined` also
       names null, and no entry states a rule the evaluator does not implement.
       Cross-check against D4's table.
-- [ ] The new language-reference subsection is usable by someone who has never
+- [x] The new language-reference subsection is usable by someone who has never
       read this plan: it answers "how do I put a null in a context", "how does a
       predicate tell null from undefined", and "why can't I write `null`".
-- [ ] The `### Changed` changelog entry is honest about the flipped answer and
+- [x] The `### Changed` changelog entry is honest about the flipped answer and
       states the migration.
 
 **Implementation Note**: Loop gate between edits, full `mix quality` as the phase
@@ -1236,13 +1259,13 @@ gate. This phase changes no Elixir behavior, but it does add doctests via
 
 ### Phase 4
 
-- [ ] Hand-decode `core/null-strict-eq-undefined` out of the generated
+- [x] Hand-decode `core/null-strict-eq-undefined` out of the generated
       `conformance/corpus/tier-1.json` and confirm a sibling implementer reading
       only `conformance/README.md` would decode the bare `null` correctly and
       not conflate it with `{"$type": "undefined"}`.
-- [ ] The commit message and PR body explain the corpus diff and the
+- [x] The commit message and PR body explain the corpus diff and the
       `corpus_hash` rotation (ADR-0003).
-- [ ] `conformance/RATCHET.md`'s carve-out sentence is unambiguous read cold.
+- [x] `conformance/RATCHET.md`'s carve-out sentence is unambiguous read cold.
 
 **Implementation Note**: Loop gate between edits, full `mix quality` as the phase
 gate. This phase's sabotage-note obligation is already satisfied: every test it
