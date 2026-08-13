@@ -96,7 +96,7 @@
     "source": "x === undefined",
     "context": { "x": null },
     "expected": { "result": false },
-    "notes": "px-o9v: null and undefined are distinct values - === answers false rather than treating a bound null the same as an absent binding. There is no null literal in the grammar, so the null comes from context rather than a source spelling"
+    "notes": "px-o9v: null and undefined are distinct values - === answers false rather than treating a bound null the same as an absent binding. This case deliberately sources its null from context rather than a literal spelling; see core/literal-null-strict-eq-undefined for the literal path"
   },
   {
     "id": "core/null-strict-eq-null",
@@ -134,5 +134,29 @@
       "error": { "type": "TypeMismatchError", "reason": "logical_not" }
     },
     "notes": "px-o9v: null is falsy at a jump but not is not a jump - not, unary_bang, unary_minus, and the arithmetic opcodes all reject null with a TypeMismatchError, the same as every non-boolean, non-jump operand"
+  },
+  {
+    "id": "core/literal-null",
+    "source": "null",
+    "expected": { "result": null },
+    "notes": "the null literal (px-24y): a source spelling for a lit operand the ISA's value domain already admitted (docs/isa.md section 3, widened by px-o9v), so no ISA version moves - surface syntax is outside the ISA (section 6). This is the first case in which a compiled artifact carries [\"lit\", null]"
+  },
+  {
+    "id": "core/literal-null-strict-eq-null",
+    "source": "null === null",
+    "expected": { "result": true },
+    "notes": "px-24y: the literal form of core/null-strict-eq-null, which sources both operands from context"
+  },
+  {
+    "id": "core/literal-null-strict-eq-undefined",
+    "source": "null === undefined",
+    "expected": { "result": false },
+    "notes": "px-24y: null and undefined are distinct values, now assertable entirely from source with no context at all"
+  },
+  {
+    "id": "core/literal-null-eq-null-propagates",
+    "source": "null == null",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "px-24y: == is a typed comparison and null has no type peer, so it propagates :undefined rather than answering - unchanged by the literal (px-o9v D2)"
   }
 ]

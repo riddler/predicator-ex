@@ -2,7 +2,7 @@
 "claims": [
 {"surface":"evaluator","tier":1}
 ],
-"corpus_hash": "sha256:f6032ebdef93265a8852942bb91f91348375ca08d1d8b222398144c39c413ed8",
+"corpus_hash": "sha256:3b890d4861d712e3410e7031470a224fed77a2211bc89953bbcc2396a7144a2e",
 "entries": [
 {"case_id":"comparison/eq-string-true","surface":"compiler","tier":1},
 {"case_id":"comparison/gt-int-boundary","surface":"compiler","tier":1},
@@ -29,6 +29,10 @@
 {"case_id":"comparison/strict-ne-list-true","surface":"evaluator","tier":1},
 {"case_id":"comparison/type-mismatch-is-undefined-not-error","surface":"evaluator","tier":1},
 {"case_id":"core/literal-integer","surface":"evaluator","tier":1},
+{"case_id":"core/literal-null","surface":"evaluator","tier":1},
+{"case_id":"core/literal-null-eq-null-propagates","surface":"evaluator","tier":1},
+{"case_id":"core/literal-null-strict-eq-null","surface":"evaluator","tier":1},
+{"case_id":"core/literal-null-strict-eq-undefined","surface":"evaluator","tier":1},
 {"case_id":"core/literal-true","surface":"evaluator","tier":1},
 {"case_id":"core/literal-undefined","surface":"evaluator","tier":1},
 {"case_id":"core/null-eq-null-propagates","surface":"evaluator","tier":1},
