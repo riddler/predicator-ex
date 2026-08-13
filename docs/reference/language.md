@@ -919,6 +919,31 @@ iex> Predicator.evaluate("x === undefined", %{"x" => nil})
 {:ok, false}
 ```
 
+**Writing `null` anyway does not fail - it reads a variable.** `null` is not
+a reserved word, so it lexes as an ordinary identifier and compiles to a
+`load`, exactly like any other bare name. Under the default `on_unbound`
+policy that load yields `:undefined`, so `x === null` quietly answers
+`false` for a variable genuinely bound to null - the comparison that looks
+like it asks the question is really `null === undefined`:
+
+```elixir
+iex> Predicator.compile("x === null")
+{:ok, [["load", "x"], ["load", "null"], ["compare", "STRICT_EQ"]]}
+iex> Predicator.evaluate("x === null", %{"x" => nil})
+{:ok, false}
+```
+
+Use `x === undefined` and read the answer inverted, as above. Evaluating
+under `on_unbound: :error` turns the silent case loud, since the phantom
+`null` variable is then an `UndefinedVariableError` naming it:
+
+```elixir
+iex> {:error, err} =
+...>   Predicator.evaluate("x === null", Predicator.Context.new(%{"x" => nil}, on_unbound: :error))
+iex> {err.__struct__, err.variable}
+{Predicator.Errors.UndefinedVariableError, "null"}
+```
+
 ## Error Shapes
 
 Predicator returns errors as structs under `Predicator.Errors`, never as bare
