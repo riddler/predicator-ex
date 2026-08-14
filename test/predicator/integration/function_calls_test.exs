@@ -31,6 +31,10 @@ defmodule FunctionCallsIntegrationTest do
       assert {:ok, 10} = evaluate("Math.abs(negative_val)", context)
     end
 
+    test "Math.pow preserves integer results" do
+      assert Predicator.evaluate("Math.pow(2, 3) === 8", %{}) == {:ok, true}
+    end
+
     test "evaluates date functions" do
       context = %{"created_at" => ~D[2024-03-15]}
       assert {:ok, 2024} = evaluate("Date.year(created_at)", context)

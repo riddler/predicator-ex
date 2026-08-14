@@ -33,7 +33,18 @@
   {
     "id": "functions/math-pow",
     "source": "Math.pow(2, 3)",
+    "expected": { "result": 8 },
+    "notes": "integer base and non-negative integer exponent return an integer, computed exactly; a float argument or a negative exponent returns a float"
+  },
+  {
+    "id": "functions/math-pow-float-arg",
+    "source": "Math.pow(2.0, 3)",
     "expected": { "result": 8.0 }
+  },
+  {
+    "id": "functions/math-pow-negative-exponent",
+    "source": "Math.pow(2, -1)",
+    "expected": { "result": 0.5 }
   },
   {
     "id": "functions/math-max",
