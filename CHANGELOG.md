@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **BREAKING: `Math.pow` and `Math.sqrt` now return integers for
+  integer-exact results, instead of always returning a float.**
+  `Math.pow(2, 3)` is now `8`, not `8.0`, so `Math.pow(2, 3) === 8` is now
+  `true`; the result is computed exactly with `Integer.pow/2`, so
+  `Math.pow(10, 20)` no longer loses precision to `:math.pow/2`'s float
+  conversion. `Math.sqrt(16)` is now `4`, not `4.0`, when the argument is a
+  non-negative integer with an exact integer root. A float argument or a
+  negative exponent is unchanged and still returns a float:
+  `Math.pow(2.0, 3)` is still `8.0`, `Math.pow(2, -1)` is still `0.5`, and
+  `Math.sqrt(2)` is still `1.4142135623730951`. The conformance cases
+  `functions/math-pow` and `functions/math-sqrt` moved to the new integer
+  results, and `functions/math-pow-float-arg`,
+  `functions/math-pow-negative-exponent`, and `functions/math-sqrt-inexact`
+  were added to pin the float-returning half of each rule. This is a
+  breaking change to a documented return type and warrants a major version.
+  The ISA version does not move: no opcode changed, and the builtin
+  function set is not part of the ISA.
+
 ## [6.0.0] - 2026-08-14
 
 ### Added
