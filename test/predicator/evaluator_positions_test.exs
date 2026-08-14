@@ -199,6 +199,26 @@ defmodule Predicator.EvaluatorPositionsTest do
       assert error.span == {{1, 1}, {1, 8}}
       assert error.position == {1, 1}
     end
+
+    test "a spans-compiled program's runtime error carries a span, alongside its position" do
+      {:ok, compiled} = Predicator.compile_program_with_spans("x = 1; missing + 1")
+
+      assert {:error, error, _ctx} = Predicator.execute(compiled, %{})
+
+      assert %Predicator.Errors.UndefinedVariableError{variable: "missing"} = error
+      assert error.span == {{1, 8}, {1, 15}}
+      assert error.position == {1, 8}
+    end
+
+    test "the same program compiled with positions only yields a nil span" do
+      {:ok, compiled} = Predicator.compile_program_with_positions("x = 1; missing + 1")
+
+      assert {:error, error, _ctx} = Predicator.execute(compiled, %{})
+
+      assert %Predicator.Errors.UndefinedVariableError{variable: "missing"} = error
+      assert error.span == nil
+      assert error.position == {1, 8}
+    end
   end
 
   describe "messages are unchanged" do
