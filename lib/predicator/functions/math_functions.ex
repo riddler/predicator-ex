@@ -6,7 +6,8 @@ defmodule Predicator.Functions.MathFunctions do
 
   ## Available Functions
 
-  - `Math.pow(base, exponent)` - Raises base to the power of exponent
+  - `Math.pow(base, exponent)` - Raises base to the power of exponent; integer
+    in, non-negative integer exponent, integer out
   - `Math.sqrt(value)` - Returns the square root of a number
   - `Math.abs(value)` - Returns the absolute value
   - `Math.floor(value)` - Rounds down to the nearest integer
@@ -21,7 +22,7 @@ defmodule Predicator.Functions.MathFunctions do
       iex> {:ok, result} = Predicator.evaluate("Math.pow(2, 3)",
       ...>   %{}, providers: [Predicator.Functions.MathFunctions])
       iex> result
-      8.0
+      8
 
       iex> {:ok, result} = Predicator.evaluate("Math.sqrt(16)",
       ...>   %{}, providers: [Predicator.Functions.MathFunctions])
@@ -56,8 +57,19 @@ defmodule Predicator.Functions.MathFunctions do
     }
   end
 
-  @doc "Raises base to the power of exponent."
+  @doc """
+  Raises base to the power of exponent.
+
+  Returns an integer when both arguments are integers and the exponent is
+  non-negative - computed exactly, with no float rounding at large magnitudes.
+  Returns a float otherwise (float argument, or negative exponent).
+  """
   @spec call_pow([Types.value()], Context.t()) :: function_result()
+  def call_pow([base, exponent], _context)
+      when is_integer(base) and is_integer(exponent) and exponent >= 0 do
+    {:ok, Integer.pow(base, exponent)}
+  end
+
   def call_pow([base, exponent], _context) when is_number(base) and is_number(exponent) do
     {:ok, :math.pow(base, exponent)}
   end

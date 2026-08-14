@@ -22,7 +22,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
           providers: functions
         )
 
-      assert result == 8.0
+      assert result === 8
     end
 
     test "Math.pow handles negative exponents", %{functions: functions} do
@@ -33,7 +33,71 @@ defmodule Predicator.Functions.MathFunctionsTest do
           providers: functions
         )
 
-      assert result == 0.5
+      assert result === 0.5
+    end
+
+    test "Math.pow returns a float when either argument is a float", %{functions: functions} do
+      {:ok, result1} =
+        Predicator.evaluate(
+          "Math.pow(2.0, 3)",
+          %{},
+          providers: functions
+        )
+
+      assert result1 === 8.0
+
+      {:ok, result2} =
+        Predicator.evaluate(
+          "Math.pow(2, 3.0)",
+          %{},
+          providers: functions
+        )
+
+      assert result2 === 8.0
+    end
+
+    test "Math.pow returns an integer, not a float, for zero exponent", %{functions: functions} do
+      {:ok, result1} =
+        Predicator.evaluate(
+          "Math.pow(2, 0)",
+          %{},
+          providers: functions
+        )
+
+      assert result1 === 1
+
+      {:ok, result2} =
+        Predicator.evaluate(
+          "Math.pow(0, 0)",
+          %{},
+          providers: functions
+        )
+
+      assert result2 === 1
+    end
+
+    test "Math.pow computes exact integers beyond float precision", %{functions: functions} do
+      {:ok, result} =
+        Predicator.evaluate(
+          "Math.pow(10, 20)",
+          %{},
+          providers: functions
+        )
+
+      assert result === 100_000_000_000_000_000_000
+    end
+
+    test "Math.pow handles a negative base with a non-negative exponent", %{
+      functions: functions
+    } do
+      {:ok, result} =
+        Predicator.evaluate(
+          "Math.pow(-2, 3)",
+          %{},
+          providers: functions
+        )
+
+      assert result === -8
     end
 
     test "Math.pow returns error for non-numeric arguments", %{functions: functions} do
@@ -235,7 +299,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
           providers: functions
         )
 
-      assert result == 8.0
+      assert result === 8
     end
 
     test "Math functions in conditional expressions", %{functions: functions} do
