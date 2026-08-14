@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   output; the existing program and expression compile functions are
   unchanged.
 
+- **`:protected_roots`, an opt-in `execute/3`/`execute_value/3` option naming
+  context roots a `store` may not write.** A `store` whose path's root
+  segment is in the list refuses the write and returns
+  `{:error, %Predicator.Errors.EvaluationError{reason: "protected_root"},
+  context}` instead, with `error.details.root` naming the offending root; the
+  returned `context` is unchanged from the ordinary partial-context contract
+  - it still carries every write made before the refused statement. Additive:
+  absent the option, behavior is byte-identical to today, so this is a minor
+  release, not a breaking one.
+
 ### Changed
 
 - **`conformance/RATCHET.md` now states registry entry uniqueness

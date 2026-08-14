@@ -135,6 +135,14 @@ each row.
   it changes what a `load` of an absent root does but adds no opcode and no
   wire-format change. See `docs/architecture.md` for that option; it is not
   respecified here.
+- A host may name context roots a `store` refuses to write (the
+  `:protected_roots` evaluation option). This is likewise an *evaluation
+  option*, not part of the ISA: it adds no opcode and no wire-format change,
+  and a run with no such option behaves exactly as specified above. When
+  configured, a `store` whose path's root segment is protected returns
+  `EvaluationError` with reason `"protected_root"` instead of writing. See
+  §5's `store` subsection and `docs/architecture.md` for the option; it is
+  not respecified here.
 
 ### Two execution modes
 
@@ -596,7 +604,11 @@ reference survives an edit above it.
   `EvaluationError` with reason `not_assignable` (empty path, only reachable
   from a hand-built `["store", 0]`), `not_a_container` (an interior segment
   holds a scalar), or `invalid_index` (a negative list index). This is the
-  only opcode that writes the context.
+  only opcode that writes the context. A host that supplied a protected-root
+  list (the `:protected_roots` evaluation option) gets `EvaluationError`
+  `"protected_root"` when the path's root segment is in it, checked after
+  segment-type validation and before the write, so a refused write leaves no
+  partial write behind. This is host policy, not an ISA rule - see §2.
 - **`pop`** (`execute_pop/1`) - discards the stack top and pushes nothing.
   The statement-boundary opcode: the compiler emits it after every
   expression statement so the next statement starts from a clean stack. An
