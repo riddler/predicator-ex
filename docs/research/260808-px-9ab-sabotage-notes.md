@@ -128,6 +128,33 @@ The reasoning, in descending weight:
    new test here would tax hundreds of low-risk tests to protect seven
    high-risk ones.
 
+## Practice note: the stale-beam hazard
+
+`mix`'s staleness check is mtime-based, so a mutate -> compile -> observe red
+-> revert -> confirm green cycle that completes inside one second can leave
+the *mutated* beam in place after the revert: the source reads correct,
+`git status` is clean, and the module the next run loads is still the broken
+one. Every later mutation in the batch is then judged against a stale module,
+and its red proves nothing.
+
+The symptom is an inexplicable red on clean source after the revert, which
+reads like a failed revert. The existing "confirm green again" step does
+catch it, but does not diagnose it.
+
+This was hit on px-suw while re-verifying the seven binding tests.
+`Predicator.Instructions.tier("load")` returned `{:ok, 2}` from a pristine
+tree; five of Phase 1's six mutations produced plausible-looking but
+worthless reds before it was caught. It was noticed only because one red
+named tier 1 and `load` under a mutation that touched only the tier-6 row -
+the wrong signature, not a wrong verdict.
+
+The fix: run `MIX_ENV=test mix compile --force` after both the mutation and
+the revert, and assert a green baseline before each mutation.
+
+Files read at runtime rather than compiled in - `docs/isa.md`,
+`conformance/**`, `mix.exs` - are not subject to this and need no forced
+recompile. The hazard applies to mutations of Elixir source.
+
 ## The cost of the decision as taken
 
 - Every new test in the binding class costs a real mutation, a confirmed red,
