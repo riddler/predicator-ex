@@ -129,7 +129,7 @@ period.
 
 ### Compile entry points
 
-`lib/predicator.ex` exposes five compile functions, two families (expression,
+`lib/predicator.ex` exposes six compile functions, two families (expression,
 program) crossed with three modes (bare instruction list, point positions,
 spans):
 
