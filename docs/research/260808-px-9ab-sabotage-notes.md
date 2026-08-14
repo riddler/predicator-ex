@@ -287,6 +287,36 @@ are unaffected.
   claim: had the conflict resolution dropped a clause, that list would name it
   too.
 
+- 2026-08-14 (`px-wy8`): `test/predicator/conformance/ratchet_registry_test.exs`,
+  addendum. This is not a new file in the class - the file has been a binding
+  test since px-9ab and has been in `gate.sabotage.test_roots` since px-lxs -
+  so the count does not move; ten files, still. What changed is a new assertion
+  inside an already-listed file: `conformance/RATCHET.md` rule 3 now states
+  normatively that `entries` holds at most one entry per `(case_id, surface)`
+  pair, and a sixth `describe` block binds it, so this is a fresh sabotage pass
+  on that assertion, not a class extension.
+
+  The mutation: inserted a byte-identical copy of
+  `{"case_id":"comparison/gt-int-true","surface":"compiler","tier":1},` directly
+  beneath the original in `conformance/examples/registry.example.json`. Ran
+  `mix test test/predicator/conformance/ratchet_registry_test.exs`: 6 tests, 1
+  failure - exactly the new uniqueness test, "no (case_id, surface) pair appears
+  in entries more than once", with the message naming
+  `[{"comparison/gt-int-true", "compiler"}]` and nothing else failing. Reverted
+  with `git checkout -- conformance/examples/registry.example.json`; re-ran the
+  same command: 6 tests, 0 failures; `git status --porcelain` reported no diff
+  for the file.
+
+  The isolation to exactly one test depends on `reencode/1`
+  (`test/predicator/conformance/ratchet_registry_test.exs:181-198`) re-emitting
+  `entries` in parse order rather than sorting it - the canonical-encoding test
+  therefore re-encodes the duplicated line to itself and stays green under this
+  mutation. If px-2gx's sortedness follow-on lands and `reencode/1` (or a
+  companion assertion) starts enforcing order, this pass is stale and must be
+  re-run rather than carried forward, because a sort-order check could catch
+  this same mutation for a different reason and the "exactly one test goes red"
+  claim would need re-verifying.
+
 ## Enforcement: gate.sabotage, from 2026-08-12 (px-lxs)
 
 - **The discipline is now enforced, not only written down.** `px-lxs` declared
