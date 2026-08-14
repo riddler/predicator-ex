@@ -497,12 +497,12 @@ for error shapes.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green, including the `docs/reference/language.md`
+- [x] `mix quality` is green, including the `docs/reference/language.md`
       doctests run by `test/docs_examples_test.exs`
-- [ ] `CHANGELOG.md` has a `### Changed` entry under `## [Unreleased]` and the
+- [x] `CHANGELOG.md` has a `### Changed` entry under `## [Unreleased]` and the
       `## [Unreleased]` heading is still present and unpromoted
-- [ ] `git diff --stat mix.exs` is empty (no version bump)
-- [ ] `mix test test/docs_examples_test.exs` passes on its own
+- [x] `git diff --stat mix.exs` is empty (no version bump)
+- [x] `mix test test/docs_examples_test.exs` passes on its own
 
 #### Manual Verification:
 - [ ] The CHANGELOG entry gives a consumer enough to migrate without opening
@@ -604,6 +604,26 @@ before considering the plan fully landed.
 
 Style note for the implementer, not a verification item: the six paragraphs
 are one edit repeated, not six independent rewrites. Write one and adapt it.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits while
+iterating; run full `mix quality` as the phase gate. In interactive execution,
+pause here for the human to confirm the manual testing before moving to the
+next phase. In looped (`--loop`) execution, this phase's Automated Verification
+gates advancement automatically (via `/wurk:commit --auto`), and Manual
+Verification items are deferred and surfaced once at the end instead of
+blocking here.
+
+---
+
+### Phase 2
+
+- [ ] The CHANGELOG entry gives a consumer enough to migrate without opening
+      the source: both directions of the migration, and the explicit list of
+      what did not change
+- [ ] `docs/architecture.md` and `docs/reference/language.md` agree with each
+      other and with the `@doc`s from Phase 1
+- [ ] Prose style matches the surrounding entries in each file it touches
+      (per-file house style, not a global preference)
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive execution,

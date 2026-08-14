@@ -145,6 +145,10 @@ expression statement) always carries that statement's own source extent, never
 the whole program's. See each function's `@doc` in `lib/predicator.ex` for the
 full contract.
 
+All six share one error arm, `{:error, struct()}`: a parse or tokenize
+failure is a `%Predicator.Errors.ParseError{}` with the location in
+`:position` rather than baked into `:message` (ADR-0015).
+
 ## Cross-Language Siblings
 
 Predicator's Elixir implementation is the reference implementation of the
@@ -239,7 +243,8 @@ program differently, so the compiled program is identical either way
 - Comprehensive error messages with line/column positions
 - Graceful error propagation through pipeline stages
 - Type-safe error handling with `{:ok, value} | {:error, struct}` tuples, where the
-  struct comes from the `Predicator.Errors` family
+  struct comes from the `Predicator.Errors` family - true without exception
+  across the whole façade, including all six compile entry points
 
 ### Performance
 
