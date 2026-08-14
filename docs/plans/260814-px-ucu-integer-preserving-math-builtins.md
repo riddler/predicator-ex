@@ -376,13 +376,13 @@ the commit message and PR body (ADR-0003).
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green
-- [ ] `mix corpus.generate` produces no further diff after the commit
-- [ ] `Predicator.evaluate("Math.sqrt(16) === 4", %{})` returns `{:ok, true}`
+- [x] `mix quality` is green
+- [x] `mix corpus.generate` produces no further diff after the commit
+- [x] `Predicator.evaluate("Math.sqrt(16) === 4", %{})` returns `{:ok, true}`
       (asserted in the integration test)
-- [ ] `MathFunctions` stays above the 90% coverage minimum, including the
+- [x] `MathFunctions` stays above the 90% coverage minimum, including the
       `isqrt/1` non-square branch
-- [ ] `test/predicator/conformance/function_coverage_test.exs` still passes
+- [x] `test/predicator/conformance/function_coverage_test.exs` still passes
 
 #### Manual Verification:
 - [ ] In `iex -S mix`: `Math.sqrt` of a large perfect square returns the exact
@@ -576,5 +576,18 @@ full `mix quality` as the phase gate. In interactive execution, pause here for
 the human to confirm the manual testing before moving on. In looped (`--loop`)
 execution, the Automated Verification gates advancement via
 `/wurk:commit --auto`, and Manual Verification is deferred to the end.
+
+---
+
+### Phase 2
+
+- [ ] In `iex -S mix`: `Math.sqrt` of a large perfect square returns the exact
+      integer, and of its neighbours returns floats
+- [ ] `Math.sqrt(-1)` still errors with the same message
+- [ ] The corpus diff reads as intentional - only the two sqrt cases and the
+      manifest moved
+
+**Implementation Note**: Same as Phase 1 - loop gate while iterating, full
+gate as the phase gate.
 
 ---
