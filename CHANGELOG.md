@@ -53,6 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registry needs no change; a registry carrying a repeated pair was hand-edited.
   The corpus, `corpus_hash`, the schema, and the ISA are unaffected.
 
+- **`conformance/examples/registry.example.json`'s provenance prose now matches
+  reality.** `test/predicator/conformance/ratchet_registry_test.exs`'s moduledoc
+  and `conformance/schema/registry.json`'s `description` both claimed the
+  example was generated from this checkout's own corpus; no generator exists,
+  and none should - the file is hand-maintained, and the binding tests in that
+  suite are what keep it honest. Prose only: the example, its `corpus_hash`,
+  and the schema's constraints are unaffected.
+
 ## [7.0.0] - 2026-08-14
 
 ### Changed

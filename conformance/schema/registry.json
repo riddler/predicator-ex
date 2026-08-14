@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/riddler/predicator-ex/conformance/schema/registry.json",
   "title": "Predicator sibling conformance ratchet registry",
-  "description": "The registry format a sibling implementation (impl/rb, impl/ts, or any future port) uses to record which corpus cases it passes, on which surface, against which corpus version. This repo does not ship a registry; conformance/examples/registry.example.json is a worked example generated from this checkout's own corpus, and conformance/RATCHET.md is the normative contract - the two surfaces' case sets, the verify-then-add growth rule, and the ordering and encoding rules this schema cannot express.",
+  "description": "The registry format a sibling implementation (impl/rb, impl/ts, or any future port) uses to record which corpus cases it passes, on which surface, against which corpus version. This repo does not ship a registry; conformance/examples/registry.example.json is a hand-maintained worked example, kept correct against this checkout's own corpus by test/predicator/conformance/ratchet_registry_test.exs, and conformance/RATCHET.md is the normative contract - the two surfaces' case sets, the verify-then-add growth rule, and the ordering and encoding rules this schema cannot express.",
   "type": "object",
   "properties": {
     "claims": {
