@@ -33,8 +33,10 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("if = 3") ==
-               {:error, "#{expression_message("if")} at line 1, column 1"}
+      assert {:error, %ParseError{message: message, position: {1, 1}}} =
+               Predicator.compile("if = 3")
+
+      assert message == expression_message("if")
     end
   end
 
@@ -55,8 +57,10 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("else = 3") ==
-               {:error, "#{expression_message("else")} at line 1, column 1"}
+      assert {:error, %ParseError{message: message, position: {1, 1}}} =
+               Predicator.compile("else = 3")
+
+      assert message == expression_message("else")
     end
   end
 
@@ -84,8 +88,10 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("while = 3") ==
-               {:error, "#{expression_message("while")} at line 1, column 1"}
+      assert {:error, %ParseError{message: message, position: {1, 1}}} =
+               Predicator.compile("while = 3")
+
+      assert message == expression_message("while")
     end
   end
 
@@ -106,7 +112,8 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("user.if") == {:error, "#{@user_if_message} at line 1, column 6"}
+      assert {:error, %ParseError{message: @user_if_message, position: {1, 6}}} =
+               Predicator.compile("user.if")
     end
   end
 
@@ -127,7 +134,8 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("{if: 1}") == {:error, "#{@if_key_message} at line 1, column 2"}
+      assert {:error, %ParseError{message: @if_key_message, position: {1, 2}}} =
+               Predicator.compile("{if: 1}")
     end
   end
 
@@ -177,8 +185,8 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("undefined = 3") ==
-               {:error, "#{@undefined_assign_expr_message} at line 1, column 11"}
+      assert {:error, %ParseError{message: @undefined_assign_expr_message, position: {1, 11}}} =
+               Predicator.compile("undefined = 3")
     end
   end
 
@@ -200,8 +208,8 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("user.undefined") ==
-               {:error, "#{@user_undefined_message} at line 1, column 6"}
+      assert {:error, %ParseError{message: @user_undefined_message, position: {1, 6}}} =
+               Predicator.compile("user.undefined")
     end
   end
 
@@ -223,8 +231,8 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("{undefined: 1}") ==
-               {:error, "#{@undefined_key_message} at line 1, column 2"}
+      assert {:error, %ParseError{message: @undefined_key_message, position: {1, 2}}} =
+               Predicator.compile("{undefined: 1}")
     end
   end
 
@@ -256,8 +264,8 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("null = 3") ==
-               {:error, "#{@null_assign_expr_message} at line 1, column 6"}
+      assert {:error, %ParseError{message: @null_assign_expr_message, position: {1, 6}}} =
+               Predicator.compile("null = 3")
     end
   end
 
@@ -278,8 +286,8 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("user.null") ==
-               {:error, "#{@user_null_message} at line 1, column 6"}
+      assert {:error, %ParseError{message: @user_null_message, position: {1, 6}}} =
+               Predicator.compile("user.null")
     end
   end
 
@@ -300,8 +308,8 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("{null: 1}") ==
-               {:error, "#{@null_key_message} at line 1, column 2"}
+      assert {:error, %ParseError{message: @null_key_message, position: {1, 2}}} =
+               Predicator.compile("{null: 1}")
     end
   end
 

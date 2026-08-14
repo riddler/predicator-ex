@@ -1,7 +1,7 @@
 defmodule PredicatorTest do
   use ExUnit.Case, async: true
 
-  alias Predicator.Errors.{EvaluationError, UndefinedVariableError}
+  alias Predicator.Errors.{EvaluationError, ParseError, UndefinedVariableError}
 
   doctest Predicator
 
@@ -218,12 +218,12 @@ defmodule PredicatorTest do
 
     test "returns error for invalid syntax" do
       result = Predicator.compile("score >")
-      assert {:error, message} = result
+
+      assert {:error, %Predicator.Errors.ParseError{message: message, position: {1, 8}}} =
+               result
 
       assert message =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"
-
-      assert message =~ "line 1, column 8"
     end
   end
 
@@ -539,9 +539,60 @@ defmodule PredicatorTest do
     end
 
     test "raises exception for parse errors" do
-      assert_raise RuntimeError, ~r/Compilation failed:/, fn ->
+      # Pinned to the struct's own fields, not a hardcoded sentence, so this
+      # is exactly the byte-identical-to-7.0.0 claim: the raised text is
+      # "Compilation failed: " followed by the error's :message, " at line ",
+      # its :position line, ", column ", and its :position column.
+      {:error, error} = Predicator.compile("score >")
+      {line, column} = error.position
+      expected = "Compilation failed: #{error.message} at line #{line}, column #{column}"
+
+      assert_raise RuntimeError, expected, fn ->
         Predicator.compile!("score >")
       end
+    end
+  end
+
+  describe "structured compile errors (px-d71, ADR-0015)" do
+    test "all six entry points return the same %ParseError{} for the same bad expression" do
+      expected =
+        ParseError.new(
+          "Expected number, string, boolean, date, datetime, identifier, function call, list, " <>
+            "object, or '(' but found end of input",
+          1,
+          8
+        )
+
+      assert {:error, ^expected} = Predicator.compile("score >")
+      assert {:error, ^expected} = Predicator.compile_with_positions("score >")
+      assert {:error, ^expected} = Predicator.compile_with_spans("score >")
+    end
+
+    test "both program entry points return the same %ParseError{} for the same bad program" do
+      expected =
+        ParseError.new(
+          "Expected number, string, boolean, date, datetime, identifier, function call, list, " <>
+            "object, or '(' but found end of input",
+          1,
+          4
+        )
+
+      assert {:error, ^expected} = Predicator.compile_program("x =")
+      assert {:error, ^expected} = Predicator.compile_program_with_positions("x =")
+      assert {:error, ^expected} = Predicator.compile_program_with_spans("x =")
+    end
+
+    test "the message never carries the location" do
+      for source <- ["score >", "score > >"] do
+        assert {:error, %Predicator.Errors.ParseError{message: message}} =
+                 Predicator.compile(source)
+
+        refute message =~ "at line"
+      end
+    end
+
+    test "a compile/1 error equals the evaluate/3 error for the same source" do
+      assert Predicator.compile("score >") == Predicator.evaluate("score >", %{})
     end
   end
 

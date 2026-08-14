@@ -6,7 +6,8 @@ defmodule Predicator.Errors.ParseError do
 
   ## Fields
 
-  - `message` - Human-readable error description
+  - `message` - Human-readable error description. Never contains the
+    location - that is always `:position`
   - `position` - `{line, column}` of the syntax error, typed
     `t:Predicator.Types.position/0` so generic error-reporting code can read a
     position uniformly across `ParseError`, `EvaluationError`,
@@ -15,7 +16,7 @@ defmodule Predicator.Errors.ParseError do
   ## Examples
 
       %Predicator.Errors.ParseError{
-        message: "Expected number, string, boolean, date, datetime, identifier, function call, list, or '(' but found '>' at line 1, column 10",
+        message: "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
         position: {1, 10}
       }
   """
