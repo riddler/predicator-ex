@@ -8,7 +8,8 @@ defmodule Predicator.Functions.MathFunctions do
 
   - `Math.pow(base, exponent)` - Raises base to the power of exponent; integer
     in, non-negative integer exponent, integer out
-  - `Math.sqrt(value)` - Returns the square root of a number
+  - `Math.sqrt(value)` - Returns the square root of a number; integer in with
+    an exact integer root, integer out
   - `Math.abs(value)` - Returns the absolute value
   - `Math.floor(value)` - Rounds down to the nearest integer
   - `Math.ceil(value)` - Rounds up to the nearest integer
@@ -27,7 +28,7 @@ defmodule Predicator.Functions.MathFunctions do
       iex> {:ok, result} = Predicator.evaluate("Math.sqrt(16)",
       ...>   %{}, providers: [Predicator.Functions.MathFunctions])
       iex> result
-      4.0
+      4
   """
 
   @behaviour Predicator.FunctionProvider
@@ -78,8 +79,19 @@ defmodule Predicator.Functions.MathFunctions do
     {:error, "Math.pow expects two numeric arguments"}
   end
 
-  @doc "Returns the square root of a number."
+  @doc """
+  Returns the square root of a number.
+
+  Returns an integer when the argument is a non-negative integer with an exact
+  integer square root (`Math.sqrt(16)` is `4`). Returns a float otherwise. A
+  negative argument is an error, not NaN.
+  """
   @spec call_sqrt([Types.value()], Context.t()) :: function_result()
+  def call_sqrt([value], _context) when is_integer(value) and value >= 0 do
+    root = isqrt(value)
+    if root * root == value, do: {:ok, root}, else: {:ok, :math.sqrt(value)}
+  end
+
   def call_sqrt([value], _context) when is_number(value) and value >= 0 do
     {:ok, :math.sqrt(value)}
   end
@@ -90,6 +102,24 @@ defmodule Predicator.Functions.MathFunctions do
 
   def call_sqrt([_value], _context) do
     {:error, "Math.sqrt expects a numeric argument"}
+  end
+
+  # Integer square root via Newton's method, entirely in integer arithmetic.
+  # Not `trunc(:math.sqrt(n))`: that route inherits float precision, which
+  # loses exactness (and raises `badarith` above ~1.8e308) for integers this
+  # clause needs to handle exactly. Returns `floor(:math.sqrt(n))`.
+  @spec isqrt(non_neg_integer()) :: non_neg_integer()
+  defp isqrt(0), do: 0
+
+  defp isqrt(n) when is_integer(n) and n > 0 do
+    isqrt_newton(n, n)
+  end
+
+  @spec isqrt_newton(non_neg_integer(), pos_integer()) :: non_neg_integer()
+  defp isqrt_newton(n, x) do
+    next = div(x + div(n, x), 2)
+
+    if next >= x, do: x, else: isqrt_newton(n, next)
   end
 
   @doc "Returns the absolute value of a number."

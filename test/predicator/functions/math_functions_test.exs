@@ -111,7 +111,7 @@ defmodule Predicator.Functions.MathFunctionsTest do
       assert String.contains?(message, "Math.pow expects two numeric arguments")
     end
 
-    test "Math.sqrt returns square root", %{functions: functions} do
+    test "Math.sqrt returns an integer for a perfect square", %{functions: functions} do
       {:ok, result} =
         Predicator.evaluate(
           "Math.sqrt(16)",
@@ -119,7 +119,85 @@ defmodule Predicator.Functions.MathFunctionsTest do
           providers: functions
         )
 
-      assert result == 4.0
+      assert result === 4
+    end
+
+    test "Math.sqrt of 0 and 1 are integers", %{functions: functions} do
+      {:ok, result0} =
+        Predicator.evaluate(
+          "Math.sqrt(0)",
+          %{},
+          providers: functions
+        )
+
+      assert result0 === 0
+
+      {:ok, result1} =
+        Predicator.evaluate(
+          "Math.sqrt(1)",
+          %{},
+          providers: functions
+        )
+
+      assert result1 === 1
+    end
+
+    test "Math.sqrt returns a float for a non-perfect-square integer", %{functions: functions} do
+      {:ok, result} =
+        Predicator.evaluate(
+          "Math.sqrt(2)",
+          %{},
+          providers: functions
+        )
+
+      assert is_float(result)
+      assert result === 1.4142135623730951
+    end
+
+    test "Math.sqrt returns floats for the neighbours of a perfect square", %{
+      functions: functions
+    } do
+      {:ok, result15} =
+        Predicator.evaluate(
+          "Math.sqrt(15)",
+          %{},
+          providers: functions
+        )
+
+      assert is_float(result15)
+
+      {:ok, result17} =
+        Predicator.evaluate(
+          "Math.sqrt(17)",
+          %{},
+          providers: functions
+        )
+
+      assert is_float(result17)
+    end
+
+    test "Math.sqrt of a float stays a float, even for an exact root", %{functions: functions} do
+      {:ok, result} =
+        Predicator.evaluate(
+          "Math.sqrt(2.25)",
+          %{},
+          providers: functions
+        )
+
+      assert result === 1.5
+    end
+
+    test "Math.sqrt computes an exact integer root beyond float precision", %{
+      functions: functions
+    } do
+      {:ok, result} =
+        Predicator.evaluate(
+          "Math.sqrt(10000000000000000000000)",
+          %{},
+          providers: functions
+        )
+
+      assert result === 100_000_000_000
     end
 
     test "Math.sqrt returns error for negative numbers", %{functions: functions} do

@@ -96,8 +96,13 @@
   {
     "id": "functions/math-sqrt",
     "source": "Math.sqrt(16)",
-    "expected": { "result": 4.0 },
-    "notes": "always returns a float, even for a perfect square"
+    "expected": { "result": 4 },
+    "notes": "a non-negative integer with an exact integer root returns an integer; every other numeric argument returns a float"
+  },
+  {
+    "id": "functions/math-sqrt-inexact",
+    "source": "Math.sqrt(2)",
+    "expected": { "result": 1.4142135623730951 }
   },
   {
     "id": "functions/math-sqrt-negative-error",
