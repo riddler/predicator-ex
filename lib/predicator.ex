@@ -777,10 +777,42 @@ defmodule Predicator do
     source |> parse_program() |> build_compiled_result()
   end
 
-  # Shared by compile_with_positions/1, compile_with_spans/1, and
-  # compile_program_with_positions/1: each differs only in how it parses (an
-  # expression vs a program, point positions vs spans), never in how the
-  # parse result becomes a %Compiled{} or a binary error.
+  @doc """
+  Compiles a statement-sequence string to a `t:Predicator.Compiled.t/0` - the
+  instruction list plus a source-span side table, as one value.
+
+  The program-shaped echo of `compile_with_spans/1`. `compiled.instructions` is
+  identical to `compile_program/1`'s output; `compiled.positions` maps each
+  instruction's 0-based index to the `t:Predicator.Types.span/0` of the AST node
+  that emitted it, and `compiled.segment_positions` holds spans too. The
+  instruction that terminates a statement - `store` for an assignment, `pop` for
+  a bare expression statement - carries that statement's own source extent, so a
+  host can underline the failing statement inside a multi-statement body rather
+  than the whole program.
+
+  Pass the struct straight to `execute/3`, which threads the table itself; an
+  error it returns then carries `:span` as well as `:position`.
+
+  Store `compiled.instructions`, not the struct - see `Predicator.Compiled`.
+
+  ## Examples
+
+      iex> {:ok, compiled} = Predicator.compile_program_with_spans("x = 1")
+      iex> compiled.instructions
+      [["lit", "x"], ["lit", 1], ["store", 1]]
+      iex> compiled.positions
+      %{0 => {{1, 1}, {1, 2}}, 1 => {{1, 5}, {1, 6}}, 2 => {{1, 1}, {1, 6}}}
+  """
+  @spec compile_program_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
+  def compile_program_with_spans(source) when is_binary(source) do
+    source |> parse_program(spans: true) |> build_compiled_result()
+  end
+
+  # Shared by compile_with_positions/1, compile_with_spans/1,
+  # compile_program_with_positions/1, and compile_program_with_spans/1: each
+  # differs only in how it parses (an expression vs a program, point positions
+  # vs spans), never in how the parse result becomes a %Compiled{} or a binary
+  # error.
   @spec build_compiled_result(
           {:ok, Parser.ast() | Parser.program()}
           | {:error, binary(), pos_integer(), pos_integer()}

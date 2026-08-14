@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`Predicator.compile_program_with_spans/1`, the program-level counterpart
+  to `compile_with_spans/1`.** Statement programs previously had two compile
+  entry points, `compile_program/1` and `compile_program_with_positions/1`,
+  neither of which could return span-quality diagnostics; expressions already
+  had `compile_with_spans/1`. The new function closes that gap: it returns a
+  `%Compiled{}` whose `positions` and `segment_positions` hold
+  `t:Predicator.Types.span/0` values instead of point positions, with the
+  instruction that terminates a statement - `store` for an assignment, `pop`
+  for a bare expression statement - carrying that statement's own source
+  extent. `compiled.instructions` is byte-identical to `compile_program/1`'s
+  output; the existing program and expression compile functions are
+  unchanged.
+
 ## [7.0.0] - 2026-08-14
 
 ### Changed

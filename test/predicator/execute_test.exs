@@ -244,7 +244,7 @@ defmodule Predicator.ExecuteTest do
     end
   end
 
-  describe "compile_program/1 and compile_program_with_positions/1" do
+  describe "compile_program/1, compile_program_with_positions/1, and compile_program_with_spans/1" do
     test "compile_program/1 returns an instruction list" do
       assert {:ok, instructions} = Predicator.compile_program("x = 1")
       assert instructions == [["lit", "x"], ["lit", 1], ["store", 1]]
@@ -292,6 +292,55 @@ defmodule Predicator.ExecuteTest do
                ["lit", 1],
                ["store", 1]
              ]
+    end
+
+    test "compile_program_with_spans/1 returns the same instruction list as compile_program/1 for a multi-statement source" do
+      source = "x = 1; x + 1"
+      assert {:ok, instructions} = Predicator.compile_program(source)
+      assert {:ok, %Compiled{} = compiled} = Predicator.compile_program_with_spans(source)
+
+      assert compiled.instructions == instructions
+    end
+
+    test "compile_program_with_spans/1 returns the same instruction list as compile_program/1 for a source containing an if" do
+      source = "if a { x = 1 } else { y = 2 }"
+      assert {:ok, instructions} = Predicator.compile_program(source)
+      assert {:ok, %Compiled{} = compiled} = Predicator.compile_program_with_spans(source)
+
+      assert compiled.instructions == instructions
+    end
+
+    test "compile_program_with_spans/1's positions hold spans, not point positions" do
+      assert {:ok, %Compiled{} = compiled} = Predicator.compile_program_with_spans("x = 1")
+
+      assert compiled.positions == %{
+               0 => {{1, 1}, {1, 2}},
+               1 => {{1, 5}, {1, 6}},
+               2 => {{1, 1}, {1, 6}}
+             }
+    end
+
+    test "compile_program_with_spans/1's segment_positions carries spans for a nested target" do
+      assert {:ok, %Compiled{} = compiled} = Predicator.compile_program_with_spans("a.b = 1")
+
+      assert compiled.instructions == [["lit", "a"], ["lit", "b"], ["lit", 1], ["store", 2]]
+      assert compiled.segment_positions == %{3 => [{{1, 1}, {1, 2}}, {{1, 1}, {1, 4}}]}
+    end
+
+    test "compile_program_with_spans/1 returns the same error as compile_program/1 for the same bad source" do
+      assert {:error, message} = Predicator.compile_program("x =")
+      assert {:error, ^message} = Predicator.compile_program_with_spans("x =")
+    end
+
+    test "compile_program_with_spans/1's instruction list is byte-identical to compile_program_with_positions/1's" do
+      source = "x = 1; x + 1"
+
+      assert {:ok, %Compiled{} = with_positions} =
+               Predicator.compile_program_with_positions(source)
+
+      assert {:ok, %Compiled{} = with_spans} = Predicator.compile_program_with_spans(source)
+
+      assert with_spans.instructions == with_positions.instructions
     end
   end
 
