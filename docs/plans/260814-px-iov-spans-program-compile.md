@@ -659,12 +659,29 @@ Manual verification items are deferred during looped (--loop) execution and
 surfaced here once, rather than blocking after each phase. Confirm these
 before considering the plan fully landed.
 
+All seven were confirmed on 2026-08-14, after the three phase commits. Five
+passed as written. Two carried deviations, both judged acceptable and both
+recorded against their own item below:
+
+- **Phase 2's second item** holds for the cross-check suite it was written
+  about, which is entirely slice-based. Three assertions elsewhere
+  (`execute_test.exs:316` and `:327`, `evaluator_positions_test.exs:209`) do
+  compare raw tuples; their values were re-derived by slicing, coming out
+  `"a"`, `"a.b"`, and `"missing"`, so they pin real text rather than proving
+  the code equals itself.
+- **Phase 3's second item** failed and was fixed. The subsection said "five
+  compile functions" while describing two families crossed with three modes
+  and listing six in its own table - "five" was correct in this plan, written
+  before `compile_program_with_spans/1` existed, and was carried into the
+  shipped doc. Corrected in a follow-up commit, along with the same slip in
+  the px-ehn description.
+
 ### Phase 1
 
-- [ ] `Predicator.compile_program_with_spans("x = 1; x + 1")` in `iex -S mix`
+- [x] `Predicator.compile_program_with_spans("x = 1; x + 1")` in `iex -S mix`
       returns spans whose slices out of the source read `"x = 1"` and
       `"x + 1"`
-- [ ] Read the new `@doc` beside `compile_with_spans/1`'s at line 715-734 and
+- [x] Read the new `@doc` beside `compile_with_spans/1`'s at line 715-734 and
       confirm it follows the same four-paragraph order: what it returns, what
       `positions` holds, what to pass it to, and the "store the instructions,
       not the struct" warning. A missing or reordered paragraph is the defect
@@ -682,12 +699,12 @@ blocking here.
 
 ### Phase 2
 
-- [ ] Sabotage check: temporarily change the new function to parse without
+- [x] Sabotage check: temporarily change the new function to parse without
       `spans: true`, confirm the new tests go red, then revert. This is not a
       binding test under `gate.sabotage.test_roots` and needs no note in
       `docs/research/260808-px-9ab-sabotage-notes.md`, but the check is what
       makes the phase worth its own commit
-- [ ] Confirm no new assertion was written by copying a tuple out of a run of
+- [x] Confirm no new assertion was written by copying a tuple out of a run of
       the new code: every cross-check compares a **sliced substring** against
       a string literal typed by hand. A test asserting `{{1, 8}, {1, 13}}`
       instead of `"x + 1"` proves only that the code equals itself
@@ -704,12 +721,12 @@ blocking here.
 
 ### Phase 3
 
-- [ ] A reader of `compile_program_with_spans/1`'s doc can tell, without
+- [x] A reader of `compile_program_with_spans/1`'s doc can tell, without
       reading this plan, how to get the line and column as data
-- [ ] The architecture doc's new subsection is at most a table plus two
+- [x] The architecture doc's new subsection is at most a table plus two
       sentences, and states no return shape, error shape, or span-table detail
       that is already in the `@doc`s - it points at them instead
-- [ ] The follow-on bead is actionable on its own - someone picking it up does
+- [x] The follow-on bead is actionable on its own - someone picking it up does
       not need this plan to understand the scope
 
 **Implementation Note**: This phase touches no Elixir logic; the gate still
