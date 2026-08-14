@@ -377,13 +377,13 @@ end-to-end half:
 
 #### Automated Verification:
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] New code stays above the 90% coverage minimum in `coveralls.json`,
+- [x] Full quality gate passes: `mix quality`
+- [x] New code stays above the 90% coverage minimum in `coveralls.json`,
       including both `ArgumentError` branches of `protected_roots_from_opts/1`
       and both clauses of `store_or_refuse/4`
-- [ ] `mix corpus.generate` produces no diff (`git status` clean under
+- [x] `mix corpus.generate` produces no diff (`git status` clean under
       `conformance/`) - the corpus cannot express an evaluation option
-- [ ] The whole existing suite passes unchanged, and no test outside the new
+- [x] The whole existing suite passes unchanged, and no test outside the new
       files is edited - the mechanical form of "byte-identical when the option
       is absent". Decided by `git diff --name-only origin/main -- test/`,
       whose output must contain only the files this phase creates
@@ -579,3 +579,37 @@ blocking here.
   ISA) and §5 (`store`)
 - Structured error data precedent:
   `lib/predicator/errors/location_error.ex:58-64`
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] In `iex -S mix`, an SCXML-shaped program
+      (`protected_roots: ["_event", "_sessionid", "_name", "_ioprocessors"]`)
+      refuses each of the four roots and writes an ordinary one
+- [ ] In `iex`, `{:error, e, _ctx} = Predicator.execute("_event = 1", %{},
+      protected_roots: ["_event"])` and then `e.details.root` returns
+      `"_event"` without reading `e.message` at all
+- [ ] The reported position points at the assignment's root token: compile
+      `"_event.name = 1"` with `Predicator.compile_program_with_positions/1`,
+      run it with `protected_roots: ["_event"]`, and expect the error's
+      `position` to be `{1, 1}` (the `_event` token), not the `= 1` operator
+- [ ] Three no-option control programs behave exactly as before:
+      `Predicator.execute("if x > 1 { y = 2 } else { y = 3 }", %{"x" => 5})`
+      gives `%{"x" => 5, "y" => 2}`; `Predicator.execute("i = 0; while i < 3 { i = i + 1 }",
+      %{})` gives `%{"i" => 3}`; and
+      `Predicator.execute("x = len('abc')", %{})` gives `%{"x" => 3}`
+
+**Implementation Note**: Use `mix quality --profile loop` between edits while
+iterating; run full `mix quality` as the phase gate. In interactive execution,
+pause here for the human to confirm the manual testing before moving to the
+next phase. In looped (`--loop`) execution, this phase's Automated Verification
+gates advancement automatically (via `/wurk:commit --auto`), and Manual
+Verification items are deferred and surfaced once at the end instead of
+blocking here.
+
+---

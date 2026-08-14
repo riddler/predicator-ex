@@ -242,7 +242,8 @@ defmodule Predicator do
       positions: Keyword.get(opts, :positions, %{}),
       segment_positions: Keyword.get(opts, :segment_positions, %{}),
       on_unbound: context.on_unbound,
-      loop_budget: Evaluator.loop_budget_from_opts(opts)
+      loop_budget: Evaluator.loop_budget_from_opts(opts),
+      protected_roots: Evaluator.protected_roots_from_opts(opts)
     }
   end
 
