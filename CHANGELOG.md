@@ -44,6 +44,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`Context.resolve_functions/1`'s provider validation is now memoized per
+  provider list.** Repeat `Context.new/2` and `Predicator.Evaluator.evaluate/3`
+  calls against an unchanged `:providers` list (the builtins included) no
+  longer re-pay `Code.ensure_loaded?/1` and `function_exported?/3` validation
+  or the `Map.merge/2` folds that build the dispatch map - the resolved map is
+  cached in `:persistent_term`, keyed by the provider list and a per-module
+  version stamp. A provider module recompiled with a different `functions/0`
+  is picked up automatically on the next call: its stamp changes, which is a
+  cache miss by construction, so no stale dispatch map survives a code reload
+  in dev or test. The resolved map, the shadowing order, and all three
+  `ArgumentError` messages for a bad provider are unchanged - a provider list
+  that fails validation is never cached, so it re-validates, and re-raises
+  identically, on every call.
+
 - **`conformance/RATCHET.md` now states registry entry uniqueness
   normatively.** Rule 3 already grew `entries` by a set union, and rule 1 already
   keyed entry identity on the `(case_id, surface)` pair, so uniqueness on that

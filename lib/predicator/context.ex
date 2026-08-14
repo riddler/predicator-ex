@@ -205,8 +205,71 @@ defmodule Predicator.Context do
     providers = Keyword.get(opts, :providers, [])
 
     (builtins ++ providers)
-    |> resolve_providers()
+    |> cached_providers()
     |> Map.merge(Keyword.get(opts, :functions, %{}))
+  end
+
+  # The one persistent_term key holding every memoized provider resolution.
+  @function_cache_key {__MODULE__, :function_resolution}
+
+  # The most distinct provider lists memoized at once. Provider lists come from
+  # host code, not from predicate text, so the realistic count is one or two;
+  # the cap exists so a host that generates provider modules cannot grow the
+  # term unboundedly. Overflow resets the cache rather than evicting - see the
+  # plan's Performance Considerations for why an LRU is not worth its tests.
+  @function_cache_limit 64
+
+  # Returns the resolved dispatch map for `providers`, from the memo when the
+  # recorded module versions still match and recomputing it otherwise.
+  #
+  # Every path that can raise is the recompute path, unchanged: a provider list
+  # containing a module that fails validation never reaches the memo, so it
+  # takes `resolve_providers/1` on every call, raising the same ArgumentError,
+  # in the same module order, as it did before this cache existed. A module
+  # recompiled with a different `functions/0` gets a different md5 stamp, which
+  # is a miss - so no stale dispatch map survives a code reload.
+  @spec cached_providers([module()]) :: %{
+          binary() => {Evaluator.function_arity(), {module(), atom()}}
+        }
+  defp cached_providers([]), do: %{}
+
+  defp cached_providers(providers) do
+    stamps = Enum.map(providers, &module_stamp/1)
+    cache = :persistent_term.get(@function_cache_key, %{})
+
+    case Map.get(cache, providers) do
+      {^stamps, resolved} ->
+        resolved
+
+      _miss ->
+        resolved = resolve_providers(providers)
+        put_function_cache(cache, providers, stamps, resolved)
+        resolved
+    end
+  end
+
+  # A module's identity-plus-version stamp. `:not_loaded` for a module that is
+  # not loaded, which is always a miss - the recompute path is what turns that
+  # into the documented ArgumentError.
+  @spec module_stamp(module()) :: binary() | :not_loaded
+  defp module_stamp(module) do
+    if Code.ensure_loaded?(module), do: module.module_info(:md5), else: :not_loaded
+  end
+
+  @spec put_function_cache(map(), [module()], [binary() | :not_loaded], map()) :: :ok
+  defp put_function_cache(cache, providers, stamps, resolved) do
+    cache = if grows_past_limit?(cache, providers), do: %{}, else: cache
+    :persistent_term.put(@function_cache_key, Map.put(cache, providers, {stamps, resolved}))
+  end
+
+  # Only a genuinely new key can grow the cache. Refreshing the stamp of a list
+  # already on record - what a dev recompiling a provider does, repeatedly - is
+  # a same-key Map.put/3 that leaves map_size/1 alone, so it must not trip the
+  # reset. Without this guard a session sitting at the cap would throw the whole
+  # cache away on every recompile.
+  @spec grows_past_limit?(map(), [module()]) :: boolean()
+  defp grows_past_limit?(cache, providers) do
+    map_size(cache) >= @function_cache_limit and not Map.has_key?(cache, providers)
   end
 
   @spec resolve_providers([module()]) :: %{

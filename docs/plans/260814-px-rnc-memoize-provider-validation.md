@@ -517,20 +517,20 @@ same machine, plus a one-paragraph reading of the delta.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes (`mix quality`), dialyzer included.
-- [ ] The pre-existing provider tests at `test/predicator/context_test.exs:193-284`
+- [x] Full quality gate passes (`mix quality`), dialyzer included.
+- [x] The pre-existing provider tests at `test/predicator/context_test.exs:193-284`
       pass unmodified - the shadowing order, the serialization test, and all
       three `ArgumentError` regexes.
-- [ ] `mix test test/predicator/context_function_cache_test.exs` passes,
+- [x] `mix test test/predicator/context_function_cache_test.exs` passes,
       including the runtime-recompile invalidation test and the
       repeat-`ArgumentError` test, and `git diff --stat` shows
       `test/predicator/context_test.exs` unchanged.
-- [ ] The full suite passes with `mix test` twice in a row and with
+- [x] The full suite passes with `mix test` twice in a row and with
       `mix test --seed 0` - a memo leaking across tests shows up as an
       order-dependent failure, not as a single red test.
-- [ ] `lib/predicator/context.ex` coverage stays above the 90% minimum in
+- [x] `lib/predicator/context.ex` coverage stays above the 90% minimum in
       `coveralls.json`.
-- [ ] `mix run bench/context_build.exs` exits 0 and the `## After` section of
+- [x] `mix run bench/context_build.exs` exits 0 and the `## After` section of
       `bench/results/260814-context-build.md` is populated.
 
 #### Manual Verification:
@@ -750,6 +750,28 @@ before considering the plan fully landed.
 - [ ] Numbers are in the same order of magnitude as statifier's (1-3 us at
       corpus size); a wild divergence means the benchmark is measuring something
       else.
+
+**Implementation Note**: Use the project's loop gate between edits while
+iterating; run the full gate as the phase gate. In interactive execution, pause
+here for the human to confirm the manual testing before moving to the next
+phase. In looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] The after numbers show the fixed term (the `new/2 normalize: false` minus
+      `no builtins` difference from Phase 1) substantially reduced, and the
+      size-scaling term unchanged - if both moved, something other than the memo
+      changed.
+- [ ] `iex -S mix`, resolve twice, `:persistent_term.get/2` shows exactly one
+      entry for the builtin list; recompile a provider with `r/1` and confirm
+      the next resolution reflects the new `functions/0`.
+- [ ] No regressions in related features: a providers-only context still
+      round-trips through `:erlang.term_to_binary/1`
+      (`test/predicator/context_test.exs:259`).
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution, pause
