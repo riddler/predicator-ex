@@ -126,10 +126,11 @@ defmodule Predicator.IfStatementTest do
     end
 
     test "';;' inside a block is still an error" do
-      assert Predicator.parse_program("if c { ;; }") ==
-               {:error,
-                "Expected number, string, boolean, date, datetime, identifier, function call, " <>
-                  "list, object, or '(' but found ';'", 1, 8}
+      assert {:error,
+              "Expected number, string, boolean, date, datetime, identifier, function call, " <>
+                "list, object, or '(' but found ';'", 1, 8,
+              _span} =
+               Predicator.parse_program("if c { ;; }")
     end
   end
 
@@ -172,28 +173,29 @@ defmodule Predicator.IfStatementTest do
 
   describe "errors with positions" do
     test "a missing '{' after the condition" do
-      assert Predicator.parse_program("if c a = 1") ==
-               {:error, "Expected '{' to open a block but found identifier 'a'", 1, 6}
+      assert {:error, "Expected '{' to open a block but found identifier 'a'", 1, 6, _span} =
+               Predicator.parse_program("if c a = 1")
     end
 
     test "an unterminated block reports the end-of-input position" do
-      assert Predicator.parse_program("if c { a = 1") ==
-               {:error, "Expected '}' to close the block but found end of input", 1, 13}
+      assert {:error, "Expected '}' to close the block but found end of input", 1, 13, _span} =
+               Predicator.parse_program("if c { a = 1")
     end
 
     test "'if c { } else' with a missing else block" do
-      assert Predicator.parse_program("if c { } else") ==
-               {:error, "Expected '{' to open a block but found end of input", 1, 14}
+      assert {:error, "Expected '{' to open a block but found end of input", 1, 14, _span} =
+               Predicator.parse_program("if c { } else")
     end
 
     test "'if { }' - the condition parses as an object, then there is no block" do
-      assert Predicator.parse_program("if { }") ==
-               {:error, "Expected '{' to open a block but found end of input", 1, 7}
+      assert {:error, "Expected '{' to open a block but found end of input", 1, 7, _span} =
+               Predicator.parse_program("if { }")
     end
 
     test "'else { }' alone" do
-      assert Predicator.parse_program("else { }") ==
-               {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", 1, 1}
+      assert {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", 1, 1,
+              _span} =
+               Predicator.parse_program("else { }")
     end
 
     test "'while c { }' parses - while is a statement now, not a reserved-but-unsupported keyword" do
@@ -203,22 +205,23 @@ defmodule Predicator.IfStatementTest do
     end
 
     test "a dangling 'else' after a completed statement gets the dedicated message, not the generic one" do
-      assert Predicator.parse_program("x = 1\nelse { y = 2 }") ==
-               {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", 2, 1}
+      assert {:error, "Unexpected 'else' - an 'else' block must follow an 'if' block.", 2, 1,
+              _span} =
+               Predicator.parse_program("x = 1\nelse { y = 2 }")
     end
 
     test "a dangling 'while' with no separator gets the generic unexpected-token message, not the reserved-word one - the walker only consumes it after a brace-terminated statement" do
-      assert Predicator.parse_program("x = 1\nwhile y { z = 2 }") ==
-               {:error, "Unexpected token 'while' after statement", 2, 1}
+      assert {:error, "Unexpected token 'while' after statement", 2, 1, _span} =
+               Predicator.parse_program("x = 1\nwhile y { z = 2 }")
     end
   end
 
   describe "entry-point separation" do
     test "Predicator.parse/2 rejects 'if c { }' with the statement-keyword message" do
-      assert Predicator.parse("if c { }") ==
-               {:error,
-                "'if' is a statement keyword, not an expression - control flow is only valid " <>
-                  "in a program (Predicator.parse_program/2).", 1, 1}
+      assert {:error,
+              "'if' is a statement keyword, not an expression - control flow is only valid " <>
+                "in a program (Predicator.parse_program/2).", 1, 1,
+              _span} = Predicator.parse("if c { }")
     end
 
     test "Predicator.parse_program/2 accepts 'if c { }'" do

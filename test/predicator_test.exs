@@ -308,6 +308,27 @@ defmodule PredicatorTest do
     end
   end
 
+  describe "the compile arm keeps span: nil until Phase 4, even though the parser now reports one" do
+    test "all six compile entry points return a ParseError with span: nil on a parse failure" do
+      assert {:error, %Predicator.Errors.ParseError{span: nil}} = Predicator.compile("score >")
+
+      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+               Predicator.compile_with_positions("score >")
+
+      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+               Predicator.compile_with_spans("score >")
+
+      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+               Predicator.compile_program("x =")
+
+      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+               Predicator.compile_program_with_positions("x =")
+
+      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+               Predicator.compile_program_with_spans("x =")
+    end
+  end
+
   describe "parse_program/2" do
     test "parses a single-statement program" do
       assert Predicator.parse_program("a = 1") ==
@@ -349,26 +370,25 @@ defmodule PredicatorTest do
     end
 
     test "non-assignable lhs gives the location-shape error, not the == fix-it" do
-      assert Predicator.parse_program("42 = 1") ==
-               {:error,
-                "Left side of '=' must be an assignable location - an identifier, a property " <>
-                  "access, or a bracket access.", 1, 4}
+      assert {:error,
+              "Left side of '=' must be an assignable location - an identifier, a property " <>
+                "access, or a bracket access.", 1, 4, _span} = Predicator.parse_program("42 = 1")
     end
 
     test "nested = gives the == fix-it error" do
-      assert {:error, message, _line, _col} = Predicator.parse_program("a = b = 1")
+      assert {:error, message, _line, _col, _span} = Predicator.parse_program("a = b = 1")
       assert message =~ "is not an equality operator"
     end
 
     test "empty input, a lone ';', and adjacent ';;' are all parse errors" do
-      assert {:error, _message, _line, _col} = Predicator.parse_program("")
-      assert {:error, _message, _line, _col} = Predicator.parse_program(";")
-      assert {:error, _message, _line, _col} = Predicator.parse_program("a;;b")
+      assert {:error, _message, _line, _col, _span} = Predicator.parse_program("")
+      assert {:error, _message, _line, _col, _span} = Predicator.parse_program(";")
+      assert {:error, _message, _line, _col, _span} = Predicator.parse_program("a;;b")
     end
 
     test "leftover tokens after a statement report a pointed error" do
-      assert Predicator.parse_program("a = 1 extra") ==
-               {:error, "Unexpected token identifier 'extra' after statement", 1, 7}
+      assert {:error, "Unexpected token identifier 'extra' after statement", 1, 7, _span} =
+               Predicator.parse_program("a = 1 extra")
     end
 
     test "propagates lexer errors the same way parse/2 does" do
@@ -875,7 +895,7 @@ defmodule PredicatorTest do
       assert match?({:logical_or, _, _}, ast)
 
       {:ok, ast} = parse_positionless("NOT expired == true")
-      assert match?({:logical_not, _}, ast)
+      assert match?({:logical_not, _span}, ast)
     end
 
     test "compile function generates correct instructions for logical operators" do

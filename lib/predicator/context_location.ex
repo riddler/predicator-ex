@@ -146,11 +146,14 @@ defmodule Predicator.ContextLocation do
     case Lexer.tokenize(expression) do
       {:ok, tokens} ->
         case Parser.parse(tokens) do
-          {:ok, ast} -> resolve(ast, context)
-          {:error, message, line, column} -> {:error, ParseError.new(message, line, column)}
+          {:ok, ast} ->
+            resolve(ast, context)
+
+          {:error, message, line, column, _span} ->
+            {:error, ParseError.new(message, line, column)}
         end
 
-      {:error, message, line, column} ->
+      {:error, message, line, column, _span} ->
         {:error, ParseError.new(message, line, column)}
     end
   end

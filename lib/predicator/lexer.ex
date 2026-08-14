@@ -96,7 +96,9 @@ defmodule Predicator.Lexer do
   @typedoc """
   Lexer result - either success with tokens or error with details.
   """
-  @type result :: {:ok, [token()]} | {:error, binary(), pos_integer(), pos_integer()}
+  @type result ::
+          {:ok, [token()]}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
 
   @typedoc """
   Internal lexer state for position tracking.
@@ -119,7 +121,8 @@ defmodule Predicator.Lexer do
   ## Returns
 
   - `{:ok, tokens}` - Successfully tokenized input
-  - `{:error, message, line, column}` - Lexical error with position
+  - `{:error, message, line, column, span}` - Lexical error with position and
+    extent; `span`'s start always equals `{line, column}`
 
   ## Examples
 
@@ -339,7 +342,7 @@ defmodule Predicator.Lexer do
             tokenize_chars(rest2, line, col + 2, [token | tokens])
 
           _rest ->
-            {:error, "Unexpected character '&'", line, col}
+            {:error, "Unexpected character '&'", line, col, {{line, col}, {line, col + 1}}}
         end
 
       ?| ->
@@ -349,7 +352,7 @@ defmodule Predicator.Lexer do
             tokenize_chars(rest2, line, col + 2, [token | tokens])
 
           _rest ->
-            {:error, "Unexpected character '|'", line, col}
+            {:error, "Unexpected character '|'", line, col, {{line, col}, {line, col + 1}}}
         end
 
       ?( ->
@@ -408,7 +411,7 @@ defmodule Predicator.Lexer do
             tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
 
           {:error, message} ->
-            {:error, message, line, col}
+            {:error, message, line, col, {{line, col}, {line, col + 1}}}
         end
 
       # String literals (single quotes)
@@ -420,7 +423,7 @@ defmodule Predicator.Lexer do
             tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
 
           {:error, message} ->
-            {:error, message, line, col}
+            {:error, message, line, col, {{line, col}, {line, col + 1}}}
         end
 
       # Date literals
@@ -432,12 +435,12 @@ defmodule Predicator.Lexer do
             tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
 
           {:error, message} ->
-            {:error, message, line, col}
+            {:error, message, line, col, {{line, col}, {line, col + 1}}}
         end
 
       # Unknown character
       _char ->
-        {:error, "Unexpected character '#{[char]}'", line, col}
+        {:error, "Unexpected character '#{[char]}'", line, col, {{line, col}, {line, col + 1}}}
     end
   end
 

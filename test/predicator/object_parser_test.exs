@@ -105,55 +105,60 @@ defmodule Predicator.ObjectParserTest do
   describe "object parsing errors" do
     test "missing closing brace" do
       {:ok, tokens} = Lexer.tokenize("{a: 1")
-      assert {:error, "Expected '}' but found end of input", 1, 6} = parse_positionless(tokens)
+
+      assert {:error, "Expected '}' but found end of input", 1, 6, _span} =
+               parse_positionless(tokens)
     end
 
     test "missing colon after key" do
       {:ok, tokens} = Lexer.tokenize("{a 1}")
 
-      assert {:error, "Expected ':' after object key but found number '1'", _line, _col} =
+      assert {:error, "Expected ':' after object key but found number '1'", _line, _col, _span} =
                parse_positionless(tokens)
     end
 
     test "missing value after colon" do
       {:ok, tokens} = Lexer.tokenize("{a:}")
-      assert {:error, _message, _line, _col} = parse_positionless(tokens)
+      assert {:error, _message, _line, _col, _span} = parse_positionless(tokens)
     end
 
     test "invalid key type" do
       {:ok, tokens} = Lexer.tokenize("{123: 'value'}")
 
       assert {:error, "Expected identifier or string for object key but found number '123'",
-              _line,
-              _col} =
+              _line, _col,
+              _span} =
                parse_positionless(tokens)
     end
 
     test "missing key in object entry" do
       {:ok, tokens} = Lexer.tokenize("{: 'value'}")
 
-      assert {:error, "Expected identifier or string for object key but found ':'", _line, _col} =
+      assert {:error, "Expected identifier or string for object key but found ':'", _line, _col,
+              _span} =
                parse_positionless(tokens)
     end
 
     test "missing comma between entries" do
       {:ok, tokens} = Lexer.tokenize("{a: 1 b: 2}")
 
-      assert {:error, "Expected '}' but found identifier 'b'", _line, _col} =
+      assert {:error, "Expected '}' but found identifier 'b'", _line, _col, _span} =
                parse_positionless(tokens)
     end
 
     test "trailing comma (error case)" do
       {:ok, tokens} = Lexer.tokenize("{a: 1,}")
 
-      assert {:error, "Expected identifier or string for object key but found '}'", _line, _col} =
+      assert {:error, "Expected identifier or string for object key but found '}'", _line, _col,
+              _span} =
                parse_positionless(tokens)
     end
 
     test "empty key after comma" do
       {:ok, tokens} = Lexer.tokenize("{a: 1, }")
 
-      assert {:error, "Expected identifier or string for object key but found '}'", _line, _col} =
+      assert {:error, "Expected identifier or string for object key but found '}'", _line, _col,
+              _span} =
                parse_positionless(tokens)
     end
   end

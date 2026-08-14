@@ -236,7 +236,7 @@ defmodule Predicator.StrictEqualityTest do
   describe "error handling" do
     test "provides meaningful error messages for invalid syntax" do
       # Test parsing error includes operator info
-      assert {:error, _message, _line, _col} = parse_positionless("x === ===")
+      assert {:error, _message, _line, _col, _span} = parse_positionless("x === ===")
     end
 
     test "handles undefined values consistently" do

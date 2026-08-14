@@ -11,29 +11,29 @@ defmodule Predicator.ObjectEdgeCasesTest do
   describe "object parsing edge cases" do
     test "handles malformed object syntax" do
       # Missing closing brace
-      assert {:error, message, _line, _col} = Predicator.parse("{name: \"John\"")
+      assert {:error, message, _line, _col, _span} = Predicator.parse("{name: \"John\"")
       assert message =~ "Expected '}'"
 
       # Missing opening brace
-      assert {:error, message, _line, _col} = Predicator.parse("name: \"John\"}")
+      assert {:error, message, _line, _col, _span} = Predicator.parse("name: \"John\"}")
       assert message =~ "Unexpected token"
 
       # Missing colon
-      assert {:error, message, _line, _col} = Predicator.parse("{name \"John\"}")
+      assert {:error, message, _line, _col, _span} = Predicator.parse("{name \"John\"}")
       assert message =~ "Expected ':'"
 
       # Missing value
-      assert {:error, message, _line, _col} = Predicator.parse("{name:}")
+      assert {:error, message, _line, _col, _span} = Predicator.parse("{name:}")
 
       assert message =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '('"
 
       # Invalid key type
-      assert {:error, message, _line, _col} = Predicator.parse("{123: \"value\"}")
+      assert {:error, message, _line, _col, _span} = Predicator.parse("{123: \"value\"}")
       assert message =~ "Expected identifier or string for object key"
 
       # Trailing comma (currently invalid)
-      assert {:error, message, _line, _col} = Predicator.parse("{name: \"John\",}")
+      assert {:error, message, _line, _col, _span} = Predicator.parse("{name: \"John\",}")
       assert message =~ "Expected identifier or string for object key"
     end
 
