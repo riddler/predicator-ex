@@ -12,17 +12,19 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'if' used as a variable name, from every entry point" do
     test "Predicator.parse/2 reports the expression-position message" do
-      assert Predicator.parse("if = 3") == {:error, expression_message("if"), 1, 1}
+      expected_message = expression_message("if")
+      assert {:error, ^expected_message, 1, 1, _span} = Predicator.parse("if = 3")
     end
 
     test "Predicator.parse_program/2 - 'if' is consumed as the keyword, not a variable name" do
       # Phase 2: `if` now opens a real if_statement, so "if = 3" fails where
       # the condition expression meets the bare "=" - the same fix-it-free
       # rejection any invalid condition gets, not a statement-keyword message.
-      assert Predicator.parse_program("if = 3") ==
-               {:error,
-                "Expected number, string, boolean, date, datetime, identifier, function call, " <>
-                  "list, object, or '(' but found '='", 1, 4}
+      assert {:error,
+              "Expected number, string, boolean, date, datetime, identifier, function call, " <>
+                "list, object, or '(' but found '='", 1, 4,
+              _span} =
+               Predicator.parse_program("if = 3")
     end
 
     test "Predicator.evaluate/3" do
@@ -42,11 +44,12 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'else' used as a variable name, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("else = 3") == {:error, expression_message("else"), 1, 1}
+      expected_message = expression_message("else")
+      assert {:error, ^expected_message, 1, 1, _span} = Predicator.parse("else = 3")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("else = 3") == {:error, @else_statement_message, 1, 1}
+      assert {:error, @else_statement_message, 1, 1, _span} = Predicator.parse_program("else = 3")
     end
 
     test "Predicator.evaluate/3" do
@@ -66,7 +69,8 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'while' used as a variable name, from every entry point" do
     test "Predicator.parse/2 reports the expression-position message" do
-      assert Predicator.parse("while = 3") == {:error, expression_message("while"), 1, 1}
+      expected_message = expression_message("while")
+      assert {:error, ^expected_message, 1, 1, _span} = Predicator.parse("while = 3")
     end
 
     test "Predicator.parse_program/2 - 'while' is consumed as the keyword, not a variable name" do
@@ -74,10 +78,11 @@ defmodule Predicator.ReservedWordsTest do
       # fails where the condition expression meets the bare "=" - the same
       # fix-it-free rejection any invalid condition gets, not a
       # statement-keyword message.
-      assert Predicator.parse_program("while = 3") ==
-               {:error,
-                "Expected number, string, boolean, date, datetime, identifier, function call, " <>
-                  "list, object, or '(' but found '='", 1, 7}
+      assert {:error,
+              "Expected number, string, boolean, date, datetime, identifier, function call, " <>
+                "list, object, or '(' but found '='", 1, 7,
+              _span} =
+               Predicator.parse_program("while = 3")
     end
 
     test "Predicator.evaluate/3" do
@@ -99,11 +104,11 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'user.if' as a bare property name, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("user.if") == {:error, @user_if_message, 1, 6}
+      assert {:error, @user_if_message, 1, 6, _span} = Predicator.parse("user.if")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("user.if") == {:error, @user_if_message, 1, 6}
+      assert {:error, @user_if_message, 1, 6, _span} = Predicator.parse_program("user.if")
     end
 
     test "Predicator.evaluate/3" do
@@ -121,11 +126,11 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'{if: 1}' as a bare object key, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("{if: 1}") == {:error, @if_key_message, 1, 2}
+      assert {:error, @if_key_message, 1, 2, _span} = Predicator.parse("{if: 1}")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("{if: 1}") == {:error, @if_key_message, 1, 2}
+      assert {:error, @if_key_message, 1, 2, _span} = Predicator.parse_program("{if: 1}")
     end
 
     test "Predicator.evaluate/3" do
@@ -154,13 +159,14 @@ defmodule Predicator.ReservedWordsTest do
     end
 
     test "'else { }'" do
-      assert Predicator.parse_program("else { }") == {:error, @else_statement_message, 1, 1}
+      assert {:error, @else_statement_message, 1, 1, _span} = Predicator.parse_program("else { }")
     end
   end
 
   describe "'while' at expression position, through Predicator.parse/2" do
     test "'while > 1' gets the statement-keyword message naming parse_program/2, same as 'if'/'else'" do
-      assert Predicator.parse("while > 1") == {:error, expression_message("while"), 1, 1}
+      expected_message = expression_message("while")
+      assert {:error, ^expected_message, 1, 1, _span} = Predicator.parse("while > 1")
     end
   end
 
@@ -171,12 +177,13 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'undefined' used as a variable name, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("undefined = 3") == {:error, @undefined_assign_expr_message, 1, 11}
+      assert {:error, @undefined_assign_expr_message, 1, 11, _span} =
+               Predicator.parse("undefined = 3")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("undefined = 3") ==
-               {:error, @undefined_assign_program_message, 1, 11}
+      assert {:error, @undefined_assign_program_message, 1, 11, _span} =
+               Predicator.parse_program("undefined = 3")
     end
 
     test "Predicator.evaluate/3" do
@@ -194,12 +201,12 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'user.undefined' as a bare property name, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("user.undefined") == {:error, @user_undefined_message, 1, 6}
+      assert {:error, @user_undefined_message, 1, 6, _span} = Predicator.parse("user.undefined")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("user.undefined") ==
-               {:error, @user_undefined_message, 1, 6}
+      assert {:error, @user_undefined_message, 1, 6, _span} =
+               Predicator.parse_program("user.undefined")
     end
 
     test "Predicator.evaluate/3" do
@@ -217,12 +224,12 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'{undefined: 1}' as a bare object key, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("{undefined: 1}") == {:error, @undefined_key_message, 1, 2}
+      assert {:error, @undefined_key_message, 1, 2, _span} = Predicator.parse("{undefined: 1}")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("{undefined: 1}") ==
-               {:error, @undefined_key_message, 1, 2}
+      assert {:error, @undefined_key_message, 1, 2, _span} =
+               Predicator.parse_program("{undefined: 1}")
     end
 
     test "Predicator.evaluate/3" do
@@ -250,12 +257,12 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'null' used as a variable name, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("null = 3") == {:error, @null_assign_expr_message, 1, 6}
+      assert {:error, @null_assign_expr_message, 1, 6, _span} = Predicator.parse("null = 3")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("null = 3") ==
-               {:error, @null_assign_program_message, 1, 6}
+      assert {:error, @null_assign_program_message, 1, 6, _span} =
+               Predicator.parse_program("null = 3")
     end
 
     test "Predicator.evaluate/3" do
@@ -273,11 +280,11 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'user.null' as a bare property name, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("user.null") == {:error, @user_null_message, 1, 6}
+      assert {:error, @user_null_message, 1, 6, _span} = Predicator.parse("user.null")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("user.null") == {:error, @user_null_message, 1, 6}
+      assert {:error, @user_null_message, 1, 6, _span} = Predicator.parse_program("user.null")
     end
 
     test "Predicator.evaluate/3" do
@@ -295,11 +302,11 @@ defmodule Predicator.ReservedWordsTest do
 
   describe "'{null: 1}' as a bare object key, from every entry point" do
     test "Predicator.parse/2" do
-      assert Predicator.parse("{null: 1}") == {:error, @null_key_message, 1, 2}
+      assert {:error, @null_key_message, 1, 2, _span} = Predicator.parse("{null: 1}")
     end
 
     test "Predicator.parse_program/2" do
-      assert Predicator.parse_program("{null: 1}") == {:error, @null_key_message, 1, 2}
+      assert {:error, @null_key_message, 1, 2, _span} = Predicator.parse_program("{null: 1}")
     end
 
     test "Predicator.evaluate/3" do

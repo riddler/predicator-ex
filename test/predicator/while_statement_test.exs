@@ -93,22 +93,23 @@ defmodule Predicator.WhileStatementTest do
 
   describe "errors with positions" do
     test "a missing '{' after the condition" do
-      assert Predicator.parse_program("while c a = 1") ==
-               {:error, "Expected '{' to open a block but found identifier 'a'", 1, 9}
+      assert {:error, "Expected '{' to open a block but found identifier 'a'", 1, 9, _span} =
+               Predicator.parse_program("while c a = 1")
     end
 
     test "an unterminated block reports the end-of-input position" do
-      assert Predicator.parse_program("while c { a = 1") ==
-               {:error, "Expected '}' to close the block but found end of input", 1, 16}
+      assert {:error, "Expected '}' to close the block but found end of input", 1, 16, _span} =
+               Predicator.parse_program("while c { a = 1")
     end
   end
 
   describe "entry-point separation" do
     test "Predicator.parse/2 rejects 'while c { }' with the statement-keyword message" do
-      assert Predicator.parse("while x { }") ==
-               {:error,
-                "'while' is a statement keyword, not an expression - control flow is only " <>
-                  "valid in a program (Predicator.parse_program/2).", 1, 1}
+      assert {:error,
+              "'while' is a statement keyword, not an expression - control flow is only " <>
+                "valid in a program (Predicator.parse_program/2).", 1, 1,
+              _span} =
+               Predicator.parse("while x { }")
     end
 
     test "Predicator.parse_program/2 accepts 'while c { }'" do

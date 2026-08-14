@@ -5,7 +5,7 @@ defmodule Predicator.ParserEdgeCasesTest do
 
   describe "parser error handling" do
     test "handles empty token list" do
-      {:error, message, line, col} = parse_positionless([])
+      {:error, message, line, col, _span} = parse_positionless([])
       assert message == "Unexpected end of input"
       assert line == 1
       assert col == 1
@@ -13,14 +13,14 @@ defmodule Predicator.ParserEdgeCasesTest do
 
     test "handles unexpected end of input" do
       {:ok, tokens} = Lexer.tokenize("x +")
-      {:error, message, line, _col} = parse_positionless(tokens)
+      {:error, message, line, _col, _span} = parse_positionless(tokens)
       assert String.contains?(message, "end of input")
       assert line == 1
     end
 
     test "handles unexpected token" do
       {:ok, tokens} = Lexer.tokenize("(")
-      {:error, message, line, col} = parse_positionless(tokens)
+      {:error, message, line, col, _span} = parse_positionless(tokens)
       assert String.contains?(message, "Expected")
       assert line == 1
       assert col > 0
@@ -28,42 +28,42 @@ defmodule Predicator.ParserEdgeCasesTest do
 
     test "handles missing closing paren" do
       {:ok, tokens} = Lexer.tokenize("(x")
-      {:error, message, line, _col} = parse_positionless(tokens)
+      {:error, message, line, _col, _span} = parse_positionless(tokens)
       assert String.contains?(message, "Expected ')' but found end of input")
       assert line == 1
     end
 
     test "handles missing closing bracket in list" do
       {:ok, tokens} = Lexer.tokenize("[1, 2")
-      {:error, message, line, _col} = parse_positionless(tokens)
+      {:error, message, line, _col, _span} = parse_positionless(tokens)
       assert String.contains?(message, "Expected")
       assert line == 1
     end
 
     test "handles missing closing brace in object" do
       {:ok, tokens} = Lexer.tokenize("{name: 'test'")
-      {:error, message, line, _col} = parse_positionless(tokens)
+      {:error, message, line, _col, _span} = parse_positionless(tokens)
       assert String.contains?(message, "Expected")
       assert line == 1
     end
 
     test "handles invalid object key" do
       {:ok, tokens} = Lexer.tokenize("{123: 'value'}")
-      {:error, message, line, _col} = parse_positionless(tokens)
+      {:error, message, line, _col, _span} = parse_positionless(tokens)
       assert String.contains?(message, "Expected identifier or string for object key")
       assert line == 1
     end
 
     test "handles missing colon in object" do
       {:ok, tokens} = Lexer.tokenize("{name 'test'}")
-      {:error, message, line, _col} = parse_positionless(tokens)
+      {:error, message, line, _col, _span} = parse_positionless(tokens)
       assert String.contains?(message, "Expected ':' after object key")
       assert line == 1
     end
 
     test "handles missing value after colon in object" do
       {:ok, tokens} = Lexer.tokenize("{name:}")
-      {:error, message, line, _col} = parse_positionless(tokens)
+      {:error, message, line, _col, _span} = parse_positionless(tokens)
       assert String.contains?(message, "Expected")
       assert line == 1
     end

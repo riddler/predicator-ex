@@ -417,7 +417,7 @@ defmodule Predicator.LexerTest do
     end
 
     test "returns error for unterminated string" do
-      assert {:error, "Unterminated double-quoted string literal", 1, 1} =
+      assert {:error, "Unterminated double-quoted string literal", 1, 1, _span} =
                Lexer.tokenize(~s("hello))
     end
   end
@@ -483,7 +483,7 @@ defmodule Predicator.LexerTest do
     end
 
     test "returns error for unterminated single quoted string" do
-      assert {:error, "Unterminated single-quoted string literal", 1, 1} =
+      assert {:error, "Unterminated single-quoted string literal", 1, 1, _span} =
                Lexer.tokenize("'hello")
     end
   end
@@ -863,7 +863,7 @@ defmodule Predicator.LexerTest do
 
   describe "tokenize/1 - error cases" do
     test "returns error for unexpected character" do
-      assert {:error, "Unexpected character '@'", 1, 1} = Lexer.tokenize("@")
+      assert {:error, "Unexpected character '@'", 1, 1, _span} = Lexer.tokenize("@")
     end
 
     test "tokenizes standalone exclamation as bang" do
@@ -871,7 +871,7 @@ defmodule Predicator.LexerTest do
     end
 
     test "returns error with correct position" do
-      assert {:error, "Unterminated date literal", 1, 9} = Lexer.tokenize("score > #")
+      assert {:error, "Unterminated date literal", 1, 9, _span} = Lexer.tokenize("score > #")
     end
 
     test "returns error on multiline with correct position" do
@@ -880,7 +880,16 @@ defmodule Predicator.LexerTest do
       name @ "John"
       """
 
-      assert {:error, "Unexpected character '@'", 2, 6} = Lexer.tokenize(input)
+      assert {:error, "Unexpected character '@'", 2, 6, _span} = Lexer.tokenize(input)
+    end
+
+    test "an 'unexpected character' failure spans exactly one character" do
+      assert {:error, "Unexpected character '@'", 1, 1, {{1, 1}, {1, 2}}} = Lexer.tokenize("@")
+    end
+
+    test "an unterminated string's span lands the caret on the opening quote" do
+      assert {:error, "Unterminated double-quoted string literal", 1, 1, {{1, 1}, {1, 2}}} =
+               Lexer.tokenize(~s("unterminated))
     end
   end
 
@@ -934,17 +943,18 @@ defmodule Predicator.LexerTest do
     end
 
     test "returns error for invalid date format" do
-      assert {:error, "Invalid date format: not-a-date", 1, 1} = Lexer.tokenize("#not-a-date#")
+      assert {:error, "Invalid date format: not-a-date", 1, 1, _span} =
+               Lexer.tokenize("#not-a-date#")
     end
 
     test "returns error for invalid datetime format" do
-      assert {:error, "Invalid datetime format: 2024-01-15T25:00:00Z", 1, 1} =
+      assert {:error, "Invalid datetime format: 2024-01-15T25:00:00Z", 1, 1, _span} =
                Lexer.tokenize("#2024-01-15T25:00:00Z#")
     end
 
     test "returns error for unterminated date literal" do
-      assert {:error, "Unterminated date literal", 1, 1} = Lexer.tokenize("#2024-01-15")
-      assert {:error, "Unterminated date literal", 1, 9} = Lexer.tokenize("score > #")
+      assert {:error, "Unterminated date literal", 1, 1, _span} = Lexer.tokenize("#2024-01-15")
+      assert {:error, "Unterminated date literal", 1, 9, _span} = Lexer.tokenize("score > #")
     end
   end
 

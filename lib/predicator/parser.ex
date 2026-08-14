@@ -247,7 +247,8 @@ defmodule Predicator.Parser do
   Program parser result.
   """
   @type program_result ::
-          {:ok, program()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, program()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
 
   @typedoc """
   A node's trailing source metadata.
@@ -312,7 +313,8 @@ defmodule Predicator.Parser do
   @typedoc """
   Parser result - either success with AST or error with details.
   """
-  @type result :: {:ok, ast()} | {:error, binary(), pos_integer(), pos_integer()}
+  @type result ::
+          {:ok, ast()} | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
 
   @typedoc """
   Internal parser state for tracking position and tokens.
@@ -372,15 +374,16 @@ defmodule Predicator.Parser do
           {:eof, _line, _col, _len, _value} ->
             {:ok, ast}
 
-          {type, line, col, _len, value} ->
-            {:error, "Unexpected token #{format_token(type, value)} after expression", line, col}
+          {type, line, col, _len, value} = token ->
+            {:error, "Unexpected token #{format_token(type, value)} after expression", line, col,
+             token_span(token)}
 
           nil ->
             {:ok, ast}
         end
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -417,7 +420,7 @@ defmodule Predicator.Parser do
 
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("42 = 1")
       iex> Predicator.Parser.parse_program(tokens)
-      {:error, "Left side of '=' must be an assignable location - an identifier, a property access, or a bracket access.", 1, 4}
+      {:error, "Left side of '=' must be an assignable location - an identifier, a property access, or a bracket access.", 1, 4, {{1, 4}, {1, 5}}}
   """
   @spec parse_program([Lexer.token()], keyword()) :: program_result()
   def parse_program(tokens, opts \\ []) when is_list(tokens) do
@@ -430,11 +433,11 @@ defmodule Predicator.Parser do
           {:ok, statements, final_state} ->
             finish_program(state, start_point, statements, final_state)
 
-          {:error, _message, _line, _col} = error ->
+          {:error, _message, _line, _col, _span} = error ->
             error
         end
 
-      {:error, _message, _line, _col} = error ->
+      {:error, _message, _line, _col, _span} = error ->
         error
     end
   end
@@ -468,11 +471,12 @@ defmodule Predicator.Parser do
       nil ->
         {:ok, {:program, statements, program_loc(state, start_point, statements)}}
 
-      {:else_kw, line, col, _len, _value} ->
-        {:error, statement_keyword_message(:else_kw), line, col}
+      {:else_kw, line, col, _len, _value} = token ->
+        {:error, statement_keyword_message(:else_kw), line, col, token_span(token)}
 
-      {type, line, col, _len, value} ->
-        {:error, "Unexpected token #{format_token(type, value)} after statement", line, col}
+      {type, line, col, _len, value} = token ->
+        {:error, "Unexpected token #{format_token(type, value)} after statement", line, col,
+         token_span(token)}
     end
   end
 
@@ -501,7 +505,7 @@ defmodule Predicator.Parser do
   # directly instead of stopping.
   @spec parse_statement_sequence(parser_state(), [statement()], atom()) ::
           {:ok, [statement()], parser_state()}
-          | {:error, binary(), pos_integer(), pos_integer()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_statement_sequence(state, acc, terminator) do
     case peek_token(state) do
       {:semicolon, _line, _col, _len, _value} ->
@@ -514,7 +518,7 @@ defmodule Predicator.Parser do
             {:ok, statement, new_state} ->
               parse_statement_sequence(new_state, [statement | acc], terminator)
 
-            {:error, _message, _line, _col} = error ->
+            {:error, _message, _line, _col, _span} = error ->
               error
           end
         end
@@ -525,7 +529,7 @@ defmodule Predicator.Parser do
             {:ok, statement, new_state} ->
               parse_statement_sequence(new_state, [statement | acc], terminator)
 
-            {:error, _message, _line, _col} = error ->
+            {:error, _message, _line, _col, _span} = error ->
               error
           end
         else
@@ -566,7 +570,8 @@ defmodule Predicator.Parser do
   # A statement is an assignment, if the leading tokens are location-shaped
   # and followed by "=", or an ordinary expression otherwise.
   @spec parse_statement(parser_state()) ::
-          {:ok, statement(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, statement(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_statement(state) do
     case peek_token(state) do
       {:if_kw, line, col, _len, _value} ->
@@ -575,13 +580,13 @@ defmodule Predicator.Parser do
       {:while_kw, line, col, _len, _value} ->
         parse_while_statement(state, {line, col})
 
-      {:else_kw, line, col, _len, _value} ->
-        {:error, statement_keyword_message(:else_kw), line, col}
+      {:else_kw, line, col, _len, _value} = token ->
+        {:error, statement_keyword_message(:else_kw), line, col, token_span(token)}
 
       _other ->
         case try_parse_assignment(state) do
           {:ok, _ast, _state} = ok -> ok
-          {:error, _message, _line, _col} = error -> error
+          {:error, _message, _line, _col, _span} = error -> error
           :not_assignment -> parse_expression(state)
         end
     end
@@ -591,7 +596,8 @@ defmodule Predicator.Parser do
   # leading "if" is still unconsumed in `state`, which `point` already names -
   # `advance/1` moves past it before the condition is parsed.
   @spec parse_if_statement(parser_state(), Predicator.Types.position()) ::
-          {:ok, if_statement(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, if_statement(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_if_statement(state, point) do
     case parse_expression(advance(state)) do
       {:ok, condition, after_cond} ->
@@ -623,7 +629,7 @@ defmodule Predicator.Parser do
   # the condition is parsed, mirroring parse_if_statement/2.
   @spec parse_while_statement(parser_state(), Predicator.Types.position()) ::
           {:ok, while_statement(), parser_state()}
-          | {:error, binary(), pos_integer(), pos_integer()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_while_statement(state, point) do
     case parse_expression(advance(state)) do
       {:ok, condition, after_cond} ->
@@ -645,22 +651,25 @@ defmodule Predicator.Parser do
   # requiring both delimiters. An empty block returns before entering the
   # statement-sequence walker, since a bare "}" is not statement-shaped.
   @spec parse_block(parser_state()) ::
-          {:ok, block(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, block(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_block(state) do
     case peek_token(state) do
       {:lbrace, line, col, _len, _value} ->
         parse_block_body(state, advance(state), {line, col})
 
-      {type, line, col, _len, value} ->
-        {:error, "Expected '{' to open a block but found #{format_token(type, value)}", line, col}
+      {type, line, col, _len, value} = token ->
+        {:error, "Expected '{' to open a block but found #{format_token(type, value)}", line, col,
+         token_span(token)}
 
       nil ->
-        {:error, "Expected '{' to open a block but found end of input", 1, 1}
+        point_error("Expected '{' to open a block but found end of input", 1, 1)
     end
   end
 
   @spec parse_block_body(parser_state(), parser_state(), Predicator.Types.position()) ::
-          {:ok, block(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, block(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_block_body(state, brace_state, point) do
     case peek_token(brace_state) do
       {:rbrace, _line, _col, _len, _value} = close ->
@@ -673,36 +682,38 @@ defmodule Predicator.Parser do
               {:ok, statements, final_state} ->
                 finish_block(state, point, statements, final_state)
 
-              {:error, _message, _line, _col} = error ->
+              {:error, _message, _line, _col, _span} = error ->
                 error
             end
 
-          {:error, _message, _line, _col} = error ->
+          {:error, _message, _line, _col, _span} = error ->
             error
         end
     end
   end
 
   @spec finish_block(parser_state(), Predicator.Types.position(), [statement()], parser_state()) ::
-          {:ok, block(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, block(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp finish_block(state, point, statements, final_state) do
     case peek_token(final_state) do
       {:rbrace, _line, _col, _len, _value} = close ->
         {:ok, {:block, statements, delimited_loc(state, point, close)}, advance(final_state)}
 
-      {type, line, col, _len, value} ->
+      {type, line, col, _len, value} = token ->
         {:error, "Expected '}' to close the block but found #{format_token(type, value)}", line,
-         col}
+         col, token_span(token)}
 
       nil ->
-        {:error, "Expected '}' to close the block but found end of input", 1, 1}
+        point_error("Expected '}' to close the block but found end of input", 1, 1)
     end
   end
 
   # Parses the optional else clause: absent (nil), "else { ... }", or
   # "else if ...", which desugars into a synthetic block per ADR-0013.
   @spec parse_else(parser_state()) ::
-          {:ok, block() | nil, parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, block() | nil, parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_else(state) do
     case peek_token(state) do
       {:else_kw, _line, _col, _len, _value} ->
@@ -714,7 +725,8 @@ defmodule Predicator.Parser do
   end
 
   @spec parse_else_body(parser_state()) ::
-          {:ok, block(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, block(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_else_body(state) do
     case peek_token(state) do
       {:if_kw, line, col, _len, _value} ->
@@ -727,7 +739,7 @@ defmodule Predicator.Parser do
             slot = elem(nested, tuple_size(nested) - 1)
             {:ok, {:block, [nested], slot}, final_state}
 
-          {:error, _message, _line, _col} = error ->
+          {:error, _message, _line, _col, _span} = error ->
             error
         end
 
@@ -762,20 +774,20 @@ defmodule Predicator.Parser do
   # wherever the expression grammar meets it first.
   @spec try_parse_assignment(parser_state()) ::
           {:ok, assignment(), parser_state()}
-          | {:error, binary(), pos_integer(), pos_integer()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
           | :not_assignment
   defp try_parse_assignment(state) do
     case parse_addition(state) do
       {:ok, candidate, after_candidate} ->
         case peek_token(after_candidate) do
-          {:eq, eq_line, eq_col, _len, _value} ->
-            build_assignment(state, candidate, {eq_line, eq_col}, advance(after_candidate))
+          {:eq, _eq_line, _eq_col, _len, _value} = eq_token ->
+            build_assignment(state, candidate, eq_token, advance(after_candidate))
 
           _not_eq ->
             :not_assignment
         end
 
-      {:error, _message, _line, _col} ->
+      {:error, _message, _line, _col, _span} ->
         :not_assignment
     end
   end
@@ -786,24 +798,28 @@ defmodule Predicator.Parser do
   @spec build_assignment(
           parser_state(),
           ast(),
-          Predicator.Types.position(),
+          Lexer.token(),
           parser_state()
         ) ::
           {:ok, assignment(), parser_state()}
-          | {:error, binary(), pos_integer(), pos_integer()}
-  defp build_assignment(state, lhs, {eq_line, eq_col} = point, rhs_state) do
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
+  defp build_assignment(state, lhs, eq_token, rhs_state) do
+    point = token_start(eq_token)
+
     if assignable_location?(lhs) do
       case parse_expression(rhs_state) do
         {:ok, rhs, final_state} ->
           {:ok, {:assignment, lhs, rhs, binary_loc(state, point, lhs, rhs)}, final_state}
 
-        {:error, _message, _line, _col} = error ->
+        {:error, _message, _line, _col, _span} = error ->
           error
       end
     else
+      {eq_line, eq_col} = point
+
       {:error,
        "Left side of '=' must be an assignable location - an identifier, a property " <>
-         "access, or a bracket access.", eq_line, eq_col}
+         "access, or a bracket access.", eq_line, eq_col, token_span(eq_token)}
     end
   end
 
@@ -824,26 +840,29 @@ defmodule Predicator.Parser do
 
   # Parse expression (top level)
   @spec parse_expression(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_expression(state) do
     parse_logical_or(state)
   end
 
   # Parse logical OR expressions (lowest precedence)
   @spec parse_logical_or(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_logical_or(state) do
     case parse_logical_and(state) do
       {:ok, left, new_state} ->
         parse_logical_or_rest(left, new_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   @spec parse_logical_or_rest(ast(), parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_logical_or_rest(left, state) do
     token = peek_token(state)
     parse_logical_or_rest_token(left, state, token)
@@ -858,8 +877,8 @@ defmodule Predicator.Parser do
         ast = {:logical_or, left, right, binary_loc(state, {line, col}, left, right)}
         parse_logical_or_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -871,8 +890,8 @@ defmodule Predicator.Parser do
         ast = {:logical_or, left, right, binary_loc(state, {line, col}, left, right)}
         parse_logical_or_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -883,19 +902,21 @@ defmodule Predicator.Parser do
 
   # Parse logical AND expressions (middle precedence)
   @spec parse_logical_and(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_logical_and(state) do
     case parse_logical_not(state) do
       {:ok, left, new_state} ->
         parse_logical_and_rest(left, new_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   @spec parse_logical_and_rest(ast(), parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_logical_and_rest(left, state) do
     token = peek_token(state)
     parse_logical_and_rest_token(left, state, token)
@@ -910,8 +931,8 @@ defmodule Predicator.Parser do
         ast = {:logical_and, left, right, binary_loc(state, {line, col}, left, right)}
         parse_logical_and_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -923,8 +944,8 @@ defmodule Predicator.Parser do
         ast = {:logical_and, left, right, binary_loc(state, {line, col}, left, right)}
         parse_logical_and_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -935,7 +956,8 @@ defmodule Predicator.Parser do
 
   # Parse logical NOT expressions (highest precedence)
   @spec parse_logical_not(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_logical_not(state) do
     token = peek_token(state)
     parse_logical_not_token(state, token)
@@ -951,8 +973,8 @@ defmodule Predicator.Parser do
         ast = {:logical_not, operand, prefix_loc(state, {line, col}, operand)}
         {:ok, ast, final_state}
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -966,7 +988,8 @@ defmodule Predicator.Parser do
   # The nested case statements handle: parse left operand -> check for operator ->
   # parse right operand -> construct AST, with proper error propagation at each step.
   @spec parse_comparison(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_comparison(state) do
     case parse_addition(state) do
       {:ok, left, new_state} ->
@@ -976,10 +999,11 @@ defmodule Predicator.Parser do
           # which is Predicator.Parser.parse_program/2's job, not parse/2's)
           # or a mistake. Either way this is a hard parse error, not a silent
           # reinterpretation (ADR-0002).
-          {:eq, op_line, op_col, _len, _value} ->
+          {:eq, op_line, op_col, _len, _value} = token ->
             {:error,
              "'=' is not an equality operator - use '==' for equality. " <>
-               "Assignment is only valid at the start of a statement.", op_line, op_col}
+               "Assignment is only valid at the start of a statement.", op_line, op_col,
+             token_span(token)}
 
           # Comparison operators (including equality)
           {op_type, op_line, op_col, _len, _value}
@@ -1012,8 +1036,8 @@ defmodule Predicator.Parser do
 
                 {:ok, ast, final_state}
 
-              {:error, message, line, col} ->
-                {:error, message, line, col}
+              {:error, _message, _line, _col, _span} = error ->
+                error
             end
 
           # Membership operators
@@ -1030,8 +1054,8 @@ defmodule Predicator.Parser do
 
                 {:ok, ast, final_state}
 
-              {:error, message, line, col} ->
-                {:error, message, line, col}
+              {:error, _message, _line, _col, _span} = error ->
+                error
             end
 
           # Not a comparison, return the addition expression
@@ -1039,26 +1063,28 @@ defmodule Predicator.Parser do
             {:ok, left, new_state}
         end
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   # Parse addition expressions (+ -)
   @spec parse_addition(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_addition(state) do
     case parse_multiplication(state) do
       {:ok, left, new_state} ->
         parse_addition_rest(left, new_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   @spec parse_addition_rest(ast(), parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_addition_rest(left, state) do
     token = peek_token(state)
     parse_addition_rest_token(left, state, token)
@@ -1073,8 +1099,8 @@ defmodule Predicator.Parser do
         ast = {:arithmetic, :add, left, right, binary_loc(state, {line, col}, left, right)}
         parse_addition_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1089,8 +1115,8 @@ defmodule Predicator.Parser do
 
         parse_addition_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1101,19 +1127,21 @@ defmodule Predicator.Parser do
 
   # Parse multiplication expressions (* / %)
   @spec parse_multiplication(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_multiplication(state) do
     case parse_unary(state) do
       {:ok, left, new_state} ->
         parse_multiplication_rest(left, new_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   @spec parse_multiplication_rest(ast(), parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_multiplication_rest(left, state) do
     token = peek_token(state)
     parse_multiplication_rest_token(left, state, token)
@@ -1130,8 +1158,8 @@ defmodule Predicator.Parser do
 
         parse_multiplication_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1146,8 +1174,8 @@ defmodule Predicator.Parser do
 
         parse_multiplication_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1162,8 +1190,8 @@ defmodule Predicator.Parser do
 
         parse_multiplication_rest(ast, final_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1174,7 +1202,8 @@ defmodule Predicator.Parser do
 
   # Parse unary expressions (- !)
   @spec parse_unary(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_unary(state) do
     token = peek_token(state)
     parse_unary_token(state, token)
@@ -1189,8 +1218,8 @@ defmodule Predicator.Parser do
         ast = {:unary, :minus, operand, prefix_loc(state, {line, col}, operand)}
         {:ok, ast, final_state}
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1203,8 +1232,8 @@ defmodule Predicator.Parser do
         ast = {:unary, :bang, operand, prefix_loc(state, {line, col}, operand)}
         {:ok, ast, final_state}
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1219,8 +1248,8 @@ defmodule Predicator.Parser do
       {:ok, expr, new_state} ->
         parse_postfix_operations(expr, new_state)
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1251,15 +1280,16 @@ defmodule Predicator.Parser do
                 # Recursively parse more postfix operations
                 parse_postfix_operations(bracket_access, final_state)
 
-              {type, line, col, _len, value} ->
-                {:error, "Expected ']' but found #{format_token(type, value)}", line, col}
+              {type, line, col, _len, value} = token ->
+                {:error, "Expected ']' but found #{format_token(type, value)}", line, col,
+                 token_span(token)}
 
               nil ->
-                {:error, "Expected ']' but found end of input", 1, 1}
+                point_error("Expected ']' but found end of input", 1, 1)
             end
 
-          {:error, message, line, col} ->
-            {:error, message, line, col}
+          {:error, _message, _line, _col, _span} = error ->
+            error
         end
 
       {:dot, _dot_line, _dot_col, _len, _value} ->
@@ -1283,12 +1313,12 @@ defmodule Predicator.Parser do
             # Recursively parse more postfix operations
             parse_postfix_operations(property_access, final_state)
 
-          {type, line, col, _len, value} ->
+          {type, line, col, _len, value} = token ->
             {:error, "Expected property name after '.' but found #{format_token(type, value)}",
-             line, col}
+             line, col, token_span(token)}
 
           nil ->
-            {:error, "Expected property name after '.' but found end of input", 1, 1}
+            point_error("Expected property name after '.' but found end of input", 1, 1)
         end
 
       {:double_colon, _line, _col, _len, _value} ->
@@ -1309,15 +1339,15 @@ defmodule Predicator.Parser do
             else
               {:error,
                "Unknown cast type '#{type_name}' - expected one of: " <>
-                 Enum.join(@cast_type_names, ", "), name_line, name_col}
+                 Enum.join(@cast_type_names, ", "), name_line, name_col, token_span(name_token)}
             end
 
-          {type, line, col, _len, value} ->
+          {type, line, col, _len, value} = token ->
             {:error, "Expected a type name after '::' but found #{format_token(type, value)}",
-             line, col}
+             line, col, token_span(token)}
 
           nil ->
-            {:error, "Expected a type name after '::' but found end of input", 1, 1}
+            point_error("Expected a type name after '::' but found end of input", 1, 1)
         end
 
       _other ->
@@ -1329,7 +1359,8 @@ defmodule Predicator.Parser do
   # Parse primary expressions (literals, identifiers, parentheses)
   # This function handles multiple token types and nested error cases - inherent parser complexity
   @spec parse_primary(parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_primary(state) do
     token = peek_token(state)
     parse_primary_token(state, token)
@@ -1344,8 +1375,8 @@ defmodule Predicator.Parser do
       {:ok, duration_ast, final_state} ->
         {:ok, duration_ast, final_state}
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
 
       :not_duration ->
         # Regular integer literal
@@ -1413,15 +1444,16 @@ defmodule Predicator.Parser do
           {:rparen, _line, _col, _len, _value} = close ->
             {:ok, paren_loc(state, expr, open, close), advance(expr_state)}
 
-          {type, line, col, _len, value} ->
-            {:error, "Expected ')' but found #{format_token(type, value)}", line, col}
+          {type, line, col, _len, value} = token ->
+            {:error, "Expected ')' but found #{format_token(type, value)}", line, col,
+             token_span(token)}
 
           nil ->
-            {:error, "Expected ')' but reached end of input", 1, 1}
+            point_error("Expected ')' but reached end of input", 1, 1)
         end
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
@@ -1446,24 +1478,25 @@ defmodule Predicator.Parser do
 
   # `if`/`else`/`while` are statement keywords, never valid in expression
   # position - control flow only exists through Predicator.parse_program/2.
-  defp parse_primary_token(_state, {kw, line, col, _len, value})
+  defp parse_primary_token(_state, {kw, line, col, _len, value} = token)
        when kw in [:if_kw, :else_kw, :while_kw] do
     {:error,
      "'#{value}' is a statement keyword, not an expression - control flow is " <>
-       "only valid in a program (Predicator.parse_program/2).", line, col}
+       "only valid in a program (Predicator.parse_program/2).", line, col, token_span(token)}
   end
 
   # Handle unexpected tokens
-  defp parse_primary_token(_state, {type, line, col, _len, value}) do
+  defp parse_primary_token(_state, {type, line, col, _len, value} = token) do
     expected =
       "number, string, boolean, date, datetime, identifier, function call, list, object, or '('"
 
-    {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col}
+    {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col,
+     token_span(token)}
   end
 
   # Handle end of input
   defp parse_primary_token(_state, nil) do
-    {:error, "Unexpected end of input", 1, 1}
+    point_error("Unexpected end of input", 1, 1)
   end
 
   # Helper functions
@@ -1521,6 +1554,14 @@ defmodule Predicator.Parser do
 
   @spec token_span(Lexer.token()) :: Predicator.Types.span()
   defp token_span(token), do: {token_start(token), token_end(token)}
+
+  # A failure with no token has no extent to borrow, so its span is a
+  # zero-width point. Deriving the span from the point here is what lets
+  # Phase 3 fix both by fixing only the point.
+  @spec point_error(binary(), pos_integer(), pos_integer()) ::
+          {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
+  defp point_error(message, line, col),
+    do: {:error, message, line, col, {{line, col}, {line, col}}}
 
   # Only correct in span mode, where a child's trailing slot is its span.
   # Widened beyond ast() to statement() | block() because callers use these
@@ -1622,7 +1663,8 @@ defmodule Predicator.Parser do
 
   # Parse list literals: [element1, element2, ...]
   @spec parse_list(parser_state(), position()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_list(state, position) do
     # Consume opening bracket
     bracket_state = advance(state)
@@ -1641,22 +1683,24 @@ defmodule Predicator.Parser do
                 {:ok, {:list, Enum.reverse(elements), delimited_loc(state, position, close)},
                  advance(final_state)}
 
-              {type, line, col, _len, value} ->
-                {:error, "Expected ']' but found #{format_token(type, value)}", line, col}
+              {type, line, col, _len, value} = token ->
+                {:error, "Expected ']' but found #{format_token(type, value)}", line, col,
+                 token_span(token)}
 
               nil ->
-                {:error, "Expected ']' but reached end of input", 1, 1}
+                point_error("Expected ']' but reached end of input", 1, 1)
             end
 
-          {:error, message, line, col} ->
-            {:error, message, line, col}
+          {:error, _message, _line, _col, _span} = error ->
+            error
         end
     end
   end
 
   # Parse list elements recursively
   @spec parse_list_elements(parser_state(), [ast()]) ::
-          {:ok, [ast()], parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, [ast()], parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_list_elements(state, acc) do
     case parse_expression(state) do
       {:ok, element, new_state} ->
@@ -1673,14 +1717,15 @@ defmodule Predicator.Parser do
             {:ok, new_acc, new_state}
         end
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   # Parse object literals: {key1: value1, key2: value2, ...}
   @spec parse_object(parser_state(), position()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_object(state, position) do
     # Consume opening brace
     brace_state = advance(state)
@@ -1699,15 +1744,16 @@ defmodule Predicator.Parser do
                 {:ok, {:object, Enum.reverse(entries), delimited_loc(state, position, close)},
                  advance(final_state)}
 
-              {type, line, col, _len, value} ->
-                {:error, "Expected '}' but found #{format_token(type, value)}", line, col}
+              {type, line, col, _len, value} = token ->
+                {:error, "Expected '}' but found #{format_token(type, value)}", line, col,
+                 token_span(token)}
 
               nil ->
-                {:error, "Expected '}' but reached end of input", 1, 1}
+                point_error("Expected '}' but reached end of input", 1, 1)
             end
 
-          {:error, message, line, col} ->
-            {:error, message, line, col}
+          {:error, _message, _line, _col, _span} = error ->
+            error
         end
     end
   end
@@ -1715,7 +1761,7 @@ defmodule Predicator.Parser do
   # Parse object entries recursively
   @spec parse_object_entries(parser_state(), [object_entry()]) ::
           {:ok, [object_entry()], parser_state()}
-          | {:error, binary(), pos_integer(), pos_integer()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_object_entries(state, acc) do
     case parse_object_entry(state) do
       {:ok, entry, new_state} ->
@@ -1732,14 +1778,15 @@ defmodule Predicator.Parser do
             {:ok, new_acc, new_state}
         end
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   # Parse a single object entry: key: value
   @spec parse_object_entry(parser_state()) ::
-          {:ok, object_entry(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, object_entry(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_object_entry(state) do
     case parse_object_key(state) do
       {:ok, key, key_state} ->
@@ -1751,30 +1798,31 @@ defmodule Predicator.Parser do
               {:ok, value, value_state} ->
                 {:ok, {key, value}, value_state}
 
-              {:error, message, line, col} ->
-                {:error, message, line, col}
+              {:error, _message, _line, _col, _span} = error ->
+                error
             end
 
-          {:string, line, col, _len, value, _quote_type} ->
+          {:string, line, col, _len, value, _quote_type} = token ->
             {:error, "Expected ':' after object key but found #{format_token(:string, value)}",
-             line, col}
+             line, col, token_span(token)}
 
-          {type, line, col, _len, token_value} ->
+          {type, line, col, _len, token_value} = token ->
             {:error, "Expected ':' after object key but found #{format_token(type, token_value)}",
-             line, col}
+             line, col, token_span(token)}
 
           nil ->
-            {:error, "Expected ':' after object key but reached end of input", 1, 1}
+            point_error("Expected ':' after object key but reached end of input", 1, 1)
         end
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   # Parse object key (identifier or string literal)
   @spec parse_object_key(parser_state()) ::
-          {:ok, object_key(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, object_key(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_object_key(state) do
     case peek_token(state) do
       {:identifier, _line, _col, _len, value} = token ->
@@ -1783,19 +1831,20 @@ defmodule Predicator.Parser do
       {:string, _line, _col, _len, value, quote_type} = token ->
         {:ok, {:object_key, value, quote_type, leaf_loc(state, token)}, advance(state)}
 
-      {type, line, col, _len, value} ->
+      {type, line, col, _len, value} = token ->
         {:error,
          "Expected identifier or string for object key but found #{format_token(type, value)}",
-         line, col}
+         line, col, token_span(token)}
 
       nil ->
-        {:error, "Expected object key but reached end of input", 1, 1}
+        point_error("Expected object key but reached end of input", 1, 1)
     end
   end
 
   # Parse function call: function_name(arg1, arg2, ...)
   @spec parse_function_call(parser_state(), binary(), position()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_function_call(state, function_name, position) do
     # Consume function name token
     func_state = advance(state)
@@ -1821,30 +1870,32 @@ defmodule Predicator.Parser do
                      {:function_call, function_name, Enum.reverse(arguments),
                       delimited_loc(state, position, close)}, advance(final_state)}
 
-                  {type, line, col, _len, value} ->
-                    {:error, "Expected ')' but found #{format_token(type, value)}", line, col}
+                  {type, line, col, _len, value} = token ->
+                    {:error, "Expected ')' but found #{format_token(type, value)}", line, col,
+                     token_span(token)}
 
                   nil ->
-                    {:error, "Expected ')' but reached end of input", 1, 1}
+                    point_error("Expected ')' but reached end of input", 1, 1)
                 end
 
-              {:error, message, line, col} ->
-                {:error, message, line, col}
+              {:error, _message, _line, _col, _span} = error ->
+                error
             end
         end
 
-      {type, line, col, _len, value} ->
+      {type, line, col, _len, value} = token ->
         {:error, "Expected '(' after function name but found #{format_token(type, value)}", line,
-         col}
+         col, token_span(token)}
 
       nil ->
-        {:error, "Expected '(' after function name but reached end of input", 1, 1}
+        point_error("Expected '(' after function name but reached end of input", 1, 1)
     end
   end
 
   # Parse function arguments recursively
   @spec parse_function_arguments(parser_state(), [ast()]) ::
-          {:ok, [ast()], parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, [ast()], parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_function_arguments(state, acc) do
     case parse_expression(state) do
       {:ok, argument, new_state} ->
@@ -1861,15 +1912,17 @@ defmodule Predicator.Parser do
             {:ok, new_acc, new_state}
         end
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 
   # Duration parsing functions
 
   @spec parse_duration_sequence_from_integer(integer(), parser_state(), position()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), integer(), integer()} | :not_duration
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), integer(), integer(), Predicator.Types.span()}
+          | :not_duration
   defp parse_duration_sequence_from_integer(number, state, position) do
     case peek_token(state) do
       {:duration_unit, _line, _col, _len, unit} ->
@@ -1883,7 +1936,8 @@ defmodule Predicator.Parser do
   end
 
   @spec parse_duration_sequence([{integer(), binary()}], parser_state(), position()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), integer(), integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), integer(), integer(), Predicator.Types.span()}
   defp parse_duration_sequence(units, state, position) do
     case peek_token(state) do
       {:integer, _line, _col, _len, number} ->
@@ -1909,7 +1963,8 @@ defmodule Predicator.Parser do
   end
 
   @spec parse_duration_with_direction(ast(), parser_state()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), integer(), integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), integer(), integer(), Predicator.Types.span()}
   defp parse_duration_with_direction(duration_ast, state) do
     case peek_token(state) do
       {:ago_op, line, col, _len, _value} = ago ->
@@ -1929,12 +1984,12 @@ defmodule Predicator.Parser do
 
             {:ok, {:relative_date, duration_ast, :future, location}, advance(from_state)}
 
-          {type, line, col, _len, value} ->
+          {type, line, col, _len, value} = token ->
             {:error, "Expected 'now' after 'from' but found #{format_token(type, value)}", line,
-             col}
+             col, token_span(token)}
 
           nil ->
-            {:error, "Expected 'now' after 'from' but reached end of input", 1, 1}
+            point_error("Expected 'now' after 'from' but reached end of input", 1, 1)
         end
 
       _token ->
@@ -1944,7 +1999,8 @@ defmodule Predicator.Parser do
   end
 
   @spec parse_relative_date_expression(parser_state(), relative_direction(), position()) ::
-          {:ok, ast(), parser_state()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp parse_relative_date_expression(state, direction, position) do
     # Advance past the direction keyword (next/last)
     next_state = advance(state)
@@ -1956,13 +2012,13 @@ defmodule Predicator.Parser do
         {:ok, {:relative_date, duration_ast, direction, location}, final_state}
 
       {:ok, _other_ast, _final_state} ->
-        {type, line, col, _len, value} = peek_token(next_state)
+        {type, line, col, _len, value} = token = peek_token(next_state)
 
         {:error, "Expected duration after '#{direction}' but found #{format_token(type, value)}",
-         line, col}
+         line, col, token_span(token)}
 
-      {:error, message, line, col} ->
-        {:error, message, line, col}
+      {:error, _message, _line, _col, _span} = error ->
+        error
     end
   end
 end

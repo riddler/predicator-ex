@@ -197,11 +197,14 @@ defmodule Predicator do
     case Lexer.tokenize(expression) do
       {:ok, tokens} ->
         case Parser.parse(tokens, opts) do
-          {:ok, ast} -> evaluate_ast(ast, context, opts)
-          {:error, message, line, column} -> {:error, ParseError.new(message, line, column)}
+          {:ok, ast} ->
+            evaluate_ast(ast, context, opts)
+
+          {:error, message, line, column, _span} ->
+            {:error, ParseError.new(message, line, column)}
         end
 
-      {:error, message, line, column} ->
+      {:error, message, line, column, _span} ->
         {:error, ParseError.new(message, line, column)}
     end
   end
@@ -518,12 +521,12 @@ defmodule Predicator do
           {:ok, ast} ->
             execute_value_ast(ast, context, opts)
 
-          {:error, message, line, column} ->
-            execute_value_parse_error(message, line, column, context, opts)
+          {:error, message, line, column, span} ->
+            execute_value_parse_error(message, line, column, span, context, opts)
         end
 
-      {:error, message, line, column} ->
-        execute_value_parse_error(message, line, column, context, opts)
+      {:error, message, line, column, span} ->
+        execute_value_parse_error(message, line, column, span, context, opts)
     end
   end
 
@@ -558,10 +561,11 @@ defmodule Predicator do
           binary(),
           pos_integer(),
           pos_integer(),
+          Types.span(),
           Types.context() | Context.t(),
           keyword()
         ) :: {:error, struct(), Context.t()}
-  defp execute_value_parse_error(message, line, column, context, opts) do
+  defp execute_value_parse_error(message, line, column, _span, context, opts) do
     {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
   end
 
@@ -878,7 +882,7 @@ defmodule Predicator do
   # structured error.
   @spec build_compiled_result(
           {:ok, Parser.ast() | Parser.program()}
-          | {:error, binary(), pos_integer(), pos_integer()}
+          | {:error, binary(), pos_integer(), pos_integer(), Types.span()}
         ) :: {:ok, Compiled.t()} | {:error, struct()}
   defp build_compiled_result({:ok, ast}) do
     {instructions, positions, segment_positions} =
@@ -887,7 +891,7 @@ defmodule Predicator do
     {:ok, Compiled.new(instructions, positions, segment_positions)}
   end
 
-  defp build_compiled_result({:error, message, line, column}) do
+  defp build_compiled_result({:error, message, line, column, _span}) do
     {:error, ParseError.new(message, line, column)}
   end
 
@@ -896,7 +900,7 @@ defmodule Predicator do
   # becomes an instruction list or a structured error.
   @spec build_instructions_result(
           {:ok, Parser.ast() | Parser.program()}
-          | {:error, binary(), pos_integer(), pos_integer()}
+          | {:error, binary(), pos_integer(), pos_integer(), Types.span()}
         ) :: {:ok, Types.instruction_list()} | {:error, struct()}
   defp build_instructions_result({:ok, ast}) do
     case Compiler.to_instructions(ast) do
@@ -905,7 +909,7 @@ defmodule Predicator do
     end
   end
 
-  defp build_instructions_result({:error, message, line, column}) do
+  defp build_instructions_result({:error, message, line, column, _span}) do
     {:error, ParseError.new(message, line, column)}
   end
 
@@ -925,11 +929,11 @@ defmodule Predicator do
       {:ok, {:comparison, :gt, {:identifier, "score", {{1, 1}, {1, 6}}}, {:literal, 85, {{1, 9}, {1, 11}}}, {{1, 1}, {1, 11}}}}
   """
   @spec parse(binary(), keyword()) ::
-          {:ok, Parser.ast()} | {:error, binary(), pos_integer(), pos_integer()}
+          {:ok, Parser.ast()} | {:error, binary(), pos_integer(), pos_integer(), Types.span()}
   def parse(expression, opts \\ []) when is_binary(expression) do
     case Lexer.tokenize(expression) do
       {:ok, tokens} -> Parser.parse(tokens, opts)
-      {:error, message, line, column} -> {:error, message, line, column}
+      {:error, _message, _line, _column, _span} = error -> error
     end
   end
 
@@ -955,13 +959,13 @@ defmodule Predicator do
         ], {1, 1}}}
 
       iex> Predicator.parse_program("42 = 1")
-      {:error, "Left side of '=' must be an assignable location - an identifier, a property access, or a bracket access.", 1, 4}
+      {:error, "Left side of '=' must be an assignable location - an identifier, a property access, or a bracket access.", 1, 4, {{1, 4}, {1, 5}}}
   """
   @spec parse_program(binary(), keyword()) :: Parser.program_result()
   def parse_program(source, opts \\ []) when is_binary(source) do
     case Lexer.tokenize(source) do
       {:ok, tokens} -> Parser.parse_program(tokens, opts)
-      {:error, message, line, column} -> {:error, message, line, column}
+      {:error, _message, _line, _column, _span} = error -> error
     end
   end
 

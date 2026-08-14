@@ -269,7 +269,7 @@ message naming `parse_program/2`.
 
 ```elixir
 iex> Predicator.parse("if x { }")
-{:error, "'if' is a statement keyword, not an expression - control flow is only valid in a program (Predicator.parse_program/2).", 1, 1}
+{:error, "'if' is a statement keyword, not an expression - control flow is only valid in a program (Predicator.parse_program/2).", 1, 1, {{1, 1}, {1, 3}}}
 ```
 
 ### `if`/`else`

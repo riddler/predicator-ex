@@ -10,11 +10,11 @@ defmodule Predicator.EqualsGrammarBreakTest do
   describe "the fix-it error, from every entry point" do
     test "Parser.parse/2" do
       {:ok, tokens} = Predicator.Lexer.tokenize("a = 1")
-      assert Parser.parse(tokens) == {:error, @fixit_message, 1, 3}
+      assert {:error, @fixit_message, 1, 3, _span} = Parser.parse(tokens)
     end
 
     test "Predicator.parse/2" do
-      assert Predicator.parse("a = 1") == {:error, @fixit_message, 1, 3}
+      assert {:error, @fixit_message, 1, 3, _span} = Predicator.parse("a = 1")
     end
 
     test "Predicator.evaluate/3" do
@@ -41,23 +41,23 @@ defmodule Predicator.EqualsGrammarBreakTest do
 
   describe "the fix-it error from nested expression positions" do
     test "a parenthesized subexpression" do
-      assert Predicator.parse("(a = 1) and b") == {:error, @fixit_message, 1, 4}
+      assert {:error, @fixit_message, 1, 4, _span} = Predicator.parse("(a = 1) and b")
     end
 
     test "a list element" do
-      assert Predicator.parse("[a = 1]") == {:error, @fixit_message, 1, 4}
+      assert {:error, @fixit_message, 1, 4, _span} = Predicator.parse("[a = 1]")
     end
 
     test "a function argument" do
-      assert Predicator.parse("len(a = 1)") == {:error, @fixit_message, 1, 7}
+      assert {:error, @fixit_message, 1, 7, _span} = Predicator.parse("len(a = 1)")
     end
 
     test "a bracket key" do
-      assert Predicator.parse("x[a = 1]") == {:error, @fixit_message, 1, 5}
+      assert {:error, @fixit_message, 1, 5, _span} = Predicator.parse("x[a = 1]")
     end
 
     test "an object value" do
-      assert Predicator.parse("{k: a = 1}") == {:error, @fixit_message, 1, 7}
+      assert {:error, @fixit_message, 1, 7, _span} = Predicator.parse("{k: a = 1}")
     end
   end
 
@@ -115,7 +115,7 @@ defmodule Predicator.EqualsGrammarBreakTest do
 
       log =
         ExUnit.CaptureLog.capture_log(fn ->
-          assert Predicator.parse("a = 1") == {:error, @fixit_message, 1, 3}
+          assert {:error, @fixit_message, 1, 3, _span} = Predicator.parse("a = 1")
         end)
 
       assert log == ""

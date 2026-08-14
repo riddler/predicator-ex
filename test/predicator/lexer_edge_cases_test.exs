@@ -5,28 +5,28 @@ defmodule Predicator.LexerEdgeCasesTest do
 
   describe "lexer error handling" do
     test "handles unterminated date literal" do
-      {:error, message, line, col} = Lexer.tokenize("#2024-01-01")
+      {:error, message, line, col, _span} = Lexer.tokenize("#2024-01-01")
       assert message == "Unterminated date literal"
       assert line == 1
       assert col == 1
     end
 
     test "handles invalid date format" do
-      {:error, message, line, col} = Lexer.tokenize("#invalid-date#")
+      {:error, message, line, col, _span} = Lexer.tokenize("#invalid-date#")
       assert String.contains?(message, "Invalid date format")
       assert line == 1
       assert col == 1
     end
 
     test "handles invalid datetime format" do
-      {:error, message, line, col} = Lexer.tokenize("#2024-01-01Tinvalid#")
+      {:error, message, line, col, _span} = Lexer.tokenize("#2024-01-01Tinvalid#")
       assert String.contains?(message, "Invalid datetime format")
       assert line == 1
       assert col == 1
     end
 
     test "handles unexpected characters" do
-      {:error, message, line, col} = Lexer.tokenize("@")
+      {:error, message, line, col, _span} = Lexer.tokenize("@")
       assert message == "Unexpected character '@'"
       assert line == 1
       assert col == 1
@@ -53,14 +53,14 @@ defmodule Predicator.LexerEdgeCasesTest do
     end
 
     test "handles unterminated string" do
-      {:error, message, line, col} = Lexer.tokenize("\"unterminated")
+      {:error, message, line, col, _span} = Lexer.tokenize("\"unterminated")
       assert message == "Unterminated double-quoted string literal"
       assert line == 1
       assert col == 1
     end
 
     test "handles unterminated single quote string" do
-      {:error, message, line, col} = Lexer.tokenize("'unterminated")
+      {:error, message, line, col, _span} = Lexer.tokenize("'unterminated")
       assert message == "Unterminated single-quoted string literal"
       assert line == 1
       assert col == 1

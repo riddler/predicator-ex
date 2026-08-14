@@ -90,7 +90,7 @@ defmodule Predicator.DateArithmeticStringVisitorTest do
         Decompiled AST: #{inspect(decompiled_ast)}
         """
 
-      {:error, message, line, col} ->
+      {:error, message, line, col, _span} ->
         flunk("Failed to parse '#{expression}': #{message} at #{line}:#{col}")
     end
   end

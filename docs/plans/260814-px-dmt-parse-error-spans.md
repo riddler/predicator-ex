@@ -440,20 +440,20 @@ New assertions to add (in `test/predicator/parser_test.exs` and
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality` (dialyzer included - the widened
+- [x] Full quality gate passes: `mix quality` (dialyzer included - the widened
       `@spec`s are the main thing it checks here)
-- [ ] `grep -n '{:error, [^}]*, pos_integer(), pos_integer()}' lib/predicator/parser.ex
+- [x] `grep -n '{:error, [^}]*, pos_integer(), pos_integer()}' lib/predicator/parser.ex
       lib/predicator/lexer.ex` returns nothing - no 4-tuple `@spec` survives
-- [ ] For a token-bearing failure, `Predicator.parse("score >>")`-style cases
+- [x] For a token-bearing failure, `Predicator.parse("score >>")`-style cases
       return a span whose width equals the failing token's length
-- [ ] The point/span-start invariant holds across the three representative
+- [x] The point/span-start invariant holds across the three representative
       failure classes named above
-- [ ] Coverage for `lib/predicator/parser.ex` and `lib/predicator/lexer.ex`
+- [x] Coverage for `lib/predicator/parser.ex` and `lib/predicator/lexer.ex`
       stays above the 90% floor in `coveralls.json`
-- [ ] `mix test test/docs_examples_test.exs` passes - `docs/reference/
+- [x] `mix test test/docs_examples_test.exs` passes - `docs/reference/
       language.md` is doctested and its parse-error example must move with the
       shape
-- [ ] All six compile entry points still return `{:error, %ParseError{span: nil}}` -
+- [x] All six compile entry points still return `{:error, %ParseError{span: nil}}` -
       the compile arm is unchanged in this phase, and a test asserting `span: nil`
       here is what makes Phase 4 a visible change
 
@@ -822,6 +822,26 @@ before considering the plan fully landed.
       breaks on the new field
 - [ ] The moduledoc example is accurate about `:span` being `nil` at this point
       in the sequence
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run the
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, the Automated Verification gates advancement and
+Manual Verification items are deferred to the end.
+
+---
+
+### Phase 2
+
+- [ ] No pass-through clause silently reordered `line`, `column`, and `span` -
+      spot-check the collapsed `= error` rewrites in the deeply nested regions
+      (`lib/predicator/parser.ex:1015-1043`, `1240-1330`, `1640-1720`)
+- [ ] A multi-line string literal's failure produces a span that is wrong in the
+      same way AST node spans are already wrong for it (`token_end/1` computes
+      `col + len` regardless of newlines) - consistency with existing behaviour
+      is the bar, not correctness that AST spans do not have
+- [ ] The lexer's one-character span rule reads sensibly on an unterminated
+      string: the caret lands on the opening quote
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run the
 full `mix quality` as the phase gate. In interactive execution, pause here for

@@ -253,7 +253,7 @@ defmodule Predicator.ParserTest do
   describe "parse/1 - error cases" do
     test "returns error for empty token list" do
       result = parse_positionless([])
-      assert {:error, "Unexpected end of input", 1, 1} = result
+      assert {:error, "Unexpected end of input", 1, 1, _span} = result
     end
 
     test "returns error for only EOF token" do
@@ -262,7 +262,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 1} = result
+              1, 1, _span} = result
     end
 
     test "returns error for incomplete comparison" do
@@ -272,7 +272,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 8} = result
+              1, 8, _span} = result
     end
 
     test "returns error for invalid left operand" do
@@ -282,8 +282,8 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
-              1,
-              1} =
+              1, 1,
+              _span} =
                result
     end
 
@@ -294,8 +294,8 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
-              1,
-              9} =
+              1, 9,
+              _span} =
                result
     end
 
@@ -303,7 +303,7 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize("(score")
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected ')' but found end of input", 1, 7} = result
+      assert {:error, "Expected ')' but found end of input", 1, 7, _span} = result
     end
 
     test "returns error for mismatched parentheses" do
@@ -317,14 +317,16 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected ')' but found identifier ']'", 1, 7} = result
+      assert {:error, "Expected ')' but found identifier ']'", 1, 7, _span} = result
     end
 
     test "returns error for extra tokens after expression" do
       {:ok, tokens} = Lexer.tokenize("score > 85 extra")
 
       result = parse_positionless(tokens)
-      assert {:error, "Unexpected token identifier 'extra' after expression", 1, 12} = result
+
+      assert {:error, "Unexpected token identifier 'extra' after expression", 1, 12, _span} =
+               result
     end
 
     test "returns error for multiple operators" do
@@ -334,8 +336,8 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
-              1,
-              9} =
+              1, 9,
+              _span} =
                result
     end
   end
@@ -369,7 +371,7 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected ')' but reached end of input", 1, 1} = result
+      assert {:error, "Expected ')' but reached end of input", 1, 1, _span} = result
     end
 
     test "handles nested error propagation from inner expressions" do
@@ -377,7 +379,7 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize("(score > )")
 
       result = parse_positionless(tokens)
-      assert {:error, message, 1, 10} = result
+      assert {:error, message, 1, 10, _span} = result
 
       assert message =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found ')'"
@@ -394,7 +396,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 8} = result
+              1, 8, _span} = result
     end
 
     test "handles unexpected token types in primary position" do
@@ -419,7 +421,7 @@ defmodule Predicator.ParserTest do
         tokens = [{token_type, 1, 1, 1, to_string(token_type)}, {:eof, 1, 2, 0, nil}]
 
         result = parse_positionless(tokens)
-        assert {:error, ^expected_message, 1, 1} = result
+        assert {:error, ^expected_message, 1, 1, _span} = result
       end
     end
 
@@ -439,7 +441,7 @@ defmodule Predicator.ParserTest do
       for token <- operator_tokens do
         tokens = [token, {:eof, 1, 3, 0, nil}]
         result = parse_positionless(tokens)
-        assert {:error, _message, 1, 1} = result
+        assert {:error, _message, 1, 1, _span} = result
       end
 
       # Test parentheses and other tokens in wrong positions
@@ -451,7 +453,7 @@ defmodule Predicator.ParserTest do
       for token <- other_tokens do
         tokens = [token, {:eof, 1, 3, 0, nil}]
         result = parse_positionless(tokens)
-        assert {:error, _message, 1, 1} = result
+        assert {:error, _message, 1, 1, _span} = result
       end
     end
 
@@ -465,8 +467,8 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found ')'",
-              1,
-              1} =
+              1, 1,
+              _span} =
                result
     end
 
@@ -481,8 +483,8 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found ')'",
-              1,
-              2} =
+              1, 2,
+              _span} =
                result
     end
   end
@@ -679,7 +681,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 9} = result
+              1, 9, _span} = result
     end
 
     test "handles error when OR missing right operand" do
@@ -693,7 +695,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 8} = result
+              1, 8, _span} = result
     end
 
     test "handles error when NOT missing operand" do
@@ -706,7 +708,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 4} = result
+              1, 4, _span} = result
     end
 
     test "complex mixed expression with comparisons and logical operators" do
@@ -826,7 +828,7 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected ']' but found number '2'", 1, 4} = result
+      assert {:error, "Expected ']' but found number '2'", 1, 4, _span} = result
     end
 
     test "handles comparison with missing left operand in complex expression" do
@@ -840,7 +842,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found 'AND'",
-              1, 1} = result
+              1, 1, _span} = result
     end
 
     test "handles membership operator with empty list" do
@@ -906,7 +908,9 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected '(' after function name but found number '42'", 1, 4} = result
+
+      assert {:error, "Expected '(' after function name but found number '42'", 1, 4, _span} =
+               result
     end
 
     test "returns error when function name at end of input" do
@@ -916,7 +920,9 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected '(' after function name but found end of input", 1, 4} = result
+
+      assert {:error, "Expected '(' after function name but found end of input", 1, 4, _span} =
+               result
     end
 
     test "returns error for unterminated function call" do
@@ -928,7 +934,7 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected ')' but found end of input", 1, 9} = result
+      assert {:error, "Expected ')' but found end of input", 1, 9, _span} = result
     end
 
     test "returns error for function call with invalid closing token" do
@@ -941,7 +947,7 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected ')' but found ']'", 1, 9} = result
+      assert {:error, "Expected ')' but found ']'", 1, 9, _span} = result
     end
   end
 
@@ -1015,7 +1021,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 4} = result
+              1, 4, _span} = result
     end
 
     test "returns error for malformed unary expression" do
@@ -1028,7 +1034,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 2} = result
+              1, 2, _span} = result
     end
 
     test "returns error for malformed list expression" do
@@ -1043,7 +1049,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input",
-              1, 4} = result
+              1, 4, _span} = result
     end
 
     test "returns error for list with invalid separator" do
@@ -1059,7 +1065,7 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected ']' but found number '2'", 1, 3} = result
+      assert {:error, "Expected ']' but found number '2'", 1, 3, _span} = result
     end
 
     test "returns error for arithmetic expression with missing operand" do
@@ -1075,7 +1081,7 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '*'",
-              1, 3} = result
+              1, 3, _span} = result
     end
   end
 
@@ -1092,7 +1098,7 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, message, 1, 13} = result
+      assert {:error, message, 1, 13, _span} = result
 
       assert message =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"
@@ -1104,7 +1110,7 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, message, 1, 22} = result
+      assert {:error, message, 1, 22, _span} = result
 
       assert message =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"
@@ -1118,11 +1124,11 @@ defmodule Predicator.ParserTest do
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected '(' after function name but found '+'", 1, 4} = result
+      assert {:error, "Expected '(' after function name but found '+'", 1, 4, _span} = result
     end
 
     test "a stray :: in expression position returns an error tuple, not a raise" do
-      assert {:error, message, 1, 1} = Predicator.parse("::integer")
+      assert {:error, message, 1, 1, _span} = Predicator.parse("::integer")
       assert message =~ "'::'"
     end
   end
@@ -1272,7 +1278,7 @@ defmodule Predicator.ParserTest do
       {:ok, tokens} = Lexer.tokenize("user['name'")
       result = parse_positionless(tokens)
 
-      assert {:error, "Expected ']' but found end of input", 1, 12} = result
+      assert {:error, "Expected ']' but found end of input", 1, 12, _span} = result
     end
 
     test "returns error for empty bracket access" do
@@ -1281,14 +1287,14 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found ']'",
-              1, 6} = result
+              1, 6, _span} = result
     end
 
     test "returns error for missing closing bracket" do
       {:ok, tokens} = Lexer.tokenize("user['name' + 'suffix'")
       result = parse_positionless(tokens)
 
-      assert {:error, "Expected ']' but found end of input", 1, 23} = result
+      assert {:error, "Expected ']' but found end of input", 1, 23, _span} = result
     end
 
     test "parses bracket access with boolean key" do
@@ -1427,21 +1433,21 @@ defmodule Predicator.ParserTest do
 
       assert {:error,
               "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
-              1, 6} = result
+              1, 6, _span} = result
     end
 
     test "returns error for unmatched left bracket" do
       {:ok, tokens} = Lexer.tokenize("user[key")
       result = parse_positionless(tokens)
 
-      assert {:error, "Expected ']' but found end of input", 1, 9} = result
+      assert {:error, "Expected ']' but found end of input", 1, 9, _span} = result
     end
 
     test "returns error for nested unmatched brackets" do
       {:ok, tokens} = Lexer.tokenize("data[users[index")
       result = parse_positionless(tokens)
 
-      assert {:error, "Expected ']' but found end of input", 1, 17} = result
+      assert {:error, "Expected ']' but found end of input", 1, 17, _span} = result
     end
 
     test "parses bracket access with complex nested expression" do
@@ -1485,7 +1491,7 @@ defmodule Predicator.ParserTest do
         assert {:ok, {:cast, {:identifier, "x"}, ^type_name}} = parse_positionless(tokens)
       end
 
-      assert {:error, message, _line, _col} = Predicator.parse("x::not_a_real_type")
+      assert {:error, message, _line, _col, _span} = Predicator.parse("x::not_a_real_type")
       assert message =~ "Unknown cast type 'not_a_real_type'"
 
       for type_name <- Predicator.Cast.type_names() do
@@ -1577,7 +1583,7 @@ defmodule Predicator.ParserTest do
     end
 
     test "an unknown type name is a parse error naming the type's own column" do
-      assert {:error, message, 1, 4} = Predicator.parse("x::foo")
+      assert {:error, message, 1, 4, _span} = Predicator.parse("x::foo")
 
       assert message ==
                "Unknown cast type 'foo' - expected one of: integer, float, string, " <>
@@ -1585,29 +1591,29 @@ defmodule Predicator.ParserTest do
     end
 
     test "a missing type name at end of input is a parse error" do
-      assert {:error, "Expected a type name after '::' but found end of input", 1, 4} =
+      assert {:error, "Expected a type name after '::' but found end of input", 1, 4, _span} =
                Predicator.parse("x::")
     end
 
     test "a number after '::' is a parse error" do
-      assert {:error, message, 1, 4} = Predicator.parse("x::5")
+      assert {:error, message, 1, 4, _span} = Predicator.parse("x::5")
       assert message =~ "Expected a type name after '::' but found number '5'"
     end
 
     test "'::' followed by a function-call-shaped name reports a missing type name" do
-      assert {:error, message, 1, 4} = Predicator.parse("x::integer(1)")
+      assert {:error, message, 1, 4, _span} = Predicator.parse("x::integer(1)")
       assert message =~ "Expected a type name after '::' but found function 'integer'"
     end
 
     test "a chained unknown type names the first unknown name, not the last" do
-      assert {:error, message, 1, 4} = Predicator.parse("x::foo::integer")
+      assert {:error, message, 1, 4, _span} = Predicator.parse("x::foo::integer")
       assert message =~ "Unknown cast type 'foo'"
     end
 
     test "a cast is not an assignable location" do
       {:ok, tokens} = Lexer.tokenize("x::integer = 1")
 
-      assert {:error, message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
       assert message =~ "must be an assignable location"
     end
 
@@ -1750,37 +1756,37 @@ defmodule Predicator.ParserTest do
     test "returns error for invalid duration sequence" do
       {:ok, tokens} = Lexer.tokenize("1d8x")
       result = parse_positionless(tokens)
-      assert {:error, _message, _line, _col} = result
+      assert {:error, _message, _line, _col, _span} = result
     end
 
     test "returns error for missing 'now' after 'from'" do
       {:ok, tokens} = Lexer.tokenize("1d from yesterday")
       result = parse_positionless(tokens)
-      assert {:error, _message, _line, _col} = result
+      assert {:error, _message, _line, _col, _span} = result
     end
 
     test "returns error for 'from' without duration" do
       {:ok, tokens} = Lexer.tokenize("from now")
       result = parse_positionless(tokens)
-      assert {:error, _message, _line, _col} = result
+      assert {:error, _message, _line, _col, _span} = result
     end
 
     test "returns error for 'ago' without duration" do
       {:ok, tokens} = Lexer.tokenize("ago")
       result = parse_positionless(tokens)
-      assert {:error, _message, _line, _col} = result
+      assert {:error, _message, _line, _col, _span} = result
     end
 
     test "returns error for 'next' without duration" do
       {:ok, tokens} = Lexer.tokenize("next")
       result = parse_positionless(tokens)
-      assert {:error, _message, _line, _col} = result
+      assert {:error, _message, _line, _col, _span} = result
     end
 
     test "returns error for 'last' without duration" do
       {:ok, tokens} = Lexer.tokenize("last")
       result = parse_positionless(tokens)
-      assert {:error, _message, _line, _col} = result
+      assert {:error, _message, _line, _col, _span} = result
     end
 
     test "parses zero duration" do
@@ -1930,7 +1936,7 @@ defmodule Predicator.ParserTest do
     test "non-assignable lhs: integer literal gives the location-shape error" do
       {:ok, tokens} = Lexer.tokenize("42 = 1")
 
-      assert {:error, message, 1, 4} = Predicator.Parser.parse_program(tokens)
+      assert {:error, message, 1, 4, _span} = Predicator.Parser.parse_program(tokens)
 
       assert message ==
                "Left side of '=' must be an assignable location - an identifier, a property " <>
@@ -1940,28 +1946,28 @@ defmodule Predicator.ParserTest do
     test "non-assignable lhs: function call gives the location-shape error" do
       {:ok, tokens} = Lexer.tokenize("len(x) = 1")
 
-      assert {:error, message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
       assert message =~ "must be an assignable location"
     end
 
     test "non-assignable lhs: string literal gives the location-shape error" do
       {:ok, tokens} = Lexer.tokenize("'s' = 1")
 
-      assert {:error, message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
       assert message =~ "must be an assignable location"
     end
 
     test "non-assignable lhs: list literal gives the location-shape error" do
       {:ok, tokens} = Lexer.tokenize("[1] = 2")
 
-      assert {:error, message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
       assert message =~ "must be an assignable location"
     end
 
     test "non-assignable lhs: unary minus gives the location-shape error, not the == fix-it" do
       {:ok, tokens} = Lexer.tokenize("-a = 1")
 
-      assert {:error, message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
       assert message =~ "must be an assignable location"
       refute message =~ "is not an equality operator"
     end
@@ -1969,37 +1975,37 @@ defmodule Predicator.ParserTest do
     test "nested assignment in a parenthesized rhs gives the == fix-it error" do
       {:ok, tokens} = Lexer.tokenize("a = (b = 1)")
 
-      assert {:error, message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
       assert message =~ "is not an equality operator"
     end
 
     test "chained assignment a = b = 1 gives the == fix-it error" do
       {:ok, tokens} = Lexer.tokenize("a = b = 1")
 
-      assert {:error, message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
       assert message =~ "is not an equality operator"
     end
 
     test "empty input is a parse error" do
       {:ok, tokens} = Lexer.tokenize("")
-      assert {:error, _message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, _message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
     end
 
     test "a lone semicolon is a parse error - no empty statements" do
       {:ok, tokens} = Lexer.tokenize(";")
-      assert {:error, _message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, _message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
     end
 
     test "two semicolons in a row is a parse error - no empty statements" do
       {:ok, tokens} = Lexer.tokenize("a;;b")
-      assert {:error, _message, _line, _col} = Predicator.Parser.parse_program(tokens)
+      assert {:error, _message, _line, _col, _span} = Predicator.Parser.parse_program(tokens)
     end
 
     test "leftover tokens after a statement report a pointed error" do
       {:ok, tokens} = Lexer.tokenize("a = 1 extra")
 
-      assert Predicator.Parser.parse_program(tokens) ==
-               {:error, "Unexpected token identifier 'extra' after statement", 1, 7}
+      assert {:error, "Unexpected token identifier 'extra' after statement", 1, 7, _span} =
+               Predicator.Parser.parse_program(tokens)
     end
   end
 
@@ -2036,6 +2042,46 @@ defmodule Predicator.ParserTest do
     end
   end
 
+  describe "parse/1 - error spans" do
+    test "a single-token failure spans exactly that token, for a token longer than one character" do
+      {:ok, tokens} = Lexer.tokenize("score > 85 extra")
+
+      assert {:error, message, line, col, {start, stop}} = Predicator.Parser.parse(tokens)
+
+      assert message == "Unexpected token identifier 'extra' after expression"
+      assert {line, col} == {1, 12}
+      assert start == {line, col}
+      assert stop == {1, 17}
+    end
+
+    test "a :string token's span is derived from the 6-element token shape via token_start/1 and token_end/1" do
+      {:ok, tokens} = Lexer.tokenize(~s({age "next": 1}))
+      string_token = Enum.find(tokens, &match?({:string, _line, _col, _len, _value, _q}, &1))
+      {:string, expected_line, expected_col, len, _value, _quote_type} = string_token
+
+      assert {:error, message, line, col, {start, stop}} = Predicator.Parser.parse(tokens)
+
+      assert message =~ "Expected ':' after object key but found"
+      assert {line, col} == {expected_line, expected_col}
+      assert start == {line, col}
+      assert stop == {expected_line, expected_col + len}
+    end
+
+    test "the span-start invariant holds for an unexpected-token, a lexical, and an end-of-input failure" do
+      {:ok, unexpected_token_tokens} = Lexer.tokenize("score > 85 extra")
+      unexpected_token_error = Predicator.Parser.parse(unexpected_token_tokens)
+
+      lexical_error = Predicator.Lexer.tokenize("@")
+
+      {:ok, end_of_input_tokens} = Lexer.tokenize("score >")
+      end_of_input_error = Predicator.Parser.parse(end_of_input_tokens)
+
+      for err <- [unexpected_token_error, lexical_error, end_of_input_error] do
+        assert elem(err, 4) |> elem(0) == {elem(err, 2), elem(err, 3)}
+      end
+    end
+  end
+
   describe "Predicator.parse_program/2 - the façade" do
     test "parses a multi-statement program from source" do
       assert {:ok, {:program, statements, _pos}} = Predicator.parse_program("a = 1; b = a + 1")
@@ -2047,10 +2093,9 @@ defmodule Predicator.ParserTest do
     end
 
     test "propagates parser errors" do
-      assert Predicator.parse_program("42 = 1") ==
-               {:error,
-                "Left side of '=' must be an assignable location - an identifier, a property " <>
-                  "access, or a bracket access.", 1, 4}
+      assert {:error,
+              "Left side of '=' must be an assignable location - an identifier, a property " <>
+                "access, or a bracket access.", 1, 4, _span} = Predicator.parse_program("42 = 1")
     end
 
     test "accepts spans: true" do
