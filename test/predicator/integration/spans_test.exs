@@ -32,6 +32,17 @@ defmodule Predicator.Integration.SpansTest do
     "a > 1 and\nb < 2"
   ]
 
+  @program_corpus [
+    "x = 1",
+    "x = 1; x + 1",
+    "a.b = 1",
+    "a[0] = 1",
+    "x = 1; y = x + 1; y > 1",
+    "if a { x = 1 }",
+    "if a { x = 1 } else { y = 2 }",
+    "x = 1;\ny = 2"
+  ]
+
   @node_tags ~w(literal string_literal identifier comparison arithmetic unary membership
                 logical_and logical_or logical_not list object function_call bracket_access
                 property_access duration relative_date object_key)a
@@ -182,6 +193,68 @@ defmodule Predicator.Integration.SpansTest do
       assert slice(source, error.span) == "missing"
       assert error.position == {1, 5}
     end
+  end
+
+  describe "program source cross-check" do
+    test "compile_program_with_spans/1 emits exactly what compile_program/1 emits" do
+      for source <- @program_corpus do
+        assert {:ok, plain} = Predicator.compile_program(source)
+
+        assert {:ok, %Compiled{instructions: spanned}} =
+                 Predicator.compile_program_with_spans(source)
+
+        assert plain == spanned, "instruction list diverged for #{inspect(source)}"
+      end
+    end
+
+    test "every program span slices to text within the source" do
+      for source <- @program_corpus do
+        assert {:ok, compiled} = Predicator.compile_program_with_spans(source)
+
+        for {_index, span} <- compiled.positions do
+          assert_well_formed_slice(span, source)
+        end
+
+        for {_index, segments} <- compiled.segment_positions, span <- segments do
+          assert_well_formed_slice(span, source)
+        end
+      end
+    end
+
+    test "a statement's extent slices to the whole statement, not just its last token" do
+      source = "x = 1; x + 1"
+      assert {:ok, compiled} = Predicator.compile_program_with_spans(source)
+
+      assert slice(source, compiled.positions[2]) == "x = 1"
+      assert slice(source, compiled.positions[6]) == "x + 1"
+    end
+
+    test "nesting inside an if statement does not flatten the inner statement's extent" do
+      source = "if a { x = 1 } else { y = 2 }"
+      assert {:ok, compiled} = Predicator.compile_program_with_spans(source)
+
+      assert slice(source, compiled.positions[1]) == "if a { x = 1 } else { y = 2 }"
+      assert slice(source, compiled.positions[4]) == "x = 1"
+    end
+
+    test "a multi-line program's second statement span starts on line 2" do
+      source = "x = 1;\ny = 2"
+      assert {:ok, compiled} = Predicator.compile_program_with_spans(source)
+
+      {{start_line, _column}, _end_position} = compiled.positions[5]
+      assert start_line == 2
+      assert slice(source, compiled.positions[5]) == "y = 2"
+    end
+  end
+
+  defp assert_well_formed_slice({start_position, end_position} = span, source) do
+    assert start_position <= end_position,
+           "reversed span #{inspect(span)} for #{inspect(source)}"
+
+    sliced = slice(source, span)
+
+    assert String.contains?(source, sliced),
+           "span #{inspect(span)} sliced to #{inspect(sliced)}, not a substring of #{inspect(source)}"
   end
 
   defp assert_slices_cleanly(node, source) when is_tuple(node) do

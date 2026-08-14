@@ -453,11 +453,11 @@ it shows the span is a consequence of the compile mode, not of the error.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes (`mix quality`)
-- [ ] `mix test test/predicator/integration/spans_test.exs` and
+- [x] Full quality gate passes (`mix quality`)
+- [x] `mix test test/predicator/integration/spans_test.exs` and
       `mix test test/predicator/evaluator_positions_test.exs` both pass
-- [ ] Coverage stays above the 90% minimum in `coveralls.json`
-- [ ] `git status` shows no diff under `conformance/` and no diff under `lib/`
+- [x] Coverage stays above the 90% minimum in `coveralls.json`
+- [x] `git status` shows no diff under `conformance/` and no diff under `lib/`
       - this phase is tests only
 
 #### Manual Verification:
@@ -669,6 +669,28 @@ before considering the plan fully landed.
       `positions` holds, what to pass it to, and the "store the instructions,
       not the struct" warning. A missing or reordered paragraph is the defect
       to catch, not the prose style
+
+**Implementation Note**: Use `mix quality --profile loop` between edits while
+iterating; run full `mix quality` as the phase gate. In interactive execution,
+pause here for the human to confirm the manual testing before moving to the
+next phase. In looped (`--loop`) execution, this phase's Automated
+Verification gates advancement automatically (via `/wurk:commit --auto`), and
+Manual Verification items are deferred and surfaced once at the end instead of
+blocking here.
+
+---
+
+### Phase 2
+
+- [ ] Sabotage check: temporarily change the new function to parse without
+      `spans: true`, confirm the new tests go red, then revert. This is not a
+      binding test under `gate.sabotage.test_roots` and needs no note in
+      `docs/research/260808-px-9ab-sabotage-notes.md`, but the check is what
+      makes the phase worth its own commit
+- [ ] Confirm no new assertion was written by copying a tuple out of a run of
+      the new code: every cross-check compares a **sliced substring** against
+      a string literal typed by hand. A test asserting `{{1, 8}, {1, 13}}`
+      instead of `"x + 1"` proves only that the code equals itself
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive execution,
