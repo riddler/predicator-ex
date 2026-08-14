@@ -56,7 +56,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in dev or test. The resolved map, the shadowing order, and all three
   `ArgumentError` messages for a bad provider are unchanged - a provider list
   that fails validation is never cached, so it re-validates, and re-raises
-  identically, on every call.
+  identically, on every call. `Context.new/2`'s docs now carry a
+  `## Performance` section naming both costs of a build - the size-scaling
+  normalization walk and this now-memoized fixed term - and pointing at
+  `bind/3`/`put_host/2` as the rebind paths a per-evaluation caller should use
+  instead of calling `new/2` again; see `bench/context_build.exs` and
+  `bench/results/260814-context-build.md` for the numbers behind both.
 
 - **`conformance/RATCHET.md` now states registry entry uniqueness
   normatively.** Rule 3 already grew `entries` by a set union, and rule 1 already

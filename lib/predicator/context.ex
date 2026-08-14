@@ -135,6 +135,29 @@ defmodule Predicator.Context do
   string keys natively and its own preprocessing already normalized nested
   structures - pays that cost for no benefit.
 
+  ## Performance
+
+  A build pays two costs, and they scale differently. The normalization walk
+  described above is proportional to the size of `data` - `normalize: false`
+  removes it (px-10u; see the `:normalize` section above). The other cost is
+  fixed: resolving `:builtins` and `:providers` into the dispatch map, which
+  does not shrink as `data` gets smaller and does not grow as it gets larger.
+
+  That fixed term is memoized as of px-rnc: a `new/2` call against a provider
+  list already seen in this process reuses the cached resolution instead of
+  re-validating it, so repeat builds against the same provider list no longer
+  re-pay validation. A build is still a build, though - the memo removes
+  re-validation, not the allocation and struct construction `new/2` does on
+  every call.
+
+  The anti-pattern this leaves is calling `new/2` once per evaluation. Hold
+  one context and rebind instead: `bind/3` is O(1) in the size of `data`, and
+  `put_host/2` is a plain struct field update - both exist so a caller never
+  has to pay `new/2`'s cost per evaluation, which is what ADR-0014's design is
+  for. See `bench/context_build.exs` and its results file,
+  `bench/results/260814-context-build.md`, for the actual numbers, rather than
+  a figure transcribed here that would go stale.
+
   ## Examples
 
       iex> Predicator.Context.new(%{"x" => 1}).data
