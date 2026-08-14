@@ -363,15 +363,25 @@ defmodule Predicator.ParserTest do
 
   describe "parse/1 - additional error coverage" do
     test "returns error when parentheses reach end of input without closing" do
-      # This creates tokens that end abruptly inside parentheses
+      # This creates tokens that end abruptly inside parentheses, with no
+      # :eof sentinel appended. end_of_input_error/2 still finds a real token
+      # (the last one in the list) and reports its position, not {1, 1}.
       tokens = [
         {:lparen, 1, 1, 1, "("},
         {:identifier, 1, 2, 5, "score"}
-        # Note: no closing paren and no EOF token to test nil case
+        # Note: no closing paren and no EOF token
       ]
 
       result = parse_positionless(tokens)
-      assert {:error, "Expected ')' but reached end of input", 1, 1, _span} = result
+      assert {:error, "Expected ')' but reached end of input", 1, 2, {{1, 2}, {1, 7}}} = result
+    end
+
+    test "returns {1, 1} point error when the token list is entirely empty" do
+      # The defensive nil branch of end_of_input_error/2: no token in scope at
+      # all, not even the :eof sentinel. Real entry points always append the
+      # sentinel, so this is only reachable via a hand-built token list.
+      result = parse_positionless([])
+      assert {:error, "Unexpected end of input", 1, 1, {{1, 1}, {1, 1}}} = result
     end
 
     test "handles nested error propagation from inner expressions" do
@@ -2078,6 +2088,47 @@ defmodule Predicator.ParserTest do
 
       for err <- [unexpected_token_error, lexical_error, end_of_input_error] do
         assert elem(err, 4) |> elem(0) == {elem(err, 2), elem(err, 3)}
+      end
+    end
+  end
+
+  describe "parse/1 - end of input reports the end of the source" do
+    test "a multi-line source reports the last line, not line 1" do
+      {:ok, tokens} = Lexer.tokenize("[1,\n2,\n")
+
+      assert {:error, message, line, col, span} = Predicator.Parser.parse(tokens)
+
+      assert message =~ "but found end of input"
+      assert {line, col} == {3, 1}
+      assert span == {{3, 1}, {3, 1}}
+    end
+
+    test "a multi-line program source reports the last line via the :eof sentinel" do
+      {:ok, tokens} = Lexer.tokenize("a =\n  b +\n")
+
+      assert {:error, _message, line, col, span} = Predicator.Parser.parse_program(tokens)
+
+      assert {line, col} == {3, 1}
+      assert span == {{3, 1}, {3, 1}}
+    end
+
+    test "every end-of-input span is zero-width with its start equal to the reported point" do
+      sources = [
+        "[1,",
+        "{a:",
+        "(1 +",
+        "score.",
+        "score::",
+        "f(",
+        "1d from"
+      ]
+
+      for source <- sources do
+        {:ok, tokens} = Lexer.tokenize(source)
+
+        assert {:error, _message, line, col, {start, stop}} = Predicator.Parser.parse(tokens)
+        assert start == {line, col}
+        assert stop == {line, col}
       end
     end
   end

@@ -663,7 +663,7 @@ defmodule Predicator.Parser do
          token_span(token)}
 
       nil ->
-        point_error("Expected '{' to open a block but found end of input", 1, 1)
+        end_of_input_error(state, "Expected '{' to open a block but found end of input")
     end
   end
 
@@ -705,7 +705,7 @@ defmodule Predicator.Parser do
          col, token_span(token)}
 
       nil ->
-        point_error("Expected '}' to close the block but found end of input", 1, 1)
+        end_of_input_error(state, "Expected '}' to close the block but found end of input")
     end
   end
 
@@ -1285,7 +1285,7 @@ defmodule Predicator.Parser do
                  token_span(token)}
 
               nil ->
-                point_error("Expected ']' but found end of input", 1, 1)
+                end_of_input_error(state, "Expected ']' but found end of input")
             end
 
           {:error, _message, _line, _col, _span} = error ->
@@ -1318,7 +1318,7 @@ defmodule Predicator.Parser do
              line, col, token_span(token)}
 
           nil ->
-            point_error("Expected property name after '.' but found end of input", 1, 1)
+            end_of_input_error(state, "Expected property name after '.' but found end of input")
         end
 
       {:double_colon, _line, _col, _len, _value} ->
@@ -1347,7 +1347,7 @@ defmodule Predicator.Parser do
              line, col, token_span(token)}
 
           nil ->
-            point_error("Expected a type name after '::' but found end of input", 1, 1)
+            end_of_input_error(state, "Expected a type name after '::' but found end of input")
         end
 
       _other ->
@@ -1449,7 +1449,7 @@ defmodule Predicator.Parser do
              token_span(token)}
 
           nil ->
-            point_error("Expected ')' but reached end of input", 1, 1)
+            end_of_input_error(state, "Expected ')' but reached end of input")
         end
 
       {:error, _message, _line, _col, _span} = error ->
@@ -1495,8 +1495,8 @@ defmodule Predicator.Parser do
   end
 
   # Handle end of input
-  defp parse_primary_token(_state, nil) do
-    point_error("Unexpected end of input", 1, 1)
+  defp parse_primary_token(state, nil) do
+    end_of_input_error(state, "Unexpected end of input")
   end
 
   # Helper functions
@@ -1562,6 +1562,24 @@ defmodule Predicator.Parser do
           {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp point_error(message, line, col),
     do: {:error, message, line, col, {{line, col}, {line, col}}}
+
+  # A failure with no token in scope reports the end of the source, not {1, 1}.
+  # The lexer's :eof sentinel carries the true end position and a length of 0,
+  # so token_span/1 gives a zero-width span there for free. The {1, 1} fallback
+  # survives only for a hand-built token list with no sentinel at all, which the
+  # public entry points cannot produce.
+  @spec end_of_input_error(parser_state(), binary()) ::
+          {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
+  defp end_of_input_error(%{tokens: tokens}, message) do
+    case List.last(tokens) do
+      nil ->
+        point_error(message, 1, 1)
+
+      token ->
+        {line, col} = token_start(token)
+        {:error, message, line, col, token_span(token)}
+    end
+  end
 
   # Only correct in span mode, where a child's trailing slot is its span.
   # Widened beyond ast() to statement() | block() because callers use these
@@ -1688,7 +1706,7 @@ defmodule Predicator.Parser do
                  token_span(token)}
 
               nil ->
-                point_error("Expected ']' but reached end of input", 1, 1)
+                end_of_input_error(state, "Expected ']' but reached end of input")
             end
 
           {:error, _message, _line, _col, _span} = error ->
@@ -1749,7 +1767,7 @@ defmodule Predicator.Parser do
                  token_span(token)}
 
               nil ->
-                point_error("Expected '}' but reached end of input", 1, 1)
+                end_of_input_error(state, "Expected '}' but reached end of input")
             end
 
           {:error, _message, _line, _col, _span} = error ->
@@ -1811,7 +1829,7 @@ defmodule Predicator.Parser do
              line, col, token_span(token)}
 
           nil ->
-            point_error("Expected ':' after object key but reached end of input", 1, 1)
+            end_of_input_error(state, "Expected ':' after object key but reached end of input")
         end
 
       {:error, _message, _line, _col, _span} = error ->
@@ -1837,7 +1855,7 @@ defmodule Predicator.Parser do
          line, col, token_span(token)}
 
       nil ->
-        point_error("Expected object key but reached end of input", 1, 1)
+        end_of_input_error(state, "Expected object key but reached end of input")
     end
   end
 
@@ -1875,7 +1893,7 @@ defmodule Predicator.Parser do
                      token_span(token)}
 
                   nil ->
-                    point_error("Expected ')' but reached end of input", 1, 1)
+                    end_of_input_error(state, "Expected ')' but reached end of input")
                 end
 
               {:error, _message, _line, _col, _span} = error ->
@@ -1888,7 +1906,7 @@ defmodule Predicator.Parser do
          col, token_span(token)}
 
       nil ->
-        point_error("Expected '(' after function name but reached end of input", 1, 1)
+        end_of_input_error(state, "Expected '(' after function name but reached end of input")
     end
   end
 
@@ -1989,7 +2007,7 @@ defmodule Predicator.Parser do
              col, token_span(token)}
 
           nil ->
-            point_error("Expected 'now' after 'from' but reached end of input", 1, 1)
+            end_of_input_error(state, "Expected 'now' after 'from' but reached end of input")
         end
 
       _token ->

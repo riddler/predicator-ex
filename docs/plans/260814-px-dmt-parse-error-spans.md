@@ -539,16 +539,16 @@ list.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `grep -n ', 1, 1}' lib/predicator/parser.ex` returns no error-construction
+- [x] Full quality gate passes: `mix quality`
+- [x] `grep -n ', 1, 1}' lib/predicator/parser.ex` returns no error-construction
       line - the only surviving `{1, 1}` literals are `program_start_point/1`'s
       fallback (line 450) and doctest expectations
-- [ ] End-of-input failures on multi-line sources report the last line, not line
+- [x] End-of-input failures on multi-line sources report the last line, not line
       1 - e.g. a source ending after a newline reports that line's end
-- [ ] Every end-of-input span is zero-width and its start equals the reported
+- [x] Every end-of-input span is zero-width and its start equals the reported
       point
-- [ ] Coverage for `lib/predicator/parser.ex` stays above the 90% floor
-- [ ] Existing doctests that show an end-of-input position
+- [x] Coverage for `lib/predicator/parser.ex` stays above the 90% floor
+- [x] Existing doctests that show an end-of-input position
       (`lib/predicator.ex:711-713`, `798-800`) still pass unchanged - those go
       through the `:eof` token and were already correct
 
@@ -842,6 +842,24 @@ Manual Verification items are deferred to the end.
       is the bar, not correctness that AST spans do not have
 - [ ] The lexer's one-character span rule reads sensibly on an unterminated
       string: the caret lands on the opening quote
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run the
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, the Automated Verification gates advancement and
+Manual Verification items are deferred to the end.
+
+---
+
+### Phase 3
+
+- [ ] The reported end-of-source column is one past the last character, matching
+      the exclusive-end convention `Predicator.Types.span/0` documents
+- [ ] A source ending in trailing whitespace or a newline reports a position a
+      human would call "the end", not a surprising interior point
+- [ ] The `nil`-branch tests genuinely exercise the branch rather than falling
+      through to the `:eof` clause - confirmed by temporarily breaking the
+      helper and seeing them go red
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run the
 full `mix quality` as the phase gate. In interactive execution, pause here for
