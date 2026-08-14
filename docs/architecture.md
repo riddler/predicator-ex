@@ -127,6 +127,24 @@ period.
   verbatim rather than folding it into `:undefined`. See
   [`docs/isa.md`](isa.md) §3 for the null-versus-`:undefined` distinction
 
+### Compile entry points
+
+`lib/predicator.ex` exposes five compile functions, two families (expression,
+program) crossed with three modes (bare instruction list, point positions,
+spans):
+
+| | Bare list | Point positions | Spans |
+|---|---|---|---|
+| Expression | `compile/1` | `compile_with_positions/1` | `compile_with_spans/1` |
+| Program | `compile_program/1` | `compile_program_with_positions/1` | `compile_program_with_spans/1` |
+
+The positions and spans modes return a `t:Predicator.Compiled.t/0` sharing one
+helper across both families, and in the program family a statement's
+terminating instruction (`store` for an assignment, `pop` for a bare
+expression statement) always carries that statement's own source extent, never
+the whole program's. See each function's `@doc` in `lib/predicator.ex` for the
+full contract.
+
 ## Cross-Language Siblings
 
 Predicator's Elixir implementation is the reference implementation of the

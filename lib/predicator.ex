@@ -682,6 +682,9 @@ defmodule Predicator do
 
       iex> Predicator.compile("score >")
       {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 8"}
+
+  The error arm is a formatted binary; a caller that wants the line and column
+  as data can call `parse/2` directly instead of re-parsing the message.
   """
   @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile(expression) when is_binary(expression) do
@@ -706,6 +709,9 @@ defmodule Predicator do
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
       iex> compiled.positions
       %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
+
+  The error arm is a formatted binary; a caller that wants the line and column
+  as data can call `parse/2` directly instead of re-parsing the message.
   """
   @spec compile_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
   def compile_with_positions(expression) when is_binary(expression) do
@@ -730,6 +736,9 @@ defmodule Predicator do
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
       iex> compiled.positions
       %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
+
+  The error arm is a formatted binary; a caller that wants the line and column
+  as data can call `parse/2` directly instead of re-parsing the message.
   """
   @spec compile_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
   def compile_with_spans(expression) when is_binary(expression) do
@@ -753,6 +762,11 @@ defmodule Predicator do
 
       iex> Predicator.compile_program("x =")
       {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 4"}
+
+  The error arm is a formatted binary, for uniformity with the expression
+  family above. A caller that wants the line and column as structured data
+  should call `parse_program/2` directly, which returns `{:error, message,
+  line, column}` - no message re-parsing required.
   """
   @spec compile_program(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
   def compile_program(source) when is_binary(source) do
@@ -771,6 +785,11 @@ defmodule Predicator do
       iex> {:ok, compiled} = Predicator.compile_program_with_positions("x = 1")
       iex> compiled.instructions
       [["lit", "x"], ["lit", 1], ["store", 1]]
+
+  The error arm is a formatted binary, for uniformity with the expression
+  family above. A caller that wants the line and column as structured data
+  should call `parse_program/2` directly, which returns `{:error, message,
+  line, column}` - no message re-parsing required.
   """
   @spec compile_program_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
   def compile_program_with_positions(source) when is_binary(source) do
@@ -802,6 +821,14 @@ defmodule Predicator do
       [["lit", "x"], ["lit", 1], ["store", 1]]
       iex> compiled.positions
       %{0 => {{1, 1}, {1, 2}}, 1 => {{1, 5}, {1, 6}}, 2 => {{1, 1}, {1, 6}}}
+
+  The error arm is a formatted binary, for uniformity with the expression
+  family above. A caller that wants the line and column as structured data
+  should call `parse_program/2` directly, which returns `{:error, message,
+  line, column}` - no message re-parsing required.
+
+  Spans describe AST nodes: a parse error carries a point position and never a
+  span, in span mode as much as in point mode.
   """
   @spec compile_program_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
   def compile_program_with_spans(source) when is_binary(source) do

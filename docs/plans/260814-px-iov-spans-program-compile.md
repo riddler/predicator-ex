@@ -547,13 +547,13 @@ mirror reconciliation with st-57w has something to point at.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes (`mix quality`) - the `@doc` edits are compiled
+- [x] Full quality gate passes (`mix quality`) - the `@doc` edits are compiled
       and any doctest in them runs
-- [ ] `mix test test/docs_adr_links_test.exs` passes - the architecture doc
+- [x] `mix test test/docs_adr_links_test.exs` passes - the architecture doc
       edit must not break a link
-- [ ] `bd show <new-id>` returns the follow-on bead with an `area:` label and
+- [x] `bd show <new-id>` returns the follow-on bead with an `area:` label and
       a description naming the five entry points
-- [ ] `git status` shows no diff under `conformance/`
+- [x] `git status` shows no diff under `conformance/`
 
 #### Manual Verification:
 - [ ] A reader of `compile_program_with_spans/1`'s doc can tell, without
@@ -699,5 +699,24 @@ next phase. In looped (`--loop`) execution, this phase's Automated
 Verification gates advancement automatically (via `/wurk:commit --auto`), and
 Manual Verification items are deferred and surfaced once at the end instead of
 blocking here.
+
+---
+
+### Phase 3
+
+- [ ] A reader of `compile_program_with_spans/1`'s doc can tell, without
+      reading this plan, how to get the line and column as data
+- [ ] The architecture doc's new subsection is at most a table plus two
+      sentences, and states no return shape, error shape, or span-table detail
+      that is already in the `@doc`s - it points at them instead
+- [ ] The follow-on bead is actionable on its own - someone picking it up does
+      not need this plan to understand the scope
+
+**Implementation Note**: This phase touches no Elixir logic; the gate still
+runs because `@doc` content is compiled. In interactive execution, pause here
+for the human to confirm the manual testing. In looped (`--loop`) execution,
+this phase's Automated Verification gates advancement automatically (via
+`/wurk:commit --auto`), and Manual Verification items are deferred and
+surfaced once at the end instead of blocking here.
 
 ---
