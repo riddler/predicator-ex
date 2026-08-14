@@ -5,11 +5,13 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
   spec's rules, plus the R5 completeness check the worked example is the only
   place that rule is exercised at all.
 
-  `conformance/examples/registry.example.json` is generated from this
-  checkout's own `conformance/corpus/tier-1.json`, not hand-typed (see the
-  file's own comments in RATCHET.md for why). These tests are what keep that
-  example honest: a `mix corpus.generate` that changes the corpus, a hand
-  edit to the example, or a reindent all turn this suite red, naming the
+  `conformance/examples/registry.example.json` is hand-maintained: no
+  generator exists, and none should - a faithful writer would be RATCHET.md's
+  verify-then-add step, which is the ratchet runner this repo deliberately
+  does not ship, and a regenerate-from-corpus script is the regeneration
+  rule 3 exists to forbid. These tests are what keep the hand-maintained
+  example honest: a `mix corpus.generate` that changes the corpus, a bad hand
+  edit, a duplicated line, or a reindent all turn this suite red, naming the
   problem, rather than letting the worked example quietly drift from the
   spec it demonstrates.
 
@@ -110,12 +112,13 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
 
       assert example["corpus_hash"] == manifest["corpus_hash"],
              "#{@example_path}'s corpus_hash does not match #{@manifest_path} - " <>
-               "the corpus regenerated and the example was not: regenerate " <>
-               "#{@example_path} against the new corpus"
+               "the corpus regenerated and the example was not: hand-update " <>
+               "#{@example_path}'s corpus_hash (and its entries, if tier 1 " <>
+               "changed) to match the new manifest"
 
       assert example["isa_version"] == manifest["isa_version"],
              "#{@example_path}'s isa_version does not match #{@manifest_path} - " <>
-               "regenerate #{@example_path} against the current manifest"
+               "hand-update #{@example_path}'s isa_version to match the current manifest"
     end
   end
 
@@ -128,8 +131,9 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
       assert reencode(example) == raw,
              "#{@example_path} is not exactly the canonical encoding RATCHET.md specifies " <>
                "(sorted top-level keys, one array element per line, no incidental " <>
-               "whitespace) - a hand edit or a pretty-printer likely touched it; " <>
-               "regenerate it instead of editing it directly"
+               "whitespace) - an editor or a pretty-printer likely reflowed it; " <>
+               "restore the encoding RATCHET.md rule 2 specifies rather than " <>
+               "reformatting"
     end
   end
 
