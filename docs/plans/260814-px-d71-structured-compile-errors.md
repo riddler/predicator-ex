@@ -392,18 +392,18 @@ no entry in `.claude/wurk.json`'s `gate.sabotage.test_roots`.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green (format, compile with no warnings, credo --strict,
+- [x] `mix quality` is green (format, compile with no warnings, credo --strict,
       dialyzer, deps audit, suite with coverage)
-- [ ] Total coverage stays at or above the 90% `coveralls.json` minimum, with
+- [x] Total coverage stays at or above the 90% `coveralls.json` minimum, with
       no threshold edit
-- [ ] `grep -rn "at line" lib/predicator.ex lib/predicator/errors/parse_error.ex`
+- [x] `grep -rn "at line" lib/predicator.ex lib/predicator/errors/parse_error.ex`
       returns only the `compile!/1` message composition
-- [ ] `grep -rn 'at line 1, column' test/` returns nothing
-- [ ] `grep -rn 'formatted binary\|binary error' lib/` returns nothing - this
+- [x] `grep -rn 'at line 1, column' test/` returns nothing
+- [x] `grep -rn 'formatted binary\|binary error' lib/` returns nothing - this
       is the source `mix docs` renders from, so it settles the generated docs
       too and needs no separate `mix docs` pass
-- [ ] `mix run -e 'IO.puts(Predicator.isa_version())'` prints `6`
-- [ ] `git status --porcelain conformance/` is empty
+- [x] `mix run -e 'IO.puts(Predicator.isa_version())'` prints `6`
+- [x] `git status --porcelain conformance/` is empty
 
 #### Manual Verification:
 - [ ] The raised `compile!/1` text is character-for-character what 7.0.0 raised
@@ -585,3 +585,32 @@ regression signal that matters.
 - The pattern to copy in tests: `test/predicator/equals_grammar_break_test.exs:20-22`
 - Prior plan on this surface: `docs/plans/260814-px-iov-spans-program-compile.md`
 - Follow-on bead, explicitly not folded in: `px-dmt` (parse-error spans)
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] The raised `compile!/1` text is character-for-character what 7.0.0 raised
+      for the same input: run `Predicator.compile!("score >")` in `iex -S mix`
+      and compare against `git show HEAD:lib/predicator.ex`'s
+      `"Compilation failed: #{reason}"` applied to the old binary
+- [ ] Reading the six rewritten `@doc` paragraphs in order, each states the
+      same contract in the same terms - a reviewer should not be able to tell
+      from the wording which of the six they are looking at
+
+Style note for the implementer, not a verification item: the six paragraphs
+are one edit repeated, not six independent rewrites. Write one and adapt it.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits while
+iterating; run full `mix quality` as the phase gate. In interactive execution,
+pause here for the human to confirm the manual testing before moving to the
+next phase. In looped (`--loop`) execution, this phase's Automated Verification
+gates advancement automatically (via `/wurk:commit --auto`), and Manual
+Verification items are deferred and surfaced once at the end instead of
+blocking here.
+
+---

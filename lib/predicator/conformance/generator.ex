@@ -87,7 +87,7 @@ defmodule Predicator.Conformance.Generator do
       ]
 
       iex> Predicator.Conformance.Generator.generate([%{"id" => "bad", "source" => "score >"}])
-      {:error, [%{id: "bad", problem: "source \\"score >\\" failed to compile: Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 8"}]}
+      {:error, [%{id: "bad", problem: "source \\"score >\\" failed to compile: Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"}]}
   """
   @spec generate([authored_case()], keyword()) ::
           {:ok, %{tiers: %{pos_integer() => [completed_case()]}, manifest: map()}}
@@ -332,7 +332,7 @@ defmodule Predicator.Conformance.Generator do
   defp resolve_instructions({:source, source}) do
     case Predicator.compile(source) do
       {:ok, instructions} -> {:ok, instructions}
-      {:error, message} -> {:error, "source #{inspect(source)} failed to compile: #{message}"}
+      {:error, error} -> {:error, "source #{inspect(source)} failed to compile: #{error.message}"}
     end
   end
 

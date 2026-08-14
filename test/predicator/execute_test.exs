@@ -250,9 +250,10 @@ defmodule Predicator.ExecuteTest do
       assert instructions == [["lit", "x"], ["lit", 1], ["store", 1]]
     end
 
-    test "compile_program/1 returns a binary error, not parse_program/2's raw 4-tuple" do
-      assert {:error, message} = Predicator.compile_program("x =")
-      assert is_binary(message)
+    test "compile_program/1 returns a structured error, not parse_program/2's raw 4-tuple" do
+      assert {:error, %Predicator.Errors.ParseError{} = error} = Predicator.compile_program("x =")
+      assert is_binary(error.message)
+      assert error.position == {1, 4}
     end
 
     test "compile_program_with_positions/1 returns a %Compiled{}" do
@@ -328,8 +329,8 @@ defmodule Predicator.ExecuteTest do
     end
 
     test "compile_program_with_spans/1 returns the same error as compile_program/1 for the same bad source" do
-      assert {:error, message} = Predicator.compile_program("x =")
-      assert {:error, ^message} = Predicator.compile_program_with_spans("x =")
+      assert {:error, error} = Predicator.compile_program("x =")
+      assert {:error, ^error} = Predicator.compile_program_with_spans("x =")
     end
 
     test "compile_program_with_spans/1's instruction list is byte-identical to compile_program_with_positions/1's" do

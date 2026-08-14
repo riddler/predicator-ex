@@ -29,8 +29,8 @@ defmodule Predicator.EqualsGrammarBreakTest do
     end
 
     test "Predicator.compile/1" do
-      assert Predicator.compile("a = 1") ==
-               {:error, "#{@fixit_message} at line 1, column 3"}
+      assert {:error, %ParseError{message: @fixit_message, position: {1, 3}}} =
+               Predicator.compile("a = 1")
     end
 
     test "Predicator.context_assign/4" do

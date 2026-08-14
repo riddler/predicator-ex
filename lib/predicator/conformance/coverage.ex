@@ -217,7 +217,7 @@ defmodule Predicator.Conformance.Coverage do
   defp patterns_for_source(source) do
     case Predicator.compile(source) do
       {:ok, instructions} -> patterns_for_instructions(instructions)
-      {:error, _message} -> []
+      {:error, _error} -> []
     end
   rescue
     _exception -> []

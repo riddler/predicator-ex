@@ -699,7 +699,8 @@ defmodule Predicator do
   ## Returns
 
   - `{:ok, instructions}` - Successfully compiled instructions
-  - `{:error, message}` - Parse error with details
+  - `{:error, error}` - A `%Predicator.Errors.ParseError{}` describing the
+    failure
 
   ## Examples
 
@@ -707,13 +708,16 @@ defmodule Predicator do
       iex> instructions
       [["load", "score"], ["lit", 85], ["compare", "GT"]]
 
-      iex> Predicator.compile("score >")
-      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 8"}
+      iex> {:error, error} = Predicator.compile("score >")
+      iex> {error.message, error.position}
+      {"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input", {1, 8}}
 
-  The error arm is a formatted binary; a caller that wants the line and column
-  as data can call `parse/2` directly instead of re-parsing the message.
+  The error arm is a `%Predicator.Errors.ParseError{}` carrying the parser's
+  bare message in `:message` and `{line, column}` in `:position` - the same
+  struct `evaluate/3` returns for the same source. `parse/2` remains available
+  for a caller that wants the raw 4-tuple instead.
   """
-  @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
+  @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, struct()}
   def compile(expression) when is_binary(expression) do
     expression |> parse() |> build_instructions_result()
   end
@@ -737,10 +741,12 @@ defmodule Predicator do
       iex> compiled.positions
       %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
 
-  The error arm is a formatted binary; a caller that wants the line and column
-  as data can call `parse/2` directly instead of re-parsing the message.
+  The error arm is a `%Predicator.Errors.ParseError{}` carrying the parser's
+  bare message in `:message` and `{line, column}` in `:position` - the same
+  struct `evaluate/3` returns for the same source. `parse/2` remains available
+  for a caller that wants the raw 4-tuple instead.
   """
-  @spec compile_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
+  @spec compile_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, struct()}
   def compile_with_positions(expression) when is_binary(expression) do
     expression |> parse() |> build_compiled_result()
   end
@@ -764,10 +770,12 @@ defmodule Predicator do
       iex> compiled.positions
       %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
 
-  The error arm is a formatted binary; a caller that wants the line and column
-  as data can call `parse/2` directly instead of re-parsing the message.
+  The error arm is a `%Predicator.Errors.ParseError{}` carrying the parser's
+  bare message in `:message` and `{line, column}` in `:position` - the same
+  struct `evaluate/3` returns for the same source. `parse/2` remains available
+  for a caller that wants the raw 4-tuple instead.
   """
-  @spec compile_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
+  @spec compile_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, struct()}
   def compile_with_spans(expression) when is_binary(expression) do
     expression |> parse(spans: true) |> build_compiled_result()
   end
@@ -778,7 +786,7 @@ defmodule Predicator do
   The program-shaped echo of `compile/1`: parses with `parse_program/2`
   instead of `parse/2`, then compiles the resulting `t:Predicator.Parser.program/0`
   with `Compiler.to_instructions/2`, which already accepts one. Returns the
-  same `{:error, binary()}` shape `compile/1` does - not `parse_program/2`'s
+  same `{:error, struct()}` shape `compile/1` does - not `parse_program/2`'s
   raw 4-tuple.
 
   ## Examples
@@ -787,15 +795,16 @@ defmodule Predicator do
       iex> instructions
       [["lit", "x"], ["lit", 1], ["store", 1], ["load", "x"], ["lit", 1], ["add"], ["pop"]]
 
-      iex> Predicator.compile_program("x =")
-      {:error, "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input at line 1, column 4"}
+      iex> {:error, error} = Predicator.compile_program("x =")
+      iex> {error.message, error.position}
+      {"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input", {1, 4}}
 
-  The error arm is a formatted binary, for uniformity with the expression
-  family above. A caller that wants the line and column as structured data
-  should call `parse_program/2` directly, which returns `{:error, message,
-  line, column}` - no message re-parsing required.
+  The error arm is a `%Predicator.Errors.ParseError{}`, for uniformity with the
+  expression family above. It carries the parser's bare message in `:message`
+  and `{line, column}` in `:position`. `parse_program/2` remains available for
+  a caller that wants the raw 4-tuple instead.
   """
-  @spec compile_program(binary()) :: {:ok, Types.instruction_list()} | {:error, binary()}
+  @spec compile_program(binary()) :: {:ok, Types.instruction_list()} | {:error, struct()}
   def compile_program(source) when is_binary(source) do
     source |> parse_program() |> build_instructions_result()
   end
@@ -813,12 +822,12 @@ defmodule Predicator do
       iex> compiled.instructions
       [["lit", "x"], ["lit", 1], ["store", 1]]
 
-  The error arm is a formatted binary, for uniformity with the expression
-  family above. A caller that wants the line and column as structured data
-  should call `parse_program/2` directly, which returns `{:error, message,
-  line, column}` - no message re-parsing required.
+  The error arm is a `%Predicator.Errors.ParseError{}`, for uniformity with the
+  expression family above. It carries the parser's bare message in `:message`
+  and `{line, column}` in `:position`. `parse_program/2` remains available for
+  a caller that wants the raw 4-tuple instead.
   """
-  @spec compile_program_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
+  @spec compile_program_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, struct()}
   def compile_program_with_positions(source) when is_binary(source) do
     source |> parse_program() |> build_compiled_result()
   end
@@ -849,15 +858,15 @@ defmodule Predicator do
       iex> compiled.positions
       %{0 => {{1, 1}, {1, 2}}, 1 => {{1, 5}, {1, 6}}, 2 => {{1, 1}, {1, 6}}}
 
-  The error arm is a formatted binary, for uniformity with the expression
-  family above. A caller that wants the line and column as structured data
-  should call `parse_program/2` directly, which returns `{:error, message,
-  line, column}` - no message re-parsing required.
+  The error arm is a `%Predicator.Errors.ParseError{}`, for uniformity with the
+  expression family above. It carries the parser's bare message in `:message`
+  and `{line, column}` in `:position`. `parse_program/2` remains available for
+  a caller that wants the raw 4-tuple instead.
 
   Spans describe AST nodes: a parse error carries a point position and never a
   span, in span mode as much as in point mode.
   """
-  @spec compile_program_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, binary()}
+  @spec compile_program_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, struct()}
   def compile_program_with_spans(source) when is_binary(source) do
     source |> parse_program(spans: true) |> build_compiled_result()
   end
@@ -865,12 +874,12 @@ defmodule Predicator do
   # Shared by compile_with_positions/1, compile_with_spans/1,
   # compile_program_with_positions/1, and compile_program_with_spans/1: each
   # differs only in how it parses (an expression vs a program, point positions
-  # vs spans), never in how the parse result becomes a %Compiled{} or a binary
-  # error.
+  # vs spans), never in how the parse result becomes a %Compiled{} or a
+  # structured error.
   @spec build_compiled_result(
           {:ok, Parser.ast() | Parser.program()}
           | {:error, binary(), pos_integer(), pos_integer()}
-        ) :: {:ok, Compiled.t()} | {:error, binary()}
+        ) :: {:ok, Compiled.t()} | {:error, struct()}
   defp build_compiled_result({:ok, ast}) do
     {instructions, positions, segment_positions} =
       Compiler.to_instructions_with_segment_positions(ast)
@@ -879,25 +888,25 @@ defmodule Predicator do
   end
 
   defp build_compiled_result({:error, message, line, column}) do
-    {:error, "#{message} at line #{line}, column #{column}"}
+    {:error, ParseError.new(message, line, column)}
   end
 
   # Shared by compile/1 and compile_program/1: each differs only in how it
   # parses (an expression vs a program), never in how the parse result
-  # becomes an instruction list or a binary error.
+  # becomes an instruction list or a structured error.
   @spec build_instructions_result(
           {:ok, Parser.ast() | Parser.program()}
           | {:error, binary(), pos_integer(), pos_integer()}
-        ) :: {:ok, Types.instruction_list()} | {:error, binary()}
+        ) :: {:ok, Types.instruction_list()} | {:error, struct()}
   defp build_instructions_result({:ok, ast}) do
     case Compiler.to_instructions(ast) do
-      {:error, error} -> {:error, error.message}
+      {:error, error} -> {:error, error}
       instructions -> {:ok, instructions}
     end
   end
 
   defp build_instructions_result({:error, message, line, column}) do
-    {:error, "#{message} at line #{line}, column #{column}"}
+    {:error, ParseError.new(message, line, column)}
   end
 
   @doc """
@@ -1013,9 +1022,18 @@ defmodule Predicator do
   def compile!(expression) when is_binary(expression) do
     case compile(expression) do
       {:ok, instructions} -> instructions
-      {:error, reason} -> raise "Compilation failed: #{reason}"
+      {:error, error} -> raise "Compilation failed: #{describe_compile_error(error)}"
     end
   end
+
+  # A parse failure carries a point position, which today's message text
+  # includes; a compiler-stage struct may not, so the location clause is
+  # separate rather than assumed.
+  @spec describe_compile_error(struct()) :: binary()
+  defp describe_compile_error(%{message: message, position: {line, column}}),
+    do: "#{message} at line #{line}, column #{column}"
+
+  defp describe_compile_error(%{message: message}), do: message
 
   @doc """
   Creates a new evaluator state for low-level instruction processing.
