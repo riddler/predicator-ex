@@ -158,7 +158,6 @@ jobs:
   dialyzer:
     name: Static Type Analysis (Dialyzer)
     runs-on: ubuntu-latest
-    needs: compile
 
     steps:
     - name: Checkout code
