@@ -574,16 +574,16 @@ rather than adjusted:
       `visitors/string_visitor.ex` - nothing else in `lib/`.
 
 #### Manual Verification:
-- [ ] `Predicator.parse("user.null")` and `Predicator.parse("{null: 1}")`
+- [x] `Predicator.parse("user.null")` and `Predicator.parse("{null: 1}")`
       return error tuples, not a `FunctionClauseError`. This is the
       `format_token/2` clause being real, and a raise here is the ADR-0004
       breach.
-- [ ] The three breakage messages read as helpful to someone who used `null`
+- [x] The three breakage messages read as helpful to someone who used `null`
       as a variable name, and match the `true`/`false`/`undefined` shapes.
-- [ ] `mix quality`'s dialyzer stage raised nothing about the widened
+- [x] `mix quality`'s dialyzer stage raised nothing about the widened
       `classify_identifier/1` and `value()` specs, and nothing about the `nil`
       value slot in the token tuple.
-- [ ] The rewritten "Null and undefined" section reads as one coherent
+- [x] The rewritten "Null and undefined" section reads as one coherent
       explanation, not as a patched one: no sentence still implies null is
       unwritable, and the `x === undefined` advice that survives is presented
       as a different question rather than a workaround.
@@ -726,14 +726,14 @@ newline), then delete the script.
       substantive claim of this phase.
 
 #### Manual Verification:
-- [ ] The corpus diff is reviewed line by line and is exactly the six new cases
+- [x] The corpus diff is reviewed line by line and is exactly the six new cases
       plus one edited `notes` field, the manifest's hash, and two case counts -
       no unrelated case re-ordered or re-encoded.
-- [ ] The commit message and the PR body explain the corpus diff, per ADR-0003
+- [x] The commit message and the PR body explain the corpus diff, per ADR-0003
       and CLAUDE.md's conventions, stating that the exported specification
       gained a source spelling for an operand its value domain already admitted
       and that the ISA version did not move.
-- [ ] A sibling reading `core/literal-null` can tell from `instructions` and
+- [x] A sibling reading `core/literal-null` can tell from `instructions` and
       `notes` that no new opcode is involved and that its lexer, not its VM, is
       what needs work to pass.
 
@@ -888,16 +888,16 @@ explicitly, so a reviewer does not read the absence as an oversight.
       `## [Unreleased]`.
 
 #### Manual Verification:
-- [ ] §1's rewritten bullet still states a rule someone could apply to a future
+- [x] §1's rewritten bullet still states a rule someone could apply to a future
       change, rather than a list of past cases. Re-read it against §1's
       opcode-name sentence at `:29-32` and confirm the two agree.
-- [ ] §3's null paragraph and §5's `lit` entry now agree with each other and
+- [x] §3's null paragraph and §5's `lit` entry now agree with each other and
       with §6; no sentence anywhere in `docs/isa.md` still says null cannot be
       written or cannot appear in a stored artifact.
-- [ ] The changelog's BREAKING entry leads with the silent case, not the loud
+- [x] The changelog's BREAKING entry leads with the silent case, not the loud
       one - the loud cases are self-announcing and the silent one is what a
       reader needs to be told.
-- [ ] The PR body carries the scheduling reasoning: the reservation is
+- [x] The PR body carries the scheduling reasoning: the reservation is
       implemented and marked breaking, no version was bumped, and the bump
       remains a human decision.
 
@@ -1056,7 +1056,7 @@ items are deferred and surfaced once at the end instead of blocking here.
 - [x] The changelog's BREAKING entry leads with the silent case, not the loud
       one - the loud cases are self-announcing and the silent one is what a
       reader needs to be told.
-- [ ] The PR body carries the scheduling reasoning: the reservation is
+- [x] The PR body carries the scheduling reasoning: the reservation is
       implemented and marked breaking, no version was bumped, and the bump
       remains a human decision.
 
