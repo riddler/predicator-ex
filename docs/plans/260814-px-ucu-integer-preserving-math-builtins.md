@@ -565,10 +565,10 @@ before considering the plan fully landed.
 
 ### Phase 1
 
-- [ ] In `iex -S mix`: `Predicator.evaluate("Math.pow(10, 20)", %{})` returns
+- [x] In `iex -S mix`: `Predicator.evaluate("Math.pow(10, 20)", %{})` returns
       the exact integer, not a float approximation
-- [ ] `Math.pow(2, -1)` and `Math.pow(2.0, 3)` still return floats
-- [ ] The corpus diff reads as intentional - only the three pow cases and the
+- [x] `Math.pow(2, -1)` and `Math.pow(2.0, 3)` still return floats
+- [x] The corpus diff reads as intentional - only the three pow cases and the
       manifest moved
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
@@ -581,10 +581,10 @@ execution, the Automated Verification gates advancement via
 
 ### Phase 2
 
-- [ ] In `iex -S mix`: `Math.sqrt` of a large perfect square returns the exact
+- [x] In `iex -S mix`: `Math.sqrt` of a large perfect square returns the exact
       integer, and of its neighbours returns floats
-- [ ] `Math.sqrt(-1)` still errors with the same message
-- [ ] The corpus diff reads as intentional - only the two sqrt cases and the
+- [x] `Math.sqrt(-1)` still errors with the same message
+- [x] The corpus diff reads as intentional - only the two sqrt cases and the
       manifest moved
 
 **Implementation Note**: Same as Phase 1 - loop gate while iterating, full
@@ -594,11 +594,11 @@ gate as the phase gate.
 
 ### Phase 3
 
-- [ ] The Returns column matches what Phases 1 and 2 actually implemented,
+- [x] The Returns column matches what Phases 1 and 2 actually implemented,
       read side by side against `math_functions.ex`
-- [ ] The changelog entry names the break in terms a consumer can act on, and
+- [x] The changelog entry names the break in terms a consumer can act on, and
       does not claim an ISA move
-- [ ] Typography matches the surrounding lines in each edited file
+- [x] Typography matches the surrounding lines in each edited file
 
 **Implementation Note**: No Elixir changes here, so the loop gate has nothing
 to narrow to; run the full gate once before committing.
