@@ -72,7 +72,7 @@
 
   "tmux": { "session": "predicator-ex", "model": "opus" },
 
-  "models": { "direction": "opus" },
+  "models": { "direction": "fable" },
 
   "artifacts": {
     "plans": "docs/plans",
