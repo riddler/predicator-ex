@@ -6,7 +6,6 @@ defmodule Predicator.Errors.PositionTest do
   alias Predicator.Errors.{
     EvaluationError,
     LocationError,
-    ParseError,
     TypeMismatchError,
     UndefinedVariableError
   }
@@ -78,7 +77,12 @@ defmodule Predicator.Errors.PositionTest do
     end
 
     test "falls back to the span's start on a struct with :position but no :span" do
-      error = %ParseError{message: "boom", position: nil}
+      # Every error struct in this codebase now carries :span (ParseError
+      # included, as of the parse-error-spans work), so this branch has no
+      # live struct to exercise it against - simulate one by deleting the
+      # key from a real struct rather than asserting behavior no longer
+      # reachable through any public constructor.
+      error = EvaluationError.new("boom", "boom") |> Map.delete(:span)
       decorated = Errors.put_position(error, {{1, 1}, {1, 9}})
 
       refute Map.has_key?(decorated, :span)

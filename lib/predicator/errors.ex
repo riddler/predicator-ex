@@ -31,6 +31,16 @@ defmodule Predicator.Errors do
       iex> {decorated.position, decorated.span}
       {{1, 1}, {{1, 1}, {1, 9}}}
 
+      iex> error = Predicator.Errors.ParseError.new("boom", 1, 1)
+      iex> decorated = Predicator.Errors.put_position(error, {{1, 1}, {1, 6}})
+      iex> {decorated.position, decorated.span}
+      {{1, 1}, {{1, 1}, {1, 6}}}
+
+      iex> error = Predicator.Errors.ParseError.new("boom", 1, 1)
+      iex> decorated = Predicator.Errors.put_position(error, {1, 3})
+      iex> {decorated.position, decorated.span}
+      {{1, 3}, nil}
+
       iex> error = Predicator.Errors.EvaluationError.new("boom", "boom")
       iex> Predicator.Errors.put_position(error, nil).position
       nil
