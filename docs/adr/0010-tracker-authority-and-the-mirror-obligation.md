@@ -1,6 +1,7 @@
 # ADR-0010: Tracker authority follows the artifact, and mirrors pull
 
-Status: proposed (2026-08-08)
+Status: accepted (2026-08-14) - drafted proposed 2026-08-08; accepted once
+statifier-ex adopted the same rule in its ADR-0025
 
 ## Context
 
@@ -220,12 +221,19 @@ of them.
   record of what was true when the work was done. Anyone reading one needs to
   know only that statifier's prefix changed from `st2-` to `st-`, which this
   ADR now says in one place.
-- **statifier-ex owes a reciprocal line and cannot be given one from here.**
-  Its `CLAUDE.md` currently says nothing about cross-repo coordination at all,
-  and its own `st2-` references (in `st-bfq`'s notes, and the apology in
-  `st-t3f`) are live. This decision is only half-recorded until that repo
-  carries the same rule and points at this ADR. That is work in another
-  repository and is out of scope for this branch by ADR-0005's worktree rule.
+- **statifier-ex owed a reciprocal line, and now carries one.** When this ADR
+  was drafted its `CLAUDE.md` said nothing about cross-repo coordination at
+  all, its own `st2-` references were live, and the decision was only
+  half-recorded - work in another repository, out of scope for that branch by
+  ADR-0005's worktree rule. It was done there instead, under `st-c07`
+  (`mirrors: px-xsk`), on 2026-08-14: statifier-ex ADR-0025 adopts rules 1 and
+  2 verbatim, adopts rule 3 with a narrowing that does not reach this repo,
+  and its `CLAUDE.md` carries the enforcement table pointing here. Its own
+  live `st2-` ids were corrected under rule 2's id exception in the same
+  change, and the ones this bullet named (`st-bfq`, `st-t3f`) had closed by
+  then and were left under the closed-bead exclusion. That is what moved this
+  ADR from proposed to accepted; the reciprocal read is recorded there rather
+  than duplicated here.
 - **The `mirrors:` line is now load-bearing, so it has to be written.** A pair
   created without one on both halves is a pair with no pull path, and rule 2
   has nothing to operate on. `/create-issue` is where that would be enforced if
@@ -257,11 +265,14 @@ of them.
 
 ## Open questions
 
-- **Does statifier-ex adopt the same rule, or a different one?** The decision
-  above assumes it adopts this one and points here, which is what makes rule 2
-  symmetric. It has not been asked, and nothing in this repo can ask it. If
-  statifier settles on a different obligation, this ADR is superseded rather
-  than quietly half-true.
+- ~~**Does statifier-ex adopt the same rule, or a different one?**~~ Answered
+  2026-08-14, and answering it is what allowed this ADR to be accepted. The
+  decision above assumed statifier adopts this rule and points here, which is
+  what makes rule 2 symmetric; nothing in this repo could ask. statifier-ex
+  ADR-0025 adopts it - same obligation, same direction, verified performable
+  from that side rather than assumed - so this ADR is made whole rather than
+  superseded. Rule 2's symmetry is no longer an assumption. If either repo
+  later changes the obligation, the two records move together.
 - **Should `px-35i.6` and `px-35i.7` be backfilled with an `external_ref`
   now?** They cannot be: no GitHub issue exists on `riddler/predicator` for
   either, and opening one is a human act under ADR-0006. Their empty fields are
