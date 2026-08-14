@@ -44,6 +44,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: all six compile entry points now return `{:error, struct()}`
+  instead of `{:error, binary()}`.** `compile/1`, `compile_with_positions/1`,
+  `compile_with_spans/1`, `compile_program/1`,
+  `compile_program_with_positions/1`, and `compile_program_with_spans/1` all
+  route through the same construction site, and a parse failure is now
+  reported as the same `%Predicator.Errors.ParseError{}` that `evaluate/3`
+  already returns for the same source: `:message` holds the parser's bare
+  message with no location text appended, and the location lives in
+  `:position` as `{line, column}`. A caller that displayed the old
+  `"<message> at line <line>, column <column>"` sentence rebuilds it with
+  `"#{error.message} at line #{elem(error.position, 0)}, column #{elem(error.position, 1)}"`;
+  a caller that regex-matched the sentence to recover the line and column
+  deletes the regex and reads `error.position` directly. Unchanged:
+  `compile/1`'s success arm, `%Compiled{}`, `compile!/1`'s raised text
+  (still `"Compilation failed: <message> at line <line>, column <column>"`),
+  `parse/2` and `parse_program/2`'s 4-tuple, and the ISA version (still 6) -
+  a stored instruction list needs no migration. This is a breaking change to
+  a documented public return type on six functions, which is why the next
+  release is a major one, 8.0.0.
+
 - **`Context.resolve_functions/1`'s provider validation is now memoized per
   provider list.** Repeat `Context.new/2` and `Predicator.Evaluator.evaluate/3`
   calls against an unchanged `:providers` list (the builtins included) no

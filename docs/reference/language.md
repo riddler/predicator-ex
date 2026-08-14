@@ -977,6 +977,15 @@ iex> err.position
 {1, 10}
 ```
 
+A compile failure returns the same struct, since `compile/1` and its five
+siblings share `evaluate/3`'s error arm:
+
+```elixir
+iex> {:error, err} = Predicator.compile("score >>")
+iex> {err.__struct__, err.position}
+{Predicator.Errors.ParseError, {1, 8}}
+```
+
 A function that errors mid-evaluation surfaces as an `EvaluationError`:
 
 ```elixir
