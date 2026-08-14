@@ -646,22 +646,22 @@ Second, a new entry naming the migration:
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] All six compile entry points return `{:error, %ParseError{span: span}}`
+- [x] Full quality gate passes: `mix quality`
+- [x] All six compile entry points return `{:error, %ParseError{span: span}}`
       with a non-nil span for a parse failure and for a lex failure - a test that
       loops over all six is the honest form of this criterion
-- [ ] `compile/1` and `compile_with_spans/1` return the **same** span for the
+- [x] `compile/1` and `compile_with_spans/1` return the **same** span for the
       same failing source, proving the span is not gated on the mode
-- [ ] `Predicator.evaluate/3`, `Predicator.execute/3`, and
+- [x] `Predicator.evaluate/3`, `Predicator.execute/3`, and
       `Predicator.context_location/3` return span-bearing `ParseError`s for a
       parse failure
-- [ ] The Phase 2 test asserting `span: nil` on the compile arm is inverted, not
+- [x] The Phase 2 test asserting `span: nil` on the compile arm is inverted, not
       deleted - it becomes the assertion that the span is present
-- [ ] Doctests pass, including the new `error.span` examples
-- [ ] `grep -rn 'never a span' lib/` returns nothing
-- [ ] `mix quality` reports no coverage regression below the 90% floor for
+- [x] Doctests pass, including the new `error.span` examples
+- [x] `grep -rn 'never a span' lib/` returns nothing
+- [x] `mix quality` reports no coverage regression below the 90% floor for
       `lib/predicator.ex` or `lib/predicator/errors/`
-- [ ] `git diff --stat` names no file under `conformance/` and no change to the
+- [x] `git diff --stat` names no file under `conformance/` and no change to the
       ISA version line in `docs/isa.md`
 
 #### Manual Verification:
@@ -860,6 +860,24 @@ Manual Verification items are deferred to the end.
 - [ ] The `nil`-branch tests genuinely exercise the branch rather than falling
       through to the `:eof` clause - confirmed by temporarily breaking the
       helper and seeing them go red
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run the
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, the Automated Verification gates advancement and
+Manual Verification items are deferred to the end.
+
+---
+
+### Phase 4
+
+- [ ] The CHANGELOG's two entries read as one coherent 8.0 story rather than as
+      two independent breaks - a reader migrating should see the compile arm
+      becoming a struct and that struct gaining a span as one migration
+- [ ] The `@doc` paragraph repeated across the six compile functions is
+      genuinely identical in all six, as it is today
+- [ ] A host rendering `"#{e.message} at line #{l}, column #{c}"` still gets the
+      same sentence; the span is purely additive to what it reads
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run the
 full `mix quality` as the phase gate. In interactive execution, pause here for

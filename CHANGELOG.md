@@ -59,10 +59,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deletes the regex and reads `error.position` directly. Unchanged:
   `compile/1`'s success arm, `%Compiled{}`, `compile!/1`'s raised text
   (still `"Compilation failed: <message> at line <line>, column <column>"`),
-  `parse/2` and `parse_program/2`'s 4-tuple, and the ISA version (still 6) -
-  a stored instruction list needs no migration. This is a breaking change to
-  a documented public return type on six functions, which is why the next
-  release is a major one, 8.0.0.
+  and the ISA version (still 6) - a stored instruction list needs no
+  migration. This is a breaking change to a documented public return type on
+  six functions, which is why the next release is a major one, 8.0.0.
+
+- **BREAKING: `parse/2`, `parse_program/2`, and `Predicator.Lexer.tokenize/1`
+  now return `{:error, message, line, column, span}` instead of
+  `{:error, message, line, column}`, and every `%Predicator.Errors.ParseError{}`
+  carries the same extent in a new `:span` field.** The span is the source
+  extent of the token that failed - `{{start_line, start_column},
+  {end_line, end_column}}` with an exclusive end, the same
+  `t:Predicator.Types.span/0` the position tables use - and its start is
+  always the tuple's own `{line, column}`, so a caller reading only the first
+  four elements reads exactly what it read before and a caller matching the
+  4-tuple gets a loud `CaseClauseError` rather than a silent mis-bind. A
+  failure with no token to borrow an extent from reports a zero-width span at
+  the end of the source; the end-of-input clauses that previously reported a
+  hardcoded `{1, 1}` now report the true end of the source, which is a
+  position-correctness fix in its own right. All six compile entry points
+  carry the span in every mode - `compile/1` as much as `compile_with_spans/1`
+  - because a parse error's extent comes from the token stream, not from the
+  `spans: true` node-metadata option. `:span` is `nil` only on a `ParseError`
+  built by a caller through `new/3`. The ISA version is unchanged (still 6),
+  no instruction list moves, and the conformance corpus is untouched.
 
 - **`Context.resolve_functions/1`'s provider validation is now memoized per
   provider list.** Repeat `Context.new/2` and `Predicator.Evaluator.evaluate/3`

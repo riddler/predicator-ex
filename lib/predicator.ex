@@ -141,7 +141,8 @@ defmodule Predicator do
   - `Predicator.Errors.TypeMismatchError` - Type mismatch in operation
   - `Predicator.Errors.UndefinedVariableError` - Variable not found in context
   - `Predicator.Errors.EvaluationError` - General evaluation error (division by zero, etc.)
-  - `Predicator.Errors.ParseError` - Expression parsing error
+  - `Predicator.Errors.ParseError` - Expression parsing error, carrying both
+    `:position` and `:span`
 
   ## Examples
 
@@ -200,12 +201,12 @@ defmodule Predicator do
           {:ok, ast} ->
             evaluate_ast(ast, context, opts)
 
-          {:error, message, line, column, _span} ->
-            {:error, ParseError.new(message, line, column)}
+          {:error, message, line, column, span} ->
+            {:error, ParseError.new(message, line, column, span)}
         end
 
-      {:error, message, line, column, _span} ->
-        {:error, ParseError.new(message, line, column)}
+      {:error, message, line, column, span} ->
+        {:error, ParseError.new(message, line, column, span)}
     end
   end
 
@@ -565,8 +566,8 @@ defmodule Predicator do
           Types.context() | Context.t(),
           keyword()
         ) :: {:error, struct(), Context.t()}
-  defp execute_value_parse_error(message, line, column, _span, context, opts) do
-    {:error, ParseError.new(message, line, column), normalize_context(context, opts)}
+  defp execute_value_parse_error(message, line, column, span, context, opts) do
+    {:error, ParseError.new(message, line, column, span), normalize_context(context, opts)}
   end
 
   # A parse failure never built an evaluator, so there is no run to have
@@ -716,10 +717,16 @@ defmodule Predicator do
       iex> {error.message, error.position}
       {"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input", {1, 8}}
 
+      iex> {:error, error} = Predicator.compile("score >")
+      iex> {error.message, error.position, error.span}
+      {"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input", {1, 8}, {{1, 8}, {1, 8}}}
+
   The error arm is a `%Predicator.Errors.ParseError{}` carrying the parser's
   bare message in `:message` and `{line, column}` in `:position` - the same
-  struct `evaluate/3` returns for the same source. `parse/2` remains available
-  for a caller that wants the raw 4-tuple instead.
+  struct `evaluate/3` returns for the same source. It also carries `:span` -
+  the failing token's source extent - in every mode, not only when the caller
+  asked for spans. `parse/2` remains available for a caller that wants the raw
+  5-tuple instead.
   """
   @spec compile(binary()) :: {:ok, Types.instruction_list()} | {:error, struct()}
   def compile(expression) when is_binary(expression) do
@@ -747,8 +754,10 @@ defmodule Predicator do
 
   The error arm is a `%Predicator.Errors.ParseError{}` carrying the parser's
   bare message in `:message` and `{line, column}` in `:position` - the same
-  struct `evaluate/3` returns for the same source. `parse/2` remains available
-  for a caller that wants the raw 4-tuple instead.
+  struct `evaluate/3` returns for the same source. It also carries `:span` -
+  the failing token's source extent - in every mode, not only when the caller
+  asked for spans. `parse/2` remains available for a caller that wants the raw
+  5-tuple instead.
   """
   @spec compile_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, struct()}
   def compile_with_positions(expression) when is_binary(expression) do
@@ -776,8 +785,10 @@ defmodule Predicator do
 
   The error arm is a `%Predicator.Errors.ParseError{}` carrying the parser's
   bare message in `:message` and `{line, column}` in `:position` - the same
-  struct `evaluate/3` returns for the same source. `parse/2` remains available
-  for a caller that wants the raw 4-tuple instead.
+  struct `evaluate/3` returns for the same source. It also carries `:span` -
+  the failing token's source extent - in every mode, not only when the caller
+  asked for spans. `parse/2` remains available for a caller that wants the raw
+  5-tuple instead.
   """
   @spec compile_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, struct()}
   def compile_with_spans(expression) when is_binary(expression) do
@@ -791,7 +802,7 @@ defmodule Predicator do
   instead of `parse/2`, then compiles the resulting `t:Predicator.Parser.program/0`
   with `Compiler.to_instructions/2`, which already accepts one. Returns the
   same `{:error, struct()}` shape `compile/1` does - not `parse_program/2`'s
-  raw 4-tuple.
+  raw 5-tuple.
 
   ## Examples
 
@@ -803,10 +814,15 @@ defmodule Predicator do
       iex> {error.message, error.position}
       {"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input", {1, 4}}
 
+      iex> {:error, error} = Predicator.compile_program("x =")
+      iex> {error.message, error.position, error.span}
+      {"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input", {1, 4}, {{1, 4}, {1, 4}}}
+
   The error arm is a `%Predicator.Errors.ParseError{}`, for uniformity with the
   expression family above. It carries the parser's bare message in `:message`
-  and `{line, column}` in `:position`. `parse_program/2` remains available for
-  a caller that wants the raw 4-tuple instead.
+  and `{line, column}` in `:position`, and now also `:span` - the failing
+  token's source extent - in every mode. `parse_program/2` remains available
+  for a caller that wants the raw 5-tuple instead.
   """
   @spec compile_program(binary()) :: {:ok, Types.instruction_list()} | {:error, struct()}
   def compile_program(source) when is_binary(source) do
@@ -828,8 +844,9 @@ defmodule Predicator do
 
   The error arm is a `%Predicator.Errors.ParseError{}`, for uniformity with the
   expression family above. It carries the parser's bare message in `:message`
-  and `{line, column}` in `:position`. `parse_program/2` remains available for
-  a caller that wants the raw 4-tuple instead.
+  and `{line, column}` in `:position`, and now also `:span` - the failing
+  token's source extent - in every mode. `parse_program/2` remains available
+  for a caller that wants the raw 5-tuple instead.
   """
   @spec compile_program_with_positions(binary()) :: {:ok, Compiled.t()} | {:error, struct()}
   def compile_program_with_positions(source) when is_binary(source) do
@@ -864,11 +881,13 @@ defmodule Predicator do
 
   The error arm is a `%Predicator.Errors.ParseError{}`, for uniformity with the
   expression family above. It carries the parser's bare message in `:message`
-  and `{line, column}` in `:position`. `parse_program/2` remains available for
-  a caller that wants the raw 4-tuple instead.
+  and `{line, column}` in `:position`, and now also `:span` - the failing
+  token's source extent - in every mode. `parse_program/2` remains available
+  for a caller that wants the raw 5-tuple instead.
 
-  Spans describe AST nodes: a parse error carries a point position and never a
-  span, in span mode as much as in point mode.
+  Spans describe AST nodes, but a parse error's span comes from the token
+  stream, not from AST metadata: the struct carries a span in point mode just
+  as much as in span mode.
   """
   @spec compile_program_with_spans(binary()) :: {:ok, Compiled.t()} | {:error, struct()}
   def compile_program_with_spans(source) when is_binary(source) do
@@ -891,8 +910,8 @@ defmodule Predicator do
     {:ok, Compiled.new(instructions, positions, segment_positions)}
   end
 
-  defp build_compiled_result({:error, message, line, column, _span}) do
-    {:error, ParseError.new(message, line, column)}
+  defp build_compiled_result({:error, message, line, column, span}) do
+    {:error, ParseError.new(message, line, column, span)}
   end
 
   # Shared by compile/1 and compile_program/1: each differs only in how it
@@ -909,8 +928,8 @@ defmodule Predicator do
     end
   end
 
-  defp build_instructions_result({:error, message, line, column, _span}) do
-    {:error, ParseError.new(message, line, column)}
+  defp build_instructions_result({:error, message, line, column, span}) do
+    {:error, ParseError.new(message, line, column, span)}
   end
 
   @doc """
@@ -1230,7 +1249,8 @@ defmodule Predicator do
   - `{:ok, context}` - The updated context
   - `{:error, %Predicator.Errors.LocationError{}}` - The expression is not an
     assignable location, or the write collided with existing data
-  - `{:error, %Predicator.Errors.ParseError{}}` - The expression did not parse
+  - `{:error, %Predicator.Errors.ParseError{}}` - The expression did not parse;
+    the struct carries both `:position` and `:span`
 
   ## Examples
 
