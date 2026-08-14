@@ -365,12 +365,27 @@ defmodule Predicator do
   - `context` - a bare map or a `t:Predicator.Context.t/0` (default `%{}`)
   - `opts` - same options `evaluate/3` accepts (`:functions`, `:providers`,
     `:builtins`, `:host`, `:positions`, `:segment_positions`, `:on_unbound`,
-    `:loop_budget`); `:positions` or `:segment_positions`
+    `:loop_budget`, `:protected_roots`); `:positions` or `:segment_positions`
     alongside a `%Compiled{}` raises `ArgumentError`, same as `evaluate/3`.
     Unlike `evaluate/3`, a program can compile a `store`, so
     `:segment_positions` - the table from `compiled.segment_positions` - can
-    change a store failure's reported position here; see
-    `Predicator.Evaluator.evaluate/3`'s option list.
+    change a store failure's reported position here, and `:protected_roots`
+    - a list of context root names a `store` may not write - only matters
+    here, since `evaluate/3` never runs a `store`; see
+    `Predicator.Evaluator.evaluate/3`'s option list for the fuller entry.
+
+  ## Protected context roots
+
+  Passing `protected_roots: ["_event", ...]` refuses any `store` whose path's
+  root segment is in the list, instead of performing the write: the run stops
+  at that statement with `{:error, %Predicator.Errors.EvaluationError{reason:
+  "protected_root"}, context}`, where `error.details.root` names the offending
+  root. Protection is per-root, not per-path - `_event.name = 1` is refused
+  because `_event` is protected, and there is no way to protect `_event.name`
+  while leaving `_event.other` writable. The error arm's partial context is
+  unchanged by this option: it still carries every write made before the
+  refused statement, exactly as any other `store` failure's does. Absent the
+  option, behavior is byte-identical to today.
 
   ## Returns
 
@@ -401,6 +416,11 @@ defmodule Predicator do
       ...>   Predicator.execute("a = 1; a.b = 2; c = 3", %{})
       iex> ctx.data
       %{"a" => 1}
+
+      iex> {:error, %Predicator.Errors.EvaluationError{reason: "protected_root"} = error, ctx} =
+      ...>   Predicator.execute("x = 1; _event = 2", %{}, protected_roots: ["_event"])
+      iex> {error.details.root, ctx.data}
+      {"_event", %{"x" => 1}}
   """
   @spec execute(
           binary() | Types.instruction_list() | Compiled.t(),
@@ -433,7 +453,8 @@ defmodule Predicator do
 
   Same as `execute/3`: `program_or_source`, `context` (default `%{}`), and
   `opts` (default `[]`), including `:positions` or `:segment_positions`
-  alongside a `%Compiled{}` raising `ArgumentError`.
+  alongside a `%Compiled{}` raising `ArgumentError`, and `:protected_roots`
+  (see `execute/3`'s "Protected context roots" section).
 
   ## Returns
 
@@ -465,6 +486,11 @@ defmodule Predicator do
       ...>   Predicator.execute_value("a = 1; a.b = 2; c = 3", %{})
       iex> ctx.data
       %{"a" => 1}
+
+      iex> {:error, %Predicator.Errors.EvaluationError{reason: "protected_root"} = error, ctx} =
+      ...>   Predicator.execute_value("x = 1; _event = 2", %{}, protected_roots: ["_event"])
+      iex> {error.details.root, ctx.data}
+      {"_event", %{"x" => 1}}
   """
   @spec execute_value(
           binary() | Types.instruction_list() | Compiled.t(),

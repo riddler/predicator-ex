@@ -490,14 +490,14 @@ release, not a breaking one.
 
 #### Automated Verification:
 
-- [ ] Full quality gate passes: `mix quality` (the new doctests in
+- [x] Full quality gate passes: `mix quality` (the new doctests in
       `execute/3` and `execute_value/3` run as part of the suite)
-- [ ] `test/docs_adr_links_test.exs` passes - any ADR reference added to the
+- [x] `test/docs_adr_links_test.exs` passes - any ADR reference added to the
       docs resolves
-- [ ] `test/predicator/isa_sync_test.exs` passes unchanged: `docs/isa.md`'s
+- [x] `test/predicator/isa_sync_test.exs` passes unchanged: `docs/isa.md`'s
       opcode inventory still matches `lib/predicator/instructions.ex`, which is
       the mechanical confirmation that the prose edits moved no opcode
-- [ ] `CHANGELOG.md` has the entry under `## [Unreleased]` and no new version
+- [x] `CHANGELOG.md` has the entry under `## [Unreleased]` and no new version
       header
 
 #### Manual Verification:
@@ -603,6 +603,25 @@ before considering the plan fully landed.
       gives `%{"x" => 5, "y" => 2}`; `Predicator.execute("i = 0; while i < 3 { i = i + 1 }",
       %{})` gives `%{"i" => 3}`; and
       `Predicator.execute("x = len('abc')", %{})` gives `%{"x" => 3}`
+
+**Implementation Note**: Use `mix quality --profile loop` between edits while
+iterating; run full `mix quality` as the phase gate. In interactive execution,
+pause here for the human to confirm the manual testing before moving to the
+next phase. In looped (`--loop`) execution, this phase's Automated Verification
+gates advancement automatically (via `/wurk:commit --auto`), and Manual
+Verification items are deferred and surfaced once at the end instead of
+blocking here.
+
+---
+
+### Phase 2
+
+- [ ] `mix docs` (or the rendered `@doc`) reads correctly: the option appears
+      in `execute/3`'s list and the doctest output matches
+- [ ] `docs/isa.md` §2's new bullet reads as a peer of the `on_unbound` and
+      loop-budget bullets, and a sibling implementer would not conclude the ISA
+      version moved
+- [ ] The changelog entry is accurate about the release class (minor, additive)
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive execution,
