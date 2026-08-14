@@ -16,6 +16,7 @@
 | [0012](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0012-adopting-the-shared-wurk-workflow.md) | Adopting the shared `wurk` workflow: `.claude/skills/` and `.claude/agents/` are consumed globally as `wurk:*`, configured by manifest and extensions | accepted |
 | [0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md) | Control flow lowers to new jump opcodes; `if` is ISA v5, `while` is ISA v6 with a loop budget | accepted |
 | [0014](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0014-functions-are-provided-by-modules.md) | Functions are provided by modules; the context carries a host slot (5.0) | accepted |
+| [0015](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0015-compile-errors-are-structured-values.md) | Compile errors are structured values on all six entry points (8.0) | accepted |
 
 Link form is load-bearing: an ADR published to hexdocs is linked relatively so
 the link resolves there, and an unpublished one is linked by absolute GitHub
