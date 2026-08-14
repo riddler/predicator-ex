@@ -596,9 +596,9 @@ this into it rather than writing a second bullet about the same change.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes (`mix quality`) - moduledoc changes compile and
+- [x] Full quality gate passes (`mix quality`) - moduledoc changes compile and
       any doctest in the edited `@doc` still runs.
-- [ ] `mix docs` builds without warnings for `Predicator.Context`.
+- [x] `mix docs` builds without warnings for `Predicator.Context`.
 
 #### Manual Verification:
 - [ ] The rendered `Predicator.Context.new/2` docs read as guidance a first-time
@@ -772,6 +772,24 @@ items are deferred and surfaced once at the end instead of blocking here.
 - [ ] No regressions in related features: a providers-only context still
       round-trips through `:erlang.term_to_binary/1`
       (`test/predicator/context_test.exs:259`).
+
+**Implementation Note**: Use the project's loop gate between edits while
+iterating; run the full gate as the phase gate. In interactive execution, pause
+here for the human to confirm the manual testing before moving to the next
+phase. In looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 3
+
+- [ ] The rendered `Predicator.Context.new/2` docs read as guidance a first-time
+      embedder can act on, and the `bind/3`/`put_host/2` pointer is unmissable -
+      statifier's own report is that it did not find `bind/3` until a benchmark
+      forced the question.
+- [ ] The note does not contradict the `:normalize` section beside it, and the
+      px-10u/px-rnc cross-references still agree.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution, pause
