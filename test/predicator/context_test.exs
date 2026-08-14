@@ -170,6 +170,24 @@ defmodule Predicator.ContextTest do
 
       assert context.data == %{"d" => datetime}
     end
+
+    test "normalize: true (the default) still normalizes atom keys" do
+      context = Context.new(%{user: %{name: "Ada"}}, normalize: true)
+
+      assert context.data == %{"user" => %{"name" => "Ada"}}
+    end
+
+    test "normalize: false stores data verbatim, atom keys included" do
+      context = Context.new(%{"user" => %{name: "Ada"}}, normalize: false)
+
+      assert context.data == %{"user" => %{name: "Ada"}}
+    end
+
+    test "raises ArgumentError for a non-boolean normalize value" do
+      assert_raise ArgumentError, ~r/normalize must be a boolean/, fn ->
+        Context.new(%{}, normalize: :nope)
+      end
+    end
   end
 
   describe "new/2 provider resolution" do
@@ -292,6 +310,13 @@ defmodule Predicator.ContextTest do
       bound = Context.bind(context, "user", %{role: nil})
 
       assert bound.data == %{"user" => %{"role" => nil}}
+    end
+
+    test "still normalizes the bound value on a context built with normalize: false" do
+      context = Context.new(%{"a" => 1}, normalize: false)
+      bound = Context.bind(context, "user", %{role: nil})
+
+      assert bound.data == %{"a" => 1, "user" => %{"role" => nil}}
     end
 
     test "preserves host" do

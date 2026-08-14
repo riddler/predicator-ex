@@ -92,15 +92,48 @@ defmodule Predicator.Context do
     - `:on_unbound` - `:undefined` (default) | `:error` - see
       `t:on_unbound/0`; any other value raises `ArgumentError`
     - `:host` - default `nil` - see the "The `host` slot" section above
+    - `:normalize` - `true` (default) | `false` - see the "The `:normalize`
+      option" section below; any other value raises `ArgumentError`
 
   `data` is normalized deeply before it is stored: atom keys become string
   keys (a string key wins if both are present at the same level), recursing
   through nested maps and lists. `Date`, `DateTime`, and any other struct
   pass through unchanged. `nil` is preserved as-is - it is the null value,
   distinct from the `:undefined` sentinel; see `docs/reference/language.md`.
+  Passing `normalize: false` skips this walk entirely and stores `data`
+  exactly as given - the caller vouches that the invariant it would have
+  established already holds.
 
   `host`, by contrast, is stored exactly as given - no normalization, atom
   keys intact.
+
+  ## The `:normalize` option
+
+  `:normalize` is `true` by default, which is what runs the `data` walk
+  described above. Passing `normalize: false` skips it and stores `data`
+  exactly as given - a caller-vouches option: the caller asserts that `data`
+  already satisfies the normalization invariant (string keys throughout, at
+  every level, with any nested map or list already normalized the same way)
+  and accepts that violating it is the caller's own bug, not a defect here. A
+  context built this way behaves identically to a normalized one as long as
+  the invariant actually holds; if it does not, lookups keyed on a string
+  that was never converted from an atom simply miss, the same silent
+  `:undefined` a genuinely-unbound name produces.
+
+  This is safe to offer because it asks for nothing `bind/3` does not already
+  assume: `bind/3`'s O(1) claim rests on "`data` is already normalized from
+  construction" (see `bind/3` below), so a caller vouching for that at
+  construction time is upholding the same invariant `bind/3` has relied on
+  all along, just one call earlier.
+
+  The walk this skips is real, not incidental: measured at corpus scale it is
+  0.57 us of a 2.28 us context build, and at stress scale 1.22 ms of a
+  2.42 ms build - in both cases roughly a quarter of the total, and the
+  entire size-scaling term contributed by predicator's own normalization
+  (px-10u; see also px-rnc for the fixed-term counterpart). A caller that
+  already guarantees the invariant - for example because its data model uses
+  string keys natively and its own preprocessing already normalized nested
+  structures - pays that cost for no benefit.
 
   ## Examples
 
@@ -109,6 +142,9 @@ defmodule Predicator.Context do
 
       iex> Predicator.Context.new(%{user: %{name: nil}}).data
       %{"user" => %{"name" => nil}}
+
+      iex> Predicator.Context.new(%{"user" => %{name: "Ada"}}, normalize: false).data
+      %{"user" => %{name: "Ada"}}
 
       iex> context = Predicator.Context.new(%{"x" => nil})
       iex> {Predicator.Context.bound?(context, "x"), Predicator.evaluate("x === undefined", context)}
@@ -127,8 +163,15 @@ defmodule Predicator.Context do
   """
   @spec new(Types.context(), keyword()) :: t()
   def new(data \\ %{}, opts \\ []) when is_map(data) do
+    data =
+      if validate_normalize!(Keyword.get(opts, :normalize, true)) do
+        normalize_value(data)
+      else
+        data
+      end
+
     %__MODULE__{
-      data: normalize_value(data),
+      data: data,
       functions: resolve_functions(opts),
       on_unbound: validate_on_unbound!(Keyword.get(opts, :on_unbound, :undefined)),
       host: Keyword.get(opts, :host)
@@ -212,6 +255,13 @@ defmodule Predicator.Context do
   defp validate_on_unbound!(other) do
     raise ArgumentError,
           "on_unbound must be :undefined or :error, got: #{inspect(other)}"
+  end
+
+  @spec validate_normalize!(term()) :: boolean()
+  defp validate_normalize!(normalize) when is_boolean(normalize), do: normalize
+
+  defp validate_normalize!(other) do
+    raise ArgumentError, "normalize must be a boolean, got: #{inspect(other)}"
   end
 
   @doc """
