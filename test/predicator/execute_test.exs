@@ -145,7 +145,9 @@ defmodule Predicator.ExecuteTest do
 
   describe "execute/2,3 - error paths" do
     test "a parse error from the source clause" do
-      assert {:error, %Errors.ParseError{}, %Context{}} = Predicator.execute("x =", %{})
+      assert {:error, %Errors.ParseError{span: span}, %Context{}} = Predicator.execute("x =", %{})
+
+      refute is_nil(span)
     end
 
     test "the partial-context error path: prior writes survive, later statements do not run" do

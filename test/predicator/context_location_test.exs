@@ -267,8 +267,10 @@ defmodule Predicator.ContextLocationTest do
     end
 
     test "returns parsing errors for invalid syntax" do
-      assert {:error, %Predicator.Errors.ParseError{}} =
+      assert {:error, %Predicator.Errors.ParseError{span: span}} =
                Predicator.context_location("user.", %{})
+
+      refute is_nil(span)
     end
 
     test "returns location errors for non-assignable expressions" do
@@ -676,13 +678,17 @@ defmodule Predicator.ContextLocationTest do
     end
 
     test "wraps a parse error as a ParseError" do
-      assert {:error, %Predicator.Errors.ParseError{}} =
+      assert {:error, %Predicator.Errors.ParseError{span: span}} =
                ContextLocation.resolve_expression("user.", %{})
+
+      refute is_nil(span)
     end
 
     test "wraps a tokenize error as a ParseError" do
-      assert {:error, %Predicator.Errors.ParseError{}} =
+      assert {:error, %Predicator.Errors.ParseError{span: span}} =
                ContextLocation.resolve_expression("&", %{})
+
+      refute is_nil(span)
     end
   end
 end

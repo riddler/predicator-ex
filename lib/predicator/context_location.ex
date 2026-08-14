@@ -149,12 +149,12 @@ defmodule Predicator.ContextLocation do
           {:ok, ast} ->
             resolve(ast, context)
 
-          {:error, message, line, column, _span} ->
-            {:error, ParseError.new(message, line, column)}
+          {:error, message, line, column, span} ->
+            {:error, ParseError.new(message, line, column, span)}
         end
 
-      {:error, message, line, column, _span} ->
-        {:error, ParseError.new(message, line, column)}
+      {:error, message, line, column, span} ->
+        {:error, ParseError.new(message, line, column, span)}
     end
   end
 

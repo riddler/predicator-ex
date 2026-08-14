@@ -90,8 +90,11 @@ defmodule PredicatorTest do
     test "returns error for parse failures" do
       result = Predicator.evaluate("score >", %{})
 
-      assert {:error, %Predicator.Errors.ParseError{message: message, position: {1, 8}}} =
+      assert {:error,
+              %Predicator.Errors.ParseError{message: message, position: {1, 8}, span: span}} =
                result
+
+      refute is_nil(span)
 
       assert message =~
                "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"
@@ -308,24 +311,60 @@ defmodule PredicatorTest do
     end
   end
 
-  describe "the compile arm keeps span: nil until Phase 4, even though the parser now reports one" do
-    test "all six compile entry points return a ParseError with span: nil on a parse failure" do
-      assert {:error, %Predicator.Errors.ParseError{span: nil}} = Predicator.compile("score >")
+  describe "the compile arm carries a span in every mode (Phase 4)" do
+    test "all six compile entry points return a ParseError with a non-nil span on a parse failure" do
+      assert {:error, %Predicator.Errors.ParseError{span: span}} = Predicator.compile("score >")
+      refute is_nil(span)
 
-      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+      assert {:error, %Predicator.Errors.ParseError{span: span}} =
                Predicator.compile_with_positions("score >")
 
-      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+      refute is_nil(span)
+
+      assert {:error, %Predicator.Errors.ParseError{span: span}} =
                Predicator.compile_with_spans("score >")
 
-      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+      refute is_nil(span)
+
+      assert {:error, %Predicator.Errors.ParseError{span: span}} =
                Predicator.compile_program("x =")
 
-      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+      refute is_nil(span)
+
+      assert {:error, %Predicator.Errors.ParseError{span: span}} =
                Predicator.compile_program_with_positions("x =")
 
-      assert {:error, %Predicator.Errors.ParseError{span: nil}} =
+      refute is_nil(span)
+
+      assert {:error, %Predicator.Errors.ParseError{span: span}} =
                Predicator.compile_program_with_spans("x =")
+
+      refute is_nil(span)
+    end
+
+    test "all six compile entry points return a ParseError with a non-nil span on a lex failure" do
+      lex_failing_source = "\"unterminated"
+
+      for compile_fn <- [
+            &Predicator.compile/1,
+            &Predicator.compile_with_positions/1,
+            &Predicator.compile_with_spans/1,
+            &Predicator.compile_program/1,
+            &Predicator.compile_program_with_positions/1,
+            &Predicator.compile_program_with_spans/1
+          ] do
+        assert {:error, %Predicator.Errors.ParseError{span: span}} =
+                 compile_fn.(lex_failing_source)
+
+        refute is_nil(span)
+      end
+    end
+
+    test "compile/1 and compile_with_spans/1 return the same span for the same failing source" do
+      assert {:error, plain_error} = Predicator.compile("score >")
+      assert {:error, spanned_error} = Predicator.compile_with_spans("score >")
+
+      assert plain_error.span == spanned_error.span
     end
   end
 
@@ -580,7 +619,8 @@ defmodule PredicatorTest do
           "Expected number, string, boolean, date, datetime, identifier, function call, list, " <>
             "object, or '(' but found end of input",
           1,
-          8
+          8,
+          {{1, 8}, {1, 8}}
         )
 
       assert {:error, ^expected} = Predicator.compile("score >")
@@ -594,7 +634,8 @@ defmodule PredicatorTest do
           "Expected number, string, boolean, date, datetime, identifier, function call, list, " <>
             "object, or '(' but found end of input",
           1,
-          4
+          4,
+          {{1, 4}, {1, 4}}
         )
 
       assert {:error, ^expected} = Predicator.compile_program("x =")
