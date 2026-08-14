@@ -1,7 +1,7 @@
 defmodule Predicator.Conformance.RatchetRegistryTest do
   @moduledoc """
   Binds `conformance/RATCHET.md` - the sibling ratchet registry spec
-  (`px-35i.8`) - to this checkout: four tests, each mirroring one of the
+  (`px-35i.8`) - to this checkout: five tests, each mirroring one of the
   spec's rules, plus the R5 completeness check the worked example is the only
   place that rule is exercised at all.
 
@@ -74,6 +74,31 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
                "entry #{inspect(case_id)} claims tier #{tier}, but the corpus case is tier " <>
                  "#{corpus_case["tier"]}"
       end
+    end
+  end
+
+  describe "RATCHET.md rule 3: entries are unique on (case_id, surface)" do
+    # sabotage: registry.example.json duplicates the comparison/gt-int-true compiler entry line -> red
+    test "no (case_id, surface) pair appears in entries more than once" do
+      entries = read_example()["entries"]
+
+      assert entries != [],
+             "conformance/examples/registry.example.json has no entries - " <>
+               "the test below would pass vacuously"
+
+      duplicates =
+        entries
+        |> Enum.frequencies_by(&{&1["case_id"], &1["surface"]})
+        |> Enum.filter(fn {_pair, count} -> count > 1 end)
+        |> Enum.map(fn {pair, _count} -> pair end)
+        |> Enum.sort()
+
+      assert duplicates == [],
+             "the registry carries repeated (case_id, surface) pairs: " <>
+               inspect(duplicates) <>
+               " - RATCHET.md rule 3 grows entries by a set union, so a repeated " <>
+               "pair means the file was hand-edited or written by a step that is " <>
+               "not verify-then-add"
     end
   end
 

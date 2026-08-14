@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   output; the existing program and expression compile functions are
   unchanged.
 
+### Changed
+
+- **`conformance/RATCHET.md` now states registry entry uniqueness
+  normatively.** Rule 3 already grew `entries` by a set union, and rule 1 already
+  keyed entry identity on the `(case_id, surface)` pair, so uniqueness on that
+  pair was implied throughout - it is now written down, and
+  `test/predicator/conformance/ratchet_registry_test.exs` binds it. No registry
+  written by rule 3's verify-then-add step can violate it, so a compliant sibling
+  registry needs no change; a registry carrying a repeated pair was hand-edited.
+  The corpus, `corpus_hash`, the schema, and the ISA are unaffected.
+
 ## [7.0.0] - 2026-08-14
 
 ### Changed

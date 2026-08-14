@@ -195,6 +195,11 @@ The step (naming is the sibling's; the semantics are not):
    asserts (and see the completeness check the reference runner section
    defines, which will refuse a claim the entries do not support).
 
+It follows that `entries` contains at most one entry per `(case_id, surface)`
+pair: step 6 is a set union, and a union cannot produce a second copy of a pair
+it already holds. A registry carrying the same pair twice was not written by this
+step, and a checker is entitled to reject it.
+
 ## The reference runner
 
 Small by design, and doubles as the worked example of consuming the corpus:
