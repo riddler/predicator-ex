@@ -15,6 +15,10 @@ defmodule Predicator.Errors.EvaluationError do
   - `span` - the source text the failing instruction's AST node covers, when the
     program was compiled with spans (optional). `position` names the token to
     blame; `span` is what to underline.
+  - `details` - structured, error-specific data (optional, default `nil`), the
+    same shape `Predicator.Errors.LocationError` already uses. It lets a host
+    read machine-readable data off an error without parsing `message`, which is
+    non-normative.
 
   ## Examples
 
@@ -32,14 +36,15 @@ defmodule Predicator.Errors.EvaluationError do
   """
 
   @enforce_keys [:message, :reason]
-  defstruct [:message, :reason, :operation, :position, :span]
+  defstruct [:message, :reason, :operation, :position, :span, :details]
 
   @type t :: %__MODULE__{
           message: binary(),
           reason: binary(),
           operation: atom() | nil,
           position: Predicator.Types.position() | nil,
-          span: Predicator.Types.span() | nil
+          span: Predicator.Types.span() | nil,
+          details: map() | nil
         }
 
   @doc """
@@ -71,6 +76,24 @@ defmodule Predicator.Errors.EvaluationError do
         "#{Predicator.Errors.operation_display_name(operation)} requires #{expected_word} on stack, got: #{got}",
       reason: "insufficient_operands",
       operation: operation
+    }
+  end
+
+  @doc """
+  Creates an evaluation error for a `store` refused by the `:protected_roots`
+  evaluation option.
+
+  `details.root` carries the offending root as data, so a host maps this onto
+  its own error vocabulary without matching on `message` (messages are
+  non-normative, `docs/isa.md` §2).
+  """
+  @spec protected_root(binary()) :: t()
+  def protected_root(root) do
+    %__MODULE__{
+      message: "Cannot assign to protected context root '#{root}'",
+      reason: "protected_root",
+      operation: :store,
+      details: %{root: root}
     }
   end
 end

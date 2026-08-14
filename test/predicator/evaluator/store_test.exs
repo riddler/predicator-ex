@@ -237,6 +237,134 @@ defmodule Predicator.Evaluator.StoreTest do
     end
   end
 
+  describe "store: protected roots" do
+    test "a protected root refuses the write and leaves the context unchanged" do
+      instructions = [["lit", "_event"], ["lit", 1], ["store", 1]]
+
+      assert {:error,
+              %EvaluationError{
+                reason: "protected_root",
+                operation: :store,
+                details: %{root: "_event"}
+              }} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_event"]
+               })
+    end
+
+    test "a nested write under a protected root refuses on the root" do
+      instructions = [["lit", "_event"], ["lit", "name"], ["lit", "boom"], ["store", 2]]
+
+      assert {:error, %EvaluationError{reason: "protected_root", details: %{root: "_event"}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_event"]
+               })
+    end
+
+    test "an unprotected root with a non-empty protected list still writes" do
+      instructions = [["lit", "x"], ["lit", 1], ["store", 1]]
+
+      assert {:ok, final} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_event"]
+               })
+
+      assert final.context == %{"x" => 1}
+    end
+
+    test "a protected list matching nothing behaves exactly as an empty list" do
+      instructions = [["lit", "x"], ["lit", 1], ["store", 1]]
+
+      assert {:ok, final} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_other_root"]
+               })
+
+      assert final.context == %{"x" => 1}
+    end
+
+    test "the check is exact and case-sensitive" do
+      instructions = [["lit", "_event"], ["lit", 1], ["store", 1]]
+
+      assert {:ok, final} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_Event"]
+               })
+
+      assert final.context == %{"_event" => 1}
+    end
+
+    test "a hand-built empty path is still not_assignable, not protected_root" do
+      instructions = [["lit", 1], ["store", 0]]
+
+      assert {:error, %EvaluationError{reason: "not_assignable", operation: :store}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_event"]
+               })
+    end
+
+    test "an integer root segment is unaffected by protected_roots" do
+      instructions = [["lit", 0], ["lit", 1], ["store", 1]]
+
+      assert {:ok, final} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_event"]
+               })
+
+      assert final.context == %{0 => 1}
+    end
+
+    test "segment-type validation wins over the refusal check" do
+      instructions = [["lit", true], ["lit", 1], ["store", 1]]
+
+      assert {:error, %TypeMismatchError{operation: :store, expected: :string, got: :boolean}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_event"]
+               })
+    end
+
+    test "the refusal carries the root segment's own position from the segment table" do
+      instructions = [["lit", "_event"], ["lit", "name"], ["lit", 1], ["store", 2]]
+
+      assert {:error, %EvaluationError{reason: "protected_root", position: {1, 1}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_event"],
+                 positions: %{3 => {1, 9}},
+                 segment_positions: %{3 => [{1, 1}, {1, 9}]}
+               })
+    end
+
+    test "the refusal falls back to the store instruction's own entry when no segment table is present" do
+      instructions = [["lit", "_event"], ["lit", 1], ["store", 1]]
+
+      assert {:error, %EvaluationError{reason: "protected_root", position: {2, 1}}} =
+               Evaluator.run(%Evaluator{
+                 instructions: instructions,
+                 context: %{},
+                 protected_roots: ["_event"],
+                 positions: %{2 => {2, 1}}
+               })
+    end
+  end
+
   describe "pop" do
     test "discards the stack top and pushes nothing" do
       instructions = [["lit", 1], ["pop"], ["lit", 2]]

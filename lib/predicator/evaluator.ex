@@ -44,7 +44,8 @@ defmodule Predicator.Evaluator do
           last_value: Types.value(),
           size: non_neg_integer() | nil,
           host: term(),
-          loop_budget: non_neg_integer()
+          loop_budget: non_neg_integer(),
+          protected_roots: [binary()]
         }
 
   @typedoc "A function's accepted argument count(s): a fixed arity, or a set of arities for optional/variadic-style args"
@@ -83,7 +84,8 @@ defmodule Predicator.Evaluator do
     last_value: :undefined,
     on_unbound: :undefined,
     host: nil,
-    loop_budget: @default_loop_budget
+    loop_budget: @default_loop_budget,
+    protected_roots: []
   ]
 
   @doc """
@@ -258,6 +260,34 @@ defmodule Predicator.Evaluator do
   end
 
   @doc """
+  Reads and validates the `:protected_roots` evaluation option.
+
+  A list of root names (binaries) a `store` may not write. Default `[]` - the
+  empty list is the "option absent" case and costs one `Enum.member?/2` against
+  an empty list per store.
+
+  Raises `ArgumentError` for anything that is not a list of binaries - host-API
+  misuse, not a predicate-derived failure (ADR-0004), the same line
+  `loop_budget_from_opts/1` and `Predicator.Context.new/2` draw.
+  """
+  @spec protected_roots_from_opts(keyword()) :: [binary()]
+  def protected_roots_from_opts(opts) do
+    case Keyword.get(opts, :protected_roots, []) do
+      roots when is_list(roots) ->
+        if Enum.all?(roots, &is_binary/1) do
+          roots
+        else
+          raise ArgumentError,
+                "protected_roots must be a list of strings, got: #{inspect(roots)}"
+        end
+
+      other ->
+        raise ArgumentError,
+              "protected_roots must be a list of strings, got: #{inspect(other)}"
+    end
+  end
+
+  @doc """
   Evaluates a list of instructions with the given context and options.
 
   Returns the top value on the stack when evaluation completes,
@@ -303,6 +333,13 @@ defmodule Predicator.Evaluator do
       across every loop in the program. Exhaustion returns
       `{:error, %Predicator.Errors.EvaluationError{reason: "loop_budget_exceeded"}}`.
       Must be a non-negative integer; anything else raises `ArgumentError`.
+    - `:protected_roots` - a list of context root names (binaries) a `store`
+      may not write, default `[]`. A `store` whose path's root segment is in
+      the list returns
+      `{:error, %Predicator.Errors.EvaluationError{reason: "protected_root"}}`
+      naming the root in `details.root` instead of writing it. Root-segment
+      matching only - protection is per-root, not per-path. Must be a list of
+      binaries; anything else raises `ArgumentError`.
 
   ## Examples
 
@@ -329,7 +366,8 @@ defmodule Predicator.Evaluator do
       positions: Keyword.get(opts, :positions, %{}),
       segment_positions: Keyword.get(opts, :segment_positions, %{}),
       on_unbound: Keyword.get(opts, :on_unbound, :undefined),
-      loop_budget: loop_budget_from_opts(opts)
+      loop_budget: loop_budget_from_opts(opts),
+      protected_roots: protected_roots_from_opts(opts)
     })
   end
 
@@ -1497,7 +1535,7 @@ defmodule Predicator.Evaluator do
 
       case validate_store_segments(path) do
         :ok ->
-          do_store(evaluator, path, value, rest)
+          store_or_refuse(evaluator, path, value, rest)
 
         {:error, error, index} ->
           located(evaluator, error, index)
@@ -1508,6 +1546,32 @@ defmodule Predicator.Evaluator do
       # entry, exactly as before px-ids.
       located(evaluator, EvaluationError.insufficient_operands(:store, length(taken), n + 1), nil)
     end
+  end
+
+  # The one place a host's write policy can stop a write: `store` is the only
+  # opcode that writes the context (docs/isa.md section 5), so refusing here
+  # refuses everywhere. Protection is per-root, not per-path - the root segment
+  # is the whole comparison - and the check runs after segment validation so a
+  # malformed path still reports its type error first. Index 0 is the root,
+  # which is the segment `located/3` points the caret at.
+  @spec store_or_refuse(t(), ContextLocation.location_path(), Types.value(), [Types.value()]) ::
+          {:ok, t()} | {:error, term()}
+  defp store_or_refuse(
+         %__MODULE__{protected_roots: roots} = evaluator,
+         [root | _rest_path] = path,
+         value,
+         rest
+       )
+       when is_binary(root) do
+    if root in roots do
+      located(evaluator, EvaluationError.protected_root(root), 0)
+    else
+      do_store(evaluator, path, value, rest)
+    end
+  end
+
+  defp store_or_refuse(evaluator, path, value, rest) do
+    do_store(evaluator, path, value, rest)
   end
 
   @spec do_store(__MODULE__.t(), ContextLocation.location_path(), Types.value(), [Types.value()]) ::
