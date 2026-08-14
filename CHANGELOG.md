@@ -32,6 +32,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   absent the option, behavior is byte-identical to today, so this is a minor
   release, not a breaking one.
 
+- **`:normalize`, an opt-in `Context.new/2` option that skips the
+  `normalize_value/1` walk over `data`.** `true` by default, matching today's
+  behavior. `normalize: false` is a caller-vouches option: the caller
+  asserts `data` already satisfies the normalization invariant (string keys
+  throughout, at every level, with any nested map or list already
+  normalized), and stores it exactly as given; violating the invariant is
+  the caller's own bug, the same one `bind/3`'s O(1) claim already depends
+  on. A non-boolean value raises `ArgumentError`. Additive and
+  non-breaking.
+
 ### Changed
 
 - **`conformance/RATCHET.md` now states registry entry uniqueness
