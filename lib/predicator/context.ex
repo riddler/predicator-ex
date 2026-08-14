@@ -126,11 +126,15 @@ defmodule Predicator.Context do
   construction time is upholding the same invariant `bind/3` has relied on
   all along, just one call earlier.
 
-  The walk this skips is real, not incidental: measured at corpus scale it is
-  0.57 us of a 2.28 us context build, and at stress scale 1.22 ms of a
-  2.42 ms build - in both cases roughly a quarter of the total, and the
-  entire size-scaling term contributed by predicator's own normalization
-  (px-10u; see also px-rnc for the fixed-term counterpart). A caller that
+  The walk this skips is the entire size-scaling term of a build, so what it
+  is worth depends on the shape of `data`: over a handful of flat scalar roots
+  it is a small slice of the total, and over a large nested datamodel it is
+  very nearly all of it. `bench/results/260814-context-build.md` carries the
+  measured decomposition across three sizes; it is not transcribed here,
+  because a figure in a moduledoc goes stale and the results file does not
+  (px-10u; see also px-rnc for the fixed-term counterpart, memoized as of that
+  bead - which also means the walk is a *larger* share of what remains). A
+  caller that
   already guarantees the invariant - for example because its data model uses
   string keys natively and its own preprocessing already normalized nested
   structures - pays that cost for no benefit.

@@ -741,15 +741,23 @@ before considering the plan fully landed.
 
 ### Phase 1
 
-- [ ] The three data sizes actually produce visibly different `new/2` timings -
+Verified 2026-08-14. All three confirmed; see the notes on 1 and the paired run
+recorded in `bench/results/260814-context-build.md`.
+
+- [x] The three data sizes actually produce visibly different `new/2` timings -
       a size axis that does not move means the generator is wrong.
-- [ ] The `new/2` minus `new/2 normalize: false` difference is recognizably
+      **Caveat:** `:small` -> `:corpus` moves only ~0.08 us, inside the noise
+      band, so the axis discriminates on `:stress` and little else. Expected
+      (`:corpus` is five flat scalars) but worth knowing before reading a
+      `:small` vs `:corpus` delta as signal.
+- [x] The `new/2` minus `new/2 normalize: false` difference is recognizably
       px-10u's normalization walk, and the `normalize: false` minus `no builtins`
       difference is recognizably the fixed function-resolution term the bead is
-      about.
-- [ ] Numbers are in the same order of magnitude as statifier's (1-3 us at
+      about. The fixed term measured 1.16 us at `:small` and 1.15 us at
+      `:corpus` pre-memo - constant to within 1% across a 5x size change.
+- [x] Numbers are in the same order of magnitude as statifier's (1-3 us at
       corpus size); a wild divergence means the benchmark is measuring something
-      else.
+      else. Measured 1.29-1.37 us.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution, pause
@@ -762,14 +770,31 @@ items are deferred and surfaced once at the end instead of blocking here.
 
 ### Phase 2
 
-- [ ] The after numbers show the fixed term (the `new/2 normalize: false` minus
+Verified 2026-08-14.
+
+- [x] The after numbers show the fixed term (the `new/2 normalize: false` minus
       `no builtins` difference from Phase 1) substantially reduced, and the
       size-scaling term unchanged - if both moved, something other than the memo
-      changed.
-- [ ] `iex -S mix`, resolve twice, `:persistent_term.get/2` shows exactly one
+      changed. Confirmed by a paired run (pre-memo commit rebuilt in a scratch
+      worktree, benchmarked minutes apart from `HEAD` on one machine):
+      ~1.12 us -> ~196 ns, a ~5.7x reduction, with the memo-independent
+      `no builtins` control landing within 0.1 ns across the two runs.
+      **This item found a defect in the write-up**, since fixed: the After
+      "Reading" called `new/2 normalize: false` the size-scaling term and
+      explained its drop away as run-to-run variance. That row carries the
+      fixed term, and the drop is the memo working. Corrected, with the paired
+      run recorded as the evidence.
+- [x] `iex -S mix`, resolve twice, `:persistent_term.get/2` shows exactly one
       entry for the builtin list; recompile a provider with `r/1` and confirm
-      the next resolution reflects the new `functions/0`.
-- [ ] No regressions in related features: a providers-only context still
+      the next resolution reflects the new `functions/0`. Done as a script
+      rather than interactively. **Nuance worth recording:** dispatch is by
+      `{module, atom}`, so a changed function *body* is picked up even from a
+      stale cache - the md5 stamp is what catches a changed `functions/0`
+      *shape*, so that is the case actually tested (a function added to
+      `functions/0` appeared on the next resolve, entry replaced not
+      duplicated). A bad provider re-raised the identical `ArgumentError` on
+      every call and was never cached.
+- [x] No regressions in related features: a providers-only context still
       round-trips through `:erlang.term_to_binary/1`
       (`test/predicator/context_test.exs:259`).
 
@@ -784,12 +809,23 @@ items are deferred and surfaced once at the end instead of blocking here.
 
 ### Phase 3
 
-- [ ] The rendered `Predicator.Context.new/2` docs read as guidance a first-time
+Verified 2026-08-14.
+
+- [x] The rendered `Predicator.Context.new/2` docs read as guidance a first-time
       embedder can act on, and the `bind/3`/`put_host/2` pointer is unmissable -
       statifier's own report is that it did not find `bind/3` until a benchmark
       forced the question.
-- [ ] The note does not contradict the `:normalize` section beside it, and the
-      px-10u/px-rnc cross-references still agree.
+- [x] The note does not contradict the `:normalize` section beside it, and the
+      px-10u/px-rnc cross-references still agree. **This item initially failed**
+      and the contradiction is now fixed. The `:normalize` section carried
+      statifier's figures ("0.57 us of a 2.28 us build ... roughly a quarter of
+      the total"), measured on a different data shape; this branch's own bench
+      puts the walk at ~0.12 us of a 1.29 us build at corpus scale, about 9%.
+      One moduledoc gave two irreconcilable accounts of the same walk. The
+      transcribed figures are replaced with a shape-dependent description
+      pointing at the results file, matching the `## Performance` section's
+      stance of not transcribing numbers that go stale. The text was px-10u's;
+      px-rnc is what made it checkable.
 
 **Implementation Note**: Use the project's loop gate between edits while
 iterating; run the full gate as the phase gate. In interactive execution, pause

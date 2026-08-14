@@ -210,21 +210,52 @@ median (417 ns) rather than ~85% of it. What remains on a warm-cache hit is
 exactly what the design predicts: one `Code.ensure_loaded?/1` and one
 `module_info(:md5)` per provider module (four builtins by default), one
 `:persistent_term.get/2`, and a stamp comparison - no `function_exported?/3`
-sweep, no `Map.merge/2` folds. The same pattern holds at `:small` (266.57 ns
-minus 59.92 ns before vs. essentially the same ~200 ns after, since the fixed
-term does not depend on `data`'s size) and at `:stress`.
+sweep, no `Map.merge/2` folds. The same fixed ~196 ns remains at `:small` and
+`:stress` too, since the term does not depend on `data`'s size.
 
-**The size-scaling term is unchanged, as it must be.** `new/2 normalize: false`
-across sizes (266.57 ns / 268.54 ns / 0.27 μs for `:small` / `:corpus` /
-`:stress`) sits within noise of the Before section's equivalent row
-(1.37 μs / 1.42 μs / 1.32 μs before - note the absolute scale shifted between
-runs due to general JIT/scheduler variance across separate `mix run`
-invocations, but the *shape* - flat across `:small`/`:corpus`, unchanged
-between Before and After at each size - is what confirms only the fixed term
-moved). The normalization walk itself (`new/2` minus `new/2 normalize: false`)
-and the `:stress`-scale blowup from 121 μs to 141 μs remain dominated by
-`normalize_value/1`'s recursive walk, exactly as before - memoizing provider
-resolution does not touch that code path at all.
+**`new/2 normalize: false` is not the size-scaling term, and it moved because
+it was supposed to.** That row runs the full function resolution and skips
+only the normalization walk, so most of what it measures at `:small` and
+`:corpus` *is* the fixed term - which is why the same row is the minuend in
+the paragraph above. Reading its Before-to-After drop as run-to-run variance
+would be wrong twice over: the row is not the size-scaling term, and the drop
+is signal, not noise. The paired run below settles it.
+
+**The size-scaling term is unchanged, as it must be.** The term is
+`new/2` minus `new/2 normalize: false` - the normalization walk alone, with
+the fixed term subtracted out of both sides. At `:corpus` that is 0.12 μs
+before and 167 ns after; at `:stress` it is ~120 μs before and ~126 μs after,
+still dominated by `normalize_value/1`'s recursion. Memoizing provider
+resolution does not touch that code path at all, and the numbers agree.
+
+### The paired run
+
+The Before and After sections above come from separate `mix run` invocations,
+which cannot on their own distinguish a real change from machine drift. This
+run removes that doubt: the pre-memo commit (`923306f`) was rebuilt in a
+scratch worktree and benchmarked minutes apart from `HEAD`, same machine, same
+session. Medians at `:corpus`:
+
+| Row | Before (923306f) | After (HEAD) |
+|---|---|---|
+| `new/2 no builtins` (memo-independent) | 54.2 ns | 54.1 ns |
+| `new/2 normalize: false` | 1.17 μs | 250 ns |
+| **fixed term** (the difference) | **~1.12 μs** | **~196 ns** |
+
+`new/2 no builtins` resolves no providers at all, so the memo cannot reach it;
+it lands within 0.1 ns across the two runs. That is the control, and it is what
+licenses reading the `normalize: false` row's 4.7x drop as the memo working
+rather than the machine wandering. The reduction is **~5.7x**.
+
+The same run also shows the fixed term is genuinely fixed: 1.16 μs at `:small`
+and 1.15 μs at `:corpus` before the memo - constant to within 1% across a 5x
+change in datamodel size.
+
+Note that the Before section's absolute numbers run ~10% slower than this
+paired run's (1.29 μs vs 1.17 μs for `normalize: false` at `:corpus`, and a
+54 ns control reported as 83 ns). That is ordinary between-session drift, and
+it is exactly the reason the ratio is quoted from the paired run rather than
+from a subtraction across the two sections above.
 
 **Net effect at `:corpus` scale**, where the bead's original 56.6% figure was
 measured: the fixed term that used to be the majority of a context build is
