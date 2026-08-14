@@ -390,17 +390,17 @@ end-to-end half:
 
 #### Manual Verification:
 
-- [ ] In `iex -S mix`, an SCXML-shaped program
+- [x] In `iex -S mix`, an SCXML-shaped program
       (`protected_roots: ["_event", "_sessionid", "_name", "_ioprocessors"]`)
       refuses each of the four roots and writes an ordinary one
-- [ ] In `iex`, `{:error, e, _ctx} = Predicator.execute("_event = 1", %{},
+- [x] In `iex`, `{:error, e, _ctx} = Predicator.execute("_event = 1", %{},
       protected_roots: ["_event"])` and then `e.details.root` returns
       `"_event"` without reading `e.message` at all
-- [ ] The reported position points at the assignment's root token: compile
+- [x] The reported position points at the assignment's root token: compile
       `"_event.name = 1"` with `Predicator.compile_program_with_positions/1`,
       run it with `protected_roots: ["_event"]`, and expect the error's
       `position` to be `{1, 1}` (the `_event` token), not the `= 1` operator
-- [ ] Three no-option control programs behave exactly as before:
+- [x] Three no-option control programs behave exactly as before:
       `Predicator.execute("if x > 1 { y = 2 } else { y = 3 }", %{"x" => 5})`
       gives `%{"x" => 5, "y" => 2}`; `Predicator.execute("i = 0; while i < 3 { i = i + 1 }",
       %{})` gives `%{"i" => 3}`; and
@@ -502,12 +502,12 @@ release, not a breaking one.
 
 #### Manual Verification:
 
-- [ ] `mix docs` (or the rendered `@doc`) reads correctly: the option appears
+- [x] `mix docs` (or the rendered `@doc`) reads correctly: the option appears
       in `execute/3`'s list and the doctest output matches
-- [ ] `docs/isa.md` §2's new bullet reads as a peer of the `on_unbound` and
+- [x] `docs/isa.md` §2's new bullet reads as a peer of the `on_unbound` and
       loop-budget bullets, and a sibling implementer would not conclude the ISA
       version moved
-- [ ] The changelog entry is accurate about the release class (minor, additive)
+- [x] The changelog entry is accurate about the release class (minor, additive)
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive execution,
@@ -586,19 +586,24 @@ Manual verification items are deferred during looped (--loop) execution and
 surfaced here once, rather than blocking after each phase. Confirm these
 before considering the plan fully landed.
 
+All items below were verified on 2026-08-14, after both phases landed. The
+Phase 1 items were run as a script through `mix run` rather than typed into
+`iex -S mix`; the programs, options, and expected values are the ones the
+items name.
+
 ### Phase 1
 
-- [ ] In `iex -S mix`, an SCXML-shaped program
+- [x] In `iex -S mix`, an SCXML-shaped program
       (`protected_roots: ["_event", "_sessionid", "_name", "_ioprocessors"]`)
       refuses each of the four roots and writes an ordinary one
-- [ ] In `iex`, `{:error, e, _ctx} = Predicator.execute("_event = 1", %{},
+- [x] In `iex`, `{:error, e, _ctx} = Predicator.execute("_event = 1", %{},
       protected_roots: ["_event"])` and then `e.details.root` returns
       `"_event"` without reading `e.message` at all
-- [ ] The reported position points at the assignment's root token: compile
+- [x] The reported position points at the assignment's root token: compile
       `"_event.name = 1"` with `Predicator.compile_program_with_positions/1`,
       run it with `protected_roots: ["_event"]`, and expect the error's
       `position` to be `{1, 1}` (the `_event` token), not the `= 1` operator
-- [ ] Three no-option control programs behave exactly as before:
+- [x] Three no-option control programs behave exactly as before:
       `Predicator.execute("if x > 1 { y = 2 } else { y = 3 }", %{"x" => 5})`
       gives `%{"x" => 5, "y" => 2}`; `Predicator.execute("i = 0; while i < 3 { i = i + 1 }",
       %{})` gives `%{"i" => 3}`; and
@@ -616,12 +621,12 @@ blocking here.
 
 ### Phase 2
 
-- [ ] `mix docs` (or the rendered `@doc`) reads correctly: the option appears
+- [x] `mix docs` (or the rendered `@doc`) reads correctly: the option appears
       in `execute/3`'s list and the doctest output matches
-- [ ] `docs/isa.md` §2's new bullet reads as a peer of the `on_unbound` and
+- [x] `docs/isa.md` §2's new bullet reads as a peer of the `on_unbound` and
       loop-budget bullets, and a sibling implementer would not conclude the ISA
       version moved
-- [ ] The changelog entry is accurate about the release class (minor, additive)
+- [x] The changelog entry is accurate about the release class (minor, additive)
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive execution,
