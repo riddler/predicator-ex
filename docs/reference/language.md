@@ -455,16 +455,25 @@ iex> Predicator.evaluate("index_of('hello world', 'nope')", %{})
 
 ### Numeric Functions
 
-| Function | Description | Example |
-|----------|-------------|---------|
-| `Math.abs(number)` | Absolute value | `Math.abs(balance) < 100` |
-| `Math.max(a, b)` | Maximum of two numbers | `Math.max(score1, score2) > 85` |
-| `Math.min(a, b)` | Minimum of two numbers | `Math.min(age, 65) >= 18` |
-| `Math.pow(base, exp)` | Exponentiation | `Math.pow(2, 10) == 1024` |
-| `Math.sqrt(number)` | Square root | `Math.sqrt(144) == 12` |
-| `Math.floor(number)` | Round down | `Math.floor(3.9) == 3` |
-| `Math.ceil(number)` | Round up | `Math.ceil(3.1) == 4` |
-| `Math.round(number)` | Round to nearest integer | `Math.round(3.5) == 4` |
+| Function | Description | Returns | Example |
+|----------|-------------|---------|---------|
+| `Math.abs(number)` | Absolute value | same type as the argument | `Math.abs(balance) < 100` |
+| `Math.max(a, b)` | Maximum of two numbers | the winning argument, type unchanged | `Math.max(score1, score2) > 85` |
+| `Math.min(a, b)` | Minimum of two numbers | the winning argument, type unchanged | `Math.min(age, 65) >= 18` |
+| `Math.pow(base, exp)` | Exponentiation | integer when both are integers and `exp >= 0`; float otherwise | `Math.pow(2, 10) == 1024` |
+| `Math.sqrt(number)` | Square root | integer for a non-negative integer with an exact root; float otherwise | `Math.sqrt(144) == 12` |
+| `Math.floor(number)` | Round down | always an integer | `Math.floor(3.9) == 3` |
+| `Math.ceil(number)` | Round up | always an integer | `Math.ceil(3.1) == 4` |
+| `Math.round(number)` | Round to nearest integer | always an integer | `Math.round(3.5) == 4` |
+| `Math.random()` | Random float in `[0, 1)` | always a float | `Math.random() < 1` |
+
+`===` is type-strict (`8.0 === 8` is `false`), so the return type above is
+observable at the language level, not just an implementation detail. `==` is
+not type-strict, which is why `Math.pow(2, 10) == 1024` below reads as `true`
+either way - it would also have been `true` when `Math.pow` returned `8.0`.
+`Math.pow(2, 10) === 1024` demonstrates the strict case: it is `true` because
+both arguments are integers and the exponent is non-negative, so `Math.pow`
+returns the integer `1024`, not the float `1024.0`.
 
 ```elixir
 iex> Predicator.evaluate("Math.abs(-5) == 5", %{})
@@ -474,6 +483,9 @@ iex> Predicator.evaluate("Math.max(1, 2) == 2", %{})
 {:ok, true}
 
 iex> Predicator.evaluate("Math.pow(2, 10) == 1024", %{})
+{:ok, true}
+
+iex> Predicator.evaluate("Math.pow(2, 10) === 1024", %{})
 {:ok, true}
 ```
 

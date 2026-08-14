@@ -464,9 +464,9 @@ version header - that is release work under an explicit release request.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green (docs changes still compile the doctests and run
+- [x] `mix quality` is green (docs changes still compile the doctests and run
       `test/docs_adr_links_test.exs`)
-- [ ] The Numeric Functions table has one row per Math builtin, nine of them,
+- [x] The Numeric Functions table has one row per Math builtin, nine of them,
       each carrying a `Returns` cell. Runnable as:
 
       ```bash
@@ -589,5 +589,18 @@ execution, the Automated Verification gates advancement via
 
 **Implementation Note**: Same as Phase 1 - loop gate while iterating, full
 gate as the phase gate.
+
+---
+
+### Phase 3
+
+- [ ] The Returns column matches what Phases 1 and 2 actually implemented,
+      read side by side against `math_functions.ex`
+- [ ] The changelog entry names the break in terms a consumer can act on, and
+      does not claim an ISA move
+- [ ] Typography matches the surrounding lines in each edited file
+
+**Implementation Note**: No Elixir changes here, so the loop gate has nothing
+to narrow to; run the full gate once before committing.
 
 ---
