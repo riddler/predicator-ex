@@ -104,5 +104,44 @@
     "expected": {
       "result": { "$type": "date", "value": "2024-01-12" }
     }
+  },
+  {
+    "id": "durations/fractional-literal-expands",
+    "source": "1.5s",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 1,
+          "milliseconds": 500
+        }
+      }
+    },
+    "notes": "the fraction expands at parse time to integer unit pairs, so the duration opcode's operand shape is unchanged; this case is what pins the expansion for a sibling"
+  },
+  {
+    "id": "durations/fractional-month-uses-approximation",
+    "source": "0.5mo",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 15,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "notes": "a fractional mo commits this project's documented 30-day approximation at parse time, which is why the exported value has no months component"
   }
 ]

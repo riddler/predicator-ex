@@ -747,23 +747,23 @@ refinement they export, no ISA version bump and why (Decision 1), and the
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix corpus.generate` completes with no assertion disagreement.
-- [ ] `mix corpus.generate --check` reports no drift.
-- [ ] `test/predicator/conformance/corpus_freshness_test.exs` passes - the
+- [x] `mix corpus.generate` completes with no assertion disagreement.
+- [x] `mix corpus.generate --check` reports no drift.
+- [x] `test/predicator/conformance/corpus_freshness_test.exs` passes - the
       binding test that ties `conformance/corpus/` to
       `conformance/cases/`, and the reason no new
       `gate.sabotage.test_roots` entry is needed.
-- [ ] `test/predicator/conformance/schema_validation_test.exs` passes (the
+- [x] `test/predicator/conformance/schema_validation_test.exs` passes (the
       new cases satisfy `conformance/schema/case.json`, including the id
       pattern).
-- [ ] `test/predicator/conformance/opcode_coverage_test.exs` and
+- [x] `test/predicator/conformance/opcode_coverage_test.exs` and
       `function_coverage_test.exs` still pass.
-- [ ] `mix quality` is green.
-- [ ] `git diff --stat conformance/` shows changes to
+- [x] `mix quality` is green.
+- [x] `git diff --stat conformance/` shows changes to
       `conformance/cases/durations.json`, `conformance/cases/casts.json`, the
       generated `conformance/corpus/` files, and `conformance/manifest.json` -
       and nothing else.
-- [ ] `conformance/manifest.json`'s `isa_version` still reads 6.
+- [x] `conformance/manifest.json`'s `isa_version` still reads 6.
 
 #### Manual Verification:
 - [ ] Read the generated corpus diff and confirm every changed line is
@@ -961,5 +961,25 @@ moving to the next phase. In looped (`--loop`) execution, this phase's
 Automated Verification gates advancement automatically (via
 `/wurk:commit --auto`), and Manual Verification items are deferred and
 surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 3
+
+- [ ] Read the generated corpus diff and confirm every changed line is
+      attributable to one of the four new cases or to the `corpus_hash`
+      recomputation - no unrelated case moved.
+- [ ] Confirm the four cases' `notes` fields would tell a Ruby or TypeScript
+      porter what to implement without reading this repo's source.
+- [ ] Confirm the `durations/later-unit-pair-overwrites-earlier` case is
+      byte-identical to its previous form (Decision 6b's "integer-only
+      literals are untouched").
+
+**Implementation Note**: Use `mix quality --profile loop` between edits while
+iterating; run full `mix quality` as the phase gate. In interactive
+execution, pause here for the human to confirm the manual testing. In looped
+(`--loop`) execution, this phase's Automated Verification gates advancement
+automatically (via `/wurk:commit --auto`), and Manual Verification items are
+deferred and surfaced once at the end.
 
 ---
