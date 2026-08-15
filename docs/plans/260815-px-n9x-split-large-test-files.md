@@ -630,16 +630,16 @@ logical nodes`, 274 `visit/2 - integration with full pipeline` (~355 lines).
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix test test/predicator/visitors/instructions_visitor_test.exs test/predicator/visitors/instructions_visitor_control_flow_test.exs test/predicator/visitors/instructions_visitor_operators_test.exs test/predicator/visitors/instructions_visitor_values_test.exs`
+- [x] `mix test test/predicator/visitors/instructions_visitor_test.exs test/predicator/visitors/instructions_visitor_control_flow_test.exs test/predicator/visitors/instructions_visitor_operators_test.exs test/predicator/visitors/instructions_visitor_values_test.exs`
       reports exactly **9 doctests, 94 tests, 0 failures**
-- [ ] `mix test` reports **446 doctests, 2785 tests, 0 failures**
-- [ ] Full `mix quality` is green
-- [ ] Coverage stays at or above the 90% minimum in `coveralls.json`, and
+- [x] `mix test` reports **446 doctests, 2785 tests, 0 failures**
+- [x] Full `mix quality` is green
+- [x] Coverage stays at or above the 90% minimum in `coveralls.json`, and
       `test/predicator/visitor_clause_coverage_test.exs` still passes
-- [ ] `git diff --stat` shows no file under `lib/`, `conformance/`, or
+- [x] `git diff --stat` shows no file under `lib/`, `conformance/`, or
       `mix.exs` changed
-- [ ] No file among the four exceeds 550 lines
-- [ ] Across the whole branch, `find test -name '*_test.exs' -exec wc -l {} + | sort -rn`
+- [x] No file among the four exceeds 550 lines
+- [x] Across the whole branch, `find test -name '*_test.exs' -exec wc -l {} + | sort -rn`
       shows no file over 550 lines except the two this bead does not touch:
       `test/predicator/context_location_test.exs` (694) and
       `test/predicator/duration_test.exs` (693), which are out of scope and
@@ -812,6 +812,23 @@ items are deferred and surfaced once at the end instead of blocking here.
       statement structure, and error/position handling, not leftovers
 - [ ] Three moved describes spot-checked byte-identical against the original
 - [ ] No new file contains a `doctest` line
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 6
+
+- [ ] `visit_program/1` is defined exactly once, in the control-flow file
+- [ ] Three moved describes spot-checked byte-identical against the original
+- [ ] No new file contains a `doctest` line
+- [ ] Final read-through of the six directories: the file names describe what
+      is in them, and a reader looking for a behavior can guess the file
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
 full `mix quality` as the phase gate. In interactive execution, pause here for
