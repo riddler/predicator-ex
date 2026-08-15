@@ -871,7 +871,8 @@ defmodule Predicator.LexerTest do
     end
 
     test "returns error with correct position" do
-      assert {:error, "Unterminated date literal", 1, 9, _span} = Lexer.tokenize("score > #")
+      assert {:error, "Unterminated date literal", 1, 9, {{1, 9}, {1, 10}}} =
+               Lexer.tokenize("score > #")
     end
 
     test "returns error on multiline with correct position" do
@@ -890,6 +891,11 @@ defmodule Predicator.LexerTest do
     test "an unterminated string's span lands the caret on the opening quote" do
       assert {:error, "Unterminated double-quoted string literal", 1, 1, {{1, 1}, {1, 2}}} =
                Lexer.tokenize(~s("unterminated))
+    end
+
+    test "an unterminated single-quoted string also keeps a one-character span" do
+      assert {:error, "Unterminated single-quoted string literal", 1, 1, {{1, 1}, {1, 2}}} =
+               Lexer.tokenize(~s('unterminated))
     end
   end
 
@@ -943,22 +949,30 @@ defmodule Predicator.LexerTest do
     end
 
     test "returns error for invalid date format" do
-      assert {:error, "Invalid date format: not-a-date", 1, 1, _span} =
+      assert {:error, "Invalid date format: not-a-date", 1, 1, {{1, 1}, {1, 13}}} =
                Lexer.tokenize("#not-a-date#")
     end
 
     test "returns error for invalid datetime format" do
-      assert {:error, "Invalid datetime format: 2024-01-15T25:00:00Z", 1, 1, _span} =
+      assert {:error, "Invalid datetime format: 2024-01-15T25:00:00Z", 1, 1, {{1, 1}, {1, 23}}} =
                Lexer.tokenize("#2024-01-15T25:00:00Z#")
     end
 
     test "returns error for unterminated date literal" do
-      assert {:error, "Unterminated date literal", 1, 1, _span} = Lexer.tokenize("#2024-01-15")
-      assert {:error, "Unterminated date literal", 1, 9, _span} = Lexer.tokenize("score > #")
+      assert {:error, "Unterminated date literal", 1, 1, {{1, 1}, {1, 12}}} =
+               Lexer.tokenize("#2024-01-15")
+
+      assert {:error, "Unterminated date literal", 1, 9, {{1, 9}, {1, 10}}} =
+               Lexer.tokenize("score > #")
     end
   end
 
   describe "raw newlines inside literals" do
+    test "a date literal broken across lines gets a multi-line error span" do
+      assert {:error, "Invalid date format: " <> _content, 1, 1, {{1, 1}, {2, 7}}} =
+               Lexer.tokenize("#2024-\n01-01#")
+    end
+
     test "advances line and resets column across a multi-line double-quoted string" do
       assert {:ok, tokens} = Lexer.tokenize("\"ab\ncd\" > 5")
 
