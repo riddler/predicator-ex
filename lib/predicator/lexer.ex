@@ -442,8 +442,11 @@ defmodule Predicator.Lexer do
             token = {token_type, line, col, consumed + 1, date_value}
             tokenize_chars(remaining, end_line, end_col, [token | tokens])
 
-          {:error, message} ->
-            {:error, message, line, col, {{line, col}, {line, col + 1}}}
+          # A malformed literal is wrong as a whole, so the span covers the
+          # whole literal - opening `#` through the closing `#`, or through
+          # end of input when there is none.
+          {:error, message, end_line, end_col} ->
+            {:error, message, line, col, {{line, col}, {end_line, end_col}}}
         end
 
       # Unknown character
@@ -666,16 +669,20 @@ defmodule Predicator.Lexer do
   @spec take_date(charlist(), binary(), pos_integer(), pos_integer(), pos_integer()) ::
           {:ok, Date.t() | DateTime.t(), charlist(), pos_integer(), :date | :datetime,
            pos_integer(), pos_integer()}
-          | {:error, binary()}
-  defp take_date([], _acc, _count, _line, _col), do: {:error, "Unterminated date literal"}
+          | {:error, binary(), pos_integer(), pos_integer()}
+  # Input ran out before a closing `#`. The running position is already the
+  # exclusive end of everything consumed, so it is the span's end as-is.
+  defp take_date([], _acc, _count, line, col),
+    do: {:error, "Unterminated date literal", line, col}
 
   defp take_date([?# | rest], acc, count, line, col) do
     case parse_date_content(acc) do
       {:ok, date_value, token_type} ->
         {:ok, date_value, rest, count, token_type, line, col + 1}
 
+      # `line, col` is the closing `#`; the exclusive end is one past it.
       {:error, message} ->
-        {:error, message}
+        {:error, message, line, col + 1}
     end
   end
 
