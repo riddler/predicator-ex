@@ -1,9 +1,11 @@
 defmodule Predicator.Conformance.RatchetRegistryTest do
   @moduledoc """
   Binds `conformance/RATCHET.md` - the sibling ratchet registry spec
-  (`px-35i.8`) - to this checkout: five tests, each mirroring one of the
-  spec's rules, plus the R5 completeness check the worked example is the only
-  place that rule is exercised at all.
+  (`px-35i.8`) - to this checkout: seven tests. Rule 2 is bound by two of
+  them - the canonical-encoding test below and the entry sort order test -
+  the rest each mirror one of the spec's other rules, plus the R5
+  completeness check the worked example is the only place that rule is
+  exercised at all.
 
   `conformance/examples/registry.example.json` is hand-maintained: no
   generator exists, and none should - a faithful writer would be RATCHET.md's
@@ -134,6 +136,38 @@ defmodule Predicator.Conformance.RatchetRegistryTest do
                "whitespace) - an editor or a pretty-printer likely reflowed it; " <>
                "restore the encoding RATCHET.md rule 2 specifies rather than " <>
                "reformatting"
+    end
+  end
+
+  describe "RATCHET.md rule 2: entries are sorted by (surface, tier, case_id)" do
+    # sabotage: registry.example.json swaps two adjacent evaluator entry lines -> red
+    test "the entries array is in ascending (surface, tier, case_id) order" do
+      entries = read_example()["entries"]
+
+      assert entries != [],
+             "conformance/examples/registry.example.json has no entries - " <>
+               "the test below would pass vacuously"
+
+      keys = Enum.map(entries, &{&1["surface"], &1["tier"], &1["case_id"]})
+
+      assert keys |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> length() > 1,
+             "the registry's entries all carry one surface - the first of " <>
+               "RATCHET.md rule 2's three sort clauses would be unexercised " <>
+               "by the assertion below"
+
+      inversion =
+        keys
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.find(fn [a, b] -> a > b end)
+
+      assert inversion == nil,
+             "conformance/examples/registry.example.json's entries are not in " <>
+               "the order RATCHET.md rule 2 specifies (surface ascending, then " <>
+               "tier ascending, then case_id ascending): " <>
+               inspect(inversion) <>
+               " is out of order - restore the sort rather than reformatting; " <>
+               "the canonical-encoding test above re-encodes entries in parse " <>
+               "order and cannot see this"
     end
   end
 
