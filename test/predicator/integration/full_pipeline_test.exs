@@ -391,4 +391,43 @@ defmodule Predicator.IntegrationTest do
       assert {:error, %Predicator.Errors.TypeMismatchError{}} = Predicator.evaluate("not null")
     end
   end
+
+  describe "fractional duration literals (px-5c5)" do
+    test "a fractional duration literal compiles to expanded integer pairs" do
+      assert Predicator.compile("1.5s") ==
+               {:ok, [["duration", [[1, "s"], [500, "ms"]]]]}
+    end
+
+    test "an integer-only duration literal compiles byte-identical to before" do
+      assert Predicator.compile("3d8h") ==
+               {:ok, [["duration", [[3, "d"], [8, "h"]]]]}
+    end
+
+    test "'ago' with a fractional duration still works end to end" do
+      assert Predicator.evaluate("1.5s ago < Date.now()", %{}) == {:ok, true}
+    end
+
+    test "'from now' with a fractional duration still works end to end" do
+      assert Predicator.evaluate("Date.now() < 1.5s from now", %{}) == {:ok, true}
+    end
+
+    test "a fractional duration compares correctly in date arithmetic" do
+      assert Predicator.evaluate("#2024-01-15T10:30:00Z# + 1.5s > #2024-01-15T10:30:00Z#", %{}) ==
+               {:ok, true}
+    end
+
+    test "an inexact fraction is a compile error, not a silent :undefined" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile("0.5ms")
+
+      assert message =~ "not a whole number of milliseconds"
+    end
+
+    test "a post-expansion unit collision is a compile error" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile("1.5s200ms")
+
+      assert message =~ "names the 'ms' unit twice"
+    end
+  end
 end

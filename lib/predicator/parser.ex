@@ -106,6 +106,7 @@ defmodule Predicator.Parser do
   """
 
   alias Predicator.Cast
+  alias Predicator.Duration
   alias Predicator.Lexer
 
   # The seven scalar ISA type names (docs/isa.md section 3), from
@@ -1364,7 +1365,7 @@ defmodule Predicator.Parser do
     # Check if this integer is followed by duration units
     next_state = advance(state)
 
-    case parse_duration_sequence_from_integer(value, next_state, {line, col}) do
+    case parse_duration_sequence_from_number(value, next_state, {line, col}) do
       {:ok, duration_ast, final_state} ->
         {:ok, duration_ast, final_state}
 
@@ -1380,6 +1381,35 @@ defmodule Predicator.Parser do
   # Parse float literal
   defp parse_primary_token(state, {:float, _line, _col, _len, value} = token) do
     {:ok, {:literal, value, leaf_loc(state, token)}, advance(state)}
+  end
+
+  # Parse a fractional-number literal - always the start of a duration. The
+  # lexer emits :fractional_number only when a decimal number is immediately
+  # followed by a duration unit (the float arm of tokenize_chars/4 in
+  # lib/predicator/lexer.ex mirrors the integer arm's lookahead), so the
+  # :not_duration branch below is unreachable from any source the lexer can
+  # produce - it exists only to keep this function total (ADR-0004: no raise
+  # at a leaf) rather than reconstruct a float that was never a valid token.
+  defp parse_primary_token(
+         state,
+         {:fractional_number, line, col, _len, {int_part, fraction_digits}} = token
+       ) do
+    next_state = advance(state)
+
+    case parse_duration_sequence_from_number(
+           {:frac, int_part, fraction_digits},
+           next_state,
+           {line, col}
+         ) do
+      {:ok, duration_ast, final_state} ->
+        {:ok, duration_ast, final_state}
+
+      {:error, _message, _line, _col, _span} = error ->
+        error
+
+      :not_duration ->
+        unexpected_token_error(token, &"Expected a duration unit after #{&1}")
+    end
   end
 
   # Parse string literal
@@ -1957,16 +1987,29 @@ defmodule Predicator.Parser do
   end
 
   # Duration parsing functions
+  #
+  # A duration's components accumulate as {value, unit, component_span}
+  # triples - prepended, reversed once at the end - where value is either a
+  # plain integer or {:frac, integer_part, fraction_digits}. The component
+  # span runs from the number token's own start to the end of its unit
+  # token, which is what lets the two new fractional-duration errors below
+  # point at exactly one component (an inexact fraction) or the whole
+  # literal (a post-expansion unit collision), following the date-literal
+  # per-family span precedent (lib/predicator/lexer.ex:465-467).
 
-  @spec parse_duration_sequence_from_integer(integer(), parser_state(), position()) ::
+  @typep duration_value :: integer() | {:frac, integer(), binary()}
+  @typep duration_component :: {duration_value(), binary(), Predicator.Types.span()}
+
+  @spec parse_duration_sequence_from_number(duration_value(), parser_state(), position()) ::
           {:ok, ast(), parser_state()}
           | {:error, binary(), integer(), integer(), Predicator.Types.span()}
           | :not_duration
-  defp parse_duration_sequence_from_integer(number, state, position) do
+  defp parse_duration_sequence_from_number(value, state, position) do
     case peek_token(state) do
-      {:duration_unit, _line, _col, _len, unit} ->
+      {:duration_unit, _line, _col, _len, unit} = unit_token ->
         # Found duration unit, parse the full duration sequence
-        parse_duration_sequence([{number, unit}], advance(state), position)
+        component = {value, unit, {position, token_end(unit_token)}}
+        parse_duration_sequence([component], advance(state), position)
 
       _token ->
         # Not followed by duration unit
@@ -1974,30 +2017,146 @@ defmodule Predicator.Parser do
     end
   end
 
-  @spec parse_duration_sequence([{integer(), binary()}], parser_state(), position()) ::
+  @spec parse_duration_sequence([duration_component()], parser_state(), position()) ::
           {:ok, ast(), parser_state()}
           | {:error, binary(), integer(), integer(), Predicator.Types.span()}
-  defp parse_duration_sequence(units, state, position) do
+  defp parse_duration_sequence(components, state, position) do
     case peek_token(state) do
-      {:integer, _line, _col, _len, number} ->
+      {:integer, line, col, _len, number} ->
         # Check if this integer is followed by a duration unit
         next_state = advance(state)
 
         case peek_token(next_state) do
-          {:duration_unit, _line, _col, _len, unit} ->
+          {:duration_unit, _line, _col, _len, unit} = unit_token ->
             # Continue building duration sequence (prepended; reversed once at the end)
-            parse_duration_sequence([{number, unit} | units], advance(next_state), position)
+            component = {number, unit, {{line, col}, token_end(unit_token)}}
+            parse_duration_sequence([component | components], advance(next_state), position)
 
           _token ->
             # End of duration sequence, check for direction operators
-            duration_ast = {:duration, Enum.reverse(units), duration_loc(state, position)}
-            parse_duration_with_direction(duration_ast, state)
+            finalize_duration_sequence(components, state, position)
         end
+
+      {:fractional_number, line, col, _len, {int_part, fraction_digits}} ->
+        next_state = advance(state)
+
+        # The lexer emits :fractional_number only when a duration unit
+        # immediately follows (see the float arm of tokenize_chars/4 in
+        # lib/predicator/lexer.ex), so this hard match relies on that
+        # invariant rather than reconstructing a fallback path no source
+        # can reach - the same way duration_loc/2 below relies on a
+        # lexer/parser invariant.
+        {:duration_unit, _line, _col, _len, unit} = unit_token = peek_token(next_state)
+        value = {:frac, int_part, fraction_digits}
+        component = {value, unit, {{line, col}, token_end(unit_token)}}
+        parse_duration_sequence([component | components], advance(next_state), position)
 
       _token ->
         # End of duration sequence, check for direction operators
-        duration_ast = {:duration, Enum.reverse(units), duration_loc(state, position)}
-        parse_duration_with_direction(duration_ast, state)
+        finalize_duration_sequence(components, state, position)
+    end
+  end
+
+  # Builds the AST node from the accumulated components. Integer-only
+  # literals lower byte-for-byte identically to before this feature existed
+  # (Decision 6b/6c) - no fractional component means no expansion, no
+  # collision check, and the same {integer, unit} pairs as always.
+  @spec finalize_duration_sequence([duration_component()], parser_state(), position()) ::
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), integer(), integer(), Predicator.Types.span()}
+  defp finalize_duration_sequence(components, state, position) do
+    ordered = Enum.reverse(components)
+
+    if Enum.any?(ordered, fn {value, _unit, _span} -> match?({:frac, _, _}, value) end) do
+      case expand_duration_components(ordered) do
+        {:ok, pairs} ->
+          build_duration_ast(pairs, state, position)
+
+        {:error, _message, _line, _col, _span} = error ->
+          error
+      end
+    else
+      pairs = Enum.map(ordered, fn {value, unit, _span} -> {value, unit} end)
+      build_duration_ast(pairs, state, position)
+    end
+  end
+
+  @spec build_duration_ast([{integer(), binary()}], parser_state(), position()) ::
+          {:ok, ast(), parser_state()}
+  defp build_duration_ast(pairs, state, position) do
+    duration_ast = {:duration, pairs, duration_loc(state, position)}
+    parse_duration_with_direction(duration_ast, state)
+  end
+
+  # Expands every fractional component through Predicator.Duration and
+  # concatenates the result in source order (Decision 6b: the AST keeps its
+  # existing {integer(), binary()} pair shape, receiving already-expanded
+  # pairs). An inexact fraction is a compile error spanning that component
+  # alone (Decision 2/6a); a duplicate unit across the whole literal after
+  # expansion is a compile error spanning the whole literal (Decision 6a) -
+  # integer-only literals never reach this function, so their pinned
+  # last-wins overwrite behavior at the opcode is untouched.
+  @spec expand_duration_components([duration_component()]) ::
+          {:ok, [{integer(), binary()}]}
+          | {:error, binary(), integer(), integer(), Predicator.Types.span()}
+  defp expand_duration_components(ordered) do
+    ordered
+    |> Enum.reduce_while({:ok, []}, fn component, {:ok, acc} ->
+      expand_duration_component(component, acc)
+    end)
+    |> case do
+      {:ok, reversed_pairs} ->
+        pairs = Enum.reverse(reversed_pairs)
+        check_no_duplicate_units(pairs, ordered)
+
+      {:error, _message, _line, _col, _span} = error ->
+        error
+    end
+  end
+
+  defp expand_duration_component({{:frac, int_part, fraction_digits}, unit, span}, acc) do
+    case Duration.expand_fraction(int_part, fraction_digits, unit) do
+      {:ok, pairs} ->
+        {:cont, {:ok, Enum.reduce(pairs, acc, fn pair, a -> [pair | a] end)}}
+
+      {:error, _reason} ->
+        # :subunit_remainder is the reachable case; :unknown_unit cannot
+        # occur here because duration_unit?/1 in the lexer only recognizes
+        # the same eight units Duration's expansion table knows.
+        {line, col} = elem(span, 0)
+        literal = "#{int_part}.#{fraction_digits}#{unit}"
+
+        {:halt,
+         {:error, "Duration fraction is not a whole number of milliseconds: #{literal}", line,
+          col, span}}
+    end
+  end
+
+  defp expand_duration_component({value, unit, _span}, acc) when is_integer(value) do
+    {:cont, {:ok, [{value, unit} | acc]}}
+  end
+
+  @spec check_no_duplicate_units([{integer(), binary()}], [duration_component()]) ::
+          {:ok, [{integer(), binary()}]}
+          | {:error, binary(), integer(), integer(), Predicator.Types.span()}
+  defp check_no_duplicate_units(pairs, ordered) do
+    duplicate =
+      pairs
+      |> Enum.map(fn {_value, unit} -> unit end)
+      |> Enum.frequencies()
+      |> Enum.find_value(fn {unit, count} -> if count > 1, do: unit end)
+
+    case duplicate do
+      nil ->
+        {:ok, pairs}
+
+      unit ->
+        {start, _end} = elem(List.first(ordered), 2)
+        {_start, finish} = elem(List.last(ordered), 2)
+        {line, col} = start
+
+        {:error, "Duration literal names the '#{unit}' unit twice after expanding a fraction",
+         line, col, {start, finish}}
     end
   end
 

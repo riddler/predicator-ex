@@ -114,6 +114,8 @@ defmodule Predicator.Lexer do
           | {:function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:qualified_function_name, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:duration_unit, pos_integer(), pos_integer(), pos_integer(), binary()}
+          | {:fractional_number, pos_integer(), pos_integer(), pos_integer(),
+             {integer(), binary()}}
           | {:ago_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:from_op, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:now_op, pos_integer(), pos_integer(), pos_integer(), binary()}
@@ -225,15 +227,17 @@ defmodule Predicator.Lexer do
 
       # Numbers (with potential duration units)
       c when c >= ?0 and c <= ?9 ->
-        {number, remaining, consumed} = take_number([char | rest])
+        {number, number_string, remaining, consumed} = take_number([char | rest])
 
-        # Check for duration units after the number (only for integers)
+        # Check for duration units after the number
         if is_integer(number) do
           case try_parse_duration_after_number(number, remaining) do
             {:ok, duration_tokens, new_remaining, total_consumed} ->
               # Generate tokens for the number-duration sequence
+              leading = {:integer, line, col, consumed, number}
+
               tokenize_number_duration_sequence(
-                number,
+                leading,
                 duration_tokens,
                 new_remaining,
                 line,
@@ -249,9 +253,38 @@ defmodule Predicator.Lexer do
               tokenize_chars(remaining, line, col + consumed, [token | tokens])
           end
         else
-          # Float - no duration units supported
-          token = {:float, line, col, consumed, number}
-          tokenize_chars(remaining, line, col + consumed, [token | tokens])
+          # A decimal number followed by a duration unit is a fractional
+          # duration component; the fraction travels as its literal digits,
+          # never as the binary float (Decision 6b - String.to_float/1 output
+          # never reaches the expansion). A decimal number followed by
+          # anything else is an ordinary float, exactly as before - `1.5x`
+          # still lexes as :float then :identifier. This is safe against
+          # existing programs: a decimal number immediately followed by a
+          # duration-unit letter was already a parse error (two adjacent
+          # primaries), so no currently-valid program changes meaning.
+          case try_parse_duration_after_number(number, remaining) do
+            {:ok, duration_tokens, new_remaining, total_consumed} ->
+              [integer_digits, fraction_digits] = String.split(number_string, ".")
+
+              leading =
+                {:fractional_number, line, col, consumed,
+                 {String.to_integer(integer_digits), fraction_digits}}
+
+              tokenize_number_duration_sequence(
+                leading,
+                duration_tokens,
+                new_remaining,
+                line,
+                col,
+                consumed,
+                total_consumed,
+                tokens
+              )
+
+            :not_duration ->
+              token = {:float, line, col, consumed, number}
+              tokenize_chars(remaining, line, col + consumed, [token | tokens])
+          end
         end
 
       # Identifiers (including potential function calls and qualified identifiers)
@@ -476,11 +509,11 @@ defmodule Predicator.Lexer do
   end
 
   # Helper functions
-  @spec take_number(charlist()) :: {number(), charlist(), pos_integer()}
+  @spec take_number(charlist()) :: {number(), binary(), charlist(), pos_integer()}
   defp take_number(chars), do: take_number(chars, [], 0, false)
 
   @spec take_number(charlist(), charlist(), non_neg_integer(), boolean()) ::
-          {number(), charlist(), pos_integer()}
+          {number(), binary(), charlist(), pos_integer()}
   defp take_number([c | rest], acc, count, has_decimal) when c >= ?0 and c <= ?9 do
     take_number(rest, [c | acc], count + 1, has_decimal)
   end
@@ -512,7 +545,7 @@ defmodule Predicator.Lexer do
         String.to_integer(number_string)
       end
 
-    {number, remaining, count}
+    {number, number_string, remaining, count}
   end
 
   @spec take_identifier(charlist()) :: {binary(), charlist(), pos_integer()}
@@ -817,7 +850,7 @@ defmodule Predicator.Lexer do
   defp duration_unit?(_unit), do: false
 
   @spec tokenize_number_duration_sequence(
-          integer(),
+          token(),
           [{binary(), binary()}],
           charlist(),
           pos_integer(),
@@ -827,7 +860,7 @@ defmodule Predicator.Lexer do
           [token()]
         ) :: {:ok, [token()]}
   defp tokenize_number_duration_sequence(
-         number,
+         leading_token,
          duration_units,
          remaining,
          line,
@@ -836,14 +869,14 @@ defmodule Predicator.Lexer do
          total_consumed,
          tokens
        ) do
-    # Generate number token followed by duration unit tokens
-    number_token = {:integer, line, col, number_consumed, number}
-
+    # The leading token - :integer or :fractional_number - is already built by
+    # the caller, which is what lets this function serve both the integer and
+    # the float-followed-by-a-duration-unit arms of tokenize_chars/4.
     {final_tokens, _final_col} =
-      Enum.reduce(duration_units, {[number_token | tokens], col + number_consumed}, fn {_value,
-                                                                                        unit},
-                                                                                       {acc_tokens,
-                                                                                        current_col} ->
+      Enum.reduce(duration_units, {[leading_token | tokens], col + number_consumed}, fn {_value,
+                                                                                         unit},
+                                                                                        {acc_tokens,
+                                                                                         current_col} ->
         if duration_unit?(unit) do
           unit_token = {:duration_unit, line, current_col, String.length(unit), unit}
           new_col = current_col + String.length(unit)
