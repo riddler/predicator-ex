@@ -1,0 +1,269 @@
+defmodule Predicator.LexerOperatorsTest do
+  use ExUnit.Case, async: true
+
+  alias Predicator.Lexer
+
+  describe "tokenize/1 - comparison operators" do
+    test "tokenizes greater than" do
+      assert {:ok, tokens} = Lexer.tokenize(">")
+
+      assert tokens == [
+               {:gt, 1, 1, 1, ">"},
+               {:eof, 1, 2, 0, nil}
+             ]
+    end
+
+    test "tokenizes greater than or equal" do
+      assert {:ok, tokens} = Lexer.tokenize(">=")
+
+      assert tokens == [
+               {:gte, 1, 1, 2, ">="},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+
+    test "tokenizes less than" do
+      assert {:ok, tokens} = Lexer.tokenize("<")
+
+      assert tokens == [
+               {:lt, 1, 1, 1, "<"},
+               {:eof, 1, 2, 0, nil}
+             ]
+    end
+
+    test "tokenizes less than or equal" do
+      assert {:ok, tokens} = Lexer.tokenize("<=")
+
+      assert tokens == [
+               {:lte, 1, 1, 2, "<="},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+
+    test "tokenizes equal" do
+      assert {:ok, tokens} = Lexer.tokenize("=")
+
+      assert tokens == [
+               {:eq, 1, 1, 1, "="},
+               {:eof, 1, 2, 0, nil}
+             ]
+    end
+
+    test "tokenizes not equal" do
+      assert {:ok, tokens} = Lexer.tokenize("!=")
+
+      assert tokens == [
+               {:ne, 1, 1, 2, "!="},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+  end
+
+  describe "tokenize/1 - parentheses" do
+    test "tokenizes parentheses" do
+      assert {:ok, tokens} = Lexer.tokenize("()")
+
+      assert tokens == [
+               {:lparen, 1, 1, 1, "("},
+               {:rparen, 1, 2, 1, ")"},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+  end
+
+  describe "tokenize/1 - arithmetic operators" do
+    test "tokenizes plus operator" do
+      assert {:ok, tokens} = Lexer.tokenize("2 + 3")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 2},
+               {:plus, 1, 3, 1, "+"},
+               {:integer, 1, 5, 1, 3},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes minus operator" do
+      assert {:ok, tokens} = Lexer.tokenize("5 - 2")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 5},
+               {:minus, 1, 3, 1, "-"},
+               {:integer, 1, 5, 1, 2},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes multiply operator" do
+      assert {:ok, tokens} = Lexer.tokenize("3 * 4")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 3},
+               {:multiply, 1, 3, 1, "*"},
+               {:integer, 1, 5, 1, 4},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes divide operator" do
+      assert {:ok, tokens} = Lexer.tokenize("8 / 2")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 8},
+               {:divide, 1, 3, 1, "/"},
+               {:integer, 1, 5, 1, 2},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes modulo operator" do
+      assert {:ok, tokens} = Lexer.tokenize("7 % 3")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 7},
+               {:modulo, 1, 3, 1, "%"},
+               {:integer, 1, 5, 1, 3},
+               {:eof, 1, 6, 0, nil}
+             ]
+    end
+
+    test "tokenizes double equals operator" do
+      assert {:ok, tokens} = Lexer.tokenize("x == y")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "x"},
+               {:equal_equal, 1, 3, 2, "=="},
+               {:identifier, 1, 6, 1, "y"},
+               {:eof, 1, 7, 0, nil}
+             ]
+    end
+
+    test "tokenizes logical and operator" do
+      assert {:ok, tokens} = Lexer.tokenize("true && false")
+
+      assert tokens == [
+               {:boolean, 1, 1, 4, true},
+               {:and_and, 1, 6, 2, "&&"},
+               {:boolean, 1, 9, 5, false},
+               {:eof, 1, 14, 0, nil}
+             ]
+    end
+
+    test "tokenizes logical or operator" do
+      assert {:ok, tokens} = Lexer.tokenize("true || false")
+
+      assert tokens == [
+               {:boolean, 1, 1, 4, true},
+               {:or_or, 1, 6, 2, "||"},
+               {:boolean, 1, 9, 5, false},
+               {:eof, 1, 14, 0, nil}
+             ]
+    end
+
+    test "tokenizes bang (not) operator" do
+      assert {:ok, tokens} = Lexer.tokenize("!active")
+
+      assert tokens == [
+               {:bang, 1, 1, 1, "!"},
+               {:identifier, 1, 2, 6, "active"},
+               {:eof, 1, 8, 0, nil}
+             ]
+    end
+
+    test "tokenizes complex arithmetic expression" do
+      assert {:ok, tokens} = Lexer.tokenize("(x + y) * z / 2")
+
+      assert tokens == [
+               {:lparen, 1, 1, 1, "("},
+               {:identifier, 1, 2, 1, "x"},
+               {:plus, 1, 4, 1, "+"},
+               {:identifier, 1, 6, 1, "y"},
+               {:rparen, 1, 7, 1, ")"},
+               {:multiply, 1, 9, 1, "*"},
+               {:identifier, 1, 11, 1, "z"},
+               {:divide, 1, 13, 1, "/"},
+               {:integer, 1, 15, 1, 2},
+               {:eof, 1, 16, 0, nil}
+             ]
+    end
+  end
+
+  describe ":: token" do
+    test "tokenizes a postfix cast" do
+      assert {:ok, tokens} = Lexer.tokenize("x::integer")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "x"},
+               {:double_colon, 1, 2, 2, "::"},
+               {:identifier, 1, 4, 7, "integer"},
+               {:eof, 1, 11, 0, nil}
+             ]
+    end
+
+    test "does not affect single-colon object literal tokenization" do
+      assert {:ok, tokens} = Lexer.tokenize("{a: 1}")
+
+      assert tokens == [
+               {:lbrace, 1, 1, 1, "{"},
+               {:identifier, 1, 2, 1, "a"},
+               {:colon, 1, 3, 1, ":"},
+               {:integer, 1, 5, 1, 1},
+               {:rbrace, 1, 6, 1, "}"},
+               {:eof, 1, 7, 0, nil}
+             ]
+
+      refute Enum.any?(tokens, &match?({:double_colon, _, _, _, _}, &1))
+    end
+
+    test "does not affect nested object literal tokenization" do
+      assert {:ok, tokens} = Lexer.tokenize("{a: {b: 1}}")
+
+      refute Enum.any?(tokens, &match?({:double_colon, _, _, _, _}, &1))
+    end
+
+    test "lexes ::: greedily as double_colon followed by colon" do
+      assert {:ok, tokens} = Lexer.tokenize(":::")
+
+      assert tokens == [
+               {:double_colon, 1, 1, 2, "::"},
+               {:colon, 1, 3, 1, ":"},
+               {:eof, 1, 4, 0, nil}
+             ]
+    end
+
+    test "tokenizes :: with surrounding spaces" do
+      assert {:ok, tokens} = Lexer.tokenize("x :: integer")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "x"},
+               {:double_colon, 1, 3, 2, "::"},
+               {:identifier, 1, 6, 7, "integer"},
+               {:eof, 1, 13, 0, nil}
+             ]
+    end
+
+    test "does not affect datetime literal colon consumption" do
+      input = "#2024-01-15T10:30:00Z#"
+      {:ok, tokens} = Lexer.tokenize(input)
+
+      assert [
+               {:datetime, 1, 1, 22, %DateTime{}},
+               {:eof, 1, 23, 0, nil}
+             ] = tokens
+
+      refute Enum.any?(tokens, &match?({:colon, _, _, _, _}, &1))
+      refute Enum.any?(tokens, &match?({:double_colon, _, _, _, _}, &1))
+    end
+
+    test "the seven cast type names still lex as plain identifiers" do
+      for type_name <- ~w(integer float string boolean date datetime duration) do
+        assert {:ok, tokens} = Lexer.tokenize(type_name)
+
+        assert [
+                 {:identifier, 1, 1, _len, ^type_name},
+                 {:eof, _eof_line, _eof_col, 0, nil}
+               ] = tokens
+      end
+    end
+  end
+end
