@@ -958,6 +958,82 @@ defmodule Predicator.LexerTest do
     end
   end
 
+  describe "raw newlines inside literals" do
+    test "advances line and resets column across a multi-line double-quoted string" do
+      assert {:ok, tokens} = Lexer.tokenize("\"ab\ncd\" > 5")
+
+      assert tokens == [
+               {:string, 1, 1, 7, "ab\ncd", :double},
+               {:gt, 2, 5, 1, ">"},
+               {:integer, 2, 7, 1, 5},
+               {:eof, 2, 8, 0, nil}
+             ]
+    end
+
+    test "advances line and resets column across a multi-line single-quoted string" do
+      assert {:ok, tokens} = Lexer.tokenize("'ab\ncd' > 5")
+
+      assert tokens == [
+               {:string, 1, 1, 7, "ab\ncd", :single},
+               {:gt, 2, 5, 1, ">"},
+               {:integer, 2, 7, 1, 5},
+               {:eof, 2, 8, 0, nil}
+             ]
+    end
+
+    test "an escaped \\n is not a raw newline - every token stays on line 1" do
+      assert {:ok, tokens} = Lexer.tokenize(~S|"a\nb" > 5|)
+
+      assert tokens == [
+               {:string, 1, 1, 6, "a\nb", :double},
+               {:gt, 1, 8, 1, ">"},
+               {:integer, 1, 10, 1, 5},
+               {:eof, 1, 11, 0, nil}
+             ]
+    end
+
+    test "a CRLF line ending inside a string crosses to line 2" do
+      assert {:ok, tokens} = Lexer.tokenize("\"ab\r\ncd\" > 5")
+
+      assert tokens == [
+               {:string, 1, 1, 8, "ab\r\ncd", :double},
+               {:gt, 2, 5, 1, ">"},
+               {:integer, 2, 7, 1, 5},
+               {:eof, 2, 8, 0, nil}
+             ]
+    end
+
+    test "two consecutive multi-line literals accumulate line advances" do
+      assert {:ok, tokens} = Lexer.tokenize(~s("ab\ncd" "ef\ngh" x))
+
+      assert tokens == [
+               {:string, 1, 1, 7, "ab\ncd", :double},
+               {:string, 2, 5, 7, "ef\ngh", :double},
+               {:identifier, 3, 5, 1, "x"},
+               {:eof, 3, 6, 0, nil}
+             ]
+    end
+
+    test "a bare newline outside a literal is unaffected" do
+      assert {:ok, tokens} = Lexer.tokenize("x\n> 5")
+
+      assert tokens == [
+               {:identifier, 1, 1, 1, "x"},
+               {:gt, 2, 1, 1, ">"},
+               {:integer, 2, 3, 1, 5},
+               {:eof, 2, 4, 0, nil}
+             ]
+    end
+
+    test "a date literal containing a raw newline is a lex error" do
+      # parse_date_content/1 rejects the embedded newline before a token can
+      # be built, so a multi-line date token can never exist - this pins the
+      # invariant that lets token_end/1 keep treating every date token as
+      # single-line.
+      assert {:error, _message, 1, 1, _span} = Lexer.tokenize("#2024-01-\n01# > 5")
+    end
+  end
+
   describe ":: token" do
     test "tokenizes a postfix cast" do
       assert {:ok, tokens} = Lexer.tokenize("x::integer")
