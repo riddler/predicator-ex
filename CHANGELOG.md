@@ -124,6 +124,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   suite are what keep it honest. Prose only: the example, its `corpus_hash`,
   and the schema's constraints are unaffected.
 
+### Fixed
+
+- **The lexer now advances its line counter and resets its column for a raw
+  newline consumed inside a string or date literal**, instead of treating it
+  as an ordinary character. Every token that follows a multi-line string
+  literal - and every parse error position derived from one - now reports
+  the line and column it actually occupies. An escaped `\n` is unaffected:
+  it is a two-character escape in the source and never a raw newline byte.
+  A source with no multi-line literal is byte-identical to before.
+
 ## [7.0.0] - 2026-08-14
 
 ### Changed

@@ -404,11 +404,11 @@ defmodule Predicator.Lexer do
 
       # String literals (double quotes)
       ?" ->
-        case take_string(rest, "", 1, :double) do
-          {:ok, content, remaining, consumed} ->
+        case take_string(rest, "", 1, :double, line, col + 1) do
+          {:ok, content, remaining, consumed, end_line, end_col} ->
             # +1 for opening quote
             token = {:string, line, col, consumed + 1, content, :double}
-            tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
+            tokenize_chars(remaining, end_line, end_col, [token | tokens])
 
           {:error, message} ->
             {:error, message, line, col, {{line, col}, {line, col + 1}}}
@@ -416,11 +416,11 @@ defmodule Predicator.Lexer do
 
       # String literals (single quotes)
       ?' ->
-        case take_string(rest, "", 1, :single) do
-          {:ok, content, remaining, consumed} ->
+        case take_string(rest, "", 1, :single, line, col + 1) do
+          {:ok, content, remaining, consumed, end_line, end_col} ->
             # +1 for opening quote
             token = {:string, line, col, consumed + 1, content, :single}
-            tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
+            tokenize_chars(remaining, end_line, end_col, [token | tokens])
 
           {:error, message} ->
             {:error, message, line, col, {{line, col}, {line, col + 1}}}
@@ -428,11 +428,11 @@ defmodule Predicator.Lexer do
 
       # Date literals
       ?# ->
-        case take_date(rest, "", 1) do
-          {:ok, date_value, remaining, consumed, token_type} ->
+        case take_date(rest, "", 1, line, col + 1) do
+          {:ok, date_value, remaining, consumed, token_type, end_line, end_col} ->
             # +1 for opening #
             token = {token_type, line, col, consumed + 1, date_value}
-            tokenize_chars(remaining, line, col + consumed + 1, [token | tokens])
+            tokenize_chars(remaining, end_line, end_col, [token | tokens])
 
           {:error, message} ->
             {:error, message, line, col, {{line, col}, {line, col + 1}}}
@@ -607,22 +607,32 @@ defmodule Predicator.Lexer do
   defp skip_whitespace([?\r | rest]), do: skip_whitespace(rest)
   defp skip_whitespace(chars), do: chars
 
-  @spec take_string(charlist(), binary(), pos_integer(), :double | :single) ::
-          {:ok, binary(), charlist(), pos_integer()} | {:error, binary()}
-  defp take_string([], _acc, _count, quote_type) do
+  @spec take_string(
+          charlist(),
+          binary(),
+          pos_integer(),
+          :double | :single,
+          pos_integer(),
+          pos_integer()
+        ) ::
+          {:ok, binary(), charlist(), pos_integer(), pos_integer(), pos_integer()}
+          | {:error, binary()}
+  defp take_string([], _acc, _count, quote_type, _line, _col) do
     quote_name = if quote_type == :double, do: "double", else: "single"
     {:error, "Unterminated #{quote_name}-quoted string literal"}
   end
 
-  defp take_string([?" | rest], acc, count, :double) do
-    {:ok, acc, rest, count}
+  defp take_string([?" | rest], acc, count, :double, line, col) do
+    {:ok, acc, rest, count, line, col + 1}
   end
 
-  defp take_string([?' | rest], acc, count, :single) do
-    {:ok, acc, rest, count}
+  defp take_string([?' | rest], acc, count, :single, line, col) do
+    {:ok, acc, rest, count, line, col + 1}
   end
 
-  defp take_string([?\\ | [escaped | rest]], acc, count, quote_type) do
+  # A two-character escape never contains a source newline, even when it
+  # decodes to one: `\n` is backslash-then-n in the source.
+  defp take_string([?\\ | [escaped | rest]], acc, count, quote_type, line, col) do
     char =
       case escaped do
         ?" -> "\""
@@ -634,30 +644,39 @@ defmodule Predicator.Lexer do
         c -> <<c>>
       end
 
-    take_string(rest, acc <> char, count + 2, quote_type)
+    take_string(rest, acc <> char, count + 2, quote_type, line, col + 2)
   end
 
-  defp take_string([c | rest], acc, count, quote_type) do
-    take_string(rest, acc <> <<c>>, count + 1, quote_type)
+  defp take_string([?\n | rest], acc, count, quote_type, line, _col) do
+    take_string(rest, acc <> "\n", count + 1, quote_type, line + 1, 1)
   end
 
-  @spec take_date(charlist(), binary(), pos_integer()) ::
-          {:ok, Date.t() | DateTime.t(), charlist(), pos_integer(), :date | :datetime}
+  defp take_string([c | rest], acc, count, quote_type, line, col) do
+    take_string(rest, acc <> <<c>>, count + 1, quote_type, line, col + 1)
+  end
+
+  @spec take_date(charlist(), binary(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, Date.t() | DateTime.t(), charlist(), pos_integer(), :date | :datetime,
+           pos_integer(), pos_integer()}
           | {:error, binary()}
-  defp take_date([], _acc, _count), do: {:error, "Unterminated date literal"}
+  defp take_date([], _acc, _count, _line, _col), do: {:error, "Unterminated date literal"}
 
-  defp take_date([?# | rest], acc, count) do
+  defp take_date([?# | rest], acc, count, line, col) do
     case parse_date_content(acc) do
       {:ok, date_value, token_type} ->
-        {:ok, date_value, rest, count, token_type}
+        {:ok, date_value, rest, count, token_type, line, col + 1}
 
       {:error, message} ->
         {:error, message}
     end
   end
 
-  defp take_date([c | rest], acc, count) do
-    take_date(rest, acc <> <<c>>, count + 1)
+  defp take_date([?\n | rest], acc, count, line, _col) do
+    take_date(rest, acc <> "\n", count + 1, line + 1, 1)
+  end
+
+  defp take_date([c | rest], acc, count, line, col) do
+    take_date(rest, acc <> <<c>>, count + 1, line, col + 1)
   end
 
   @spec parse_date_content(binary()) ::
