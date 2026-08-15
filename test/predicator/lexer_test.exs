@@ -357,9 +357,9 @@ defmodule Predicator.LexerTest do
 
       assert tokens == [
                {:lbracket, 1, 1, 1, "["},
-               {:string, 1, 2, 7, "admin", :double},
+               {:string, 1, 2, 7, "admin", :double, {1, 9}},
                {:comma, 1, 9, 1, ","},
-               {:string, 1, 11, 9, "manager", :double},
+               {:string, 1, 11, 9, "manager", :double, {1, 20}},
                {:rbracket, 1, 20, 1, "]"},
                {:eof, 1, 21, 0, nil}
              ]
@@ -371,7 +371,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(~s("hello"))
 
       assert tokens == [
-               {:string, 1, 1, 7, "hello", :double},
+               {:string, 1, 1, 7, "hello", :double, {1, 8}},
                {:eof, 1, 8, 0, nil}
              ]
     end
@@ -380,7 +380,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(~s(""))
 
       assert tokens == [
-               {:string, 1, 1, 2, "", :double},
+               {:string, 1, 1, 2, "", :double, {1, 3}},
                {:eof, 1, 3, 0, nil}
              ]
     end
@@ -389,7 +389,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(~s("hello world"))
 
       assert tokens == [
-               {:string, 1, 1, 13, "hello world", :double},
+               {:string, 1, 1, 13, "hello world", :double, {1, 14}},
                {:eof, 1, 14, 0, nil}
              ]
     end
@@ -400,7 +400,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(input)
 
       assert tokens == [
-               {:string, 1, 1, 14, "hello\"world", :double},
+               {:string, 1, 1, 14, "hello\"world", :double, {1, 15}},
                {:eof, 1, 15, 0, nil}
              ]
     end
@@ -411,7 +411,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(input)
 
       assert tokens == [
-               {:string, 1, 1, 14, "line1\nline2", :double},
+               {:string, 1, 1, 14, "line1\nline2", :double, {1, 15}},
                {:eof, 1, 15, 0, nil}
              ]
     end
@@ -427,7 +427,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize("'hello'")
 
       assert tokens == [
-               {:string, 1, 1, 7, "hello", :single},
+               {:string, 1, 1, 7, "hello", :single, {1, 8}},
                {:eof, 1, 8, 0, nil}
              ]
     end
@@ -436,7 +436,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize("''")
 
       assert tokens == [
-               {:string, 1, 1, 2, "", :single},
+               {:string, 1, 1, 2, "", :single, {1, 3}},
                {:eof, 1, 3, 0, nil}
              ]
     end
@@ -445,7 +445,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize("'hello world'")
 
       assert tokens == [
-               {:string, 1, 1, 13, "hello world", :single},
+               {:string, 1, 1, 13, "hello world", :single, {1, 14}},
                {:eof, 1, 14, 0, nil}
              ]
     end
@@ -456,7 +456,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(input)
 
       assert tokens == [
-               {:string, 1, 1, 14, "hello'world", :single},
+               {:string, 1, 1, 14, "hello'world", :single, {1, 15}},
                {:eof, 1, 15, 0, nil}
              ]
     end
@@ -466,7 +466,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(input)
 
       assert tokens == [
-               {:string, 1, 1, 13, "hello\"world", :single},
+               {:string, 1, 1, 13, "hello\"world", :single, {1, 14}},
                {:eof, 1, 14, 0, nil}
              ]
     end
@@ -477,7 +477,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(input)
 
       assert tokens == [
-               {:string, 1, 1, 14, "line1\nline2", :single},
+               {:string, 1, 1, 14, "line1\nline2", :single, {1, 15}},
                {:eof, 1, 15, 0, nil}
              ]
     end
@@ -671,7 +671,7 @@ defmodule Predicator.LexerTest do
       assert tokens == [
                {:identifier, 1, 1, 4, "name"},
                {:eq, 1, 6, 1, "="},
-               {:string, 1, 8, 6, "John", :double},
+               {:string, 1, 8, 6, "John", :double, {1, 14}},
                {:eof, 1, 14, 0, nil}
              ]
     end
@@ -963,7 +963,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize("\"ab\ncd\" > 5")
 
       assert tokens == [
-               {:string, 1, 1, 7, "ab\ncd", :double},
+               {:string, 1, 1, 7, "ab\ncd", :double, {2, 4}},
                {:gt, 2, 5, 1, ">"},
                {:integer, 2, 7, 1, 5},
                {:eof, 2, 8, 0, nil}
@@ -974,7 +974,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize("'ab\ncd' > 5")
 
       assert tokens == [
-               {:string, 1, 1, 7, "ab\ncd", :single},
+               {:string, 1, 1, 7, "ab\ncd", :single, {2, 4}},
                {:gt, 2, 5, 1, ">"},
                {:integer, 2, 7, 1, 5},
                {:eof, 2, 8, 0, nil}
@@ -985,7 +985,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(~S|"a\nb" > 5|)
 
       assert tokens == [
-               {:string, 1, 1, 6, "a\nb", :double},
+               {:string, 1, 1, 6, "a\nb", :double, {1, 7}},
                {:gt, 1, 8, 1, ">"},
                {:integer, 1, 10, 1, 5},
                {:eof, 1, 11, 0, nil}
@@ -996,7 +996,7 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize("\"ab\r\ncd\" > 5")
 
       assert tokens == [
-               {:string, 1, 1, 8, "ab\r\ncd", :double},
+               {:string, 1, 1, 8, "ab\r\ncd", :double, {2, 4}},
                {:gt, 2, 5, 1, ">"},
                {:integer, 2, 7, 1, 5},
                {:eof, 2, 8, 0, nil}
@@ -1007,8 +1007,8 @@ defmodule Predicator.LexerTest do
       assert {:ok, tokens} = Lexer.tokenize(~s("ab\ncd" "ef\ngh" x))
 
       assert tokens == [
-               {:string, 1, 1, 7, "ab\ncd", :double},
-               {:string, 2, 5, 7, "ef\ngh", :double},
+               {:string, 1, 1, 7, "ab\ncd", :double, {2, 4}},
+               {:string, 2, 5, 7, "ef\ngh", :double, {3, 4}},
                {:identifier, 3, 5, 1, "x"},
                {:eof, 3, 6, 0, nil}
              ]
@@ -1129,7 +1129,7 @@ defmodule Predicator.LexerTest do
 
       assert {:ok,
               [
-                {:string, 1, 1, 33, "Hello \"World\" with \n newline", :double},
+                {:string, 1, 1, 33, "Hello \"World\" with \n newline", :double, {1, 34}},
                 {:eof, 1, 34, 0, nil}
               ]} = Lexer.tokenize(input)
     end
@@ -1139,7 +1139,7 @@ defmodule Predicator.LexerTest do
 
       assert {:ok,
               [
-                {:string, 1, 1, 25, "Test \t\r\n\\ sequences", :double},
+                {:string, 1, 1, 25, "Test \t\r\n\\ sequences", :double, {1, 26}},
                 {:eof, 1, 26, 0, nil}
               ]} = Lexer.tokenize(input)
     end
@@ -1149,7 +1149,7 @@ defmodule Predicator.LexerTest do
 
       assert {:ok,
               [
-                {:string, 1, 1, 19, "Unknown x escape", :double},
+                {:string, 1, 1, 19, "Unknown x escape", :double, {1, 20}},
                 {:eof, 1, 20, 0, nil}
               ]} = Lexer.tokenize(input)
     end

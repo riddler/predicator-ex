@@ -523,11 +523,11 @@ defmodule Predicator.ParserTest do
       tokens = [
         {:identifier, 1, 1, 4, "role"},
         {:equal_equal, 1, 6, 2, "=="},
-        {:string, 1, 9, 7, "admin", :double},
+        {:string, 1, 9, 7, "admin", :double, {1, 16}},
         {:or_op, 1, 17, 2, "OR"},
         {:identifier, 1, 20, 4, "role"},
         {:equal_equal, 1, 25, 2, "=="},
-        {:string, 1, 28, 9, "manager", :double},
+        {:string, 1, 28, 9, "manager", :double, {1, 37}},
         {:eof, 1, 38, 0, nil}
       ]
 
@@ -808,7 +808,7 @@ defmodule Predicator.ParserTest do
         {:lbracket, 1, 1, 1, "["},
         {:integer, 1, 2, 2, 42},
         {:comma, 1, 4, 1, ","},
-        {:string, 1, 6, 7, "hello", :double},
+        {:string, 1, 6, 7, "hello", :double, {1, 13}},
         {:comma, 1, 13, 1, ","},
         {:boolean, 1, 15, 4, true},
         {:comma, 1, 19, 1, ","},
@@ -2064,17 +2064,22 @@ defmodule Predicator.ParserTest do
       assert stop == {1, 17}
     end
 
-    test "a :string token's span is derived from the 6-element token shape via token_start/1 and token_end/1" do
-      {:ok, tokens} = Lexer.tokenize(~s({age "next": 1}))
-      string_token = Enum.find(tokens, &match?({:string, _line, _col, _len, _value, _q}, &1))
-      {:string, expected_line, expected_col, len, _value, _quote_type} = string_token
+    test "a :string token's span is derived from the 7-element token shape via token_start/1 and token_end/1" do
+      source = ~s({age "next": 1})
+      {:ok, tokens} = Lexer.tokenize(source)
+
+      string_token =
+        Enum.find(tokens, &match?({:string, _line, _col, _len, _value, _q, _end}, &1))
+
+      {:string, expected_line, expected_col, _len, _value, _quote_type, _end_position} =
+        string_token
 
       assert {:error, message, line, col, {start, stop}} = Predicator.Parser.parse(tokens)
 
       assert message =~ "Expected ':' after object key but found"
       assert {line, col} == {expected_line, expected_col}
       assert start == {line, col}
-      assert stop == {expected_line, expected_col + len}
+      assert Predicator.SpanSlicing.slice(source, {start, stop}) == ~s("next")
     end
 
     test "the span-start invariant holds for an unexpected-token, a lexical, and an end-of-input failure" do

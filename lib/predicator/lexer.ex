@@ -35,13 +35,21 @@ defmodule Predicator.Lexer do
   @typedoc """
   A lexical token with position information.
 
-  Format: `{type, line, column, length, value}`
+  Format: `{type, line, column, length, value}`, except `:string`, which is
+  `{:string, line, column, length, value, quote_type, end_position}`.
+
+  `length` is the token's source character count. `end_position` is the
+  exclusive end - one past the closing quote - and is `{line, column + length}`
+  for every literal on a single line. The two disagree only when the literal
+  contains a raw newline, which is why the string token stores it rather than
+  letting a consumer compute it.
   """
   @type token ::
           {:identifier, pos_integer(), pos_integer(), pos_integer(), binary()}
           | {:integer, pos_integer(), pos_integer(), pos_integer(), integer()}
           | {:float, pos_integer(), pos_integer(), pos_integer(), float()}
-          | {:string, pos_integer(), pos_integer(), pos_integer(), binary(), :double | :single}
+          | {:string, pos_integer(), pos_integer(), pos_integer(), binary(), :double | :single,
+             {pos_integer(), pos_integer()}}
           | {:boolean, pos_integer(), pos_integer(), pos_integer(), boolean()}
           | {:undefined, pos_integer(), pos_integer(), pos_integer(), :undefined}
           | {:null, pos_integer(), pos_integer(), pos_integer(), nil}
@@ -146,7 +154,7 @@ defmodule Predicator.Lexer do
       {:ok, [
         {:identifier, 1, 1, 4, "name"},
         {:equal_equal, 1, 6, 2, "=="},
-        {:string, 1, 9, 6, "John", :double},
+        {:string, 1, 9, 6, "John", :double, {1, 15}},
         {:eof, 1, 15, 0, nil}
       ]}
 
@@ -407,7 +415,7 @@ defmodule Predicator.Lexer do
         case take_string(rest, "", 1, :double, line, col + 1) do
           {:ok, content, remaining, consumed, end_line, end_col} ->
             # +1 for opening quote
-            token = {:string, line, col, consumed + 1, content, :double}
+            token = {:string, line, col, consumed + 1, content, :double, {end_line, end_col}}
             tokenize_chars(remaining, end_line, end_col, [token | tokens])
 
           {:error, message} ->
@@ -419,7 +427,7 @@ defmodule Predicator.Lexer do
         case take_string(rest, "", 1, :single, line, col + 1) do
           {:ok, content, remaining, consumed, end_line, end_col} ->
             # +1 for opening quote
-            token = {:string, line, col, consumed + 1, content, :single}
+            token = {:string, line, col, consumed + 1, content, :single, {end_line, end_col}}
             tokenize_chars(remaining, end_line, end_col, [token | tokens])
 
           {:error, message} ->
