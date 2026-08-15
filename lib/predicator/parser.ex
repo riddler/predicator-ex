@@ -1690,6 +1690,7 @@ defmodule Predicator.Parser do
   defp format_token(:fractional_number, {integer_part, fraction_digits}),
     do: "number '#{integer_part}.#{fraction_digits}'"
 
+  defp format_token(:dot, _value), do: "'.'"
   defp format_token(:string, value), do: "string \"#{value}\""
   defp format_token(:boolean, value), do: "boolean '#{value}'"
   defp format_token(:undefined, _value), do: "'undefined'"

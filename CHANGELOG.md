@@ -157,6 +157,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`Predicator.compile/1` no longer raises on a leading-dot duration
+  spelling or any other bare `.` in a position the grammar rejects** -
+  `.5s`, `.5`, and `a . . b` now return `{:error, %Predicator.Errors.
+  ParseError{}}` instead of crashing with a `FunctionClauseError`. The cause
+  was the same class of gap as the string-token fix below: the parser's
+  `format_token/2` carries one clause per token type with no catch-all, and
+  the `:dot` token had never had one. A leading-dot duration spelling is
+  still rejected - `.5s` is deliberately not a valid way to write a
+  fractional duration - but it is now an error value, not a crash. `1 . 2`
+  is unaffected and still reports "Expected property name after '.' but
+  found number '2'".
+
 - **`Predicator.compile/1` and `compile_program/1` no longer raise when a
   string literal appears somewhere the parser rejects it** - `score "a"`,
   `x = 1 "a"`, `next "a"`, and other sources like them now return

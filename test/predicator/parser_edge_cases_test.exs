@@ -412,6 +412,69 @@ defmodule Predicator.ParserEdgeCasesTest do
     end
   end
 
+  # px-ty0: format_token/2 also had no `:dot` clause - a separate,
+  # pre-existing gap from :fractional_number's above (this one predates the
+  # px-5c5 branch entirely), found while fixing that one. Decision 4 in
+  # docs/research/260814-px-5c5-fractional-durations-decisions.md deliberately
+  # rejects the leading-dot duration spelling ("`.5s`" is meant to be a parse
+  # error), so these pin that it fails as a `ParseError` *value* rather than
+  # raising `FunctionClauseError`. Unlike a misplaced fractional number, a
+  # bare `.` is never itself a complete expression, so these repros put it
+  # where the grammar expects a fresh primary token (an expression start, an
+  # object key, a cast type name, the `now` keyword after `from`) rather than
+  # after a complete expression - a `.` following any expression is always
+  # consumed by postfix property-access parsing first, which is what keeps
+  # "1 . 2" (below) a distinct, already-working case.
+  describe "a bare '.' in a rejected position" do
+    test ".5s is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile(~s|.5s|)
+
+      assert message ==
+               "Expected number, string, boolean, date, datetime, identifier, " <>
+                 "function call, list, object, or '(' but found '.'"
+    end
+
+    test ".5 is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|.5|)
+    end
+
+    test "a . . b is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile(~s|a . . b|)
+
+      assert message == "Expected property name after '.' but found '.'"
+    end
+
+    test "a::. is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile(~s|a::.|)
+
+      assert message == "Expected a type name after '::' but found '.'"
+    end
+
+    test "3d from . is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile(~s|3d from .|)
+
+      assert message == "Expected 'now' after 'from' but found '.'"
+    end
+
+    test "{.: 1} is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile(~s|{.: 1}|)
+
+      assert message == "Expected identifier or string for object key but found '.'"
+    end
+
+    test "1 . 2 keeps returning its existing property-name error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile(~s|1 . 2|)
+
+      assert message == "Expected property name after '.' but found number '2'"
+    end
+  end
+
   # These assertions are about AST *shape*, so they read the slot-free form;
   # positions and spans have their own suites.
   defp parse_positionless(input) do
