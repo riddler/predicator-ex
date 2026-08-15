@@ -11,6 +11,26 @@ defmodule Predicator.Lexer do
   - Line and column position
   - Length for precise error highlighting
 
+  ## Error spans
+
+  A lexical error returns `{:error, message, line, column, span}`, where
+  `span`'s start always equals `{line, column}` and its end is exclusive. How
+  wide the span is depends on the failure, and the three widths are deliberate:
+
+  - **An unexpected character** spans one character. The offending character
+    *is* one character, so there is nothing wider to underline.
+  - **An unterminated string literal** spans the opening quote alone. The
+    literal runs to end of source by definition, so underlining its true
+    extent would underline the rest of the program; pointing at where the
+    literal began is the better diagnostic.
+  - **A malformed or unterminated date/datetime literal** spans the whole
+    literal - the opening `#` through the closing `#`, or through end of input
+    when there is none. Here the literal is wrong as a unit, and a caret on
+    the opening `#` under-describes the failure.
+
+  A date literal containing a raw newline gets a span whose end is on a later
+  line, the same way a multi-line string token's `end_position` does.
+
   ## Example
 
       iex> Predicator.Lexer.tokenize("score > 85")

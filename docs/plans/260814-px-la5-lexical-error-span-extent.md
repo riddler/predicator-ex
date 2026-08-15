@@ -432,8 +432,8 @@ diagnostic-quality change to an already-public return value, so it belongs in
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `git diff --stat` shows only `lib/predicator/lexer.ex` (moduledoc) and
+- [x] Full quality gate passes: `mix quality`
+- [x] `git diff --stat` shows only `lib/predicator/lexer.ex` (moduledoc) and
       `CHANGELOG.md`
 
 #### Manual Verification:
@@ -572,5 +572,20 @@ pause here for the human to confirm the manual testing before moving to the next
 phase. In looped (`--loop`) execution, this phase's Automated Verification gates
 advancement automatically (via `/wurk:commit --auto`), and Manual Verification
 items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] `mix docs` (or reading the moduledoc) renders the "Error spans" section
+      correctly and its three bullets match Phase 1's actual behavior
+- [ ] A reader who did not write this change can tell from the moduledoc alone
+      that the one-character string span is intentional
+
+**Implementation Note**: This phase touches no Elixir behavior, so the loop gate
+is enough while drafting; run full `mix quality` before committing. In
+interactive execution, pause here for confirmation. In looped execution, the
+Automated Verification items gate advancement and the Manual items are deferred
+to the end.
 
 ---

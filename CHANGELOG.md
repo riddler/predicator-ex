@@ -124,6 +124,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   suite are what keep it honest. Prose only: the example, its `corpus_hash`,
   and the schema's constraints are unaffected.
 
+- **A malformed or unterminated date or datetime literal now reports a span
+  covering the whole literal.** `Predicator.Lexer.tokenize/1` previously
+  returned a one-character span at the literal's opening `#` for
+  `Invalid date format:`, `Invalid datetime format:`, and
+  `Unterminated date literal`; the span now runs from the opening `#` through
+  the closing `#`, or through end of input when the literal is unterminated.
+  The message text, line, and column are unchanged, as are the spans for
+  unexpected characters and for unterminated string literals - those stay one
+  character wide, and the Lexer moduledoc now records why.
+
 ### Fixed
 
 - **`Predicator.compile/1` and `compile_program/1` no longer raise when a
