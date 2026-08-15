@@ -73,10 +73,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   always the tuple's own `{line, column}`, so a caller reading only the first
   four elements reads exactly what it read before and a caller matching the
   4-tuple gets a loud `CaseClauseError` rather than a silent mis-bind. A
-  failure with no token to borrow an extent from reports a zero-width span at
-  the end of the source; the end-of-input clauses that previously reported a
-  hardcoded `{1, 1}` now report the true end of the source, which is a
-  position-correctness fix in its own right. All six compile entry points
+  failure at the end of the source reports a zero-width span there, borrowed
+  from the lexer's `:eof` sentinel. The fourteen end-of-input clauses that
+  previously reported a hardcoded `{1, 1}` now report the true position as
+  well, but that correction is not observable through any string input: the
+  lexer always appends `:eof`, so those clauses are reached only by
+  `Predicator.Parser.parse/2` handed a token list built by the caller with no
+  sentinel on the end. Every error message and position reachable from the six
+  compile entry points is unchanged from 7.0.0 - only the new `:span` field
+  and the widened tuple are. All six compile entry points
   carry the span in every mode - `compile/1` as much as `compile_with_spans/1`
   - because a parse error's extent comes from the token stream, not from the
   `spans: true` node-metadata option. `:span` is `nil` only on a `ParseError`
