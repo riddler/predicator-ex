@@ -308,6 +308,39 @@ defmodule Predicator.ParserEdgeCasesTest do
     end
   end
 
+  # px-yoq: a `:string` token is seven elements, not the five-element shape
+  # every arity-blind error site now reads positionally. These pin the bead's
+  # named reproductions, which raised a CaseClauseError (or, for "next \"a\"",
+  # a MatchError) before the fix.
+  describe "a string literal in a rejected position" do
+    test "score \"a\" is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|score "a"|)
+
+      assert {:error, %Predicator.Errors.ParseError{}} =
+               Predicator.compile_program(~s|score "a"|)
+    end
+
+    test "5 \"a\" is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|5 "a"|)
+    end
+
+    test "true \"a\" is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|true "a"|)
+    end
+
+    test "a multi-line string literal in a rejected position is a parse error" do
+      assert {:error, %Predicator.Errors.ParseError{} = error} =
+               Predicator.compile(~s|[1, 2 "ab\ncd"]|)
+
+      assert {_start, {end_line, _end_col}} = error.span
+      assert end_line == 2
+    end
+
+    test "next \"a\" is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|next "a"|)
+    end
+  end
+
   # These assertions are about AST *shape*, so they read the slot-free form;
   # positions and spans have their own suites.
   defp parse_positionless(input) do
