@@ -1681,6 +1681,15 @@ defmodule Predicator.Parser do
   @spec format_token(atom(), term()) :: binary()
   defp format_token(:integer, value), do: "number '#{value}'"
   defp format_token(:float, value), do: "number '#{value}'"
+
+  # A :fractional_number token's value is {integer_part, fraction_digits} -
+  # the fraction travels as literal digits, never the binary float (see the
+  # lexer comment at the :fractional_number token's construction) - so it has
+  # no single value to interpolate the way :integer and :float do. Rebuilding
+  # "1.5" from the pair keeps the phrasing identical to its neighbors.
+  defp format_token(:fractional_number, {integer_part, fraction_digits}),
+    do: "number '#{integer_part}.#{fraction_digits}'"
+
   defp format_token(:string, value), do: "string \"#{value}\""
   defp format_token(:boolean, value), do: "boolean '#{value}'"
   defp format_token(:undefined, _value), do: "'undefined'"

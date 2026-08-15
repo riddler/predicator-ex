@@ -341,6 +341,77 @@ defmodule Predicator.ParserEdgeCasesTest do
     end
   end
 
+  # px-5c5 (fractional durations) introduced the `:fractional_number` token -
+  # a five-element token like `:integer` and `:float`, so token_type/1 and
+  # token_value/1 already read it fine, but `format_token/2` had no clause
+  # for it and none of its 53 clauses is a catch-all. Any misplaced
+  # fractional duration literal (`1.5s`) raised `FunctionClauseError` from
+  # `format_token/2` instead of returning a `ParseError`, the same class of
+  # bug px-yoq fixed for `:string` above. These pin the reproductions found
+  # while fixing it; `1.5s` is never itself invalid (a fractional number is
+  # always a valid duration start), so every source below places it after a
+  # complete expression or in a position the grammar rejects outright.
+  describe "a fractional duration literal in a rejected position" do
+    test "score 1.5s is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{message: message}} =
+               Predicator.compile(~s|score 1.5s|)
+
+      assert message == "Unexpected token number '1.5' after expression"
+    end
+
+    test "f(1 1.5s) is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|f(1 1.5s)|)
+    end
+
+    test "[1, 2 1.5s] is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|[1, 2 1.5s]|)
+    end
+
+    test "(1 1.5s) is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|(1 1.5s)|)
+    end
+
+    test "a[0 1.5s] is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|a[0 1.5s]|)
+    end
+
+    test "3d from 1.5s is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|3d from 1.5s|)
+    end
+
+    test "x = 1 1.5s is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} =
+               Predicator.compile_program(~s|x = 1 1.5s|)
+    end
+
+    test "if true 1.5s { x = 1 } is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} =
+               Predicator.compile_program(~s|if true 1.5s { x = 1 }|)
+    end
+
+    test "if true { x = 1 1.5s } is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} =
+               Predicator.compile_program(~s|if true { x = 1 1.5s }|)
+    end
+
+    test "a.1.5s is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|a.1.5s|)
+    end
+
+    test "a::1.5s is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|a::1.5s|)
+    end
+
+    test "{\"a\": 1 1.5s} is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} =
+               Predicator.compile_program(~s|{"a": 1 1.5s}|)
+    end
+
+    test "{1.5s: 1} is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|{1.5s: 1}|)
+    end
+  end
+
   # These assertions are about AST *shape*, so they read the slot-free form;
   # positions and spans have their own suites.
   defp parse_positionless(input) do
