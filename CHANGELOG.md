@@ -126,6 +126,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`Predicator.compile/1` and `compile_program/1` no longer raise when a
+  string literal appears somewhere the parser rejects it** - `score "a"`,
+  `x = 1 "a"`, `next "a"`, and other sources like them now return
+  `{:error, %Predicator.Errors.ParseError{}}` instead of crashing with a
+  `CaseClauseError` or `MatchError`. The cause was a token-shape assumption
+  in sixteen parser error and fallback clauses: they matched the ordinary
+  five-element token shape, and a string token - which carries two extra
+  elements, its quote type and end position - matched none of them. Every
+  such site now reads a token's type and value positionally instead of
+  destructuring its arity, so the fix is behavioral only: no public type, no
+  error message text, and no compiled instruction output changed.
+
 - **The lexer now advances its line counter and resets its column for a raw
   newline consumed inside a string or date literal**, instead of treating it
   as an ordinary character. Every token that follows a multi-line string
