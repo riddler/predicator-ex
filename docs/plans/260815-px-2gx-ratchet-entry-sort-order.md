@@ -393,12 +393,12 @@ match it.
 
 #### Automated Verification:
 
-- [ ] Full quality gate is green: `mix quality`
-- [ ] `mix test test/docs_adr_links_test.exs` passes - the docs binding test is
+- [x] Full quality gate is green: `mix quality`
+- [x] `mix test test/docs_adr_links_test.exs` passes - the docs binding test is
       unaffected by a `docs/research/` addition, and this confirms it
-- [ ] `git status --porcelain` names exactly one changed file,
+- [x] `git status --porcelain` names exactly one changed file,
       `docs/research/260808-px-9ab-sabotage-notes.md`
-- [ ] `grep -c "px-2gx" docs/research/260808-px-9ab-sabotage-notes.md` is
+- [x] `grep -c "px-2gx" docs/research/260808-px-9ab-sabotage-notes.md` is
       non-zero
 
 #### Manual Verification:
@@ -509,5 +509,25 @@ to the next phase. In looped (`--loop`) execution, this phase's Automated
 Verification gates advancement automatically (via `/wurk:commit --auto`), and
 Manual Verification items are deferred and surfaced once at the end instead of
 blocking here.
+
+---
+
+### Phase 2
+
+- [ ] The recorded failure text is what was actually observed in Phase 1, quoted
+      rather than reconstructed
+- [ ] The non-strict decision and the px-wy8 re-run are both stated, and the
+      px-wy8 bullet's staleness warning is answered rather than left dangling
+- [ ] The tier-clause limitation is stated plainly, not glossed
+- [ ] The file count claim ("eleven files, still") matches
+      `.claude/wurk.json`'s `gate.sabotage.test_roots`
+
+**Implementation Note**: This phase touches no Elixir code, so per CLAUDE.md's
+authority table it has no gate of its own to run - the full `mix quality` is
+still run as the phase gate and must be green, since a green gate on an
+unchanged tree is the cheapest possible confirmation that nothing leaked from
+Phase 1. In interactive execution, pause here for the human to confirm the
+manual testing. In looped execution, Manual Verification items are deferred to
+the end.
 
 ---

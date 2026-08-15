@@ -383,6 +383,70 @@ are unaffected.
      confirmed green; `git status --porcelain` reported no diff for
      `lib/predicator/lexer.ex` throughout except during the sabotage window.
 
+- 2026-08-15 (`px-2gx`): `test/predicator/conformance/ratchet_registry_test.exs`,
+  addendum. Not a new file in the class - the file has been a binding test
+  since px-9ab and in `gate.sabotage.test_roots` since px-lxs - so the count
+  does not move; eleven files, still. What changed is a new assertion inside
+  an already-listed file: `conformance/RATCHET.md:66-74`'s three sort clauses
+  (surface ascending, then tier ascending, then case_id ascending) were
+  previously bound by nothing, because the canonical-encoding test's
+  `reencode/1` re-emits `entries` in parse order rather than sorting it, so a
+  shuffled file passed the whole suite. A new `describe` block now asserts the
+  entries array is sorted, non-strictly, by `(surface, tier, case_id)`.
+
+  Sabotage pass verified 2026-08-15. Baseline before each mutation: `mix test
+  test/predicator/conformance/ratchet_registry_test.exs` reported "7 tests, 0
+  failures". Three mutations to `conformance/examples/registry.example.json`,
+  each reverted with `git checkout --` and re-confirmed green afterward:
+
+  1. Case_id clause: swapped lines 20-21, the adjacent evaluator entries
+     `comparison/lt-int-true` and `comparison/lt-list-elementwise`. The new
+     sort test went red naming the pair out of order:
+     `[{"evaluator", 1, "comparison/lt-list-elementwise"}, {"evaluator", 1,
+     "comparison/lt-int-true"}] is out of order - restore the sort rather than
+     reformatting; the canonical-encoding test above re-encodes entries in
+     parse order and cannot see this`. Result: 7 tests, 1 failure - only the
+     new sort test, with the canonical-encoding test staying green exactly
+     because `reencode/1` preserves parse order.
+  2. Surface clause: moved the `"comparison/gt-int-true","compiler"` entry
+     (originally line 10) to the end of the array, after the last evaluator
+     line. The new sort test went red naming the evaluator/compiler inversion:
+     `[{"evaluator", 1, "short_circuit/or-worked-example"}, {"compiler", 1,
+     "comparison/gt-int-true"}] is out of order - restore the sort rather than
+     reformatting; the canonical-encoding test above re-encodes entries in
+     parse order and cannot see this`. Result: 7 tests, 1 failure - only the
+     new sort test; rule 1, rule 3, the pin, R5, and the encoding test all
+     stayed green.
+  3. Re-run of `px-wy8`'s duplicate-pair mutation above: inserted a
+     byte-identical duplicate of `{"case_id":"comparison/gt-int-true",
+     "surface":"compiler","tier":1}` directly beneath the original. Result: 7
+     tests, 1 failure - and the failure was rule 3's uniqueness test again
+     (`the registry carries repeated (case_id, surface) pairs:
+     [{"comparison/gt-int-true", "compiler"}]`), not the new sort test, because
+     a duplicated adjacent pair is still non-strictly ascending. This is
+     deliberate: the sort comparison is non-strict on purpose, so it does not
+     also fire on the pair px-wy8's mutation duplicates. It is also the
+     re-verification px-wy8's bullet above asked for - that entry's isolation
+     claim was carried on the strength of `reencode/1` preserving parse order,
+     and warned it would go stale once a sort-order assertion existed to catch
+     the same mutation for a different reason. Re-run under this change, the
+     isolation still holds: exactly one test goes red, and it is still rule
+     3's, not the new sort test's.
+
+  Honest coverage limitation: this pass exercises the surface clause (mutation
+  2) and the case_id clause (mutation 1). The tier clause is asserted but
+  unexercised - every entry in `registry.example.json` is tier 1, so no
+  reordering of the existing lines can violate a one-tier ordering. Closing
+  that gap needs an example entry at a second tier to reorder against; until
+  one exists, the tier clause is asserted syntax with no failing case behind
+  it, the same "reads as covering a direction and does not" shape as the px-ir1
+  and px-qq6 entries above.
+
+  All three mutations were reverted with `git checkout --
+  conformance/examples/registry.example.json`; `git status --porcelain`
+  reported no diff for the file after each revert, and `mix test` reported "7
+  tests, 0 failures" after each.
+
 ## Enforcement: gate.sabotage, from 2026-08-12 (px-lxs)
 
 - **The discipline is now enforced, not only written down.** `px-lxs` declared
