@@ -3,6 +3,8 @@ defmodule Predicator.Errors.ParseErrorTest do
 
   alias Predicator.Errors.ParseError
 
+  doctest ParseError
+
   describe "new/3" do
     test "stores the line and column as a single :position tuple" do
       error = ParseError.new("bad input", 2, 5)

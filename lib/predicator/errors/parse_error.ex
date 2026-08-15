@@ -18,10 +18,18 @@ defmodule Predicator.Errors.ParseError do
 
   ## Examples
 
-      %Predicator.Errors.ParseError{
-        message: "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'",
-        position: {1, 10}
-      }
+  A parse error from a compile entry point carries all three fields - the
+  span comes from the token stream, so it is present in every compile mode,
+  not only the `_with_spans` ones:
+
+      iex> {:error, error} = Predicator.compile("score > > 5")
+      iex> {error.position, error.span}
+      {{1, 9}, {{1, 9}, {1, 10}}}
+
+  `:span` is `nil` only on an error a caller built through `new/3`:
+
+      iex> Predicator.Errors.ParseError.new("boom", 1, 10)
+      %Predicator.Errors.ParseError{message: "boom", position: {1, 10}, span: nil}
   """
 
   @enforce_keys [:message, :position]
