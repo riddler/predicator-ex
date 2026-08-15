@@ -132,7 +132,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   literal - and every parse error position derived from one - now reports
   the line and column it actually occupies. An escaped `\n` is unaffected:
   it is a two-character escape in the source and never a raw newline byte.
-  A source with no multi-line literal is byte-identical to before.
+  A source with no multi-line literal is byte-identical to before. The AST
+  span of a multi-line string literal now ends at its true end rather than
+  `{start_line, start_col + length}`, which changes span values exported
+  through `Predicator.compile_with_spans/1` and
+  `Predicator.compile_program_with_spans/1` for any source containing a
+  multi-line string literal. `Predicator.Lexer.token/0`'s `:string` shape
+  changed - it now carries a seventh element, its exclusive end position -
+  since it is a public type.
 
 ## [7.0.0] - 2026-08-14
 

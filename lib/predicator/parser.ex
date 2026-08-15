@@ -1390,7 +1390,10 @@ defmodule Predicator.Parser do
   end
 
   # Parse string literal
-  defp parse_primary_token(state, {:string, _line, _col, _len, value, quote_type} = token) do
+  defp parse_primary_token(
+         state,
+         {:string, _line, _col, _len, value, quote_type, _end_position} = token
+       ) do
     {:ok, {:string_literal, value, quote_type, leaf_loc(state, token)}, advance(state)}
   end
 
@@ -1524,14 +1527,21 @@ defmodule Predicator.Parser do
   defp previous_token(%{tokens: tokens, position: pos}), do: Enum.at(tokens, pos - 1)
 
   @spec token_start(Lexer.token()) :: Predicator.Types.position()
+  defp token_start({:string, line, col, _len, _value, _quote_type, _end}), do: {line, col}
   defp token_start({_type, line, col, _len, _value}), do: {line, col}
-  defp token_start({_type, line, col, _len, _value, _quote_type}), do: {line, col}
 
-  # Exclusive: one past the token's last character. The lexer's length is the
-  # full source extent, quotes and date fences included.
+  # Exclusive: one past the token's last character. A `:string` token carries
+  # its own end, because it is the only token that can contain a raw newline -
+  # every other scanner's character class excludes one, and a date literal
+  # containing one fails ISO 8601 parsing before a token is built (pinned by
+  # "a date literal containing a newline is a lex error" in lexer_test.exs).
+  # For those, the lexer's length is the full source extent, quotes and date
+  # fences included, and `col + len` is exact.
   @spec token_end(Lexer.token()) :: Predicator.Types.position()
+  defp token_end({:string, _line, _col, _len, _value, _quote_type, end_position}),
+    do: end_position
+
   defp token_end({_type, line, col, len, _value}), do: {line, col + len}
-  defp token_end({_type, line, col, len, _value, _quote_type}), do: {line, col + len}
 
   # A delimited node runs from its opening token - already the point position -
   # to past its closing token, which is not a descendant.
@@ -1820,7 +1830,7 @@ defmodule Predicator.Parser do
                 error
             end
 
-          {:string, line, col, _len, value, _quote_type} = token ->
+          {:string, line, col, _len, value, _quote_type, _end_position} = token ->
             {:error, "Expected ':' after object key but found #{format_token(:string, value)}",
              line, col, token_span(token)}
 
@@ -1846,7 +1856,7 @@ defmodule Predicator.Parser do
       {:identifier, _line, _col, _len, value} = token ->
         {:ok, {:object_key, value, :identifier, leaf_loc(state, token)}, advance(state)}
 
-      {:string, _line, _col, _len, value, quote_type} = token ->
+      {:string, _line, _col, _len, value, quote_type, _end_position} = token ->
         {:ok, {:object_key, value, quote_type, leaf_loc(state, token)}, advance(state)}
 
       {type, line, col, _len, value} = token ->

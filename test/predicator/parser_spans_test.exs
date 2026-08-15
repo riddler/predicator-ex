@@ -342,6 +342,79 @@ defmodule Predicator.ParserSpansTest do
     end
   end
 
+  describe "spans across a multi-line string literal" do
+    test "a double-quoted multi-line literal's own span slices back to the literal" do
+      source = "\"ab\ncd\" > 5"
+      {:ok, {:comparison, :gt, string_literal, _right, _span}} = parse_spans(source)
+
+      assert slice(source, span_of(string_literal)) == ~s("ab\ncd")
+    end
+
+    test "the enclosing comparison's span slices back to the whole source" do
+      source = "\"ab\ncd\" > 5"
+      {:ok, ast} = parse_spans(source)
+
+      assert slice(source, span_of(ast)) == source
+    end
+
+    test "a single-quoted multi-line literal's own span slices back to the literal" do
+      source = "'ab\ncd' > 5"
+      {:ok, {:comparison, :gt, string_literal, _right, _span}} = parse_spans(source)
+
+      assert slice(source, span_of(string_literal)) == "'ab\ncd'"
+    end
+
+    test "the enclosing comparison's span slices back to the whole source for a single-quoted literal" do
+      source = "'ab\ncd' > 5"
+      {:ok, ast} = parse_spans(source)
+
+      assert slice(source, span_of(ast)) == source
+    end
+
+    test "compile_with_spans/1's positions all slice back to non-empty source text" do
+      source = "\"ab\ncd\" > 5"
+      assert {:ok, compiled} = Predicator.compile_with_spans(source)
+
+      for {_index, span} <- compiled.positions do
+        assert slice(source, span) != "",
+               "position #{inspect(span)} slices to an empty string"
+      end
+    end
+
+    test "compile_with_spans/1's lit instruction span includes the literal's quotes" do
+      source = "\"ab\ncd\" > 5"
+      assert {:ok, compiled} = Predicator.compile_with_spans(source)
+
+      lit_index =
+        Enum.find_index(compiled.instructions, fn
+          ["lit", "ab\ncd"] -> true
+          _other -> false
+        end)
+
+      assert lit_index != nil
+      assert slice(source, compiled.positions[lit_index]) == ~s("ab\ncd")
+    end
+
+    test "compile_program_with_spans/1: the second statement's span is unaffected by a multi-line literal in the first" do
+      source = "x = \"ab\ncd\"; y = 5"
+      assert {:ok, compiled} = Predicator.compile_program_with_spans(source)
+
+      second_statement_span =
+        compiled.positions
+        |> Map.values()
+        |> Enum.find(fn span -> slice(source, span) == "y = 5" end)
+
+      assert second_statement_span != nil
+    end
+
+    test "an escaped \\n (not a raw newline) still slices back correctly - regression pin" do
+      source = ~S|"a\nb" > 5|
+      {:ok, {:comparison, :gt, string_literal, _right, _span}} = parse_spans(source)
+
+      assert slice(source, span_of(string_literal)) == ~S|"a\nb"|
+    end
+  end
+
   describe "the whole corpus" do
     test "gives every node a span whose slice is non-empty and contained in its parent" do
       for source <- @corpus do

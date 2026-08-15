@@ -501,18 +501,18 @@ move. Note the lexer's `:string` token shape change in the same bullet, since
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] Dialyzer is clean - it is the check that catches a missed `:string`
+- [x] Full quality gate passes: `mix quality`
+- [x] Dialyzer is clean - it is the check that catches a missed `:string`
       destructuring site, since the widened `@type token` no longer admits the
       6-element form
-- [ ] The lexer doctest at `lib/predicator/lexer.ex:149` passes
-- [ ] The new `describe` block in `test/predicator/parser_spans_test.exs`
+- [x] The lexer doctest at `lib/predicator/lexer.ex:149` passes
+- [x] The new `describe` block in `test/predicator/parser_spans_test.exs`
       passes, and every assertion in it is a `SpanSlicing.slice/2` comparison
       rather than a hardcoded coordinate
-- [ ] Coverage stays above the 90% minimum in `coveralls.json`
-- [ ] `mix corpus.generate` leaves the tree clean:
+- [x] Coverage stays above the 90% minimum in `coveralls.json`
+- [x] `mix corpus.generate` leaves the tree clean:
       `git diff --exit-code conformance/`
-- [ ] `CHANGELOG.md`'s `### Fixed` bullet names `compile_with_spans/1`,
+- [x] `CHANGELOG.md`'s `### Fixed` bullet names `compile_with_spans/1`,
       `compile_program_with_spans/1` and the `Predicator.Lexer.token/0` shape
       change
 
@@ -737,6 +737,25 @@ before considering the plan fully landed.
       did not
 - [ ] No regression in `StringVisitor` round-tripping a multi-line string
       literal back to source
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+`mix quality` as the phase gate. In interactive execution, pause here for the
+human to confirm the manual testing before moving to the next phase. In looped
+(`--loop`) execution, this phase's Automated Verification gates advancement
+automatically (via `/wurk:commit --auto`), and Manual Verification items are
+deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] `Predicator.compile_with_spans("\"ab\ncd\" > 5")` returns
+      `%{0 => {{1, 1}, {2, 4}}, ...}` and each span, sliced out of the source,
+      reads as the construct it names
+- [ ] A single-line source's `compile_with_spans/1` output is unchanged from
+      before the branch - compare against `git stash` or `origin/main`
+- [ ] `Predicator.Lexer.tokenize/1`'s moduledoc examples still read correctly
+      as documentation for a reader, not just as passing doctests
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
 `mix quality` as the phase gate. In interactive execution, pause here for the

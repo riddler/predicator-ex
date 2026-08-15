@@ -140,7 +140,7 @@ defmodule Predicator.LexerEdgeCasesTest do
       {:ok, tokens} = Lexer.tokenize("\"\"")
 
       assert tokens == [
-               {:string, 1, 1, 2, "", :double},
+               {:string, 1, 1, 2, "", :double, {1, 3}},
                {:eof, 1, 3, 0, nil}
              ]
     end
@@ -149,7 +149,7 @@ defmodule Predicator.LexerEdgeCasesTest do
       {:ok, tokens} = Lexer.tokenize("''")
 
       assert tokens == [
-               {:string, 1, 1, 2, "", :single},
+               {:string, 1, 1, 2, "", :single, {1, 3}},
                {:eof, 1, 3, 0, nil}
              ]
     end
@@ -158,7 +158,7 @@ defmodule Predicator.LexerEdgeCasesTest do
       {:ok, tokens} = Lexer.tokenize(~s{"He said \\"hello\\""})
 
       assert tokens == [
-               {:string, 1, 1, 19, "He said \"hello\"", :double},
+               {:string, 1, 1, 19, "He said \"hello\"", :double, {1, 20}},
                {:eof, 1, 20, 0, nil}
              ]
     end
@@ -167,7 +167,7 @@ defmodule Predicator.LexerEdgeCasesTest do
       {:ok, tokens} = Lexer.tokenize("'It\\'s working'")
 
       assert tokens == [
-               {:string, 1, 1, 15, "It's working", :single},
+               {:string, 1, 1, 15, "It's working", :single, {1, 16}},
                {:eof, 1, 16, 0, nil}
              ]
     end
