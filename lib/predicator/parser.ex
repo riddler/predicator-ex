@@ -374,12 +374,11 @@ defmodule Predicator.Parser do
           {:eof, _line, _col, _len, _value} ->
             {:ok, ast}
 
-          {type, line, col, _len, value} = token ->
-            {:error, "Unexpected token #{format_token(type, value)} after expression", line, col,
-             token_span(token)}
-
           nil ->
             {:ok, ast}
+
+          token ->
+            unexpected_token_error(token, &"Unexpected token #{&1} after expression")
         end
 
       {:error, _message, _line, _col, _span} = error ->
@@ -474,9 +473,8 @@ defmodule Predicator.Parser do
       {:else_kw, line, col, _len, _value} = token ->
         {:error, statement_keyword_message(:else_kw), line, col, token_span(token)}
 
-      {type, line, col, _len, value} = token ->
-        {:error, "Unexpected token #{format_token(type, value)} after statement", line, col,
-         token_span(token)}
+      token ->
+        unexpected_token_error(token, &"Unexpected token #{&1} after statement")
     end
   end
 
@@ -658,12 +656,11 @@ defmodule Predicator.Parser do
       {:lbrace, line, col, _len, _value} ->
         parse_block_body(state, advance(state), {line, col})
 
-      {type, line, col, _len, value} = token ->
-        {:error, "Expected '{' to open a block but found #{format_token(type, value)}", line, col,
-         token_span(token)}
-
       nil ->
         end_of_input_error(state, "Expected '{' to open a block but found end of input")
+
+      token ->
+        unexpected_token_error(token, &"Expected '{' to open a block but found #{&1}")
     end
   end
 
@@ -700,12 +697,11 @@ defmodule Predicator.Parser do
       {:rbrace, _line, _col, _len, _value} = close ->
         {:ok, {:block, statements, delimited_loc(state, point, close)}, advance(final_state)}
 
-      {type, line, col, _len, value} = token ->
-        {:error, "Expected '}' to close the block but found #{format_token(type, value)}", line,
-         col, token_span(token)}
-
       nil ->
         end_of_input_error(state, "Expected '}' to close the block but found end of input")
+
+      token ->
+        unexpected_token_error(token, &"Expected '}' to close the block but found #{&1}")
     end
   end
 
@@ -1280,12 +1276,11 @@ defmodule Predicator.Parser do
                 # Recursively parse more postfix operations
                 parse_postfix_operations(bracket_access, final_state)
 
-              {type, line, col, _len, value} = token ->
-                {:error, "Expected ']' but found #{format_token(type, value)}", line, col,
-                 token_span(token)}
-
               nil ->
                 end_of_input_error(state, "Expected ']' but found end of input")
+
+              token ->
+                unexpected_token_error(token, &"Expected ']' but found #{&1}")
             end
 
           {:error, _message, _line, _col, _span} = error ->
@@ -1313,12 +1308,11 @@ defmodule Predicator.Parser do
             # Recursively parse more postfix operations
             parse_postfix_operations(property_access, final_state)
 
-          {type, line, col, _len, value} = token ->
-            {:error, "Expected property name after '.' but found #{format_token(type, value)}",
-             line, col, token_span(token)}
-
           nil ->
             end_of_input_error(state, "Expected property name after '.' but found end of input")
+
+          token ->
+            unexpected_token_error(token, &"Expected property name after '.' but found #{&1}")
         end
 
       {:double_colon, _line, _col, _len, _value} ->
@@ -1342,12 +1336,11 @@ defmodule Predicator.Parser do
                  Enum.join(@cast_type_names, ", "), name_line, name_col, token_span(name_token)}
             end
 
-          {type, line, col, _len, value} = token ->
-            {:error, "Expected a type name after '::' but found #{format_token(type, value)}",
-             line, col, token_span(token)}
-
           nil ->
             end_of_input_error(state, "Expected a type name after '::' but found end of input")
+
+          token ->
+            unexpected_token_error(token, &"Expected a type name after '::' but found #{&1}")
         end
 
       _other ->
@@ -1447,12 +1440,11 @@ defmodule Predicator.Parser do
           {:rparen, _line, _col, _len, _value} = close ->
             {:ok, paren_loc(state, expr, open, close), advance(expr_state)}
 
-          {type, line, col, _len, value} = token ->
-            {:error, "Expected ')' but found #{format_token(type, value)}", line, col,
-             token_span(token)}
-
           nil ->
             end_of_input_error(state, "Expected ')' but reached end of input")
+
+          token ->
+            unexpected_token_error(token, &"Expected ')' but found #{&1}")
         end
 
       {:error, _message, _line, _col, _span} = error ->
@@ -1488,18 +1480,17 @@ defmodule Predicator.Parser do
        "only valid in a program (Predicator.parse_program/2).", line, col, token_span(token)}
   end
 
-  # Handle unexpected tokens
-  defp parse_primary_token(_state, {type, line, col, _len, value} = token) do
-    expected =
-      "number, string, boolean, date, datetime, identifier, function call, list, object, or '('"
-
-    {:error, "Expected #{expected} but found #{format_token(type, value)}", line, col,
-     token_span(token)}
-  end
-
   # Handle end of input
   defp parse_primary_token(state, nil) do
     end_of_input_error(state, "Unexpected end of input")
+  end
+
+  # Handle unexpected tokens
+  defp parse_primary_token(_state, token) do
+    expected =
+      "number, string, boolean, date, datetime, identifier, function call, list, object, or '('"
+
+    unexpected_token_error(token, &"Expected #{expected} but found #{&1}")
   end
 
   # Helper functions
@@ -1529,6 +1520,17 @@ defmodule Predicator.Parser do
   @spec token_start(Lexer.token()) :: Predicator.Types.position()
   defp token_start({:string, line, col, _len, _value, _quote_type, _end}), do: {line, col}
   defp token_start({_type, line, col, _len, _value}), do: {line, col}
+
+  # A token's type and value sit at the same index in either token arity -
+  # `:string` carries two extra trailing slots (quote type, end position) and no
+  # other token does. Reading them positionally is what lets an error path accept
+  # any token without a clause per shape; the same reason token_start/1 and
+  # token_end/1 below have a :string clause instead of the call sites having one.
+  @spec token_type(Lexer.token()) :: atom()
+  defp token_type(token), do: elem(token, 0)
+
+  @spec token_value(Lexer.token()) :: term()
+  defp token_value(token), do: elem(token, 4)
 
   # Exclusive: one past the token's last character. A `:string` token carries
   # its own end, because it is the only token that can contain a raw newline -
@@ -1572,6 +1574,18 @@ defmodule Predicator.Parser do
           {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
   defp point_error(message, line, col),
     do: {:error, message, line, col, {{line, col}, {line, col}}}
+
+  # Every "expected X but found Y" failure is this: the token's own point, the
+  # token's own span, and a message that names it. Taking the token whole rather
+  # than its destructured parts is the point - a site that never writes a tuple
+  # pattern cannot be wrong about how many elements a token has.
+  @spec unexpected_token_error(Lexer.token(), (binary() -> binary())) ::
+          {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
+  defp unexpected_token_error(token, message_fun) do
+    {line, col} = token_start(token)
+    description = format_token(token_type(token), token_value(token))
+    {:error, message_fun.(description), line, col, token_span(token)}
+  end
 
   # A failure with no token in scope reports the end of the source, not {1, 1}.
   # The lexer's :eof sentinel carries the true end position and a length of 0,
@@ -1711,12 +1725,11 @@ defmodule Predicator.Parser do
                 {:ok, {:list, Enum.reverse(elements), delimited_loc(state, position, close)},
                  advance(final_state)}
 
-              {type, line, col, _len, value} = token ->
-                {:error, "Expected ']' but found #{format_token(type, value)}", line, col,
-                 token_span(token)}
-
               nil ->
                 end_of_input_error(state, "Expected ']' but reached end of input")
+
+              token ->
+                unexpected_token_error(token, &"Expected ']' but found #{&1}")
             end
 
           {:error, _message, _line, _col, _span} = error ->
@@ -1772,12 +1785,11 @@ defmodule Predicator.Parser do
                 {:ok, {:object, Enum.reverse(entries), delimited_loc(state, position, close)},
                  advance(final_state)}
 
-              {type, line, col, _len, value} = token ->
-                {:error, "Expected '}' but found #{format_token(type, value)}", line, col,
-                 token_span(token)}
-
               nil ->
                 end_of_input_error(state, "Expected '}' but reached end of input")
+
+              token ->
+                unexpected_token_error(token, &"Expected '}' but found #{&1}")
             end
 
           {:error, _message, _line, _col, _span} = error ->
@@ -1859,13 +1871,14 @@ defmodule Predicator.Parser do
       {:string, _line, _col, _len, value, quote_type, _end_position} = token ->
         {:ok, {:object_key, value, quote_type, leaf_loc(state, token)}, advance(state)}
 
-      {type, line, col, _len, value} = token ->
-        {:error,
-         "Expected identifier or string for object key but found #{format_token(type, value)}",
-         line, col, token_span(token)}
-
       nil ->
         end_of_input_error(state, "Expected object key but reached end of input")
+
+      token ->
+        unexpected_token_error(
+          token,
+          &"Expected identifier or string for object key but found #{&1}"
+        )
     end
   end
 
@@ -1898,12 +1911,11 @@ defmodule Predicator.Parser do
                      {:function_call, function_name, Enum.reverse(arguments),
                       delimited_loc(state, position, close)}, advance(final_state)}
 
-                  {type, line, col, _len, value} = token ->
-                    {:error, "Expected ')' but found #{format_token(type, value)}", line, col,
-                     token_span(token)}
-
                   nil ->
                     end_of_input_error(state, "Expected ')' but reached end of input")
+
+                  token ->
+                    unexpected_token_error(token, &"Expected ')' but found #{&1}")
                 end
 
               {:error, _message, _line, _col, _span} = error ->
@@ -1911,12 +1923,11 @@ defmodule Predicator.Parser do
             end
         end
 
-      {type, line, col, _len, value} = token ->
-        {:error, "Expected '(' after function name but found #{format_token(type, value)}", line,
-         col, token_span(token)}
-
       nil ->
         end_of_input_error(state, "Expected '(' after function name but reached end of input")
+
+      token ->
+        unexpected_token_error(token, &"Expected '(' after function name but found #{&1}")
     end
   end
 
@@ -2012,12 +2023,11 @@ defmodule Predicator.Parser do
 
             {:ok, {:relative_date, duration_ast, :future, location}, advance(from_state)}
 
-          {type, line, col, _len, value} = token ->
-            {:error, "Expected 'now' after 'from' but found #{format_token(type, value)}", line,
-             col, token_span(token)}
-
           nil ->
             end_of_input_error(state, "Expected 'now' after 'from' but reached end of input")
+
+          token ->
+            unexpected_token_error(token, &"Expected 'now' after 'from' but found #{&1}")
         end
 
       _token ->
@@ -2040,10 +2050,19 @@ defmodule Predicator.Parser do
         {:ok, {:relative_date, duration_ast, direction, location}, final_state}
 
       {:ok, _other_ast, _final_state} ->
-        {type, line, col, _len, value} = token = peek_token(next_state)
+        case peek_token(next_state) do
+          nil ->
+            end_of_input_error(
+              next_state,
+              "Expected duration after '#{direction}' but found end of input"
+            )
 
-        {:error, "Expected duration after '#{direction}' but found #{format_token(type, value)}",
-         line, col, token_span(token)}
+          token ->
+            unexpected_token_error(
+              token,
+              &"Expected duration after '#{direction}' but found #{&1}"
+            )
+        end
 
       {:error, _message, _line, _col, _span} = error ->
         error
