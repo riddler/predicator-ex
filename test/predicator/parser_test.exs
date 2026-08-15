@@ -2138,6 +2138,50 @@ defmodule Predicator.ParserTest do
     end
   end
 
+  describe "failures after a multi-line string literal" do
+    test "an end-of-input failure reports the true end of the source" do
+      source = "\"ab\ncd\" > "
+
+      assert {:error, _message, line, col, span} = Predicator.parse(source)
+
+      lines = String.split(source, "\n")
+      assert line == length(lines)
+      assert col == String.length(List.last(lines)) + 1
+      assert Predicator.SpanSlicing.slice(source, span) == ""
+    end
+
+    test "an unexpected-token failure reports the offending token's real position" do
+      source = "\"ab\ncd\" > 5 extra"
+
+      assert {:error, message, line, col, span} = Predicator.parse(source)
+
+      assert message =~ "extra"
+      assert {line, col} == {2, 9}
+      assert Predicator.SpanSlicing.slice(source, span) == "extra"
+    end
+
+    test "a lexical failure reports the offending character's real position" do
+      source = "\"ab\ncd\" > @"
+
+      assert {:error, _message, line, col, _span} = Predicator.parse(source)
+
+      assert {line, col} == {2, 7}
+    end
+
+    test "the span-start invariant holds for all three failure kinds" do
+      sources = [
+        "\"ab\ncd\" > ",
+        "\"ab\ncd\" > 5 extra",
+        "\"ab\ncd\" > @"
+      ]
+
+      for source <- sources do
+        assert {:error, _message, line, col, span} = Predicator.parse(source)
+        assert elem(span, 0) == {line, col}
+      end
+    end
+  end
+
   describe "Predicator.parse_program/2 - the façade" do
     test "parses a multi-statement program from source" do
       assert {:ok, {:program, statements, _pos}} = Predicator.parse_program("a = 1; b = a + 1")

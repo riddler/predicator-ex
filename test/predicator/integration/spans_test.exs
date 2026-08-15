@@ -247,6 +247,30 @@ defmodule Predicator.Integration.SpansTest do
     end
   end
 
+  describe "parse-error span after a multi-line string literal" do
+    test "compile_with_spans/1 surfaces a ParseError with the corrected span" do
+      source = "\"ab\ncd\" > "
+
+      assert {:error, %Predicator.Errors.ParseError{span: {start_position, end_position}} = error} =
+               Predicator.compile_with_spans(source)
+
+      assert start_position == error.position
+      assert end_position == start_position
+      assert Predicator.SpanSlicing.slice(source, {start_position, end_position}) == ""
+    end
+
+    test "compile_program_with_spans/1 surfaces a ParseError with the corrected span" do
+      source = "\"ab\ncd\" > "
+
+      assert {:error, %Predicator.Errors.ParseError{span: {start_position, end_position}} = error} =
+               Predicator.compile_program_with_spans(source)
+
+      assert start_position == error.position
+      assert end_position == start_position
+      assert Predicator.SpanSlicing.slice(source, {start_position, end_position}) == ""
+    end
+  end
+
   defp assert_well_formed_slice({start_position, end_position} = span, source) do
     assert start_position <= end_position,
            "reversed span #{inspect(span)} for #{inspect(source)}"
