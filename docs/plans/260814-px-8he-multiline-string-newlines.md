@@ -588,15 +588,15 @@ literal's span is correct. Skip if the file says nothing about token shapes.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality`
-- [ ] The new `describe` block in `test/predicator/parser_test.exs` passes, and
+- [x] Full quality gate passes: `mix quality`
+- [x] The new `describe` block in `test/predicator/parser_test.exs` passes, and
       its end-of-source expectation is computed from the source string rather
       than written as a literal coordinate
-- [ ] The integration case asserting a span-bearing `ParseError` at the public
+- [x] The integration case asserting a span-bearing `ParseError` at the public
       façade passes
-- [ ] `mix docs` builds without warnings after the `docs/architecture.md` edit
-- [ ] Coverage stays above the 90% minimum in `coveralls.json`
-- [ ] `mix corpus.generate` leaves the tree clean:
+- [x] `mix docs` builds without warnings after the `docs/architecture.md` edit
+- [x] Coverage stays above the 90% minimum in `coveralls.json`
+- [x] `mix corpus.generate` leaves the tree clean:
       `git diff --exit-code conformance/`
 
 #### Manual Verification:
@@ -756,6 +756,23 @@ deferred and surfaced once at the end instead of blocking here.
       before the branch - compare against `git stash` or `origin/main`
 - [ ] `Predicator.Lexer.tokenize/1`'s moduledoc examples still read correctly
       as documentation for a reader, not just as passing doctests
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+`mix quality` as the phase gate. In interactive execution, pause here for the
+human to confirm the manual testing before moving to the next phase. In looped
+(`--loop`) execution, this phase's Automated Verification gates advancement
+automatically (via `/wurk:commit --auto`), and Manual Verification items are
+deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 3
+
+- [ ] The error message and caret position a consumer would render from the
+      returned `{line, col}` land on the right character when checked by eye
+      against a hand-written multi-line source
+- [ ] `docs/architecture.md`'s new sentence reads correctly next to its
+      neighbors and uses the file's existing typography
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
 `mix quality` as the phase gate. In interactive execution, pause here for the

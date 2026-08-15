@@ -86,7 +86,7 @@ period.
 
 ### Core Components
 
-- **Lexer** (`lib/predicator/lexer.ex`): Tokenizes expressions with position tracking
+- **Lexer** (`lib/predicator/lexer.ex`): Tokenizes expressions with position tracking. Every token is a 5-element tuple except `:string`, which is 7 elements: it also carries its quote type and an explicit exclusive end position, because a string literal is the only token that can span multiple lines.
 - **Parser** (`lib/predicator/parser.ex`): Recursive descent parser building AST. See the node inventory in `docs/reference/ast.md` for the shape of each node.
 - **Compiler** (`lib/predicator/compiler.ex`): Converts AST to executable instructions  
 - **Evaluator** (`lib/predicator/evaluator.ex`): Executes instructions against data, and carries `:protected_roots` as a per-run write policy - a list of context root names a `store` may not write, refusing with an `EvaluationError` reason `"protected_root"` instead. It is an evaluator option, passed per call like `:loop_budget`, not a `%Context{}` field like `on_unbound`: it is a policy for this run, not a property of the binding. See [`docs/isa.md`](isa.md) for the instruction set specification.

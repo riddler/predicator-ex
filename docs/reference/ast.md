@@ -257,6 +257,12 @@ underline. A span names the position one past a node's last character, so on a
 single line `end_column - start_column` is the length and a zero-width range
 is representable. This matches LSP ranges.
 
+For most tokens that exclusive end is computed from the start position plus
+the token's length. `:string` is the exception: because a string literal can
+span multiple lines, its end position is not computed - it is read directly
+off the token, which carries its own explicit end position for exactly this
+reason. That is what keeps a multi-line literal's span correct.
+
 Where the table above says which token to *blame*, this one says which
 characters to *underline*. A new node type needs a row in both:
 
