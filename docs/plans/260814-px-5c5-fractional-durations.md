@@ -425,18 +425,18 @@ yielding 1 s 500 ms, `"0.5ms"::duration` yielding `:undefined`, and
       neither moves here).
 
 #### Manual Verification:
-- [ ] In `iex -S mix`: `Predicator.Duration.parse("1.5s")`,
+- [x] In `iex -S mix`: `Predicator.Duration.parse("1.5s")`,
       `parse("0.5mo")`, `parse("1.5y")` return exactly the maps the
       decision record's table predicts.
-- [ ] `Predicator.evaluate("\"1.5s\"::duration", %{})` returns the duration
+- [x] `Predicator.evaluate("\"1.5s\"::duration", %{})` returns the duration
       and `Predicator.evaluate("\"0.5ms\"::duration", %{})` returns
       `:undefined`.
-- [ ] Read the rewritten `docs/isa.md` §5 bullet against
+- [x] Read the rewritten `docs/isa.md` §5 bullet against
       `lib/predicator/duration.ex` and confirm the prose describes what the
       code does, including the `mo`/`y` approximation commitment.
-- [ ] Confirm by eye that no float ever carries a fraction on the new path -
+- [x] Confirm by eye that no float ever carries a fraction on the new path -
       `String.to_float/1` appears nowhere in `duration.ex`.
-- [ ] No regressions in `::duration` behavior for integer strings.
+- [x] No regressions in `::duration` behavior for integer strings.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive
@@ -658,16 +658,16 @@ that adds no AST node.
       `area:build` file.
 
 #### Manual Verification:
-- [ ] In `iex -S mix`: `Predicator.compile("1.5s")` prints
+- [x] In `iex -S mix`: `Predicator.compile("1.5s")` prints
       `[["duration", [[1, "s"], [500, "ms"]]]]`.
-- [ ] `Predicator.compile("0.5ms")` and `Predicator.compile("1.5s200ms")`
+- [x] `Predicator.compile("0.5ms")` and `Predicator.compile("1.5s200ms")`
       return errors whose messages read clearly to a user who did not write
       this plan, and whose carets land where the plan says (the component,
       and the whole literal, respectively).
-- [ ] `Predicator.compile("1.5x")` fails the same way it does on `main` -
+- [x] `Predicator.compile("1.5x")` fails the same way it does on `main` -
       the fractional path did not capture a non-unit suffix.
-- [ ] `Predicator.evaluate("1.5s ago < now()", %{})` behaves sensibly.
-- [ ] No regressions in relative-date forms (`ago`, `from now`, `next`,
+- [x] `Predicator.evaluate("1.5s ago < now()", %{})` behaves sensibly.
+- [x] No regressions in relative-date forms (`ago`, `from now`, `next`,
       `last`) with fractional durations.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
@@ -766,12 +766,12 @@ refinement they export, no ISA version bump and why (Decision 1), and the
 - [x] `conformance/manifest.json`'s `isa_version` still reads 6.
 
 #### Manual Verification:
-- [ ] Read the generated corpus diff and confirm every changed line is
+- [x] Read the generated corpus diff and confirm every changed line is
       attributable to one of the four new cases or to the `corpus_hash`
       recomputation - no unrelated case moved.
-- [ ] Confirm the four cases' `notes` fields would tell a Ruby or TypeScript
+- [x] Confirm the four cases' `notes` fields would tell a Ruby or TypeScript
       porter what to implement without reading this repo's source.
-- [ ] Confirm the `durations/later-unit-pair-overwrites-earlier` case is
+- [x] Confirm the `durations/later-unit-pair-overwrites-earlier` case is
       byte-identical to its previous form (Decision 6b's "integer-only
       literals are untouched").
 
@@ -915,20 +915,70 @@ Manual verification items are deferred during looped (--loop) execution and
 surfaced here once, rather than blocking after each phase. Confirm these
 before considering the plan fully landed.
 
+**All items below were confirmed on 2026-08-14.** The parse table was checked
+against the decision record's exhaustive table rather than against whatever
+the code happened to return, and every row matched, including the two that
+commit an approximation (`0.5mo` is `15d` with no months component, `1.5y` is
+`1y182d12h`). Four notes on how the harder items were checked, and two
+findings that are not visible from the diff:
+
+- **The span items were checked on multi-component literals**, not only on
+  the single-component ones the plan names, because `0.5ms` is degenerate:
+  its component and its literal are the same extent, so it cannot distinguish
+  the two span rules. `1d0.5ms` spans columns 3-8 (the component alone) and
+  `1d1.5s1s` spans 1-9 (the whole literal), which is the distinction the plan
+  asked for.
+- **The `1.5x` item was verified statically, not by running against `main`**,
+  which is a departure from how px-8he checked its "unchanged behavior" items.
+  The main checkout has no fetched dependencies, and `mix deps.get` there can
+  move `mix.lock` - an `area:build` file this bead must not touch. The static
+  check is conclusive in this case: the new `:not_duration` branch emits
+  `{:float, line, col, consumed, number}`, byte-identical to the unconditional
+  line it replaced, so the token stream for a decimal followed by a non-unit
+  cannot have changed.
+- **The plan's `1.5s ago < now()` item names a spelling the language does not
+  have.** `now()` is not a function here; the item was verified with the four
+  documented relative forms instead (`1.5s ago`, `1.5d from now`,
+  `next 1.5mo`, `last 1.5y`), each checked by arithmetic against the current
+  instant - `next 1.5mo` advances 45 days and `last 1.5y` rewinds 547.5, which
+  are the 30-day and 365-day approximations showing through as intended.
+- **The corpus item was checked as a count identity, not by reading prose.**
+  The generated diff is four added lines and zero deletions, and the manifest
+  moves by exactly +2 rich types and +2 casts with `isa_version` still 6. The
+  `durations/later-unit-pair-overwrites-earlier` case was diffed directly
+  between `main` and the branch head and is byte-identical, which is what
+  Decision 6b's "integer-only literals are untouched" predicts.
+
+Two findings recorded here because neither shows up in the diff:
+
+- **`.5s` crashes rather than failing as a parse error**, raising
+  `FunctionClauseError` from `Parser.format_token/2` on the `:dot` token. This
+  is pre-existing and is filed as px-ty0; it is not fallout from this bead. The
+  evidence is that no `lib/` change on this branch touches the dot or
+  `format_token` paths - the only occurrence of "dot" in the `lib/` diff is
+  documentation prose. Decision 4 rejects `.5s` at both entry points, and
+  `Duration.parse(".5s")` does return `:error` correctly; it is only the
+  literal path that raises.
+- **One porter note points at a path a porter cannot read.** The
+  `casts/string-to-duration-fractional` case cites
+  `docs/research/260814-px-5c5-fractional-durations-decisions.md`, which does
+  not ship with the corpus. The note's substance stands without it, so this is
+  cosmetic rather than a defect in the export.
+
 ### Phase 1
 
-- [ ] In `iex -S mix`: `Predicator.Duration.parse("1.5s")`,
+- [x] In `iex -S mix`: `Predicator.Duration.parse("1.5s")`,
       `parse("0.5mo")`, `parse("1.5y")` return exactly the maps the
       decision record's table predicts.
-- [ ] `Predicator.evaluate("\"1.5s\"::duration", %{})` returns the duration
+- [x] `Predicator.evaluate("\"1.5s\"::duration", %{})` returns the duration
       and `Predicator.evaluate("\"0.5ms\"::duration", %{})` returns
       `:undefined`.
-- [ ] Read the rewritten `docs/isa.md` §5 bullet against
+- [x] Read the rewritten `docs/isa.md` §5 bullet against
       `lib/predicator/duration.ex` and confirm the prose describes what the
       code does, including the `mo`/`y` approximation commitment.
-- [ ] Confirm by eye that no float ever carries a fraction on the new path -
+- [x] Confirm by eye that no float ever carries a fraction on the new path -
       `String.to_float/1` appears nowhere in `duration.ex`.
-- [ ] No regressions in `::duration` behavior for integer strings.
+- [x] No regressions in `::duration` behavior for integer strings.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive
@@ -942,16 +992,16 @@ surfaced once at the end instead of blocking here.
 
 ### Phase 2
 
-- [ ] In `iex -S mix`: `Predicator.compile("1.5s")` prints
+- [x] In `iex -S mix`: `Predicator.compile("1.5s")` prints
       `[["duration", [[1, "s"], [500, "ms"]]]]`.
-- [ ] `Predicator.compile("0.5ms")` and `Predicator.compile("1.5s200ms")`
+- [x] `Predicator.compile("0.5ms")` and `Predicator.compile("1.5s200ms")`
       return errors whose messages read clearly to a user who did not write
       this plan, and whose carets land where the plan says (the component,
       and the whole literal, respectively).
-- [ ] `Predicator.compile("1.5x")` fails the same way it does on `main` -
+- [x] `Predicator.compile("1.5x")` fails the same way it does on `main` -
       the fractional path did not capture a non-unit suffix.
-- [ ] `Predicator.evaluate("1.5s ago < now()", %{})` behaves sensibly.
-- [ ] No regressions in relative-date forms (`ago`, `from now`, `next`,
+- [x] `Predicator.evaluate("1.5s ago < now()", %{})` behaves sensibly.
+- [x] No regressions in relative-date forms (`ago`, `from now`, `next`,
       `last`) with fractional durations.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
@@ -966,12 +1016,12 @@ surfaced once at the end instead of blocking here.
 
 ### Phase 3
 
-- [ ] Read the generated corpus diff and confirm every changed line is
+- [x] Read the generated corpus diff and confirm every changed line is
       attributable to one of the four new cases or to the `corpus_hash`
       recomputation - no unrelated case moved.
-- [ ] Confirm the four cases' `notes` fields would tell a Ruby or TypeScript
+- [x] Confirm the four cases' `notes` fields would tell a Ruby or TypeScript
       porter what to implement without reading this repo's source.
-- [ ] Confirm the `durations/later-unit-pair-overwrites-earlier` case is
+- [x] Confirm the `durations/later-unit-pair-overwrites-earlier` case is
       byte-identical to its previous form (Decision 6b's "integer-only
       literals are untouched").
 
