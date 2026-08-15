@@ -302,16 +302,16 @@ Files needing `import Predicator.ParseShape`: the residual,
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix test test/predicator_test.exs test/predicator_compile_test.exs test/predicator_evaluate_test.exs test/predicator_logical_operators_test.exs test/predicator_collections_test.exs test/predicator_access_test.exs`
+- [x] `mix test test/predicator_test.exs test/predicator_compile_test.exs test/predicator_evaluate_test.exs test/predicator_logical_operators_test.exs test/predicator_collections_test.exs test/predicator_access_test.exs`
       reports exactly **58 doctests, 208 tests, 0 failures**
-- [ ] `mix test` reports **446 doctests, 2785 tests, 0 failures**
-- [ ] Full `mix quality` is green (format, compile with warnings-as-errors,
+- [x] `mix test` reports **446 doctests, 2785 tests, 0 failures**
+- [x] Full `mix quality` is green (format, compile with warnings-as-errors,
       `credo --strict` over `test/` included, dialyzer, coverage)
-- [ ] Coverage stays at or above the 90% minimum in `coveralls.json` - no
+- [x] Coverage stays at or above the 90% minimum in `coveralls.json` - no
       `lib/` line loses its only exercising test
-- [ ] `git diff --stat` shows no file under `lib/`, `conformance/`, or
+- [x] `git diff --stat` shows no file under `lib/`, `conformance/`, or
       `mix.exs` changed
-- [ ] `wc -l` on each of the six files above is under 550
+- [x] `wc -l` on each of the six files above is under 550
 
 #### Manual Verification:
 - [ ] Spot-check three moved describes against `git show HEAD:test/predicator_test.exs`
@@ -732,3 +732,27 @@ grammar node is added, removed, or altered by any phase.
 - Related ADRs: `docs/adr/0005-worktree-parallelism-and-the-area-label-algebra.md`
   (this bead spans four areas and lands alone),
   `docs/adr/0006-irreversibility-places-the-human-gates.md` (commit authority)
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] Spot-check three moved describes against `git show HEAD:test/predicator_test.exs`
+      and confirm the block is byte-identical, indentation included
+- [ ] Each new file's alias list is exactly what its tests reference - no
+      alias copied "just in case"
+- [ ] No new file contains a `doctest` line
+- [ ] Grouping reads sensibly to a human opening the directory
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---

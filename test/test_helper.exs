@@ -142,6 +142,42 @@ defmodule Predicator.ASTShape do
     do: {{:object_key, value, style, nil}, blank(node)}
 end
 
+defmodule Predicator.ParseShape do
+  @moduledoc """
+  Parses to the slot-free AST shape most parser assertions read.
+
+  These assertions are about AST *shape*, so they drop the trailing source
+  slot; positions and spans have their own suites
+  (`parser_positions_test.exs`, `parser_spans_test.exs`). Lives here rather
+  than in one test file because `predicator_test.exs`, `parser_test.exs`, and
+  the files split out of them all read it - the same reason
+  `Predicator.ASTShape` above is here.
+  """
+
+  @doc "Parses `input` (source binary or token list) to a slot-free AST."
+  @spec parse_positionless(binary() | [tuple()]) :: {:ok, term()} | {:error, term()}
+  def parse_positionless(input) do
+    result =
+      if is_binary(input),
+        do: Predicator.parse(input),
+        else: Predicator.Parser.parse(input)
+
+    case result do
+      {:ok, ast} -> {:ok, Predicator.ASTShape.strip(ast)}
+      other -> other
+    end
+  end
+
+  @doc "Parses `tokens` as a program, to a slot-free AST."
+  @spec parse_program_positionless([tuple()]) :: {:ok, term()} | {:error, term()}
+  def parse_program_positionless(tokens) do
+    case Predicator.Parser.parse_program(tokens) do
+      {:ok, program} -> {:ok, Predicator.ASTShape.strip(program)}
+      other -> other
+    end
+  end
+end
+
 defmodule Predicator.Conformance.SchemaValidator do
   @moduledoc """
   A small, hand-rolled structural JSON Schema validator: required keys, JSON
