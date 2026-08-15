@@ -490,6 +490,52 @@ defmodule Predicator.DurationTest do
     end
   end
 
+  describe "expand_fraction/3" do
+    # Every row of the worked-expectations table in
+    # docs/plans/260814-px-5c5-fractional-durations.md's Phase 1, exhaustive
+    # over docs/research/260814-px-5c5-fractional-durations-decisions.md's
+    # Decision 2 (integer-arithmetic exactness) and Decision 3 (greedy
+    # decomposition through d/h/m/s/ms only).
+    test "expands the fractional part onto the remainder ladder, per unit" do
+      assert Duration.expand_fraction(1, "5", "s") == {:ok, [{1, "s"}, {500, "ms"}]}
+      assert Duration.expand_fraction(1, "5", "m") == {:ok, [{1, "m"}, {30, "s"}]}
+      assert Duration.expand_fraction(1, "5", "h") == {:ok, [{1, "h"}, {30, "m"}]}
+      assert Duration.expand_fraction(1, "5", "d") == {:ok, [{1, "d"}, {12, "h"}]}
+      assert Duration.expand_fraction(0, "5", "w") == {:ok, [{3, "d"}, {12, "h"}]}
+      assert Duration.expand_fraction(0, "5", "mo") == {:ok, [{15, "d"}]}
+      assert Duration.expand_fraction(1, "5", "y") == {:ok, [{1, "y"}, {182, "d"}, {12, "h"}]}
+    end
+
+    test "omits a zero remainder, and keeps only the integer part's pair" do
+      assert Duration.expand_fraction(1, "0", "s") == {:ok, [{1, "s"}]}
+      assert Duration.expand_fraction(1, "0", "ms") == {:ok, [{1, "ms"}]}
+    end
+
+    test "a zero integer part with a zero fraction still yields one pair on the source unit" do
+      # This is what keeps the AST's unit list non-empty and keeps
+      # StringVisitor's rendering round-trippable (Decision 6, worked
+      # expectations, and plan step 6 of the expansion helper).
+      assert Duration.expand_fraction(0, "0", "s") == {:ok, [{0, "s"}]}
+    end
+
+    test "sub-second cases named by hand in the decision record" do
+      assert Duration.expand_fraction(0, "25", "s") == {:ok, [{250, "ms"}]}
+      assert Duration.expand_fraction(0, "1", "s") == {:ok, [{100, "ms"}]}
+    end
+
+    test "rejects a sub-millisecond remainder" do
+      assert Duration.expand_fraction(0, "5", "ms") == {:error, :subunit_remainder}
+    end
+
+    test "rejects an inexact fraction with more digits than the unit can hold" do
+      assert Duration.expand_fraction(1, "0005", "s") == {:error, :subunit_remainder}
+    end
+
+    test "rejects an unknown unit" do
+      assert Duration.expand_fraction(1, "5", "x") == {:error, :unknown_unit}
+    end
+  end
+
   describe "parse/1" do
     test "parses each of the eight units alone" do
       assert Duration.parse("1y") == {:ok, Duration.new(years: 1)}
@@ -550,8 +596,38 @@ defmodule Predicator.DurationTest do
       assert Duration.parse("-1d") == :error
     end
 
-    test "rejects a float value" do
-      assert Duration.parse("1.5d") == :error
+    test "accepts a fractional value and expands it to whole units" do
+      assert Duration.parse("1.5d") == {:ok, Duration.new(days: 1, hours: 12)}
+    end
+
+    test "accepts a fractional component on every unit" do
+      assert Duration.parse("1.5s") == {:ok, Duration.new(seconds: 1, milliseconds: 500)}
+      assert Duration.parse("0.5s") == {:ok, Duration.new(milliseconds: 500)}
+      assert Duration.parse("0.25s") == {:ok, Duration.new(milliseconds: 250)}
+      assert Duration.parse("0.1s") == {:ok, Duration.new(milliseconds: 100)}
+      assert Duration.parse("1.0s") == {:ok, Duration.new(seconds: 1)}
+      assert Duration.parse("0.0s") == {:ok, Duration.new(seconds: 0)}
+      assert Duration.parse("1.5m") == {:ok, Duration.new(minutes: 1, seconds: 30)}
+      assert Duration.parse("1.5h") == {:ok, Duration.new(hours: 1, minutes: 30)}
+      assert Duration.parse("0.5w") == {:ok, Duration.new(days: 3, hours: 12)}
+
+      # 0.5mo commits the documented 30-day approximation at parse time - no
+      # months key in the result (Decision 3).
+      assert Duration.parse("0.5mo") == {:ok, Duration.new(days: 15)}
+
+      assert Duration.parse("1.5y") == {:ok, Duration.new(years: 1, days: 182, hours: 12)}
+      assert Duration.parse("1.0ms") == {:ok, Duration.new(milliseconds: 1)}
+    end
+
+    test "accumulates a mixed fractional and integer literal, unlike the compiled literal grammar" do
+      # Duration.parse/1 stays a lenient accumulator uniformly, expansions
+      # included (Decision 6c): "1.5s200ms" expands "1.5s" to 1s500ms and then
+      # accumulates the "200ms" component onto the same milliseconds field,
+      # giving 1s700ms. The compiled duration *literal* `1.5s200ms` takes a
+      # different, stricter path (a compile-time collision error, Phase 2) -
+      # this divergence is deliberate and documented in
+      # docs/reference/language.md's canonicalizer section.
+      assert Duration.parse("1.5s200ms") == {:ok, Duration.new(seconds: 1, milliseconds: 700)}
     end
 
     test "rejects an unknown unit" do
@@ -568,6 +644,34 @@ defmodule Predicator.DurationTest do
 
     test "rejects embedded whitespace" do
       assert Duration.parse("1d 2h") == :error
+    end
+
+    test "rejects a sub-millisecond remainder" do
+      assert Duration.parse("0.5ms") == :error
+    end
+
+    test "rejects an inexact fraction" do
+      assert Duration.parse("1.0005s") == :error
+    end
+
+    test "rejects a leading-dot fraction" do
+      assert Duration.parse(".5s") == :error
+    end
+
+    test "rejects a trailing-dot fraction" do
+      assert Duration.parse("1.s") == :error
+    end
+
+    test "rejects a bare unit" do
+      assert Duration.parse("s") == :error
+    end
+
+    test "rejects a double dot" do
+      assert Duration.parse("1..5s") == :error
+    end
+
+    test "rejects a fraction with no unit" do
+      assert Duration.parse("1.5") == :error
     end
 
     test "rejects a bare number with no unit" do

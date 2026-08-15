@@ -406,21 +406,21 @@ yielding 1 s 500 ms, `"0.5ms"::duration` yielding `:undefined`, and
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green (format, compile, `credo --strict`, dialyzer,
+- [x] `mix quality` is green (format, compile, `credo --strict`, dialyzer,
       deps audit, suite with coverage).
-- [ ] Coverage for `lib/predicator/duration.ex` stays above the 90% minimum
+- [x] Coverage for `lib/predicator/duration.ex` stays above the 90% minimum
       in `coveralls.json`; every branch of `expand_fraction/3`, both error
       atoms included, is covered.
-- [ ] The new `@doc` doctests on `parse/1` pass (they run as part of the
+- [x] The new `@doc` doctests on `parse/1` pass (they run as part of the
       suite).
-- [ ] `git diff --stat` touches no file outside `lib/predicator/duration.ex`,
+- [x] `git diff --stat` touches no file outside `lib/predicator/duration.ex`,
       `test/predicator/duration_test.exs`, `test/predicator/cast_test.exs`,
       `docs/isa.md`, `docs/reference/language.md`, and `CHANGELOG.md` - in
       particular no `mix.exs`/`mix.lock` (`area:build` is exclusive,
       ADR-0005) and no `conformance/`.
-- [ ] `grep -n 'isa_version' lib/predicator.ex` and `docs/isa.md`'s §1
+- [x] `grep -n 'isa_version' lib/predicator.ex` and `docs/isa.md`'s §1
       version line still read 6, and `docs/isa.md` §7 has no new row.
-- [ ] `test/predicator/isa_sync_test.exs` still passes (it binds
+- [x] `test/predicator/isa_sync_test.exs` still passes (it binds
       `docs/isa.md`'s opcode tables to `lib/predicator/instructions.ex`;
       neither moves here).
 
@@ -908,3 +908,34 @@ time, never at evaluation time. Nothing in the hot evaluation path changes.
 - ISA: `docs/isa.md` §1 (versioning), §5 (`cast` string formats and the
   `bracket_access` refinement template at `:518-523`), §8 (the corpus does
   not cover parse or lexer errors)
+
+## Deferred Manual Verification
+
+Manual verification items are deferred during looped (--loop) execution and
+surfaced here once, rather than blocking after each phase. Confirm these
+before considering the plan fully landed.
+
+### Phase 1
+
+- [ ] In `iex -S mix`: `Predicator.Duration.parse("1.5s")`,
+      `parse("0.5mo")`, `parse("1.5y")` return exactly the maps the
+      decision record's table predicts.
+- [ ] `Predicator.evaluate("\"1.5s\"::duration", %{})` returns the duration
+      and `Predicator.evaluate("\"0.5ms\"::duration", %{})` returns
+      `:undefined`.
+- [ ] Read the rewritten `docs/isa.md` §5 bullet against
+      `lib/predicator/duration.ex` and confirm the prose describes what the
+      code does, including the `mo`/`y` approximation commitment.
+- [ ] Confirm by eye that no float ever carries a fraction on the new path -
+      `String.to_float/1` appears nowhere in `duration.ex`.
+- [ ] No regressions in `::duration` behavior for integer strings.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits while
+iterating; run full `mix quality` as the phase gate. In interactive
+execution, pause here for the human to confirm the manual testing before
+moving to the next phase. In looped (`--loop`) execution, this phase's
+Automated Verification gates advancement automatically (via
+`/wurk:commit --auto`), and Manual Verification items are deferred and
+surfaced once at the end instead of blocking here.
+
+---
