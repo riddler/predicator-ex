@@ -343,13 +343,13 @@ Phase 2 extends this bullet.
 - [x] `CHANGELOG.md` has a `### Fixed` bullet under `## [Unreleased]`
 
 #### Manual Verification:
-- [ ] `Predicator.Lexer.tokenize/1` on a hand-written three-line source with a
+- [x] `Predicator.Lexer.tokenize/1` on a hand-written three-line source with a
       literal spanning lines 1-2 and an operator on line 3 reports positions
       that match the source read by eye
-- [ ] `Predicator.evaluate/3` on a predicate containing a multi-line string
+- [x] `Predicator.evaluate/3` on a predicate containing a multi-line string
       returns the same result as before the change - positions moved, semantics
       did not
-- [ ] No regression in `StringVisitor` round-tripping a multi-line string
+- [x] No regression in `StringVisitor` round-tripping a multi-line string
       literal back to source
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
@@ -517,12 +517,12 @@ move. Note the lexer's `:string` token shape change in the same bullet, since
       change
 
 #### Manual Verification:
-- [ ] `Predicator.compile_with_spans("\"ab\ncd\" > 5")` returns
+- [x] `Predicator.compile_with_spans("\"ab\ncd\" > 5")` returns
       `%{0 => {{1, 1}, {2, 4}}, ...}` and each span, sliced out of the source,
       reads as the construct it names
-- [ ] A single-line source's `compile_with_spans/1` output is unchanged from
+- [x] A single-line source's `compile_with_spans/1` output is unchanged from
       before the branch - compare against `git stash` or `origin/main`
-- [ ] `Predicator.Lexer.tokenize/1`'s moduledoc examples still read correctly
+- [x] `Predicator.Lexer.tokenize/1`'s moduledoc examples still read correctly
       as documentation for a reader, not just as passing doctests
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
@@ -600,10 +600,10 @@ literal's span is correct. Skip if the file says nothing about token shapes.
       `git diff --exit-code conformance/`
 
 #### Manual Verification:
-- [ ] The error message and caret position a consumer would render from the
+- [x] The error message and caret position a consumer would render from the
       returned `{line, col}` land on the right character when checked by eye
       against a hand-written multi-line source
-- [ ] `docs/architecture.md`'s new sentence reads correctly next to its
+- [x] `docs/architecture.md`'s new sentence reads correctly next to its
       neighbors and uses the file's existing typography
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
@@ -727,15 +727,34 @@ Manual verification items are deferred during looped (--loop) execution and
 surfaced here once, rather than blocking after each phase. Confirm these
 before considering the plan fully landed.
 
+**All items below were confirmed on 2026-08-14.** The "unchanged behavior"
+items were checked by running the same script against a throwaway worktree at
+the branch point (`dfdd94f`) and diffing the output, rather than by
+inspection: single-line `compile_with_spans/1` positions, `evaluate/3`
+results, and `StringVisitor` round-tripping are byte-identical to
+pre-change. Two findings came out of the pass and are recorded here because
+neither is visible from the diff:
+
+- The pre-change span end for `"ab\ncd"` was `{1, 8}`, which slices the
+  literal out of the source correctly even though line 1 holds only three
+  characters. A column measured without counting newlines coincides with a
+  flat offset, so a consumer doing byte arithmetic saw plausible values while
+  a consumer trusting the line number did not - which is the statifier
+  failure mode the bead predicted, and the reason a slicing assertion alone
+  would not have caught this.
+- The end-of-input error position after a multi-line literal now lands at the
+  true end of the source, restoring px-dmt's guarantee for exactly the
+  sources it did not previously hold for.
+
 ### Phase 1
 
-- [ ] `Predicator.Lexer.tokenize/1` on a hand-written three-line source with a
+- [x] `Predicator.Lexer.tokenize/1` on a hand-written three-line source with a
       literal spanning lines 1-2 and an operator on line 3 reports positions
       that match the source read by eye
-- [ ] `Predicator.evaluate/3` on a predicate containing a multi-line string
+- [x] `Predicator.evaluate/3` on a predicate containing a multi-line string
       returns the same result as before the change - positions moved, semantics
       did not
-- [ ] No regression in `StringVisitor` round-tripping a multi-line string
+- [x] No regression in `StringVisitor` round-tripping a multi-line string
       literal back to source
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
@@ -749,12 +768,12 @@ deferred and surfaced once at the end instead of blocking here.
 
 ### Phase 2
 
-- [ ] `Predicator.compile_with_spans("\"ab\ncd\" > 5")` returns
+- [x] `Predicator.compile_with_spans("\"ab\ncd\" > 5")` returns
       `%{0 => {{1, 1}, {2, 4}}, ...}` and each span, sliced out of the source,
       reads as the construct it names
-- [ ] A single-line source's `compile_with_spans/1` output is unchanged from
+- [x] A single-line source's `compile_with_spans/1` output is unchanged from
       before the branch - compare against `git stash` or `origin/main`
-- [ ] `Predicator.Lexer.tokenize/1`'s moduledoc examples still read correctly
+- [x] `Predicator.Lexer.tokenize/1`'s moduledoc examples still read correctly
       as documentation for a reader, not just as passing doctests
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
@@ -768,10 +787,10 @@ deferred and surfaced once at the end instead of blocking here.
 
 ### Phase 3
 
-- [ ] The error message and caret position a consumer would render from the
+- [x] The error message and caret position a consumer would render from the
       returned `{line, col}` land on the right character when checked by eye
       against a hand-written multi-line source
-- [ ] `docs/architecture.md`'s new sentence reads correctly next to its
+- [x] `docs/architecture.md`'s new sentence reads correctly next to its
       neighbors and uses the file's existing typography
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
