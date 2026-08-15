@@ -514,17 +514,17 @@ source` (~330 lines).
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix test test/predicator/visitors/string_visitor_test.exs test/predicator/visitors/string_visitor_precedence_test.exs test/predicator/visitors/string_visitor_operators_test.exs test/predicator/visitors/string_visitor_integration_test.exs test/predicator/visitors/string_visitor_programs_test.exs`
+- [x] `mix test test/predicator/visitors/string_visitor_test.exs test/predicator/visitors/string_visitor_precedence_test.exs test/predicator/visitors/string_visitor_operators_test.exs test/predicator/visitors/string_visitor_integration_test.exs test/predicator/visitors/string_visitor_programs_test.exs`
       reports exactly **12 doctests, 157 tests, 0 failures**
-- [ ] `mix test` reports **446 doctests, 2785 tests, 0 failures**
-- [ ] Full `mix quality` is green
-- [ ] Coverage stays at or above the 90% minimum in `coveralls.json` - the
+- [x] `mix test` reports **446 doctests, 2785 tests, 0 failures**
+- [x] Full `mix quality` is green
+- [x] Coverage stays at or above the 90% minimum in `coveralls.json` - the
       round-trip corpora are what cover several `StringVisitor` clauses, so a
       dropped `@corpus` shows up here and in
       `test/predicator/visitor_clause_coverage_test.exs`
-- [ ] `git diff --stat` shows no file under `lib/`, `conformance/`, or
+- [x] `git diff --stat` shows no file under `lib/`, `conformance/`, or
       `mix.exs` changed
-- [ ] No file among the five exceeds 550 lines
+- [x] No file among the five exceeds 550 lines
 
 #### Manual Verification:
 - [ ] `@corpus`, `@precedence_corpus`, and `@control_flow_corpus` each appear
@@ -778,6 +778,23 @@ items are deferred and surfaced once at the end instead of blocking here.
 
 - [ ] `RaisingProvider` is still defined exactly once, in the residual file
 - [ ] Three moved describes spot-checked byte-identical against the original
+- [ ] No new file contains a `doctest` line
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 4
+
+- [ ] `@corpus`, `@precedence_corpus`, and `@control_flow_corpus` each appear
+      exactly once across the five files, with the same entries as before
+- [ ] `assert_tree_fixpoint/1`, `assert_string_fixpoint/1`, and
+      `assert_program_round_trip/1` each appear exactly once
 - [ ] No new file contains a `doctest` line
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
