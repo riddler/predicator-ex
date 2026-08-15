@@ -382,14 +382,14 @@ group (tests tokenize before parsing); copy it only where referenced.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix test test/predicator/parser_test.exs test/predicator/parser_errors_test.exs test/predicator/parser_error_spans_test.exs test/predicator/parser_operators_test.exs test/predicator/parser_bracket_access_test.exs test/predicator/parser_type_casts_test.exs test/predicator/parser_durations_test.exs test/predicator/parser_program_test.exs`
+- [x] `mix test test/predicator/parser_test.exs test/predicator/parser_errors_test.exs test/predicator/parser_error_spans_test.exs test/predicator/parser_operators_test.exs test/predicator/parser_bracket_access_test.exs test/predicator/parser_type_casts_test.exs test/predicator/parser_durations_test.exs test/predicator/parser_program_test.exs`
       reports exactly **9 doctests, 233 tests, 0 failures**
-- [ ] `mix test` reports **446 doctests, 2785 tests, 0 failures**
-- [ ] Full `mix quality` is green
-- [ ] Coverage stays at or above the 90% minimum in `coveralls.json`
-- [ ] `git diff --stat` shows no file under `lib/`, `conformance/`, or
+- [x] `mix test` reports **446 doctests, 2785 tests, 0 failures**
+- [x] Full `mix quality` is green
+- [x] Coverage stays at or above the 90% minimum in `coveralls.json`
+- [x] `git diff --stat` shows no file under `lib/`, `conformance/`, or
       `mix.exs` changed
-- [ ] No file among the eight exceeds 550 lines
+- [x] No file among the eight exceeds 550 lines
 
 #### Manual Verification:
 - [ ] Three moved describes spot-checked byte-identical against
@@ -747,6 +747,23 @@ before considering the plan fully landed.
       alias copied "just in case"
 - [ ] No new file contains a `doctest` line
 - [ ] Grouping reads sensibly to a human opening the directory
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] Three moved describes spot-checked byte-identical against
+      `git show <phase-1-sha>:test/predicator/parser_test.exs`
+- [ ] `parser_*_test.exs` naming reads consistently with the five
+      pre-existing `parser_*_test.exs` files
+- [ ] No new file contains a `doctest` line
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
 full `mix quality` as the phase gate. In interactive execution, pause here for
