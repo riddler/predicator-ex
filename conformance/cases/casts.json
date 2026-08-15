@@ -360,6 +360,32 @@
     "notes": "regression for the same anchoring defect fixed on px-2r5.3 (commit a06ba16): a trailing newline silently parsed as a valid duration before the fix, on top of the integer and float paths"
   },
   {
+    "id": "casts/string-to-duration-fractional",
+    "source": "\"1.5s\"::duration",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 1,
+          "milliseconds": 500
+        }
+      }
+    },
+    "notes": "this is the export mechanism for the docs/isa.md section 5 refinement - no ISA version was minted (see docs/research/260814-px-5c5-fractional-durations-decisions.md), so the corpus is where a sibling learns the widened grammar. The fraction expands to integer unit pairs at parse time, so the duration opcode's operand shape is unchanged"
+  },
+  {
+    "id": "casts/string-to-duration-subunit-remainder-is-undefined",
+    "source": "\"0.5ms\"::duration",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "pins the exactness rule: half a millisecond is below the value domain's floor, and by ADR-0011 an unparseable string is :undefined, never an error"
+  },
+  {
     "id": "casts/undefined-propagates-to-string",
     "source": "user.missing::string",
     "context": { "user": {} },
