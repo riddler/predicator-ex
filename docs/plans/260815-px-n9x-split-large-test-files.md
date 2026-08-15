@@ -446,14 +446,14 @@ reference those structs.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix test test/predicator/evaluator_test.exs test/predicator/evaluator_bracket_access_test.exs test/predicator/evaluator_dates_test.exs test/predicator/evaluator_logical_test.exs test/predicator/evaluator_unbound_test.exs`
+- [x] `mix test test/predicator/evaluator_test.exs test/predicator/evaluator_bracket_access_test.exs test/predicator/evaluator_dates_test.exs test/predicator/evaluator_logical_test.exs test/predicator/evaluator_unbound_test.exs`
       reports exactly **13 doctests, 171 tests, 0 failures**
-- [ ] `mix test` reports **446 doctests, 2785 tests, 0 failures**
-- [ ] Full `mix quality` is green
-- [ ] Coverage stays at or above the 90% minimum in `coveralls.json`
-- [ ] `git diff --stat` shows no file under `lib/`, `conformance/`, or
+- [x] `mix test` reports **446 doctests, 2785 tests, 0 failures**
+- [x] Full `mix quality` is green
+- [x] Coverage stays at or above the 90% minimum in `coveralls.json`
+- [x] `git diff --stat` shows no file under `lib/`, `conformance/`, or
       `mix.exs` changed
-- [ ] No file among the five exceeds 550 lines
+- [x] No file among the five exceeds 550 lines
 
 #### Manual Verification:
 - [ ] `RaisingProvider` is still defined exactly once, in the residual file
@@ -763,6 +763,21 @@ items are deferred and surfaced once at the end instead of blocking here.
       `git show <phase-1-sha>:test/predicator/parser_test.exs`
 - [ ] `parser_*_test.exs` naming reads consistently with the five
       pre-existing `parser_*_test.exs` files
+- [ ] No new file contains a `doctest` line
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 3
+
+- [ ] `RaisingProvider` is still defined exactly once, in the residual file
+- [ ] Three moved describes spot-checked byte-identical against the original
 - [ ] No new file contains a `doctest` line
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
