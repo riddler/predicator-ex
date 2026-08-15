@@ -309,20 +309,134 @@ defmodule Predicator.Duration do
   defp format_duration_parts([]), do: "0s"
   defp format_duration_parts(parts), do: Enum.join(parts, "")
 
-  @whole_string_regex ~r/\A(?:[0-9]+(?:mo|ms|y|w|d|h|m|s))+\z/
-  @unit_pair_regex ~r/([0-9]+)(mo|ms|y|w|d|h|m|s)/
+  # The exact integer millisecond multiplier for each unit - the same table
+  # to_milliseconds/1 sums with. mo and y use this project's documented 30-day
+  # and 365-day approximations.
+  @unit_milliseconds %{
+    "ms" => 1,
+    "s" => 1_000,
+    "m" => 60_000,
+    "h" => 3_600_000,
+    "d" => 86_400_000,
+    "w" => 604_800_000,
+    "mo" => 2_592_000_000,
+    "y" => 31_536_000_000
+  }
+
+  # A fraction's remainder decomposes largest-first through these units only -
+  # never back into w, mo, or y. See
+  # docs/research/260814-px-5c5-fractional-durations-decisions.md Decision 3:
+  # this keeps 0.5y as 182d12h rather than 26w12h, and re-introducing an
+  # approximate unit into a remainder would be circular.
+  @remainder_ladder [
+    {"d", 86_400_000},
+    {"h", 3_600_000},
+    {"m", 60_000},
+    {"s", 1_000},
+    {"ms", 1}
+  ]
+
+  @doc """
+  Expands a fractional duration component into whole-unit integer pairs.
+
+  `integer_part` is the whole-number portion of the component and
+  `fraction_digits` its fractional digits as a literal decimal string (never
+  a parsed float - see Decision 2 in the decision record cited above: binary
+  floats must not appear anywhere on this path). `unit` is the component's
+  source unit.
+
+  The fraction is valid only if it converts to an exact whole number of
+  milliseconds; a sub-millisecond remainder is `{:error, :subunit_remainder}`
+  rather than rounded or truncated. A valid remainder decomposes greedily,
+  largest-first, through `d`, `h`, `m`, `s`, `ms` only - never back into `w`,
+  `mo`, or `y` - and the integer part (when non-zero) keeps its own source
+  unit. An unrecognized unit is `{:error, :unknown_unit}`.
+
+  ## Examples
+
+      iex> Predicator.Duration.expand_fraction(1, "5", "s")
+      {:ok, [{1, "s"}, {500, "ms"}]}
+
+      iex> Predicator.Duration.expand_fraction(0, "5", "mo")
+      {:ok, [{15, "d"}]}
+
+      iex> Predicator.Duration.expand_fraction(0, "5", "ms")
+      {:error, :subunit_remainder}
+
+      iex> Predicator.Duration.expand_fraction(1, "5", "x")
+      {:error, :unknown_unit}
+  """
+  @spec expand_fraction(non_neg_integer(), binary(), binary()) ::
+          {:ok, [{non_neg_integer(), binary()}]}
+          | {:error, :subunit_remainder}
+          | {:error, :unknown_unit}
+  def expand_fraction(integer_part, fraction_digits, unit) do
+    case Map.fetch(@unit_milliseconds, unit) do
+      :error ->
+        {:error, :unknown_unit}
+
+      {:ok, multiplier} ->
+        expand_valid_unit_fraction(integer_part, fraction_digits, unit, multiplier)
+    end
+  end
+
+  defp expand_valid_unit_fraction(integer_part, fraction_digits, unit, multiplier) do
+    denominator = int_pow10(byte_size(fraction_digits))
+    total = String.to_integer(fraction_digits) * multiplier
+
+    if rem(total, denominator) != 0 do
+      {:error, :subunit_remainder}
+    else
+      remainder_ms = div(total, denominator)
+
+      leading = if integer_part > 0, do: [{integer_part, unit}], else: []
+      pairs = leading ++ decompose_remainder(remainder_ms)
+
+      {:ok, if(pairs == [], do: [{0, unit}], else: pairs)}
+    end
+  end
+
+  defp int_pow10(exponent), do: Integer.pow(10, exponent)
+
+  defp decompose_remainder(remainder_ms) do
+    {pairs, _leftover} =
+      Enum.reduce(@remainder_ladder, {[], remainder_ms}, fn {unit, unit_ms}, {acc, left} ->
+        value = div(left, unit_ms)
+        rest = rem(left, unit_ms)
+
+        if value > 0 do
+          {[{value, unit} | acc], rest}
+        else
+          {acc, rest}
+        end
+      end)
+
+    Enum.reverse(pairs)
+  end
+
+  @whole_string_regex ~r/\A(?:[0-9]+(?:\.[0-9]+)?(?:mo|ms|y|w|d|h|m|s))+\z/
+  @unit_pair_regex ~r/([0-9]+)(?:\.([0-9]+))?(mo|ms|y|w|d|h|m|s)/
 
   @doc """
   Parses a duration literal string into a duration map.
 
   This is the inverse of `to_string/1`: the whole string must be a sequence
-  of one or more `<digits><unit>` pairs, with no whitespace, no sign, and no
-  partial consumption. The accepted units are exactly the eight `to_string/1`
-  emits - `y`, `mo`, `w`, `d`, `h`, `m`, `s`, `ms` - with `mo` and `ms` matched
-  before the single-character units so `"1mo"` is one month, not one minute
-  followed by a stray `o`. Values are non-negative integers. Repeated units
-  accumulate, matching `add_unit/3`. Anything else - a bad unit, trailing or
-  leading junk, a sign, a bare number, or the empty string - is `:error`.
+  of one or more `<digits>(.<digits>)?<unit>` pairs, with no whitespace, no
+  sign, and no partial consumption. The accepted units are exactly the eight
+  `to_string/1` emits - `y`, `mo`, `w`, `d`, `h`, `m`, `s`, `ms` - with `mo`
+  and `ms` matched before the single-character units so `"1mo"` is one
+  month, not one minute followed by a stray `o`. Values are non-negative
+  integers, optionally with a decimal fraction - there is no bare fraction
+  (`".5s"`) and no trailing dot (`"1.s"`). A fractional component must
+  convert to an exact whole number of milliseconds or the whole string is
+  `:error`; a valid fraction expands to the integer part on its own unit plus
+  a remainder decomposed largest-first through `d`, `h`, `m`, `s`, `ms` only.
+  Fractions are permitted on every unit; `mo` and `y` fractions commit the
+  documented 30-day and 365-day approximations at parse time (so
+  `parse("0.5mo")` yields `days: 15` and no `months`). Repeated units
+  accumulate, matching `add_unit/3`, expansions included. Anything else - a
+  bad unit, trailing or leading junk, a sign, a bare number, or the empty
+  string - is `:error`.
 
   ## Examples
 
@@ -334,20 +448,40 @@ defmodule Predicator.Duration do
 
       iex> Predicator.Duration.parse("1d ")
       :error
+
+      iex> Predicator.Duration.parse("1.5s")
+      {:ok, %{years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 1, milliseconds: 500}}
+
+      iex> Predicator.Duration.parse("0.5mo")
+      {:ok, %{years: 0, months: 0, weeks: 0, days: 15, hours: 0, minutes: 0, seconds: 0, milliseconds: 0}}
+
+      iex> Predicator.Duration.parse("0.5ms")
+      :error
   """
   @spec parse(binary()) :: {:ok, Types.duration()} | :error
   def parse(string) when is_binary(string) do
     if string != "" and Regex.match?(@whole_string_regex, string) do
-      duration =
-        @unit_pair_regex
-        |> Regex.scan(string, capture: :all_but_first)
-        |> Enum.reduce(new(), fn [value_str, unit], acc ->
-          add_unit(acc, unit, String.to_integer(value_str))
-        end)
-
-      {:ok, duration}
+      @unit_pair_regex
+      |> Regex.scan(string, capture: :all_but_first)
+      |> Enum.reduce_while({:ok, new()}, fn [value_str, fraction_digits, unit], {:ok, acc} ->
+        reduce_component(acc, value_str, fraction_digits, unit)
+      end)
     else
       :error
+    end
+  end
+
+  defp reduce_component(acc, value_str, "", unit) do
+    {:cont, {:ok, add_unit(acc, unit, String.to_integer(value_str))}}
+  end
+
+  defp reduce_component(acc, value_str, fraction_digits, unit) do
+    case expand_fraction(String.to_integer(value_str), fraction_digits, unit) do
+      {:ok, pairs} ->
+        {:cont, {:ok, Enum.reduce(pairs, acc, fn {value, u}, a -> add_unit(a, u, value) end)}}
+
+      {:error, _reason} ->
+        {:halt, :error}
     end
   end
 end

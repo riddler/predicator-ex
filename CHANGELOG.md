@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Duration values accept a decimal fraction on a component, at both the
+  string entry point (`Duration.parse/1`, and therefore `::duration`) and
+  the duration-literal grammar (`1.5s`).** `"1.5s"::duration` is now 1 second
+  500 milliseconds instead of `:undefined`, and the literal `1.5s` compiles
+  to the same integer unit pairs. A fractional component must convert to an
+  exact whole number of milliseconds - a sub-millisecond remainder
+  (`"0.5ms"`, `0.5ms`) is rejected rather than rounded or truncated - and a
+  valid fraction expands to the integer part on its own unit plus a
+  remainder decomposed largest-first through `d`, `h`, `m`, `s`, `ms` only.
+  Fractions are accepted on every unit; a fractional `mo` or `y` commits this
+  project's documented 30-day and 365-day approximations at parse time
+  (`"0.5mo"` normalizes to 15 days). The expansion is downward normalization
+  at parse/compile time - every duration map and every `["duration", units]`
+  instruction operand stays integer-only, so no opcode, operand shape, or
+  ISA version moves; the refined `::duration` string grammar is documented in
+  `docs/isa.md` §5 as a v6 refinement, not a v7 change. `to_string/1` still
+  never emits a fraction, so `"1.5s"::duration::string` is `"1s500ms"`, not
+  `"1.5s"` - the guaranteed round trip remains
+  `some_duration::string::duration`. Both spellings (string and literal) were
+  errors before this change, so this is purely additive.
+
 - **`Predicator.compile_program_with_spans/1`, the program-level counterpart
   to `compile_with_spans/1`.** Statement programs previously had two compile
   entry points, `compile_program/1` and `compile_program_with_positions/1`,

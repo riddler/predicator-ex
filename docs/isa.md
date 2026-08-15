@@ -689,7 +689,22 @@ reference survives an edit above it.
     UTC. A date-only string is `:undefined` here; the supported spelling is
     `s::date::datetime`.
   - `::duration` - the language's own duration-literal grammar, a sequence
-    of integer-unit pairs (`"1d2h30m"`).
+    of `[0-9]+(\.[0-9]+)?<unit>` pairs (`"1d2h30m"`, `"1.5s"`). A number may
+    carry a decimal fraction; there is no bare fraction (`".5s"`) and no
+    trailing dot (`"1.s"`). A fractional component must convert to an exact
+    whole number of milliseconds or the whole string is `:undefined` - a
+    sub-millisecond remainder (`"0.5ms"`) is rejected, never rounded or
+    truncated. A valid fraction expands to the integer part on its own unit
+    plus a remainder decomposed largest-first through `d`, `h`, `m`, `s`,
+    `ms` only, never back into `w`, `mo`, or `y`. Fractions are permitted on
+    every unit; `mo` and `y` fractions commit this document's 30-day and
+    365-day approximations at parse time, so `"0.5mo"::duration` has
+    `days: 15` and no `months` component. Repeated units accumulate,
+    expansions included. This bullet, not the ISA version, changed to state
+    the widened grammar precisely - see §1's versioning rules for why: no
+    operand form carried in the instruction list moves, and a string moving
+    from the unparseable set to the parseable set is the monotone widening
+    `cast`'s `:undefined` failure mode was built to absorb.
 
   **String formats (`::string`).**
 

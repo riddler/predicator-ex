@@ -272,6 +272,19 @@ defmodule Predicator.CastTest do
       assert Cast.cast("1x", "duration") == :undefined
     end
 
+    test "string parses a fractional duration and expands it to whole units" do
+      # docs/isa.md section 5 pins this: a fractional component that converts
+      # to an exact whole number of milliseconds widens the string, per
+      # Decision 1, into a v6 refinement rather than a new ISA version.
+      assert Cast.cast("1.5s", "duration") == Duration.new(seconds: 1, milliseconds: 500)
+    end
+
+    test "string rejects a fraction with a sub-millisecond remainder" do
+      # docs/isa.md section 5: an inexact fraction parses to nothing, so the
+      # cast is :undefined - never an error (ADR-0011, casting is total).
+      assert Cast.cast("0.5ms", "duration") == :undefined
+    end
+
     test "a leading or trailing newline is not end-of-string, not a silent accept" do
       assert Cast.cast("1d\n", "duration") == :undefined
       assert Cast.cast("\n1d", "duration") == :undefined
@@ -294,6 +307,14 @@ defmodule Predicator.CastTest do
         as_string = Cast.cast(duration, "string")
         assert Cast.cast(as_string, "duration") == duration
       end
+    end
+
+    test "a fractional duration string does not round-trip to itself, by design" do
+      # docs/isa.md section 5 / Decision 5: to_string/1 never emits a
+      # fraction, so a fractional spelling canonicalizes to its expansion
+      # rather than surviving unchanged - the guaranteed direction stays
+      # some_duration::string::duration, not the reverse.
+      assert Cast.cast("1.5s", "duration") |> Cast.cast("string") == "1s500ms"
     end
 
     test "mo vs ms disambiguation survives the round trip" do

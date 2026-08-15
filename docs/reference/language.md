@@ -191,7 +191,9 @@ trailing newline does not parse (`"42\n"::integer` is `:undefined`, not
 - `::datetime` - an ISO 8601 datetime **with a UTC offset**, normalized to
   UTC; a date-only string is `:undefined`. The supported spelling for a
   date-shaped string is `s::date::datetime`.
-- `::duration` - the language's own duration-literal grammar (see below).
+- `::duration` - the language's own duration-literal grammar (see below), now
+  admitting a decimal fraction on a component (`"1.5s"`); see below for the
+  exactness rule and the `mo`/`y` approximation commitment.
 
 **String formats (`::string`).** Integer formats as decimal, float as the
 shortest round-trip decimal, boolean as `"true"`/`"false"`, and date as ISO
@@ -211,7 +213,7 @@ pair. `datetime::date` keeps the datetime's calendar date and drops the time.
 
 ### Duration parsing is a canonicalizer, not `to_string`'s inverse
 
-`::duration` accepts a sequence of `<digits><unit>` pairs
+`::duration` accepts a sequence of `<digits>(.<digits>)?<unit>` pairs
 (`y`, `mo`, `w`, `d`, `h`, `m`, `s`, `ms`) with no whitespace, no sign, and no
 partial consumption - but unlike the other string parses, it does not
 require a *canonical* ordering, and repeated units accumulate rather than
@@ -223,6 +225,30 @@ reproduce `some_string` unless it was already in canonical (largest-unit-
 first, non-repeating) form. Round-tripping the other direction -
 `some_duration::string::duration` - does recover the original duration,
 because `::string`'s output is already canonical.
+
+A component may also carry a decimal fraction (`"1.5s"`), just as bare here
+as it is disallowed - a fraction requires digits on both sides of the dot,
+so `".5s"` and `"1.s"` are both `:undefined`, the same position `::float`
+already takes (`".5"::float` is `:undefined`). A fractional component must
+convert to an *exact* whole number of milliseconds or the whole string is
+`:undefined`: `"0.5ms"::duration` is `:undefined` (half a millisecond),
+while `"0.5s"::duration`, `"0.25s"::duration`, and `"1.0s"::duration` all
+succeed. A valid fraction expands to the integer part on its own unit plus a
+remainder decomposed largest-first through `d`, `h`, `m`, `s`, `ms` only -
+never back into `w`, `mo`, or `y`. Fractions are accepted on every unit;
+`mo` and `y` commit this project's documented 30-day and 365-day
+approximations at parse time, so `"0.5mo"::duration` has `days: 15` and no
+`months` component. Repeated units keep accumulating with an expansion in
+the mix: `"1.5s200ms"::duration` is 1 second 700 milliseconds, not a
+collision - that stricter rule belongs to the compiled duration *literal*
+grammar, not to `::duration`'s string parse.
+
+Because `to_string/1` never emits a fraction (it is not part of this
+canonicalizer's output vocabulary), a fractional spelling does not survive a
+round trip through `::string`: `"1.5s"::duration::string` is `"1s500ms"`,
+not `"1.5s"`. The guaranteed direction remains
+`some_duration::string::duration`, unaffected by fractions since
+`::string`'s output is always integer-only and already canonical.
 
 ### Failure is `:undefined`, never an error
 
