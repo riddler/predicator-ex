@@ -574,14 +574,14 @@ files; every describe here calls `Lexer.tokenize/1`.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix test test/predicator/lexer_test.exs test/predicator/lexer_identifiers_test.exs test/predicator/lexer_operators_test.exs test/predicator/lexer_literals_test.exs`
+- [x] `mix test test/predicator/lexer_test.exs test/predicator/lexer_identifiers_test.exs test/predicator/lexer_operators_test.exs test/predicator/lexer_literals_test.exs`
       reports exactly **5 doctests, 116 tests, 0 failures**
-- [ ] `mix test` reports **446 doctests, 2785 tests, 0 failures**
-- [ ] Full `mix quality` is green
-- [ ] Coverage stays at or above the 90% minimum in `coveralls.json`
-- [ ] `git diff --stat` shows no file under `lib/`, `conformance/`, or
+- [x] `mix test` reports **446 doctests, 2785 tests, 0 failures**
+- [x] Full `mix quality` is green
+- [x] Coverage stays at or above the 90% minimum in `coveralls.json`
+- [x] `git diff --stat` shows no file under `lib/`, `conformance/`, or
       `mix.exs` changed
-- [ ] No file among the four exceeds 550 lines
+- [x] No file among the four exceeds 550 lines
 
 #### Manual Verification:
 - [ ] The residual is still coherent - it holds numbers, durations,
@@ -795,6 +795,22 @@ items are deferred and surfaced once at the end instead of blocking here.
       exactly once across the five files, with the same entries as before
 - [ ] `assert_tree_fixpoint/1`, `assert_string_fixpoint/1`, and
       `assert_program_round_trip/1` each appear exactly once
+- [ ] No new file contains a `doctest` line
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 5
+
+- [ ] The residual is still coherent - it holds numbers, durations,
+      statement structure, and error/position handling, not leftovers
+- [ ] Three moved describes spot-checked byte-identical against the original
 - [ ] No new file contains a `doctest` line
 
 **Implementation Note**: Use `mix quality --profile loop` between edits; run
