@@ -3,6 +3,78 @@ defmodule Predicator.LexerLiteralsTest do
 
   alias Predicator.Lexer
 
+  describe "tokenize/1 - integers" do
+    test "tokenizes single integer" do
+      assert {:ok, tokens} = Lexer.tokenize("42")
+
+      assert tokens == [
+               {:integer, 1, 1, 2, 42},
+               {:eof, 1, 3, 0, nil}
+             ]
+    end
+
+    test "tokenizes multi-digit integer" do
+      assert {:ok, tokens} = Lexer.tokenize("1234")
+
+      assert tokens == [
+               {:integer, 1, 1, 4, 1234},
+               {:eof, 1, 5, 0, nil}
+             ]
+    end
+
+    test "tokenizes zero" do
+      assert {:ok, tokens} = Lexer.tokenize("0")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 0},
+               {:eof, 1, 2, 0, nil}
+             ]
+    end
+  end
+
+  describe "tokenize/1 - duration literals (px-5c5)" do
+    test "tokenizes an integer duration as integer plus duration-unit tokens" do
+      assert {:ok, tokens} = Lexer.tokenize("3d8h")
+
+      assert tokens == [
+               {:integer, 1, 1, 1, 3},
+               {:duration_unit, 1, 2, 1, "d"},
+               {:integer, 1, 3, 1, 8},
+               {:duration_unit, 1, 4, 1, "h"},
+               {:eof, 1, 5, 0, nil}
+             ]
+    end
+
+    test "tokenizes a fractional duration as a fractional_number token" do
+      assert {:ok, tokens} = Lexer.tokenize("1.5s")
+
+      assert tokens == [
+               {:fractional_number, 1, 1, 3, {1, "5"}},
+               {:duration_unit, 1, 4, 1, "s"},
+               {:eof, 1, 5, 0, nil}
+             ]
+    end
+
+    test "a decimal number with no duration unit still tokenizes as a float" do
+      assert {:ok, tokens} = Lexer.tokenize("1.5")
+
+      assert tokens == [
+               {:float, 1, 1, 3, 1.5},
+               {:eof, 1, 4, 0, nil}
+             ]
+    end
+
+    test "a decimal number followed by a non-unit tokenizes as float then identifier" do
+      assert {:ok, tokens} = Lexer.tokenize("1.5x")
+
+      assert tokens == [
+               {:float, 1, 1, 3, 1.5},
+               {:identifier, 1, 4, 1, "x"},
+               {:eof, 1, 5, 0, nil}
+             ]
+    end
+  end
+
   describe "tokenize/1 - list literals" do
     test "tokenizes empty list" do
       assert {:ok, tokens} = Lexer.tokenize("[]")

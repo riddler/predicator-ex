@@ -132,6 +132,64 @@ defmodule Predicator.ParserTest do
     end
   end
 
+  describe "parse/1 - complex nested expressions" do
+    test "parses deeply nested arithmetic expressions" do
+      {:ok, tokens} = Lexer.tokenize("((((a + b) * c) - d) / e)")
+      result = parse_positionless(tokens)
+
+      expected_ast =
+        {:arithmetic, :divide,
+         {:arithmetic, :subtract,
+          {:arithmetic, :multiply, {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
+           {:identifier, "c"}}, {:identifier, "d"}}, {:identifier, "e"}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses complex logical expressions with mixed operators" do
+      {:ok, tokens} = Lexer.tokenize("a && b || c && d")
+      result = parse_positionless(tokens)
+
+      expected_ast =
+        {:logical_or, {:logical_and, {:identifier, "a"}, {:identifier, "b"}},
+         {:logical_and, {:identifier, "c"}, {:identifier, "d"}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses mixed arithmetic and logical with proper precedence" do
+      {:ok, tokens} = Lexer.tokenize("a + b > c && d - e < f")
+      result = parse_positionless(tokens)
+
+      expected_ast =
+        {:logical_and,
+         {:comparison, :gt, {:arithmetic, :add, {:identifier, "a"}, {:identifier, "b"}},
+          {:identifier, "c"}},
+         {:comparison, :lt, {:arithmetic, :subtract, {:identifier, "d"}, {:identifier, "e"}},
+          {:identifier, "f"}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses expressions with multiple unary operators" do
+      {:ok, tokens} = Lexer.tokenize("!!active")
+      result = parse_positionless(tokens)
+
+      expected_ast = {:logical_not, {:logical_not, {:identifier, "active"}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+
+    test "parses multiple nested unary minus operators" do
+      {:ok, tokens} = Lexer.tokenize("---value")
+      result = parse_positionless(tokens)
+
+      expected_ast = {:unary, :minus, {:unary, :minus, {:unary, :minus, {:identifier, "value"}}}}
+
+      assert {:ok, ^expected_ast} = result
+    end
+  end
+
   describe "parse/1 - complex expressions" do
     test "handles whitespace correctly" do
       {:ok, tokens} = Lexer.tokenize("  score   >    85  ")
