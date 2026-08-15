@@ -644,17 +644,17 @@ that adds no AST node.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] `mix quality` is green.
-- [ ] Coverage for `lib/predicator/lexer.ex` and `lib/predicator/parser.ex`
+- [x] `mix quality` is green.
+- [x] Coverage for `lib/predicator/lexer.ex` and `lib/predicator/parser.ex`
       stays above the 90% minimum in `coveralls.json`.
-- [ ] `Predicator.compile("3d8h")` and the whole existing duration test
+- [x] `Predicator.compile("3d8h")` and the whole existing duration test
       corpus are unchanged - the suite proves this, since every existing
       duration assertion is left untouched.
-- [ ] The round-trip test asserts `decompile(parse("1.5s")) == "1s500ms"` and
+- [x] The round-trip test asserts `decompile(parse("1.5s")) == "1s500ms"` and
       that re-parsing it gives the identical AST.
-- [ ] No new Credo suppression is added; the existing lexer/parser complexity
+- [x] No new Credo suppression is added; the existing lexer/parser complexity
       suppressions are not widened without an explanatory comment.
-- [ ] `git diff --stat` touches nothing under `conformance/` and no
+- [x] `git diff --stat` touches nothing under `conformance/` and no
       `area:build` file.
 
 #### Manual Verification:
@@ -929,6 +929,30 @@ before considering the plan fully landed.
 - [ ] Confirm by eye that no float ever carries a fraction on the new path -
       `String.to_float/1` appears nowhere in `duration.ex`.
 - [ ] No regressions in `::duration` behavior for integer strings.
+
+**Implementation Note**: Use `mix quality --profile loop` between edits while
+iterating; run full `mix quality` as the phase gate. In interactive
+execution, pause here for the human to confirm the manual testing before
+moving to the next phase. In looped (`--loop`) execution, this phase's
+Automated Verification gates advancement automatically (via
+`/wurk:commit --auto`), and Manual Verification items are deferred and
+surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] In `iex -S mix`: `Predicator.compile("1.5s")` prints
+      `[["duration", [[1, "s"], [500, "ms"]]]]`.
+- [ ] `Predicator.compile("0.5ms")` and `Predicator.compile("1.5s200ms")`
+      return errors whose messages read clearly to a user who did not write
+      this plan, and whose carets land where the plan says (the component,
+      and the whole literal, respectively).
+- [ ] `Predicator.compile("1.5x")` fails the same way it does on `main` -
+      the fractional path did not capture a non-unit suffix.
+- [ ] `Predicator.evaluate("1.5s ago < now()", %{})` behaves sensibly.
+- [ ] No regressions in relative-date forms (`ago`, `from now`, `next`,
+      `last`) with fractional durations.
 
 **Implementation Note**: Use `mix quality --profile loop` between edits while
 iterating; run full `mix quality` as the phase gate. In interactive

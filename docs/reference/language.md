@@ -569,6 +569,19 @@ iex> Predicator.decompile(ast, parentheses: :explicit)
 "(score > 85)"
 ```
 
+A duration literal's decompiled form is always its expansion, never the
+source spelling: a fractional component is expanded to integer unit pairs at
+parse time (`docs/architecture.md`'s grammar), so decompiling a program
+containing `1.5s` renders `1s500ms`, which re-parses to the identical AST -
+the same canonicalizer stance `::duration` already takes, now visible one
+layer up in the literal grammar.
+
+```elixir
+iex> {:ok, ast} = Predicator.parse("1.5s")
+iex> Predicator.decompile(ast)
+"1s500ms"
+```
+
 It renders `if`/`else` too, applying the `else if` printing rule from
 above: an `else` block whose sole statement is an `if` prints as `else if`
 rather than nesting a new block, which is what makes the natural spelling

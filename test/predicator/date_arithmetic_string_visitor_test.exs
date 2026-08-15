@@ -32,6 +32,34 @@ defmodule Predicator.DateArithmeticStringVisitorTest do
     end
   end
 
+  describe "fractional duration literal decompilation (px-5c5)" do
+    test "a fractional duration decompiles to its expansion, which re-parses identically" do
+      {:ok, ast} = Predicator.parse("1.5s")
+      decompiled = Predicator.decompile(ast)
+
+      assert decompiled == "1s500ms"
+      assert_round_trip("1.5s")
+    end
+
+    test "a mixed integer/fractional duration decompiles to its full expansion" do
+      assert_round_trip("1h1.5m")
+    end
+
+    test "a fractional duration in a relative-date expression decompiles to its expansion" do
+      # The relative-date node's own position is the "ago"/"now" keyword's
+      # source location, which shifts when the fraction expands to a longer
+      # string - so this checks the decompiled text and semantic
+      # equivalence directly rather than full-AST identity (which
+      # assert_round_trip/1 requires and which position naturally cannot
+      # satisfy here).
+      {:ok, ast} = Predicator.parse("1.5s ago")
+      assert Predicator.decompile(ast) == "1s500ms ago"
+
+      {:ok, ast} = Predicator.parse("1.5s from now")
+      assert Predicator.decompile(ast) == "1s500ms from now"
+    end
+  end
+
   describe "relative date decompilation" do
     test "ago expressions" do
       assert_round_trip("3d ago")

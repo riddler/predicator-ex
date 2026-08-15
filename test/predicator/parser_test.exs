@@ -1814,6 +1814,105 @@ defmodule Predicator.ParserTest do
     end
   end
 
+  describe "parse/1 - fractional duration literals (px-5c5)" do
+    test "expands a single fractional component" do
+      {:ok, tokens} = Lexer.tokenize("1.5s")
+      result = parse_positionless(tokens)
+      assert {:ok, {:duration, [{1, "s"}, {500, "ms"}]}} = result
+    end
+
+    test "expands a fractional month using the 30-day approximation" do
+      {:ok, tokens} = Lexer.tokenize("0.5mo")
+      result = parse_positionless(tokens)
+      assert {:ok, {:duration, [{15, "d"}]}} = result
+    end
+
+    test "expands a fractional year through the full remainder ladder" do
+      {:ok, tokens} = Lexer.tokenize("1.5y")
+      result = parse_positionless(tokens)
+      assert {:ok, {:duration, [{1, "y"}, {182, "d"}, {12, "h"}]}} = result
+    end
+
+    test "expands a fractional component in the middle of a sequence" do
+      {:ok, tokens} = Lexer.tokenize("1h1.5m")
+      result = parse_positionless(tokens)
+      assert {:ok, {:duration, [{1, "h"}, {1, "m"}, {30, "s"}]}} = result
+    end
+
+    test "a zero remainder emits nothing beyond the integer part" do
+      {:ok, tokens} = Lexer.tokenize("1.0s")
+      result = parse_positionless(tokens)
+      assert {:ok, {:duration, [{1, "s"}]}} = result
+    end
+
+    test "an all-zero fractional component is the zero duration on its unit" do
+      {:ok, tokens} = Lexer.tokenize("0.0s")
+      result = parse_positionless(tokens)
+      assert {:ok, {:duration, [{0, "s"}]}} = result
+    end
+
+    test "returns a spanned error for a sub-millisecond remainder" do
+      {:ok, tokens} = Lexer.tokenize("0.5ms")
+      result = parse_positionless(tokens)
+
+      assert {:error, message, _line, _col, _span} = result
+      assert message =~ "not a whole number of milliseconds"
+    end
+
+    test "returns a spanned error for an inexact fraction with trailing zeros" do
+      {:ok, tokens} = Lexer.tokenize("1.0005s")
+      result = parse_positionless(tokens)
+
+      assert {:error, message, _line, _col, _span} = result
+      assert message =~ "not a whole number of milliseconds"
+    end
+
+    test "returns a spanned error when expansion collides with another component" do
+      {:ok, tokens} = Lexer.tokenize("1.5s200ms")
+      result = parse_positionless(tokens)
+
+      assert {:error, message, _line, _col, _span} = result
+      assert message =~ "names the 'ms' unit twice"
+    end
+
+    test "returns a spanned error when expansion collides with a duplicate integer unit" do
+      {:ok, tokens} = Lexer.tokenize("1.5s1s")
+      result = parse_positionless(tokens)
+
+      assert {:error, message, _line, _col, _span} = result
+      assert message =~ "names the 's' unit twice"
+    end
+
+    test "returns a spanned error when two fractional components collide" do
+      {:ok, tokens} = Lexer.tokenize("1.5s0.5s")
+      result = parse_positionless(tokens)
+
+      # "1.5s" expands to [{1,"s"},{500,"ms"}] and "0.5s" expands to
+      # [{500,"ms"}] alone (its own zero integer part is omitted), so the
+      # collision is on "ms", not "s".
+      assert {:error, message, _line, _col, _span} = result
+      assert message =~ "names the 'ms' unit twice"
+    end
+
+    test "a decimal number with no duration unit still lexes and parses as a float" do
+      {:ok, tokens} = Lexer.tokenize("1.5")
+      result = parse_positionless(tokens)
+      assert {:ok, {:literal, 1.5}} = result
+    end
+
+    test "a fraction followed by a non-unit re-lexes as float then identifier, unchanged" do
+      {:ok, tokens} = Lexer.tokenize("1.5x")
+      result = parse_positionless(tokens)
+      assert {:error, _message, _line, _col, _span} = result
+    end
+
+    test "integer-only literals are unaffected" do
+      {:ok, tokens} = Lexer.tokenize("3d8h")
+      result = parse_positionless(tokens)
+      assert {:ok, {:duration, [{3, "d"}, {8, "h"}]}} = result
+    end
+  end
+
   describe "parse_program/2" do
     test "parses a single-statement program" do
       {:ok, tokens} = Lexer.tokenize("a = 1")

@@ -43,9 +43,21 @@ list         → "[" ( expression ( "," expression )* )? "]"
 object       → "{" ( object_entry ( "," object_entry )* )? "}"
 object_entry → object_key ":" expression
 object_key   → IDENTIFIER | STRING
-duration     → NUMBER UNIT+
+duration     → DURATION_NUMBER UNIT+
+DURATION_NUMBER → NUMBER ( "." NUMBER )?
 relative_date → duration "ago" | duration "from" "now" | "next" duration | "last" duration
 ```
+
+A duration component's number may carry a decimal fraction (`1.5s`), which
+expands at parse time - through the same helper `Duration.parse/1` uses - into
+plain integer unit pairs, so the AST and the `duration` opcode's operand shape
+are unchanged. An inexact fraction (`0.5ms`, half a millisecond) and a
+post-expansion unit collision (`1.5s200ms`, which would otherwise name `ms`
+twice) are both compile errors, not silent truncation or overwriting; see
+`docs/reference/language.md`'s canonicalizer section for the exactness rule
+and the divergence from `::duration`'s string parse. The fractional form adds
+no precedence: it changes only what a duration's NUMBER may look like, and the
+table above is otherwise unchanged.
 
 `::` is postfix, binds tighter than unary minus, and chains left-to-right like
 the other two postfix forms; its seven-name vocabulary comes from

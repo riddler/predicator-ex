@@ -33,6 +33,7 @@ defmodule Predicator.ParserSpansTest do
     "a[0][1]",
     "user.name.first",
     "3d8h",
+    "1.5s",
     "3d ago",
     "3d from now",
     "next 2w",
@@ -243,6 +244,28 @@ defmodule Predicator.ParserSpansTest do
 
     test "a last expression spans from the keyword through the duration" do
       assert_span("last 1d", "last 1d")
+    end
+
+    test "a fractional-component duration spans the whole literal (px-5c5)" do
+      assert_span("1.5s", "1.5s")
+    end
+
+    test "a mixed integer/fractional duration spans through the last unit (px-5c5)" do
+      assert_span("1h1.5m", "1h1.5m")
+    end
+
+    test "an inexact-fraction error spans only its own component (px-5c5)" do
+      source = "a > 0.5ms"
+      {:error, _message, _line, _col, span} = parse_spans(source)
+
+      assert slice(source, span) == "0.5ms"
+    end
+
+    test "a unit-collision error spans the whole literal (px-5c5)" do
+      source = "1.5s200ms"
+      {:error, _message, _line, _col, span} = parse_spans(source)
+
+      assert slice(source, span) == "1.5s200ms"
     end
   end
 
