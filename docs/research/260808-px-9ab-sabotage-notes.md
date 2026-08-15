@@ -344,6 +344,45 @@ are unaffected.
   this same mutation for a different reason and the "exactly one test goes red"
   claim would need re-verifying.
 
+- 2026-08-14 (`px-ty0`): `test/predicator/parser_format_token_coverage_test.exs`,
+  new file. `Predicator.Parser`'s private `format_token/2` renders one
+  `Predicator.Lexer.t:token/0` token type into every "expected X but found Y"
+  message and carries no catch-all clause, so a token type with no matching
+  clause raises `FunctionClauseError` instead of returning the `ParseError`
+  value ADR-0004 requires - the same defect class as
+  `visitor_clause_coverage_test.exs` guards for the two AST visitors, one
+  level down the pipeline. This has already happened twice by hand: px-yoq's
+  `:string`-token arity mismatch (`b49dd97`) and px-ty0's own notes, which
+  found `:fractional_number` (fixed on `6f78179`, same branch) and `:dot`
+  (fixed by this bead) both missing by literally counting clauses against
+  token types. A vacuous version of this test would ship the same kind of
+  silent gap a third time. Eleven files now.
+
+  Sabotage pass verified 2026-08-14, three mutations, `MIX_ENV=test mix
+  compile --force` run after every mutation and every revert per the
+  stale-beam hazard noted above, green baseline confirmed before each:
+
+  1. Removed the `defp format_token(:dot, _value), do: "'.'"` clause from
+     `lib/predicator/parser.ex`. Reddened the clause-count assertion in the
+     "versus" test: "expected 55 distinct format_token/2 clause tags ...,
+     got 54", `:dot` absent from the listed tags. (ExUnit stops at a test's
+     first failed assertion, so this fired before the "missing" assertion was
+     ever reached.) Reverted, confirmed green.
+  2. Renamed that clause's head to `format_token(:dotx, _value)` instead -
+     this holds the clause count at 55, so the run reaches the
+     "missing"/"extra" comparison instead. The "missing" assertion went red
+     naming exactly `[:dot]`. Verified independently (again, ExUnit stops at
+     the first failure) that the parsed clause-tag set contained `:dotx` and
+     not `:dot`, confirming the "extra" assertion would have caught it too.
+     Reverted, confirmed green.
+  3. Added a throwaway `| {:sabotage_probe, pos_integer(), pos_integer(),
+     pos_integer(), binary()}` member to `Lexer.token/0`'s union. Both tests
+     in the file went red: the token-type-count test ("got 56",
+     `:sabotage_probe` present in the listed tags) and the "versus" test's
+     "missing" assertion, naming exactly `[:sabotage_probe]`. Reverted,
+     confirmed green; `git status --porcelain` reported no diff for
+     `lib/predicator/lexer.ex` throughout except during the sabotage window.
+
 ## Enforcement: gate.sabotage, from 2026-08-12 (px-lxs)
 
 - **The discipline is now enforced, not only written down.** `px-lxs` declared
