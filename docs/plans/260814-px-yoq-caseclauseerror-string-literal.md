@@ -532,13 +532,13 @@ changed.
 
 #### Automated Verification:
 
-- [ ] Full quality gate passes: `mix quality`
-- [ ] `mix test test/predicator/parser_string_token_arity_test.exs` passes and
+- [x] Full quality gate passes: `mix quality`
+- [x] `mix test test/predicator/parser_string_token_arity_test.exs` passes and
       reports exactly 16 tests from the per-site table - one per site, with no
       site silently dropped
-- [ ] The generative sweep exercises more than 200 distinct sources - asserted
+- [x] The generative sweep exercises more than 200 distinct sources - asserted
       inside the test itself, so an empty fixture list cannot pass vacuously
-- [ ] `CHANGELOG.md` has a new bullet under `## [Unreleased]` / `### Fixed`
+- [x] `CHANGELOG.md` has a new bullet under `## [Unreleased]` / `### Fixed`
 
 #### Manual Verification:
 
@@ -638,6 +638,28 @@ before considering the plan fully landed.
       double-quoted object keys - `'a': 1` still renders with single quotes
 - [ ] `git log -p` on the phase reads as one mechanical substitution, with no
       message text altered
+
+**Implementation Note**: Use `mix quality --profile loop` between edits and the
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 2
+
+- [ ] Each of the sixteen sites is genuinely reached: temporarily replace one
+      site's body with `raise "probe"`, run the sweep, confirm it goes red,
+      and restore. Repeat across the sites, or at minimum across `parse/2`,
+      `parse_primary_token/2`'s catch-all, `parse_list/2` and
+      `parse_relative_date_expression/3`
+- [ ] Reverting Phase 1's `parser.ex` changes (`git stash` the file) makes the
+      sweep red rather than erroring in setup - the test observes the bug, it
+      does not merely assert current behavior
+- [ ] The changelog entry reads as a user-visible fix, not as an internal
+      refactor note
 
 **Implementation Note**: Use `mix quality --profile loop` between edits and the
 full `mix quality` as the phase gate. In interactive execution, pause here for
