@@ -643,18 +643,18 @@ value, no case id, and no instruction list changed.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality` (which runs
+- [x] Full quality gate passes: `mix quality` (which runs
       `test/predicator/conformance/corpus_freshness_test.exs`, the binding
       test that fails if the corpus was hand-edited or left stale, plus
       `schema_validation_test.exs` and `ratchet_registry_test.exs`)
-- [ ] `mix corpus.generate` is idempotent: running it twice leaves
+- [x] `mix corpus.generate` is idempotent: running it twice leaves
       `git diff --exit-code conformance/corpus conformance/manifest.json` at 0
       on the second run
-- [ ] The corpus diff touches only `notes` fields:
+- [x] The corpus diff touches only `notes` fields:
       `git diff conformance/corpus` shows no change to any
       `expected_result`, `expected_error`, `instructions`, `id`, `tier`, or
       `features` value
-- [ ] `test/predicator/conformance/values_test.exs` is unchanged by this
+- [x] `test/predicator/conformance/values_test.exs` is unchanged by this
       phase: `git diff --exit-code test/predicator/conformance/values_test.exs`
       exits 0. Its "seven-key map" test name (`:70`) describes the *JSON* it
       asserts, which is still seven keys, and its input is built with
@@ -820,5 +820,28 @@ the human to confirm the manual testing before moving to the next phase. In
 looped (`--loop`) execution, this phase's Automated Verification gates
 advancement automatically (via `/wurk:commit --auto`), and Manual Verification
 items are deferred and surfaced once at the end instead of blocking here.
+
+---
+
+### Phase 3
+
+- [ ] Read the regenerated `conformance/corpus/tier-4.json` entry for
+      `durations/milliseconds-key-present-only-when-used` and confirm its
+      `expected_result` is byte-identical to the pre-change one
+- [ ] Read `conformance/README.md`'s hand-decode walkthrough as a sibling
+      implementer would and confirm it now produces an eight-key value
+- [ ] Confirm the commit message and PR body carry the ADR-0003 corpus-diff
+      explanation
+- [ ] `grep -rn "seven key\|seven-key" conformance/README.md
+      lib/predicator/conformance/values.ex conformance/cases/durations.json`
+      and read each remaining hit: every one must be describing the JSON
+      encoding, none the value shape
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before finishing. In looped
+(`--loop`) execution, this phase's Automated Verification gates advancement
+automatically (via `/wurk:commit --auto`), and Manual Verification items are
+deferred and surfaced once at the end instead of blocking here.
 
 ---

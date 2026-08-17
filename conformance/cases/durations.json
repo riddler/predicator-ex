@@ -16,7 +16,7 @@
         }
       }
     },
-    "notes": "hand-decode: seven keys, all present, defaulting to 0 - this is the normative shape docs/isa.md:100-106 and Open Question #1 in the plan settle on"
+    "notes": "hand-decode: the duration value has eight keys, all present, defaulting to 0 - this is the normative shape from docs/isa.md section 3. The JSON omits a zero milliseconds as a compaction rule of the codec; see conformance/README.md"
   },
   {
     "id": "durations/multi-unit",
@@ -54,7 +54,7 @@
         }
       }
     },
-    "notes": "the milliseconds key is present only when a ms-family unit was used; every other case in this file omits it because it is 0"
+    "notes": "a ms-family unit gives a non-zero milliseconds, which is the only condition under which the tagged encoding writes the key out; the duration value itself always carries all eight units (px-69c). The case id predates that fix and is kept because shipped corpus ids are stable (conformance/RATCHET.md)"
   },
   {
     "id": "durations/later-unit-pair-overwrites-earlier",
