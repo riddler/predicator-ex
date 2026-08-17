@@ -197,10 +197,12 @@ value domain through a host-supplied context, a `load` of a bound null, an
 `access`/`bracket_access` result, or a function return.
 
 A duration's shape is normative, because `["duration", units]` produces one
-and `add`/`subtract` consume it: a map with the seven keys `years`,
-`months`, `weeks`, `days`, `hours`, `minutes`, `seconds`, all present and
-defaulting to `0`, plus an optional `milliseconds` key present only when a
-`ms`-family unit was used.
+and `add`/`subtract` consume it: a map with the eight keys `years`, `months`,
+`weeks`, `days`, `hours`, `minutes`, `seconds`, `milliseconds`, all present
+and defaulting to `0`. The key set does not vary with the units an expression
+named. The conformance corpus's tagged-value JSON omits a `milliseconds` of
+`0` as a compaction, which `conformance/README.md` specifies and which does
+not narrow this shape - an absent key decodes to `0`.
 
 How these values cross a language boundary in the conformance corpus's
 tagged-value JSON encoding is `px-35i.4`'s concern, not restated here.

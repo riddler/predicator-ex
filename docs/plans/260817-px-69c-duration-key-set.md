@@ -529,15 +529,15 @@ one-line drive-by.
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] Full quality gate passes: `mix quality` (this includes
+- [x] Full quality gate passes: `mix quality` (this includes
       `test/predicator/isa_sync_test.exs` and `test/docs_adr_links_test.exs`,
       both of which read `docs/isa.md`)
-- [ ] `mix corpus.generate` still leaves `conformance/corpus` and
+- [x] `mix corpus.generate` still leaves `conformance/corpus` and
       `conformance/manifest.json` byte-identical (`git diff --exit-code`) -
       this phase touches no case file
-- [ ] `grep -n "seven key\|seven-key" docs/isa.md docs/guides/porting.md`
+- [x] `grep -n "seven key\|seven-key" docs/isa.md docs/guides/porting.md`
       returns nothing
-- [ ] `grep -n "milliseconds" lib/predicator/types.ex` shows the key in both
+- [x] `grep -n "milliseconds" lib/predicator/types.ex` shows the key in both
       the `@typedoc` and the `@type`
 
 #### Manual Verification:
@@ -801,5 +801,24 @@ authoring discipline rather than as a recorded sabotage note - the tests are
 not in the binding-test class (see "What We're NOT Doing"), so nothing is
 written to `.claude/wurk.json` and nothing re-runs it later. Do it before the
 phase's final `mix quality`.
+
+---
+
+### Phase 2
+
+- [ ] `mix docs` renders `Predicator.Types` with the eight-unit list and no
+      struct-syntax example
+- [ ] Read `docs/isa.md` §3 end to end and confirm the new sentence does not
+      contradict the delegation to `conformance/README.md` that follows it two
+      paragraphs later
+- [ ] Read `docs/guides/porting.md` around the edit and confirm a sibling
+      implementer following it would build the eight-key map
+
+**Implementation Note**: Use `mix quality --profile loop` between edits; run
+full `mix quality` as the phase gate. In interactive execution, pause here for
+the human to confirm the manual testing before moving to the next phase. In
+looped (`--loop`) execution, this phase's Automated Verification gates
+advancement automatically (via `/wurk:commit --auto`), and Manual Verification
+items are deferred and surfaced once at the end instead of blocking here.
 
 ---

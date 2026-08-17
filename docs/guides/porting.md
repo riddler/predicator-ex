@@ -62,10 +62,12 @@ miss (`docs/isa.md` section 2):
   idiom.
 
 If your version's set includes `duration`, its output shape is also
-normative: a map with the seven keys `years`, `months`, `weeks`, `days`,
-`hours`, `minutes`, `seconds`, always present and defaulting to `0`, plus an
-optional `milliseconds` key present only when a `ms`-family unit was used
-(`docs/isa.md` section 3). The corpus checks the failure side of duration
+normative: a map with the eight keys `years`, `months`, `weeks`, `days`,
+`hours`, `minutes`, `seconds`, `milliseconds`, always present and defaulting
+to `0`; the key set does not vary with the units an expression named
+(`docs/isa.md` section 3). The conformance corpus's tagged-value JSON omits a
+`milliseconds` of `0` as a compaction - an absent key decodes to `0` and does
+not narrow this shape. The corpus checks the failure side of duration
 cases the same way it checks every other error: `expected_error`'s `type` and
 `reason` fields, never the message
 ([`conformance/README.md`](https://github.com/riddler/predicator-ex/blob/main/conformance/README.md),
