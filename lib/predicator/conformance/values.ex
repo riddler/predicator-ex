@@ -14,12 +14,12 @@ defmodule Predicator.Conformance.Values do
       {"$type": "duration", "value": {"years":0,"months":0,"weeks":0,"days":3,"hours":0,"minutes":0,"seconds":0}}
       {"$type": "undefined"}
 
-  A `duration` tag's `value` carries the normative seven-key map from
-  `docs/isa.md:100-106` - `years`, `months`, `weeks`, `days`, `hours`,
-  `minutes`, `seconds`, always present, plus `milliseconds` only when it is
-  non-zero (predicator's own duration values default `milliseconds` to `0`
-  the same way the other six units do, so an absent key and a zero key decode
-  identically).
+  A `duration` tag's `value` carries the normative eight-key map from
+  `docs/isa.md` section 3 - `years`, `months`, `weeks`, `days`, `hours`,
+  `minutes`, `seconds`, `milliseconds`, all always present in the value
+  itself. The JSON compacts it: `milliseconds` is emitted only when non-zero,
+  and `from_json/1` restores it as `0` when absent, so the two forms decode
+  identically. The other seven units are always written out.
 
   An object with a literal `"$type"` key that is *not* one of predicator's own
   values (i.e. supplied inside an authored case's plain map) would be

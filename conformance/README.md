@@ -127,12 +127,13 @@ shapes but should accept any ISO-8601 fraction, because a hand-authored case
 may contain one and the instant is unambiguous.
 
 **The duration shape is normative** ([`docs/isa.md` section 3](../docs/isa.md)):
-all seven keys - `years`, `months`, `weeks`, `days`, `hours`, `minutes`,
-`seconds` - are always present, defaulting to `0`. An eighth key,
-`milliseconds`, is present **only** when a `ms`-family unit produced a
-non-zero value; its absence means zero, the same as an absent value for any
-of the other seven. A decoder should default a missing `milliseconds` to `0`
-rather than treating its absence as an error.
+all eight keys - `years`, `months`, `weeks`, `days`, `hours`, `minutes`,
+`seconds`, `milliseconds` - are always present in the value itself, defaulting
+to `0`. The JSON encoding compacts that value: `milliseconds` is written out
+**only** when a `ms`-family unit produced a non-zero value, and is omitted
+otherwise as a size optimization, not because the value ever lacks the key. A
+decoder should default a missing `milliseconds` to `0` rather than treating
+its absence as an error.
 
 This encoding applies everywhere a predicator value appears in a case:
 `context`, `expected_result`, and inside `instructions` itself - a `lit`
@@ -154,9 +155,12 @@ fraction.
 `conformance/corpus/tier-4.json`'s `durations/milliseconds-key-present-only-when-used`
 case: `instructions` is `[["duration",[[500,"ms"]]]]`, and `expected_result`
 is `{"$type":"duration","value":{"years":0,"months":0,"weeks":0,"days":0,"hours":0,"minutes":0,"seconds":0,"milliseconds":500}}`.
-Read the `$type` key first - `"duration"` - then read `value` as the seven-plus-one
-key map: every unit here is `0` except `milliseconds: 500`. No parser, no
-unit-string table, no ambiguity - the map is the whole answer.
+(The id names the JSON compaction rule, not the value shape, and predates the
+value always carrying all eight keys; it is kept unchanged because shipped
+corpus ids are stable, [`conformance/RATCHET.md`](RATCHET.md).) Read the
+`$type` key first - `"duration"` - then read `value` as the eight-key map:
+every unit here is `0` except `milliseconds: 500`. No parser, no unit-string
+table, no ambiguity - the map is the whole answer.
 
 ## Error type and reason are normative; message is not
 
