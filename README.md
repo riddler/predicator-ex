@@ -23,7 +23,7 @@ Add `predicator` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:predicator, "~> 8.0"}
+    {:predicator, "~> 9.0"}
   ]
 end
 ```
