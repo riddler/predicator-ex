@@ -1819,7 +1819,16 @@ defmodule Predicator.Evaluator do
   @spec convert_units_to_duration_map([[integer() | binary()]]) ::
           {:ok, Types.duration()} | {:error, struct()}
   defp convert_units_to_duration_map(units) do
-    initial_duration = %{years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0}
+    # Seed from Duration.new/1 rather than a literal so the eight-key set has a
+    # single definition site (px-69c: the old seven-key literal omitted
+    # :milliseconds, and Map.put/3 below inserted it only when the operand
+    # named a ms-family unit, so the key set varied by expression).
+    #
+    # The fold stays Map.put/3, deliberately: docs/isa.md's `duration` opcode
+    # specifies that later pairs *overwrite* earlier ones naming the same unit.
+    # Duration.add_unit/3 accumulates instead, so it is the wrong tool here
+    # despite taking the same unit strings.
+    initial_duration = Duration.new()
 
     Enum.reduce_while(units, {:ok, initial_duration}, fn
       [value, unit], {:ok, acc} when is_integer(value) and is_binary(unit) ->
