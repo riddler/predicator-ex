@@ -22,9 +22,17 @@ defmodule Predicator.Types do
 
   ## Examples
 
-      %{days: 3, hours: 8}  # 3 days 8 hours
-      %{weeks: 2}           # 2 weeks
-      %{minutes: 30}        # 30 minutes
+  3 days 8 hours. Every unit the expression did not name is present and `0`,
+  so the map is always this wide:
+
+      %{years: 0, months: 0, weeks: 0, days: 3,
+        hours: 8, minutes: 0, seconds: 0, milliseconds: 0}
+
+  Build one with `Predicator.Duration.new/1` rather than writing the literal,
+  which fills the units you omit:
+
+      Predicator.Duration.new(weeks: 2)
+      Predicator.Duration.new(minutes: 30)
   """
   @type duration :: %{
           years: non_neg_integer(),
