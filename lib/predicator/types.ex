@@ -9,7 +9,8 @@ defmodule Predicator.Types do
   @typedoc """
   A duration representing a time span.
 
-  Duration is represented as a map with fields for different time units:
+  Duration is represented as a map with fields for different time units. All
+  eight keys are always present; an unspecified unit is `0`.
   - `years` - number of years (default: 0)
   - `months` - number of months (default: 0)
   - `weeks` - number of weeks (default: 0)
@@ -17,12 +18,13 @@ defmodule Predicator.Types do
   - `hours` - number of hours (default: 0)
   - `minutes` - number of minutes (default: 0)
   - `seconds` - number of seconds (default: 0)
+  - `milliseconds` - number of milliseconds (default: 0)
 
   ## Examples
 
-      %Duration{days: 3, hours: 8}  # 3 days 8 hours
-      %Duration{weeks: 2}           # 2 weeks
-      %Duration{minutes: 30}        # 30 minutes
+      %{days: 3, hours: 8}  # 3 days 8 hours
+      %{weeks: 2}           # 2 weeks
+      %{minutes: 30}        # 30 minutes
   """
   @type duration :: %{
           years: non_neg_integer(),
