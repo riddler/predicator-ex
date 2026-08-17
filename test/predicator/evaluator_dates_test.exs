@@ -130,7 +130,17 @@ defmodule Predicator.EvaluatorDatesTest do
       instructions = [["duration", [[5, "d"]]]]
       result = Evaluator.evaluate(instructions)
 
-      expected = %{years: 0, months: 0, weeks: 0, days: 5, hours: 0, minutes: 0, seconds: 0}
+      expected = %{
+        years: 0,
+        months: 0,
+        weeks: 0,
+        days: 5,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        milliseconds: 0
+      }
+
       assert result == expected
     end
 
@@ -138,7 +148,17 @@ defmodule Predicator.EvaluatorDatesTest do
       instructions = [["duration", [[1, "d"], [8, "h"], [30, "m"]]]]
       result = Evaluator.evaluate(instructions)
 
-      expected = %{years: 0, months: 0, weeks: 0, days: 1, hours: 8, minutes: 30, seconds: 0}
+      expected = %{
+        years: 0,
+        months: 0,
+        weeks: 0,
+        days: 1,
+        hours: 8,
+        minutes: 30,
+        seconds: 0,
+        milliseconds: 0
+      }
+
       assert result == expected
     end
 
@@ -149,7 +169,17 @@ defmodule Predicator.EvaluatorDatesTest do
 
       result = Evaluator.evaluate(instructions)
 
-      expected = %{years: 2, months: 3, weeks: 4, days: 5, hours: 6, minutes: 7, seconds: 8}
+      expected = %{
+        years: 2,
+        months: 3,
+        weeks: 4,
+        days: 5,
+        hours: 6,
+        minutes: 7,
+        seconds: 8,
+        milliseconds: 0
+      }
+
       assert result == expected
     end
 
@@ -157,7 +187,17 @@ defmodule Predicator.EvaluatorDatesTest do
       instructions = [["duration", [[1, "year"], [2, "months"], [3, "weeks"]]]]
       result = Evaluator.evaluate(instructions)
 
-      expected = %{years: 1, months: 2, weeks: 3, days: 0, hours: 0, minutes: 0, seconds: 0}
+      expected = %{
+        years: 1,
+        months: 2,
+        weeks: 3,
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        milliseconds: 0
+      }
+
       assert result == expected
     end
 
@@ -171,7 +211,17 @@ defmodule Predicator.EvaluatorDatesTest do
 
       result = Evaluator.evaluate(instructions)
 
-      expected = %{years: 1, months: 2, weeks: 3, days: 4, hours: 5, minutes: 6, seconds: 7}
+      expected = %{
+        years: 1,
+        months: 2,
+        weeks: 3,
+        days: 4,
+        hours: 5,
+        minutes: 6,
+        seconds: 7,
+        milliseconds: 0
+      }
+
       assert result == expected
     end
 
@@ -179,7 +229,17 @@ defmodule Predicator.EvaluatorDatesTest do
       instructions = [["duration", [[0, "d"], [0, "h"]]]]
       result = Evaluator.evaluate(instructions)
 
-      expected = %{years: 0, months: 0, weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0}
+      expected = %{
+        years: 0,
+        months: 0,
+        weeks: 0,
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        milliseconds: 0
+      }
+
       assert result == expected
     end
 
@@ -187,7 +247,17 @@ defmodule Predicator.EvaluatorDatesTest do
       instructions = [["duration", [[999, "y"], [365, "d"]]]]
       result = Evaluator.evaluate(instructions)
 
-      expected = %{years: 999, months: 0, weeks: 0, days: 365, hours: 0, minutes: 0, seconds: 0}
+      expected = %{
+        years: 999,
+        months: 0,
+        weeks: 0,
+        days: 365,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        milliseconds: 0
+      }
+
       assert result == expected
     end
 
@@ -203,6 +273,26 @@ defmodule Predicator.EvaluatorDatesTest do
       result = Evaluator.evaluate(instructions)
 
       assert {:error, _message} = result
+    end
+  end
+
+  describe "duration key set (px-69c)" do
+    test "a non-ms expression yields the same keys as Duration.new/1" do
+      assert {:ok, duration} = Predicator.evaluate("3d")
+
+      assert Map.keys(duration) |> Enum.sort() ==
+               Predicator.Duration.new() |> Map.keys() |> Enum.sort()
+
+      assert duration.milliseconds == 0
+    end
+
+    test "an ms-bearing expression yields the same keys as a non-ms one" do
+      assert {:ok, with_ms} = Predicator.evaluate("1s500ms")
+      assert {:ok, without_ms} = Predicator.evaluate("2h30m10s")
+
+      assert Map.keys(with_ms) |> Enum.sort() == Map.keys(without_ms) |> Enum.sort()
+      assert with_ms.milliseconds == 500
+      assert without_ms.milliseconds == 0
     end
   end
 

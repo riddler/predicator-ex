@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **A duration produced by the `duration` opcode now always carries all eight
+  unit keys, `milliseconds` included.** Previously the evaluator seeded a
+  seven-key accumulator and inserted `milliseconds` only when the expression
+  named a `ms`-family unit, so `Predicator.evaluate("3d")` returned seven keys
+  while `Predicator.evaluate("500ms")` returned eight - a key set that varied
+  with the expression and did not satisfy `t:Predicator.Types.duration/0`,
+  which has always declared all eight as required. Every other duration
+  producer (`Duration.new/1`, `parse/1`, `from_units/1`, and `Date`/`DateTime`
+  subtraction) already returned eight; the opcode now matches them. **This is
+  a breaking change** for a consumer that pattern-matches on the seven-key
+  shape, compares against a seven-key literal, or enumerates `Map.keys/1`; a
+  consumer reading units with `Map.get/3` is unaffected, and the numeric value
+  of every duration is unchanged, since an absent `milliseconds` always meant
+  `0`. No ISA version moves and no compiled instruction list changes meaning -
+  the conformance corpus's exported bytes are identical, because its JSON
+  encoding already omitted a zero `milliseconds`.
+
 ## [8.0.0] - 2026-08-15
 
 ### Added
