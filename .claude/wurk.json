@@ -71,7 +71,7 @@
     "post_branch": []
   },
 
-  "tmux": { "session": "predicator-ex", "model": "opus" },
+  "tmux": { "session": "predicator-ex", "permission_mode": "skip-permissions", "model": "opus" },
 
   "models": { "direction": "fable" },
 
