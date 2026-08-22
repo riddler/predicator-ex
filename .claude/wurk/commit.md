@@ -18,15 +18,14 @@ the body (ADR-0003).
 `conformance/cases/*.json`. Name the cause of a corpus diff in the commit
 message and the PR body.
 
-## Changelog: this repo edits `CHANGELOG.md` directly
+## Changelog: fragments in `changelog.d/`
 
-`changelog.mode` is `keep-a-changelog` here, not `fragments`. Add entries
-**directly** under `## [Unreleased]` in `CHANGELOG.md` when the diff changes
-observable behavior of `Predicator.evaluate/3` or the predicate language.
-There is no `changelog.d/` in this repo and no fragment file to create -
-statifier's fragment-workflow instructions never apply here. Promoting
-`## [Unreleased]` to a version header is release work under CLAUDE.md's
-authority table, not commit work.
+`changelog.mode` is `fragments` here. When the diff changes observable
+behavior of `Predicator.evaluate/3` or the predicate language, write a
+fragment named for the issue (`changelog.d/px-abc.md`) per
+`changelog.d/README.md`. Never add entries to `CHANGELOG.md` directly -
+fragments are assembled into it only at release, which is release work under
+CLAUDE.md's authority table, not commit work.
 
 ## The binding-test sabotage note convention
 

@@ -29,6 +29,6 @@ assertion is drawn from.
 A changelog entry is owed only when the diff changes something a caller of
 `Predicator.evaluate/3` or a predicate author can observe. If one is needed
 and missing, ask the user what it should say rather than inventing it - it is
-a promise about behavior, added directly under `## [Unreleased]` in
-`CHANGELOG.md` (this repo's `changelog.mode` is `keep-a-changelog`, not
-fragments).
+a promise about behavior, written as a fragment (`changelog.d/px-abc.md`, per
+`changelog.d/README.md`; this repo's `changelog.mode` is `fragments`), never
+added to `CHANGELOG.md` directly.

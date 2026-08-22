@@ -91,7 +91,7 @@
     "trailer": { "key": "Refs" }
   },
 
-  "changelog": { "mode": "keep-a-changelog" },
+  "changelog": { "mode": "fragments", "dir": "changelog.d" },
 
   "release": {
     "kind": "hex",
