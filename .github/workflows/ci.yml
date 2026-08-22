@@ -14,9 +14,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  MIX_ENV: test
-
 jobs:
   gate:
     name: Full quality gate
