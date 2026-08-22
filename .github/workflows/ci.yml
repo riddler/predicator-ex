@@ -2,207 +2,105 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
-    paths-ignore:
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'LICENSE'
-      - 'docs/**'
-      - '*.md'
+    branches: [main]
   pull_request:
-    branches: [ main, master ]
-    paths-ignore:
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'LICENSE'
-      - 'docs/**'
-      - '*.md'
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 env:
   MIX_ENV: test
 
 jobs:
-  compile:
-    name: Compile
+  gate:
+    name: Full quality gate
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        elixir: ['1.18']
-        otp: ['26', '27']
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
+      # Single source of truth for the toolchain: a version duplicated into
+      # this file drifts the first time mise.toml moves. mise itself is not
+      # used to provision CI - it would build Erlang from source.
+      - name: Read the toolchain out of mise.toml
+        id: toolchain
+        run: |
+          set -euo pipefail
+          erlang="$(sed -n 's/^erlang *= *"\(.*\)".*$/\1/p' mise.toml | head -1)"
+          elixir="$(sed -n 's/^elixir *= *"\(.*\)".*$/\1/p' mise.toml | head -1)"
+          test -n "$erlang" || { echo "no erlang version in mise.toml" >&2; exit 1; }
+          test -n "$elixir" || { echo "no elixir version in mise.toml" >&2; exit 1; }
+          echo "erlang=$erlang" >> "$GITHUB_OUTPUT"
+          echo "elixir=$elixir" >> "$GITHUB_OUTPUT"
+
+      - uses: erlef/setup-beam@v1
         with:
-          elixir-version: ${{ matrix.elixir }}
-          otp-version: ${{ matrix.otp }}
+          otp-version: ${{ steps.toolchain.outputs.erlang }}
+          elixir-version: ${{ steps.toolchain.outputs.elixir }}
 
-      - name: Cache dependencies
+      # _build carries the Dialyzer PLT, so this cache is the PLT cache too.
+      # The restore-keys fallback means a lockfile bump rebuilds the PLT
+      # incrementally from the previous one rather than from scratch.
+      #
+      # Known tradeoff, the same one statifier-ex and statifier-ui accept: a
+      # warm _build means the compile stage is incremental, so
+      # warnings_as_errors only sees files this push actually recompiles.
+      # Deleting the cache is how to get a from-scratch compile when one is
+      # wanted.
+      - name: Cache deps and build
         uses: actions/cache@v4
         with:
           path: |
             deps
             _build
-          key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+          key: mix-${{ runner.os }}-otp${{ steps.toolchain.outputs.erlang }}-ex${{ steps.toolchain.outputs.elixir }}-${{ hashFiles('mix.lock') }}
           restore-keys: |
-            deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-
+            mix-${{ runner.os }}-otp${{ steps.toolchain.outputs.erlang }}-ex${{ steps.toolchain.outputs.elixir }}-
 
-      - name: Install dependencies
+      - name: Fetch dependencies
         run: mix deps.get
 
-      - name: Compile with warnings as errors
-        run: mix compile --warnings-as-errors
+      # The gate is the whole job. It formats, compiles with warnings as
+      # errors, runs credo --strict, dialyzer, the deps audit, and the full
+      # suite with coverage under the 90% floor in coveralls.json, printing
+      # detail under any failing stage - so a red run is diagnosable from this
+      # log alone. Three stages report as skipped and always will: doctor,
+      # gettext and sobelow, none installed (see the skip allowlists in
+      # .claude/wurk.json).
+      #
+      # Same reasoning as the toolchain step, applied to the gate itself: the
+      # command is read out of .claude/wurk.json rather than written here, so
+      # the gate CI runs and the gate an agent must have green before
+      # committing are one definition with one place to change it. A gate.full
+      # that grows a flag is picked up on the next run, with nothing to
+      # remember. It is read and executed inside the step rather than
+      # interpolated into `run:`, so a repository file never reaches the shell
+      # as expression text.
+      - name: Full quality gate
+        run: |
+          set -euo pipefail
+          mapfile -t cmd < <(jq -er '.gate.full[]' .claude/wurk.json)
+          test "${#cmd[@]}" -gt 0 || { echo "gate.full is empty" >&2; exit 1; }
+          echo "gate command (.claude/wurk.json gate.full): ${cmd[*]}"
+          "${cmd[@]}"
 
-  format:
-    name: Code Formatting
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: '1.18'
-          otp-version: '27'
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            deps
-            _build
-          key: deps-${{ runner.os }}-27-1.18-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            deps-${{ runner.os }}-27-1.18-
-
-      - name: Install dependencies
-        run: mix deps.get
-
-      - name: Check formatting
-        run: mix format --check-formatted
-
-  test:
-    name: Test & Coverage
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        elixir: ['1.18']
-        otp: ['26', '27']
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: ${{ matrix.elixir }}
-          otp-version: ${{ matrix.otp }}
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            deps
-            _build
-          key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-
-
-      - name: Install dependencies
-        run: mix deps.get
-
-      - name: Run tests with coverage
+      # The gate's coverage stage runs `mix coveralls`, which enforces the
+      # threshold but writes no JSON. This re-run exists only to export
+      # cover/excoveralls.json for the README badge; it is strictly a subset
+      # of what the gate already enforced, never a second definition of green.
+      - name: Export coverage for Codecov
         run: mix coveralls.json
 
       - name: Upload coverage reports to Codecov
-        if: matrix.elixir == '1.18' && matrix.otp == '27'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: riddler/predicator-ex
           files: ./cover/excoveralls.json
-
-  credo:
-    name: Static Analysis (Credo)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: '1.18'
-          otp-version: '27'
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            deps
-            _build
-          key: deps-${{ runner.os }}-27-1.18-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            deps-${{ runner.os }}-27-1.18-
-
-      - name: Install dependencies
-        run: mix deps.get
-
-      - name: Run Credo
-        run: mix credo --strict
-
-  dialyzer:
-    name: Static Type Analysis (Dialyzer)
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: '1.18.3'
-        otp-version: '27.3'
-
-    - name: Cache deps
-      uses: actions/cache@v4
-      with:
-        path: |
-          deps
-          _build
-        key: deps-${{ runner.os }}-27.3-1.18.3-${{ hashFiles('**/mix.lock') }}
-        restore-keys: |
-          deps-${{ runner.os }}-27.3-1.18.3-
-
-    - name: Cache Dialyzer PLTs
-      uses: actions/cache@v4
-      with:
-        path: priv/plts
-        key: dialyzer-${{ runner.os }}-27.3-1.18.3-${{ hashFiles('**/mix.lock') }}
-        restore-keys: |
-          dialyzer-${{ runner.os }}-27.3-1.18.3-
-
-    - name: Install dependencies
-      run: mix deps.get
-
-    - name: Compile dependencies
-      run: mix deps.compile
-
-    - name: Compile project
-      run: mix compile
-
-    - name: Run Dialyzer
-      run: mix dialyzer
-
-  quality:
-    name: Quality Gate
-    runs-on: ubuntu-latest
-    needs: [compile, format, test, credo, dialyzer]
-    steps:
-      - name: All checks passed
-        run: echo "All quality checks have passed successfully!"
