@@ -305,6 +305,60 @@ The gate is [ex_quality](https://hex.pm/packages/ex_quality), configured in
 `enabled: false`, no `--skip-*` on the final check, no `@tag :skip`. If a
 finding is genuinely wrong for this repo, report it and let a human decide.
 
+`docs/contributing.md` covers the same commands for a human reader, alongside
+`mix format`, `mix credo --strict` and `mix dialyzer` run one at a time. It is
+instruction, not governance: when it and this file disagree about what is
+required, this file wins.
+
+### When a stage fails
+
+The full reference is **`deps/ex_quality/usage-rules.md`**, vendored with the
+dependency, so it is the version of the tool this repo actually runs
+(`{:ex_quality, "~> 0.13"}`). Read it when a stage fails in a way its own
+output does not explain, or when you need the shape of the JSON report. Fetch
+it with `mix deps.get` if `deps/` is cold; do not go looking for the rules on
+the web instead.
+
+Four rules do not wait to be looked up:
+
+- **Never truncate the output.** No `| tail`, `| head`, `| grep`. A passing
+  stage costs one line and detail prints only for failures, so truncating
+  removes findings, not noise.
+- **Read the `○` lines.** A skipped stage is not a passing one. This repo runs
+  six stages - Format, Compile, Dependencies, Credo, Tests, Dialyzer - and
+  three are reported `○ skipped (not installed)`: Doctor, Gettext, Sobelow.
+  Those three are recorded in `.claude/wurk.json` under
+  `gate.project_level_skips` and `gate.not_applicable_skips` and are the
+  expected state. Any other `○` in a full run is a real gap and is worth
+  telling the user about.
+- **A profiled or scoped run is never evidence that the gate is green.**
+  `--profile loop` runs `[:format, :compile, :credo, :test]` only, with
+  coverage off and the suite narrowed to the tests covering changed files;
+  Dialyzer and the dependency audit do not run at all. Report a green gate off
+  a bare `mix quality`, never off a `--profile loop` run you remember passing.
+- **Never go green by weakening the check.** That is the paragraph above, and
+  it applies to the fix for every stage in the table in `usage-rules.md`.
+
+This repo's stage set is deliberately smaller than the family's largest. It is
+not a gap to close as a side effect of some other bead: `.quality.exs` is an
+`area:build` file, and enlarging the gate is its own change.
+
+### A change touching no Elixir code has no gate to run
+
+The authority table's `git commit` row carries this rule; here is what it
+means in paths. `.claude/wurk.json`'s `gate.build_paths` and
+`gate.also_gated_paths` are the definition: `lib/`, `test/`, `mix.exs`,
+`mix.lock`, and `conformance/`. A diff confined to `docs/`, `CLAUDE.md`,
+`README.md`, or `CHANGELOG.md` compiles nothing and runs no test, so it
+commits on a review of the diff alone.
+
+Two obligations survive. `gate.moving_files` - `.quality.exs`, `.credo.exs`,
+`coveralls.json` - are not Elixir but they move what every other worktree's
+gate enforces, so a diff touching one runs the full gate anyway. And whichever
+rule was applied gets **said out loud** in the report: "full gate green" and
+"no Elixir touched, no gate run" are different claims, and a reader cannot
+tell them apart from silence.
+
 Toolchain versions are pinned in `mise.toml` - `mise install` provisions Erlang
 and Elixir matching what CI builds with.
 
