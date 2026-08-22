@@ -17,6 +17,10 @@
 # Agents: prefer `--format json` when you want to route on which stage failed.
 
 [
+  format: [
+    check: true
+  ],
+
   compile: [
     warnings_as_errors: true
   ],

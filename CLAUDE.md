@@ -301,7 +301,10 @@ substitutes for the pre-commit run. Coverage target is >90% for every
 component, enforced by `coveralls.json`.
 
 The gate is [ex_quality](https://hex.pm/packages/ex_quality), configured in
-`.quality.exs`. Do not weaken it to get a run green: no lowered threshold, no
+`.quality.exs`. The Format stage runs in check mode (`format: [check: true]`):
+the gate never rewrites code, it only reports files needing formatting. Run
+`mix format` yourself before committing; an unformatted file turns the gate
+red. Do not weaken the gate to get a run green: no lowered threshold, no
 `enabled: false`, no `--skip-*` on the final check, no `@tag :skip`. If a
 finding is genuinely wrong for this repo, report it and let a human decide.
 
@@ -314,7 +317,7 @@ required, this file wins.
 
 The full reference is **`deps/ex_quality/usage-rules.md`**, vendored with the
 dependency, so it is the version of the tool this repo actually runs
-(`{:ex_quality, "~> 0.13"}`). Read it when a stage fails in a way its own
+(`{:ex_quality, "~> 0.14"}`). Read it when a stage fails in a way its own
 output does not explain, or when you need the shape of the JSON report. Fetch
 it with `mix deps.get` if `deps/` is cold; do not go looking for the rules on
 the web instead.
