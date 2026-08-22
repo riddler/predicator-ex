@@ -30,6 +30,7 @@
     "full": ["mix", "quality"],
     "loop": ["mix", "quality", "--profile", "loop"],
     "report": ["mix", "quality", "--report", "-"],
+    "attest": ["mix", "gate.verify"],
     "build_paths": ["lib/", "test/", "mix.exs", "mix.lock"],
     "also_gated_paths": ["conformance/"],
     "moving_files": [".quality.exs", ".credo.exs", "coveralls.json"],
@@ -43,6 +44,7 @@
 
     "sabotage": {
       "test_roots": [
+        "test/mix/tasks/gate_verify_test.exs",
         "test/predicator/isa_sync_test.exs",
         "test/predicator/conformance/corpus_freshness_test.exs",
         "test/predicator/conformance/opcode_coverage_test.exs",
