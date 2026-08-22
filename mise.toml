@@ -2,12 +2,10 @@
 #
 #   mise install        provision the toolchain below
 #
-# These match the versions CI's dialyzer job pins explicitly (see
-# .github/workflows/ci.yml). CI's compile and test jobs run Elixir 1.18
-# against OTP 26 and 27, and mix.exs declares `elixir: "~> 1.18"`, so this
-# file pins the development toolchain, not the supported range. Widening or
-# narrowing what predicator supports is a mix.exs and CI-matrix change, not a
-# change here.
+# CI reads these pins out of this file (see .github/workflows/ci.yml), so this
+# is the single source of truth for the toolchain CI runs. mix.exs declares
+# `elixir: "~> 1.18"`; widening or narrowing what predicator supports is a
+# mix.exs change, not a change here.
 
 [tools]
 erlang = "27.3"
