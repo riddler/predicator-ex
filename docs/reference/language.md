@@ -83,7 +83,7 @@ iex> Predicator.evaluate("[1, 2] + [3]", %{})
 > statement in the [statement grammar](../architecture.md) - `Predicator.parse_program/2`
 > - with an assignable left side; a bare `=` in expression position is a
 > parse error naming `==`. `==` and `===` are the only equality operators. See
-> [ADR-0002](../adr/0002-the-equals-grammar-break.md) for the reasoning.
+> [ADR-0002](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0002-the-equals-grammar-break.md) for the reasoning.
 
 ## Comparing dates and datetimes
 

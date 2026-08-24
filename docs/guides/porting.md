@@ -7,7 +7,7 @@ support, and the conformance corpus at the tiers you claim to pass. Those are
 the only two things a sibling implementer has to read, and you are correct or
 incorrect only against the version you declare, never against whatever this
 repo shipped last week
-([ADR-0003](../adr/0003-the-elixir-implementation-leads-the-isa.md)).
+([ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md)).
 
 The corpus lives in a git checkout of this repository, not in the hex
 package - `mix.exs`'s package definition excludes `conformance/` deliberately,
@@ -26,7 +26,7 @@ those two opcodes are still part of v1's and v2's whole set
 
 A sibling running behind the current ISA version is an expected, documented
 state, not a defect
-([ADR-0003](../adr/0003-the-elixir-implementation-leads-the-isa.md)). See
+([ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md)). See
 [`docs/isa.md`](../isa.md) section 7 for the version-history table - which
 opcodes each version introduced or retired, and which library release shipped
 it.
@@ -86,7 +86,7 @@ are host-side plumbing for *this* implementation's embedding API, not part of
 the instruction set - no opcode, corpus case, or conformance claim depends on
 either existing. Adopt an equivalent in your own runtime, or don't; either is
 correct, and on whatever schedule you choose
-([ADR-0003](../adr/0003-the-elixir-implementation-leads-the-isa.md)).
+([ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md)).
 
 ## Start with the evaluator surface
 

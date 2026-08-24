@@ -18,9 +18,11 @@
 | [0014](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0014-functions-are-provided-by-modules.md) | Functions are provided by modules; the context carries a host slot (5.0) | accepted |
 | [0015](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0015-compile-errors-are-structured-values.md) | Compile errors are structured values on all six entry points (8.0) | accepted |
 
-Link form is load-bearing: an ADR published to hexdocs is linked relatively so
-the link resolves there, and an unpublished one is linked by absolute GitHub
-URL. `test/docs_adr_links_test.exs` enforces both directions.
+Link form is load-bearing: ADRs are not published to hexdocs, so a published
+extra (README.md, docs/isa.md, ...) cites an ADR by absolute GitHub URL - a
+relative link there would dangle on hexdocs. `test/docs_adr_links_test.exs`
+enforces this. Within this index and between ADRs, plain relative links are
+fine; they resolve on GitHub and on disk.
 
 New ADRs: next number, same three-section format (Context, Decision,
 Consequences). An ADR is amended by a new ADR that supersedes it, not by

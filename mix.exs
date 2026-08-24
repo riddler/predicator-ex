@@ -103,21 +103,16 @@ defmodule Predicator.MixProject do
         "docs/guides/embedding.md",
         "docs/guides/porting.md",
         "docs/architecture.md",
-        {"docs/adr/README.md",
-         [title: "Architecture Decision Records", filename: "architecture-decision-records"]},
-        "docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md",
-        "docs/adr/0002-the-equals-grammar-break.md",
-        "docs/adr/0003-the-elixir-implementation-leads-the-isa.md",
-        "docs/adr/0009-the-compiled-envelope-carries-the-position-table.md",
-        "docs/adr/0011-casts-are-an-opcode.md",
+        "docs/contributing.md",
         "CHANGELOG.md",
         "LICENSE"
       ],
       groups_for_extras: [
         Reference: ~r{docs/(reference/|isa\.md)},
         Guides: ~r{docs/guides/},
-        Architecture: ~r{docs/(architecture|adr/)}
-      ]
+        Architecture: ~r{docs/architecture}
+      ],
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]
   end
 

@@ -39,7 +39,7 @@ defmodule Predicator.Conformance.Values do
   @duration_keys ~w(years months weeks days hours minutes seconds)a
 
   @doc """
-  Encodes a predicator value (`Predicator.Types.value/0`, plus plain maps
+  Encodes a predicator value (`t:Predicator.Types.value/0`, plus plain maps
   and lists of the same) into the tagged JSON encoding.
 
   Returns `{:error, {:unencodable, term}}` for anything outside the ISA

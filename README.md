@@ -1,10 +1,11 @@
 # Predicator
 
 [![CI](https://github.com/riddler/predicator-ex/actions/workflows/ci.yml/badge.svg)](https://github.com/riddler/predicator-ex/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/riddler/predicator-ex/branch/main/graph/badge.svg)](https://codecov.io/gh/riddler/predicator-ex)
 [![Hex.pm Version](https://img.shields.io/hexpm/v/predicator.svg)](https://hex.pm/packages/predicator)
 [![Hex Downloads](https://img.shields.io/hexpm/dt/predicator.svg)](https://hex.pm/packages/predicator)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/predicator/)
+[![codecov](https://codecov.io/gh/riddler/predicator-ex/branch/main/graph/badge.svg)](https://codecov.io/gh/riddler/predicator-ex)
+[![License](https://img.shields.io/hexpm/l/predicator.svg)](https://github.com/riddler/predicator-ex/blob/main/LICENSE)
 
 Predicator is a secure, non-evaluative condition engine for end-user boolean
 predicates. A user-authored expression like `score > 85 AND active` compiles
@@ -147,7 +148,7 @@ for storing a context alongside a compiled program.
   set in another language and verifying it against the conformance corpus
 - [Architecture and language reference](docs/architecture.md) - the grammar
   with precedence, the compilation pipeline, and the component map
-- [Architecture decision records](docs/adr/README.md) - the reasoning behind
+- [Architecture decision records](https://github.com/riddler/predicator-ex/blob/main/docs/adr/README.md) - the reasoning behind
   the design
 
 ## Migrating from `=`
@@ -158,7 +159,7 @@ assignable left side; a bare `=` in expression position - through
 `Predicator.parse/2` or `Predicator.evaluate/3` - is a parse error naming `==`
 as the fix, never a silent reinterpretation. `==` and `===` are the only
 equality operators. See
-[ADR-0002](docs/adr/0002-the-equals-grammar-break.md) for the reasoning.
+[ADR-0002](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0002-the-equals-grammar-break.md) for the reasoning.
 
 ## Cross-Language Siblings
 
@@ -167,10 +168,10 @@ instruction set (the ISA), which is versioned. Ruby and JavaScript siblings,
 in the [riddler/predicator](https://github.com/riddler/predicator) monorepo,
 adopt each ISA version on their own schedule; a sibling running behind the
 current version is an expected, documented state, not a defect. See
-[ADR-0003](docs/adr/0003-the-elixir-implementation-leads-the-isa.md) for the
+[ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md) for the
 reasoning and [docs/architecture.md](docs/architecture.md) for what each
 sibling currently supports. [docs/isa.md](docs/isa.md) is the specification a
-sibling implements against, and [conformance/](conformance/README.md) is how a
+sibling implements against, and [conformance/](https://github.com/riddler/predicator-ex/blob/main/conformance/README.md) is how a
 sibling verifies a claim of support against it: a checked-in, language-neutral
 JSON corpus, tiered so a v1-only implementation runs a smaller, complete slice
 rather than skipping its way through the whole thing. This is the
