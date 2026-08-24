@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.0.1] - 2026-08-24
+
+### Changed
+
+- **Documentation-only release; no code or predicate-language changes.** ADRs
+  are no longer published to hexdocs - ADR citations in published pages now
+  point at the GitHub repository instead. `docs/contributing.md` is published
+  (the README previously linked it as a dead page), the conformance
+  README/RATCHET links no longer collapse into hexdocs' `readme.html`, the
+  README badge row follows the shared standard with a license badge added,
+  and `mix docs` completes with zero warnings.
+
 ## [9.0.0] - 2026-08-17
 
 ### Changed
