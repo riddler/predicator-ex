@@ -49,7 +49,7 @@ relative_date → duration "ago" | duration "from" "now" | "next" duration | "la
 ```
 
 A duration component's number may carry a decimal fraction (`1.5s`), which
-expands at parse time - through the same helper `Duration.parse/1` uses - into
+expands at parse time - through the same helper `Predicator.Duration.parse/1` uses - into
 plain integer unit pairs, so the AST and the `duration` opcode's operand shape
 are unchanged. An inexact fraction (`0.5ms`, half a millisecond) and a
 post-expansion unit collision (`1.5s200ms`, which would otherwise name `ms`
@@ -62,7 +62,7 @@ table above is otherwise unchanged.
 `::` is postfix, binds tighter than unary minus, and chains left-to-right like
 the other two postfix forms; its seven-name vocabulary comes from
 [`docs/isa.md`](isa.md) §3, with the reasoning in
-[ADR-0011](adr/0011-casts-are-an-opcode.md).
+[ADR-0011](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0011-casts-are-an-opcode.md).
 
 `=` is assignment, not equality. It is valid only at the start of a statement,
 and only with an assignable left side - an identifier optionally followed by
@@ -92,7 +92,7 @@ parser-level form of [`docs/isa.md`](isa.md) §2's rule that execution mode is
 carried by the entry point, not by the artifact. See "The `=` grammar break
 (4.0)" under Cross-Language Siblings for what this means for the Ruby and
 JavaScript implementations, and
-[ADR-0002](adr/0002-the-equals-grammar-break.md) for the alternatives it was
+[ADR-0002](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0002-the-equals-grammar-break.md) for the alternatives it was
 weighed against and the known-consumer survey behind the one-release notice
 period.
 
@@ -180,9 +180,9 @@ has to add. The Elixir side ships
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` as of 3.7.0, so `AND` and `OR`
 short-circuit here, and a compiled instruction list containing either will not
 run on a sibling that hasn't adopted them. See
-[ADR-0003](adr/0003-the-elixir-implementation-leads-the-isa.md) for why
+[ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md) for why
 sibling parity is a downstream obligation rather than a gate on changes made
-here, [ADR-0001](adr/0001-keep-the-stack-vm-revise-the-instruction-set.md) for
+here, [ADR-0001](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0001-keep-the-stack-vm-revise-the-instruction-set.md) for
 the opcodes themselves, and [`docs/isa.md`](isa.md) for the specification each
 ISA version refers to.
 
@@ -196,7 +196,7 @@ retiring an opcode invalidates stored artifacts and takes a major one. v4
 introduces the `cast` opcode in a new tier 7 and retires nothing, so it is
 additive like v2 rather than mixed like v3; see
 [`docs/isa.md`](isa.md)'s §5 for the conversion matrix and
-[ADR-0011](adr/0011-casts-are-an-opcode.md) for why casting is an opcode
+[ADR-0011](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0011-casts-are-an-opcode.md) for why casting is an opcode
 rather than a lowering to `call`.
 
 As of 2026-08-06 both siblings are ISA v1 implementations. That is a snapshot,
@@ -205,9 +205,9 @@ monorepo, and that is the authority.
 
 This repo publishes three artifacts and maintains no support matrix of its
 own: the spec ([`docs/isa.md`](isa.md)), the corpus
-([`conformance/`](../conformance/README.md)) that makes a sibling's claim
+([`conformance/`](https://github.com/riddler/predicator-ex/blob/main/conformance/README.md)) that makes a sibling's claim
 verifiable by running it, and the ratchet format
-([`conformance/RATCHET.md`](../conformance/RATCHET.md), `px-35i.8`) a sibling
+([`conformance/RATCHET.md`](https://github.com/riddler/predicator-ex/blob/main/conformance/RATCHET.md), `px-35i.8`) a sibling
 uses to record which cases it passes and defend that claim against a moving
 corpus over time.
 
@@ -216,7 +216,7 @@ corpus over time.
 `=` is assignment-only and valid only in statement position; `==` and
 `===` are the only equality operators, and `=` in expression position is a
 parse error. 3.8 warned first, so consumers got one release of notice before
-4.0 landed the break. See [ADR-0002](adr/0002-the-equals-grammar-break.md) for
+4.0 landed the break. See [ADR-0002](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0002-the-equals-grammar-break.md) for
 the decision record.
 
 The siblings' lexers still tokenize `=` as an equality operator

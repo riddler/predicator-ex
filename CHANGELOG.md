@@ -905,7 +905,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Predicator.compile!/1` are unchanged and still return a bare instruction
   list, which remains what a consumer serializes and stores. No instruction
   changed and the ISA stays at version 3, so stored artifacts need no
-  migration. See [ADR-0009](docs/adr/0009-the-compiled-envelope-carries-the-position-table.md).
+  migration. See [ADR-0009](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0009-the-compiled-envelope-carries-the-position-table.md).
 
 - `Predicator.decompile/2` renders a `{:comparison, :eq, ...}` node as `==`
   rather than `=`, so decompiled output always re-parses under the 4.0 grammar.
@@ -951,7 +951,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upgrading. **The instruction set is unaffected**: `=` and `==` always compiled
   to `["compare", "EQ"]`, `{:comparison, :eq, ...}` remains a fully supported
   AST node, and no stored instruction list is invalidated. See
-  [ADR-0002](docs/adr/0002-the-equals-grammar-break.md).
+  [ADR-0002](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0002-the-equals-grammar-break.md).
 
 - The `config :predicator, deprecation_warnings` setting, which existed only to
   silence that warning. It is now inert and has been deleted; remove it from

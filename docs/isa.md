@@ -10,7 +10,7 @@ builtin functions, see [Language Reference](reference/language.md). This
 document covers the instruction layer beneath that syntax - what an
 expression compiles to and how it runs, not how it is written.
 
-Per [ADR-0003](adr/0003-the-elixir-implementation-leads-the-isa.md), the
+Per [ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0003-the-elixir-implementation-leads-the-isa.md), the
 Elixir implementation (this repository) is the reference implementation of
 the ISA. It moves when this library needs it to; sibling parity is a
 downstream obligation, not an upstream constraint.
@@ -242,7 +242,7 @@ source text or a language-native binary term does not have it at all. Two
 approaches work:
 
 - **The conformance corpus's tagged-value encoding**, specified in
-  [`conformance/README.md`](../conformance/README.md), carries exactly these
+  [`conformance/README.md`](https://github.com/riddler/predicator-ex/blob/main/conformance/README.md), carries exactly these
   four as `{"$type": ...}` objects and is the encoding to reach for. It is
   recommended, not normative outside the corpus: it is corpus apparatus, not
   a published API, and a consumer adopting it copies it rather than calls it.
@@ -350,7 +350,7 @@ tier-names table above; it loses exactly one thing, its
 `tier/1` keep answering for it with a version rather than falling back to
 `unknown_opcode`. The conformance corpus keeps a retired opcode's cases too,
 with frozen expectations rather than ones the evaluator recomputes - see §8
-and [`conformance/README.md`](../conformance/README.md). Retiring an opcode
+and [`conformance/README.md`](https://github.com/riddler/predicator-ex/blob/main/conformance/README.md). Retiring an opcode
 still requires an upgrade path (ADR-0003).
 
 ## 5. Per-opcode semantics and errors
@@ -808,7 +808,7 @@ What a reader might expect to find here and will not:
   `docs/reference/language.md`'s "Error Shapes" for how they surface on an
   error.
 - Surface syntax, including the `=` grammar break
-  ([ADR-0002](adr/0002-the-equals-grammar-break.md)). Both `=` and `==`
+  ([ADR-0002](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0002-the-equals-grammar-break.md)). Both `=` and `==`
   compile to `["compare", "EQ"]`, so no instruction-level divergence exists
   between them: the difference is a parse error in expression position and an
   assignment in statement position, entirely at the parser layer, and it is
@@ -853,11 +853,11 @@ own repository. No support matrix is maintained here (ADR-0003).
 
 ## 8. Conformance corpus
 
-This document specifies the ISA in prose; [`conformance/README.md`](../conformance/README.md)
+This document specifies the ISA in prose; [`conformance/README.md`](https://github.com/riddler/predicator-ex/blob/main/conformance/README.md)
 is its **executable form** - a checked-in, language-neutral JSON corpus a
 sibling runs its compiler and evaluator against, tier by tier, without an
 Elixir toolchain (`px-35i.4`, ADR-0003). Read it before implementing against
-a tier or adding a case. [`conformance/RATCHET.md`](../conformance/RATCHET.md)
+a tier or adding a case. [`conformance/RATCHET.md`](https://github.com/riddler/predicator-ex/blob/main/conformance/RATCHET.md)
 is the companion format a sibling uses to record and defend its conformance
 claim over time (`px-35i.8`).
 
