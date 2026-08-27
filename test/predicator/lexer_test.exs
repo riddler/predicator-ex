@@ -104,10 +104,10 @@ defmodule Predicator.LexerTest do
 
   describe "tokenize/1 - complex expressions" do
     test "tokenizes simple comparison" do
-      assert {:ok, tokens} = Lexer.tokenize("score > 85")
+      assert {:ok, tokens} = Lexer.tokenize("limit > 85")
 
       assert tokens == [
-               {:identifier, 1, 1, 5, "score"},
+               {:identifier, 1, 1, 5, "limit"},
                {:gt, 1, 7, 1, ">"},
                {:integer, 1, 9, 2, 85},
                {:eof, 1, 11, 0, nil}
@@ -150,10 +150,10 @@ defmodule Predicator.LexerTest do
     end
 
     test "handles multiple whitespace" do
-      assert {:ok, tokens} = Lexer.tokenize("  score   >    85  ")
+      assert {:ok, tokens} = Lexer.tokenize("  limit   >    85  ")
 
       assert tokens == [
-               {:identifier, 1, 3, 5, "score"},
+               {:identifier, 1, 3, 5, "limit"},
                {:gt, 1, 11, 1, ">"},
                {:integer, 1, 16, 2, 85},
                {:eof, 1, 20, 0, nil}
@@ -164,14 +164,14 @@ defmodule Predicator.LexerTest do
   describe "tokenize/1 - position tracking" do
     test "tracks line numbers correctly" do
       input = """
-      score > 85
+      limit > 85
       age >= 18
       """
 
       assert {:ok, tokens} = Lexer.tokenize(input)
 
       assert tokens == [
-               {:identifier, 1, 1, 5, "score"},
+               {:identifier, 1, 1, 5, "limit"},
                {:gt, 1, 7, 1, ">"},
                {:integer, 1, 9, 2, 85},
                {:identifier, 2, 1, 3, "age"},
@@ -182,10 +182,10 @@ defmodule Predicator.LexerTest do
     end
 
     test "tracks columns with tabs" do
-      assert {:ok, tokens} = Lexer.tokenize("score\t>\t85")
+      assert {:ok, tokens} = Lexer.tokenize("limit\t>\t85")
 
       assert tokens == [
-               {:identifier, 1, 1, 5, "score"},
+               {:identifier, 1, 1, 5, "limit"},
                {:gt, 1, 7, 1, ">"},
                {:integer, 1, 9, 2, 85},
                {:eof, 1, 11, 0, nil}
@@ -204,12 +204,12 @@ defmodule Predicator.LexerTest do
 
     test "returns error with correct position" do
       assert {:error, "Unterminated date literal", 1, 9, {{1, 9}, {1, 10}}} =
-               Lexer.tokenize("score > #")
+               Lexer.tokenize("limit > #")
     end
 
     test "returns error on multiline with correct position" do
       input = """
-      score > 85
+      limit > 85
       name @ "John"
       """
 
@@ -251,7 +251,7 @@ defmodule Predicator.LexerTest do
 
   describe "additional edge cases for coverage" do
     test "handles carriage return characters" do
-      input = "score > 85\r\nAND age >= 18"
+      input = "limit > 85\r\nAND age >= 18"
       {:ok, tokens} = Lexer.tokenize(input)
 
       # Should handle \r properly and continue on next line
@@ -339,13 +339,13 @@ defmodule Predicator.LexerTest do
     end
 
     test "tokenizes function call with multiple arguments" do
-      input = "max(score, 100)"
+      input = "max(limit, 100)"
 
       assert {:ok,
               [
                 {:function_name, 1, 1, 3, "max"},
                 {:lparen, 1, 4, 1, "("},
-                {:identifier, 1, 5, 5, "score"},
+                {:identifier, 1, 5, 5, "limit"},
                 {:comma, 1, 10, 1, ","},
                 {:integer, 1, 12, 3, 100},
                 {:rparen, 1, 15, 1, ")"},
@@ -386,14 +386,14 @@ defmodule Predicator.LexerTest do
 
     test "distinguishes function calls from parenthesized expressions" do
       # This should be a regular identifier with parentheses (not a function call)
-      input = "name AND (score > 85)"
+      input = "name AND (limit > 85)"
 
       assert {:ok,
               [
                 {:identifier, 1, 1, 4, "name"},
                 {:and_op, 1, 6, 3, "AND"},
                 {:lparen, 1, 10, 1, "("},
-                {:identifier, 1, 11, 5, "score"},
+                {:identifier, 1, 11, 5, "limit"},
                 {:gt, 1, 17, 1, ">"},
                 {:integer, 1, 19, 2, 85},
                 {:rparen, 1, 21, 1, ")"},

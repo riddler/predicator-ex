@@ -82,8 +82,8 @@ defmodule Predicator.ParserTest do
     end
 
     test "parses identifier" do
-      {:ok, tokens} = Lexer.tokenize("score")
-      assert parse_positionless(tokens) == {:ok, {:identifier, "score"}}
+      {:ok, tokens} = Lexer.tokenize("limit")
+      assert parse_positionless(tokens) == {:ok, {:identifier, "limit"}}
     end
 
     test "parses parenthesized expression" do
@@ -92,8 +92,8 @@ defmodule Predicator.ParserTest do
     end
 
     test "parses nested parentheses" do
-      {:ok, tokens} = Lexer.tokenize("((score))")
-      assert parse_positionless(tokens) == {:ok, {:identifier, "score"}}
+      {:ok, tokens} = Lexer.tokenize("((limit))")
+      assert parse_positionless(tokens) == {:ok, {:identifier, "limit"}}
     end
   end
 
@@ -192,9 +192,9 @@ defmodule Predicator.ParserTest do
 
   describe "parse/1 - complex expressions" do
     test "handles whitespace correctly" do
-      {:ok, tokens} = Lexer.tokenize("  score   >    85  ")
+      {:ok, tokens} = Lexer.tokenize("  limit   >    85  ")
 
-      expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      expected = {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
 
@@ -304,20 +304,20 @@ defmodule Predicator.ParserTest do
     end
 
     test "parses function call with multiple arguments" do
-      {:ok, tokens} = Lexer.tokenize("max(score1, score2)")
+      {:ok, tokens} = Lexer.tokenize("max(limit1, limit2)")
 
       assert parse_positionless(tokens) ==
-               {:ok, {:function_call, "max", [{:identifier, "score1"}, {:identifier, "score2"}]}}
+               {:ok, {:function_call, "max", [{:identifier, "limit1"}, {:identifier, "limit2"}]}}
     end
 
     test "parses function call with complex arguments" do
-      {:ok, tokens} = Lexer.tokenize("max(score + bonus, 100)")
+      {:ok, tokens} = Lexer.tokenize("max(limit + bonus, 100)")
 
       assert parse_positionless(tokens) ==
                {:ok,
                 {:function_call, "max",
                  [
-                   {:arithmetic, :add, {:identifier, "score"}, {:identifier, "bonus"}},
+                   {:arithmetic, :add, {:identifier, "limit"}, {:identifier, "bonus"}},
                    {:literal, 100}
                  ]}}
     end

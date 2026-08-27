@@ -28,17 +28,17 @@ defmodule Predicator.EvaluatorUnboundTest do
     test "does not record a name bound under an atom key" do
       # Intentional asymmetry for this Context-bypassing, low-level API
       # (px-8um.2): load_from_context/2 no longer falls back to an atom key,
-      # so the *value* comes back :undefined - the string key "score" is
+      # so the *value* comes back :undefined - the string key "limit" is
       # genuinely absent from this hand-built context. But resolve_key/2
       # (deliberately out of scope for px-8um.2 - it powers Context.bound?/2
       # and unbound-load bookkeeping, a presence check, not a value read)
-      # still finds the atom key :score present, so unbound_loads stays []
-      # rather than recording "score". This asymmetry is only reachable by
+      # still finds the atom key :limit present, so unbound_loads stays []
+      # rather than recording "limit". This asymmetry is only reachable by
       # bypassing Predicator.Context.new/2; Predicator.evaluate/3's
       # unbound_loads reporting only ever sees Context.new/2-normalized data,
       # where the atom key would already be a string key and both checks
       # would agree.
-      evaluator = %Evaluator{instructions: [["load", "score"]], context: %{score: 85}}
+      evaluator = %Evaluator{instructions: [["load", "limit"]], context: %{limit: 85}}
 
       {:ok, :undefined, final} = Evaluator.run_prepared(evaluator)
       assert Evaluator.unbound_loads(final) == []

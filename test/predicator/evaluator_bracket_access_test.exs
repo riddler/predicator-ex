@@ -42,12 +42,12 @@ defmodule Predicator.EvaluatorBracketAccessTest do
 
     test "accesses array element with variable index" do
       instructions = [
-        ["load", "scores"],
+        ["load", "limits"],
         ["load", "index"],
         ["bracket_access"]
       ]
 
-      context = %{"scores" => [85, 92, 78], "index" => 2}
+      context = %{"limits" => [85, 92, 78], "index" => 2}
 
       assert Evaluator.evaluate(instructions, context) == 78
     end
@@ -149,13 +149,13 @@ defmodule Predicator.EvaluatorBracketAccessTest do
     test "supports mixed map and array access" do
       instructions = [
         ["load", "data"],
-        ["lit", "scores"],
+        ["lit", "limits"],
         ["bracket_access"],
         ["lit", 1],
         ["bracket_access"]
       ]
 
-      context = %{"data" => %{"scores" => [85, 92, 78]}}
+      context = %{"data" => %{"limits" => [85, 92, 78]}}
 
       assert Evaluator.evaluate(instructions, context) == 92
     end
@@ -250,16 +250,16 @@ defmodule Predicator.EvaluatorBracketAccessTest do
 
     test "integrates with arithmetic operations" do
       instructions = [
-        ["load", "scores"],
+        ["load", "limits"],
         ["lit", 0],
         ["bracket_access"],
-        ["load", "scores"],
+        ["load", "limits"],
         ["lit", 1],
         ["bracket_access"],
         ["add"]
       ]
 
-      context = %{"scores" => [10, 20, 30]}
+      context = %{"limits" => [10, 20, 30]}
 
       assert Evaluator.evaluate(instructions, context) == 30
     end

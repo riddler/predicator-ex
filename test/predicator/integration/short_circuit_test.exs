@@ -6,7 +6,7 @@ defmodule Predicator.Integration.ShortCircuitTest do
 
   describe "the three verified 3.5.0 failures now evaluate" do
     test "AND with an unbound right side no longer raises" do
-      assert Predicator.evaluate("false AND score > 5", %{}) == {:ok, false}
+      assert Predicator.evaluate("false AND limit > 5", %{}) == {:ok, false}
     end
 
     test "AND with a missing nested left property no longer raises" do

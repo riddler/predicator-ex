@@ -176,9 +176,9 @@ defmodule PredicatorCollectionsTest do
     end
 
     test "evaluates object literals with variable references" do
-      context = %{"username" => "alice", "score" => 95}
+      context = %{"username" => "alice", "limit" => 95}
 
-      assert Predicator.evaluate("{user: username, points: score}", context) ==
+      assert Predicator.evaluate("{user: username, points: limit}", context) ==
                {:ok, %{"user" => "alice", "points" => 95}}
     end
 
@@ -208,10 +208,10 @@ defmodule PredicatorCollectionsTest do
     end
 
     test "object equality and comparison" do
-      context = %{"user_data" => %{"score" => 85}}
+      context = %{"user_data" => %{"limit" => 85}}
 
-      assert Predicator.evaluate("{score: 85} == user_data", context) == {:ok, true}
-      assert Predicator.evaluate("{score: 90} != user_data", context) == {:ok, true}
+      assert Predicator.evaluate("{limit: 85} == user_data", context) == {:ok, true}
+      assert Predicator.evaluate("{limit: 90} != user_data", context) == {:ok, true}
       assert Predicator.evaluate("{} == {}", %{}) == {:ok, true}
       assert Predicator.evaluate("{} != {name: \"test\"}", %{}) == {:ok, true}
     end

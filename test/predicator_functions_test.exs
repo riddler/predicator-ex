@@ -12,7 +12,7 @@ defmodule PredicatorFunctionsTest do
       assert Predicator.evaluate("double(21)", %{}, functions: custom_functions) == {:ok, 42}
 
       # Test with context variable
-      assert Predicator.evaluate("double(score)", %{"score" => 25}, functions: custom_functions) ==
+      assert Predicator.evaluate("double(limit)", %{"limit" => 25}, functions: custom_functions) ==
                {:ok, 50}
 
       # Test two-argument function

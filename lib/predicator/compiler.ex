@@ -7,13 +7,13 @@ defmodule Predicator.Compiler do
 
   ## Examples
 
-      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      iex> ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.Compiler.to_instructions(ast)
-      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      [["load", "limit"], ["lit", 85], ["compare", "GT"]]
 
       # Future visitors will enable:
       # iex> Predicator.Compiler.to_string(ast)
-      # "score > 85"
+      # "limit > 85"
 
       # iex> Predicator.Compiler.to_dot(ast)
       # "digraph {...}"
@@ -74,9 +74,9 @@ defmodule Predicator.Compiler do
 
   ## Examples
 
-      iex> ast = {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}
+      iex> ast = {:comparison, :gt, {:identifier, "limit", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}
       iex> Predicator.Compiler.to_instructions_with_positions(ast)
-      {[["load", "score"], ["lit", 85], ["compare", "GT"]],
+      {[["load", "limit"], ["lit", 85], ["compare", "GT"]],
        %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
 
       iex> Predicator.Compiler.to_instructions_with_positions({:literal, 42, nil})
@@ -148,9 +148,9 @@ defmodule Predicator.Compiler do
       iex> Predicator.Compiler.to_string(ast)
       "42"
 
-      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      iex> ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.Compiler.to_string(ast)
-      "score > 85"
+      "limit > 85"
 
       iex> ast = {:comparison, :gt, {:identifier, "age", nil}, {:literal, 21, nil}, nil}
       iex> Predicator.Compiler.to_string(ast, parentheses: :explicit)

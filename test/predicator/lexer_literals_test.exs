@@ -283,7 +283,7 @@ defmodule Predicator.LexerLiteralsTest do
                Lexer.tokenize("#2024-01-15")
 
       assert {:error, "Unterminated date literal", 1, 9, {{1, 9}, {1, 10}}} =
-               Lexer.tokenize("score > #")
+               Lexer.tokenize("limit > #")
     end
   end
 

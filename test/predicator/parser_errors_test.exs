@@ -21,7 +21,7 @@ defmodule Predicator.ParserErrorsTest do
     end
 
     test "returns error for incomplete comparison" do
-      {:ok, tokens} = Lexer.tokenize("score >")
+      {:ok, tokens} = Lexer.tokenize("limit >")
 
       result = parse_positionless(tokens)
 
@@ -43,7 +43,7 @@ defmodule Predicator.ParserErrorsTest do
     end
 
     test "returns error for missing right operand" do
-      {:ok, tokens} = Lexer.tokenize("score > >")
+      {:ok, tokens} = Lexer.tokenize("limit > >")
 
       result = parse_positionless(tokens)
 
@@ -55,7 +55,7 @@ defmodule Predicator.ParserErrorsTest do
     end
 
     test "returns error for unterminated parentheses" do
-      {:ok, tokens} = Lexer.tokenize("(score")
+      {:ok, tokens} = Lexer.tokenize("(limit")
 
       result = parse_positionless(tokens)
       assert {:error, "Expected ')' but found end of input", 1, 7, _span} = result
@@ -65,7 +65,7 @@ defmodule Predicator.ParserErrorsTest do
       # The lexer rejects ']' as invalid, so let's test with constructed tokens
       tokens = [
         {:lparen, 1, 1, 1, "("},
-        {:identifier, 1, 2, 5, "score"},
+        {:identifier, 1, 2, 5, "limit"},
         # Simulating a different token type
         {:identifier, 1, 7, 1, "]"},
         {:eof, 1, 8, 0, nil}
@@ -76,7 +76,7 @@ defmodule Predicator.ParserErrorsTest do
     end
 
     test "returns error for extra tokens after expression" do
-      {:ok, tokens} = Lexer.tokenize("score > 85 extra")
+      {:ok, tokens} = Lexer.tokenize("limit > 85 extra")
 
       result = parse_positionless(tokens)
 
@@ -85,7 +85,7 @@ defmodule Predicator.ParserErrorsTest do
     end
 
     test "returns error for multiple operators" do
-      {:ok, tokens} = Lexer.tokenize("score > > 85")
+      {:ok, tokens} = Lexer.tokenize("limit > > 85")
 
       result = parse_positionless(tokens)
 
@@ -108,10 +108,10 @@ defmodule Predicator.ParserErrorsTest do
     end
 
     test "handles complex parenthesized expressions" do
-      input = "((score) >= (threshold))"
+      input = "((limit) >= (threshold))"
       {:ok, tokens} = Lexer.tokenize(input)
 
-      expected = {:comparison, :gte, {:identifier, "score"}, {:identifier, "threshold"}}
+      expected = {:comparison, :gte, {:identifier, "limit"}, {:identifier, "threshold"}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
   end
@@ -123,7 +123,7 @@ defmodule Predicator.ParserErrorsTest do
       # (the last one in the list) and reports its position, not {1, 1}.
       tokens = [
         {:lparen, 1, 1, 1, "("},
-        {:identifier, 1, 2, 5, "score"}
+        {:identifier, 1, 2, 5, "limit"}
         # Note: no closing paren and no EOF token
       ]
 
@@ -141,7 +141,7 @@ defmodule Predicator.ParserErrorsTest do
 
     test "handles nested error propagation from inner expressions" do
       # Test error propagation through parentheses
-      {:ok, tokens} = Lexer.tokenize("(score > )")
+      {:ok, tokens} = Lexer.tokenize("(limit > )")
 
       result = parse_positionless(tokens)
       assert {:error, message, 1, 10, _span} = result
@@ -152,7 +152,7 @@ defmodule Predicator.ParserErrorsTest do
 
     test "handles comparison operator followed by EOF" do
       tokens = [
-        {:identifier, 1, 1, 5, "score"},
+        {:identifier, 1, 1, 5, "limit"},
         {:gt, 1, 7, 1, ">"},
         {:eof, 1, 8, 0, nil}
       ]

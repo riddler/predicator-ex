@@ -11,7 +11,7 @@ defmodule Predicator.ParserSpansTest do
     ~s("hello"),
     "'hello'",
     "#2024-01-15#",
-    "score",
+    "limit",
     "a > 1",
     "a in [1, 2]",
     "a contains 1",
@@ -72,13 +72,13 @@ defmodule Predicator.ParserSpansTest do
     end
 
     test "an identifier spans its own token" do
-      assert_span("score", "score")
+      assert_span("limit", "limit")
     end
   end
 
   describe "binary operators" do
     test "a comparison spans both operands" do
-      assert_span("score > 85", "score > 85")
+      assert_span("limit > 85", "limit > 85")
     end
 
     test "membership spans both operands" do

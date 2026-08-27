@@ -17,13 +17,13 @@ defmodule Predicator.Visitors.StringVisitor do
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "42"
 
-      iex> ast = {:identifier, "score", nil}
+      iex> ast = {:identifier, "limit", nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
-      "score"
+      "limit"
 
-      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      iex> ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
-      "score > 85"
+      "limit > 85"
 
       iex> {:ok, ast} = Predicator.parse(~s(name == "John"))
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
@@ -41,9 +41,9 @@ defmodule Predicator.Visitors.StringVisitor do
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
       "len(name)"
 
-      iex> ast = {:cast, {:identifier, "score", nil}, "integer", nil}
+      iex> ast = {:cast, {:identifier, "limit", nil}, "integer", nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
-      "score::integer"
+      "limit::integer"
 
       iex> ast = {:object, [], nil}
       iex> Predicator.Visitors.StringVisitor.visit(ast, [])
@@ -108,9 +108,9 @@ defmodule Predicator.Visitors.StringVisitor do
     - `:none` - never add parentheses (may change meaning!)
 
   - `:spacing` controls whitespace:
-    - `:normal` - standard spacing: "score > 85"
-    - `:compact` - minimal spacing: "score>85"
-    - `:verbose` - extra spacing: "score  >  85"
+    - `:normal` - standard spacing: "limit > 85"
+    - `:compact` - minimal spacing: "limit>85"
+    - `:verbose` - extra spacing: "limit  >  85"
   """
   @impl Predicator.Visitor
   @spec visit(Parser.visitable(), keyword()) :: binary()

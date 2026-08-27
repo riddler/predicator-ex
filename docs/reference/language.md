@@ -24,7 +24,7 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 - **Lists**: `[1, 2, 3]`, `['admin', 'manager']` (homogeneous collections)
 - **Objects**: `{}`, `{name: "John", age: 30}`, `{user: {role: "admin"}}`
   (JavaScript-style object literals)
-- **Identifiers**: `score`, `user_name`, `is_active`, `user.profile.name`,
+- **Identifiers**: `limit`, `user_name`, `is_active`, `user.profile.name`,
   `user['key']`, `items[0]` (variable references with dot notation and
   bracket notation for nested data)
 
@@ -32,7 +32,7 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `+`      | Addition | `score + bonus`, `2 + 3 * 4` |
+| `+`      | Addition | `limit + bonus`, `2 + 3 * 4` |
 | `-`      | Subtraction | `total - discount`, `100 - 25` |
 | `*`      | Multiplication | `price * quantity`, `3 * 4` |
 | `/`      | Division (truncating if both operands are integers; float if either is a float) | `total / count`, `10 / 3`, `10 / 3.0` |
@@ -70,7 +70,7 @@ iex> Predicator.evaluate("[1, 2] + [3]", %{})
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `>`      | Greater than | `score > 85`, `#2024-01-15# > #2024-01-10#` |
+| `>`      | Greater than | `limit > 85`, `#2024-01-15# > #2024-01-10#` |
 | `<`      | Less than | `age < 30`, `created_at < #2024-01-15T10:00:00Z#` |
 | `>=`     | Greater than or equal | `points >= 100` |
 | `<=`     | Less than or equal | `count <= 5` |
@@ -107,7 +107,7 @@ could never be compared against one.
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `AND`    | Logical AND (case-insensitive) | `score > 85 AND age >= 18` |
+| `AND`    | Logical AND (case-insensitive) | `limit > 85 AND age >= 18` |
 | `OR`     | Logical OR (case-insensitive) | `role == 'admin' OR role == 'manager'` |
 | `NOT`    | Logical NOT (case-insensitive) | `NOT expired` |
 | `!`      | Unary logical negation | `!expired` |
@@ -306,13 +306,13 @@ by an `else`. It runs its `then` block when `cond` is `true` and skips it
 otherwise; an `else` block runs when the condition does not:
 
 ```elixir
-iex> {:ok, ast} = Predicator.parse_program("if score > 85 { grade = 'A' }")
+iex> {:ok, ast} = Predicator.parse_program("if limit > 85 { grade = 'A' }")
 iex> ast
-{:program, [{:if, {:comparison, :gt, {:identifier, "score", {1, 4}}, {:literal, 85, {1, 12}}, {1, 10}}, {:block, [{:assignment, {:identifier, "grade", {1, 17}}, {:string_literal, "A", :single, {1, 25}}, {1, 23}}], {1, 15}}, nil, {1, 1}}], {1, 1}}
+{:program, [{:if, {:comparison, :gt, {:identifier, "limit", {1, 4}}, {:literal, 85, {1, 12}}, {1, 10}}, {:block, [{:assignment, {:identifier, "grade", {1, 17}}, {:string_literal, "A", :single, {1, 25}}, {1, 23}}], {1, 15}}, nil, {1, 1}}], {1, 1}}
 ```
 
 ```elixir
-iex> {:ok, ast} = Predicator.parse_program("if score > 85 { grade = 'A' } else { grade = 'B' }")
+iex> {:ok, ast} = Predicator.parse_program("if limit > 85 { grade = 'A' } else { grade = 'B' }")
 iex> {:if, _condition, _then_block, else_block, _pos} = hd(elem(ast, 1))
 iex> else_block
 {:block, [{:assignment, {:identifier, "grade", {1, 38}}, {:string_literal, "B", :single, {1, 46}}, {1, 44}}], {1, 36}}
@@ -484,7 +484,7 @@ iex> Predicator.evaluate("index_of('hello world', 'nope')", %{})
 | Function | Description | Returns | Example |
 |----------|-------------|---------|---------|
 | `Math.abs(number)` | Absolute value | same type as the argument | `Math.abs(balance) < 100` |
-| `Math.max(a, b)` | Maximum of two numbers | the winning argument, type unchanged | `Math.max(score1, score2) > 85` |
+| `Math.max(a, b)` | Maximum of two numbers | the winning argument, type unchanged | `Math.max(limit1, limit2) > 85` |
 | `Math.min(a, b)` | Minimum of two numbers | the winning argument, type unchanged | `Math.min(age, 65) >= 18` |
 | `Math.pow(base, exp)` | Exponentiation | integer when both are integers and `exp >= 0`; float otherwise | `Math.pow(2, 10) == 1024` |
 | `Math.sqrt(number)` | Square root | integer for a non-negative integer with an exact root; float otherwise | `Math.sqrt(144) == 12` |
@@ -556,17 +556,17 @@ rejects with an `EvaluationError`. Neither one mixes a list with a scalar -
 quote style, with formatting options:
 
 ```elixir
-iex> {:ok, ast} = Predicator.parse("score > 85")
+iex> {:ok, ast} = Predicator.parse("limit > 85")
 iex> Predicator.decompile(ast, spacing: :compact)
-"score>85"
+"limit>85"
 
-iex> {:ok, ast} = Predicator.parse("score > 85")
+iex> {:ok, ast} = Predicator.parse("limit > 85")
 iex> Predicator.decompile(ast, spacing: :verbose)
-"score  >  85"
+"limit  >  85"
 
-iex> {:ok, ast} = Predicator.parse("score > 85")
+iex> {:ok, ast} = Predicator.parse("limit > 85")
 iex> Predicator.decompile(ast, parentheses: :explicit)
-"(score > 85)"
+"(limit > 85)"
 ```
 
 A duration literal's decompiled form is always its expansion, never the
@@ -1005,13 +1005,13 @@ Predicator returns errors as structs under `Predicator.Errors`, never as bare
 strings, and never raises at a leaf:
 
 ```elixir
-iex> {:error, err} = Predicator.evaluate("score >> 85", %{})
+iex> {:error, err} = Predicator.evaluate("limit >> 85", %{})
 iex> {err.__struct__, err.position}
 {Predicator.Errors.ParseError, {1, 8}}
 iex> err.message
 "Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found '>'"
 
-iex> {:error, err} = Predicator.evaluate("score AND", %{})
+iex> {:error, err} = Predicator.evaluate("limit AND", %{})
 iex> err.position
 {1, 10}
 ```
@@ -1020,7 +1020,7 @@ A compile failure returns the same struct, since `compile/1` and its five
 siblings share `evaluate/3`'s error arm:
 
 ```elixir
-iex> {:error, err} = Predicator.compile("score >>")
+iex> {:error, err} = Predicator.compile("limit >>")
 iex> {err.__struct__, err.position}
 {Predicator.Errors.ParseError, {1, 8}}
 ```

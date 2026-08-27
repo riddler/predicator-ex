@@ -55,7 +55,7 @@ defmodule Predicator.ParserErrorSpansTest do
 
   describe "parse/1 - error spans" do
     test "a single-token failure spans exactly that token, for a token longer than one character" do
-      {:ok, tokens} = Lexer.tokenize("score > 85 extra")
+      {:ok, tokens} = Lexer.tokenize("limit > 85 extra")
 
       assert {:error, message, line, col, {start, stop}} = Predicator.Parser.parse(tokens)
 
@@ -84,12 +84,12 @@ defmodule Predicator.ParserErrorSpansTest do
     end
 
     test "the span-start invariant holds for an unexpected-token, a lexical, and an end-of-input failure" do
-      {:ok, unexpected_token_tokens} = Lexer.tokenize("score > 85 extra")
+      {:ok, unexpected_token_tokens} = Lexer.tokenize("limit > 85 extra")
       unexpected_token_error = Predicator.Parser.parse(unexpected_token_tokens)
 
       lexical_error = Predicator.Lexer.tokenize("@")
 
-      {:ok, end_of_input_tokens} = Lexer.tokenize("score >")
+      {:ok, end_of_input_tokens} = Lexer.tokenize("limit >")
       end_of_input_error = Predicator.Parser.parse(end_of_input_tokens)
 
       for err <- [unexpected_token_error, lexical_error, end_of_input_error] do
@@ -123,8 +123,8 @@ defmodule Predicator.ParserErrorSpansTest do
         "[1,",
         "{a:",
         "(1 +",
-        "score.",
-        "score::",
+        "limit.",
+        "limit::",
         "f(",
         "1d from"
       ]

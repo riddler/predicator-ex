@@ -12,7 +12,7 @@ corpus = %{
   "name" => "Ada Lovelace",
   "age" => 36,
   "active" => true,
-  "score" => 92.5,
+  "limit" => 92.5,
   "role" => "admin"
 }
 
@@ -31,7 +31,7 @@ stress =
        "tags" => ["tag_#{i}", "tag_#{i + 1}", "tag_#{i + 2}"],
        "meta" => %{
          "created_at" => "2026-01-0#{rem(i, 9) + 1}",
-         "score" => i * 1.5,
+         "limit" => i * 1.5,
          "nested" => %{"depth" => 3, "values" => [i, i + 1, i + 2]}
        }
      }}

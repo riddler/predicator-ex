@@ -30,13 +30,13 @@ defmodule Predicator.Context do
 
   ## Examples
 
-      iex> context = Predicator.Context.new(%{"score" => 85})
-      iex> Predicator.evaluate("score > 80", context)
+      iex> context = Predicator.Context.new(%{"limit" => 85})
+      iex> Predicator.evaluate("limit > 80", context)
       {:ok, true}
 
       iex> context = Predicator.Context.new(%{})
-      iex> context = Predicator.Context.bind(context, "score", 90)
-      iex> Predicator.evaluate("score", context)
+      iex> context = Predicator.Context.bind(context, "limit", 90)
+      iex> Predicator.evaluate("limit", context)
       {:ok, 90}
   """
 
@@ -404,19 +404,19 @@ defmodule Predicator.Context do
 
   `resolve_key/2` also accepts an atom key, but a `Context`'s data never has
   one: `new/2` and `bind/3` normalized them to string keys already. The
-  `%{score: 85}` example below is bound because of that normalization, not
+  `%{limit: 85}` example below is bound because of that normalization, not
   because of an atom lookup here.
 
   ## Examples
 
-      iex> context = Predicator.Context.new(%{"score" => 85})
-      iex> Predicator.Context.bound?(context, "score")
+      iex> context = Predicator.Context.new(%{"limit" => 85})
+      iex> Predicator.Context.bound?(context, "limit")
       true
       iex> Predicator.Context.bound?(context, "missing")
       false
 
-      iex> context = Predicator.Context.new(%{score: 85})
-      iex> Predicator.Context.bound?(context, "score")
+      iex> context = Predicator.Context.new(%{limit: 85})
+      iex> Predicator.Context.bound?(context, "limit")
       true
   """
   @spec bound?(t(), binary()) :: boolean()

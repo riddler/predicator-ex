@@ -12,14 +12,14 @@ defmodule Predicator.ContextIntegrationTest do
 
     test "string expression with custom functions" do
       custom = %{"double" => {1, fn [n], _ctx -> {:ok, n * 2} end}}
-      context = Context.new(%{"score" => 21}, functions: custom)
+      context = Context.new(%{"limit" => 21}, functions: custom)
 
-      assert Predicator.evaluate("double(score)", context) == {:ok, 42}
+      assert Predicator.evaluate("double(limit)", context) == {:ok, 42}
     end
 
     test "pre-compiled instructions" do
-      context = Context.new(%{"score" => 90})
-      {:ok, instructions} = Predicator.compile("score > 85")
+      context = Context.new(%{"limit" => 90})
+      {:ok, instructions} = Predicator.compile("limit > 85")
 
       assert Predicator.evaluate(instructions, context) == {:ok, true}
     end
@@ -44,8 +44,8 @@ defmodule Predicator.ContextIntegrationTest do
 
   describe "bare-map backward compatibility" do
     test "bare map and an up-front Context.new/2 produce identical results" do
-      expression = "score > 80"
-      data = %{"score" => 85}
+      expression = "limit > 80"
+      data = %{"limit" => 85}
 
       assert Predicator.evaluate(expression, data) ==
                Predicator.evaluate(expression, Context.new(data))

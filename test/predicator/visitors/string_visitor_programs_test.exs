@@ -109,9 +109,9 @@ defmodule Predicator.Visitors.StringVisitorProgramsTest do
 
   describe "visit/2 - cast nodes" do
     test "renders a simple cast as \"expr::type\"" do
-      ast = {:cast, {:identifier, "score", nil}, "integer", nil}
+      ast = {:cast, {:identifier, "limit", nil}, "integer", nil}
 
-      assert StringVisitor.visit(ast, []) == "score::integer"
+      assert StringVisitor.visit(ast, []) == "limit::integer"
     end
 
     test "renders a cast of a string literal" do
@@ -192,9 +192,9 @@ defmodule Predicator.Visitors.StringVisitorProgramsTest do
     end
 
     test "explicit mode adds no parens around a primary operand (matches :minimal)" do
-      ast = {:cast, {:identifier, "score", nil}, "integer", nil}
+      ast = {:cast, {:identifier, "limit", nil}, "integer", nil}
 
-      assert StringVisitor.visit(ast, parentheses: :explicit) == "score::integer"
+      assert StringVisitor.visit(ast, parentheses: :explicit) == "limit::integer"
     end
 
     test "explicit mode relies on the operand's own self-wrapping, not cast-level wrapping" do

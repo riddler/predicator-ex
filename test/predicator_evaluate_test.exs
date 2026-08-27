@@ -39,7 +39,7 @@ defmodule PredicatorEvaluateTest do
 
   describe "evaluate/2 with string expressions" do
     test "evaluates simple comparison" do
-      assert Predicator.evaluate("score > 85", %{"score" => 90}) == {:ok, true}
+      assert Predicator.evaluate("limit > 85", %{"limit" => 90}) == {:ok, true}
     end
 
     test "evaluates with different operators" do
@@ -68,11 +68,11 @@ defmodule PredicatorEvaluateTest do
     end
 
     test "handles parentheses" do
-      assert Predicator.evaluate("(score > 85)", %{"score" => 90}) == {:ok, true}
+      assert Predicator.evaluate("(limit > 85)", %{"limit" => 90}) == {:ok, true}
     end
 
     test "handles whitespace" do
-      assert Predicator.evaluate("  score   >    85  ", %{"score" => 90}) == {:ok, true}
+      assert Predicator.evaluate("  limit   >    85  ", %{"limit" => 90}) == {:ok, true}
     end
 
     test "returns an UndefinedVariableError for an unbound root variable inside a larger expression" do
@@ -86,7 +86,7 @@ defmodule PredicatorEvaluateTest do
     end
 
     test "returns error for parse failures" do
-      result = Predicator.evaluate("score >", %{})
+      result = Predicator.evaluate("limit >", %{})
 
       assert {:error,
               %Predicator.Errors.ParseError{message: message, position: {1, 8}, span: span}} =
@@ -99,7 +99,7 @@ defmodule PredicatorEvaluateTest do
     end
 
     test "returns error for invalid syntax" do
-      result = Predicator.evaluate("score > >", %{})
+      result = Predicator.evaluate("limit > >", %{})
       assert {:error, %Predicator.Errors.ParseError{message: message}} = result
 
       assert message =~
@@ -113,12 +113,12 @@ defmodule PredicatorEvaluateTest do
     end
 
     test "evaluates load instructions" do
-      assert Predicator.evaluate([["load", "score"]], %{"score" => 85}) == {:ok, 85}
+      assert Predicator.evaluate([["load", "limit"]], %{"limit" => 85}) == {:ok, 85}
     end
 
     test "evaluates comparison instructions" do
-      instructions = [["load", "score"], ["lit", 85], ["compare", "GT"]]
-      assert Predicator.evaluate(instructions, %{"score" => 90}) == {:ok, true}
+      instructions = [["load", "limit"], ["lit", 85], ["compare", "GT"]]
+      assert Predicator.evaluate(instructions, %{"limit" => 90}) == {:ok, true}
     end
 
     test "returns error for invalid instructions" do
@@ -130,7 +130,7 @@ defmodule PredicatorEvaluateTest do
 
   describe "evaluate!/2" do
     test "returns result directly for string expressions" do
-      result = Predicator.evaluate!("score > 85", %{"score" => 90})
+      result = Predicator.evaluate!("limit > 85", %{"limit" => 90})
       assert result == true
     end
 
@@ -141,7 +141,7 @@ defmodule PredicatorEvaluateTest do
 
     test "raises exception for parse errors" do
       assert_raise RuntimeError, ~r/Evaluation failed:/, fn ->
-        Predicator.evaluate!("score >", %{})
+        Predicator.evaluate!("limit >", %{})
       end
     end
 
@@ -267,9 +267,9 @@ defmodule PredicatorEvaluateTest do
     end
 
     test "evaluate!/3 accepts a %Predicator.Compiled{}" do
-      {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+      {:ok, compiled} = Predicator.compile_with_positions("limit > 85")
 
-      assert Predicator.evaluate!(compiled, %{"score" => 90}) == true
+      assert Predicator.evaluate!(compiled, %{"limit" => 90}) == true
     end
   end
 
@@ -289,14 +289,14 @@ defmodule PredicatorEvaluateTest do
   describe "performance scenarios" do
     test "pre-compiled instructions are faster for repeated evaluation" do
       # Compile once
-      {:ok, instructions} = Predicator.compile("score > 85")
+      {:ok, instructions} = Predicator.compile("limit > 85")
 
       # Use many times with different contexts
       contexts = [
-        %{"score" => 90},
-        %{"score" => 80},
-        %{"score" => 95},
-        %{"score" => 70}
+        %{"limit" => 90},
+        %{"limit" => 80},
+        %{"limit" => 95},
+        %{"limit" => 70}
       ]
 
       results =
@@ -308,11 +308,11 @@ defmodule PredicatorEvaluateTest do
     end
 
     test "string expressions work but are slower due to compilation" do
-      expression = "score > 85"
+      expression = "limit > 85"
 
       contexts = [
-        %{"score" => 90},
-        %{"score" => 80}
+        %{"limit" => 90},
+        %{"limit" => 80}
       ]
 
       results =
@@ -326,10 +326,10 @@ defmodule PredicatorEvaluateTest do
 
   describe "decompile/2" do
     test "converts AST back to string" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = Predicator.decompile(ast)
 
-      assert result == "score > 85"
+      assert result == "limit > 85"
     end
 
     test "converts literal AST" do
@@ -369,7 +369,7 @@ defmodule PredicatorEvaluateTest do
 
     test "round-trip with compile" do
       # Test compile -> decompile round trip
-      original = "score >= 75"
+      original = "limit >= 75"
       {:ok, _instructions} = Predicator.compile(original)
 
       # We can't directly get AST from instructions, but we can test with parser
@@ -388,11 +388,11 @@ defmodule PredicatorEvaluateTest do
     end
 
     test "nested parentheses work" do
-      assert Predicator.evaluate("((score > 85))", %{"score" => 90}) == {:ok, true}
+      assert Predicator.evaluate("((limit > 85))", %{"limit" => 90}) == {:ok, true}
     end
 
     test "type mismatches return :undefined" do
-      assert Predicator.evaluate("score > \"not_a_number\"", %{"score" => 90}) ==
+      assert Predicator.evaluate("limit > \"not_a_number\"", %{"limit" => 90}) ==
                {:ok, :undefined}
     end
   end

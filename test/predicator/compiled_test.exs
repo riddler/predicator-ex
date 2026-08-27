@@ -20,7 +20,7 @@ defmodule Predicator.CompiledTest do
     end
 
     test "pairs instructions with a position table" do
-      instructions = [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      instructions = [["load", "limit"], ["lit", 85], ["compare", "GT"]]
       positions = %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
 
       compiled = Compiled.new(instructions, positions)

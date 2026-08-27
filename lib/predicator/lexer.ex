@@ -33,9 +33,9 @@ defmodule Predicator.Lexer do
 
   ## Example
 
-      iex> Predicator.Lexer.tokenize("score > 85")
+      iex> Predicator.Lexer.tokenize("limit > 85")
       {:ok, [
-        {:identifier, 1, 1, 5, "score"},
+        {:identifier, 1, 1, 5, "limit"},
         {:gt, 1, 7, 1, ">"},
         {:integer, 1, 9, 2, 85},
         {:eof, 1, 11, 0, nil}
@@ -156,9 +156,9 @@ defmodule Predicator.Lexer do
 
   ## Examples
 
-      iex> Predicator.Lexer.tokenize("score > 85")
+      iex> Predicator.Lexer.tokenize("limit > 85")
       {:ok, [
-        {:identifier, 1, 1, 5, "score"},
+        {:identifier, 1, 1, 5, "limit"},
         {:gt, 1, 7, 1, ">"},
         {:integer, 1, 9, 2, 85},
         {:eof, 1, 11, 0, nil}
@@ -180,9 +180,9 @@ defmodule Predicator.Lexer do
         {:eof, 1, 15, 0, nil}
       ]}
 
-      iex> Predicator.Lexer.tokenize("score > 85 AND age >= 18")
+      iex> Predicator.Lexer.tokenize("limit > 85 AND age >= 18")
       {:ok, [
-        {:identifier, 1, 1, 5, "score"},
+        {:identifier, 1, 1, 5, "limit"},
         {:gt, 1, 7, 1, ">"},
         {:integer, 1, 9, 2, 85},
         {:and_op, 1, 12, 3, "AND"},

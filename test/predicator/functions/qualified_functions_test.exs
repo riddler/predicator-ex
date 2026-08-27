@@ -291,13 +291,13 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
 
     test "complex expression with multiple qualified functions", %{functions: functions} do
       context = %{
-        "user" => %{"name" => "Alice", "score" => 85},
+        "user" => %{"name" => "Alice", "limit" => 85},
         "multiplier" => 2
       }
 
       {:ok, result} =
         Predicator.evaluate(
-          "JSON.stringify({name: user.name, total: Math.pow(user.score, multiplier)})",
+          "JSON.stringify({name: user.name, total: Math.pow(user.limit, multiplier)})",
           context,
           providers: functions
         )
@@ -310,8 +310,8 @@ defmodule Predicator.Functions.QualifiedFunctionsTest do
     test "qualified functions with conditionals", %{functions: functions} do
       {:ok, result} =
         Predicator.evaluate(
-          "Math.max(score, 0) > 50 AND JSON.stringify(user) != 'null'",
-          %{"score" => 75, "user" => %{"active" => true}},
+          "Math.max(limit, 0) > 50 AND JSON.stringify(user) != 'null'",
+          %{"limit" => 75, "user" => %{"active" => true}},
           providers: functions
         )
 

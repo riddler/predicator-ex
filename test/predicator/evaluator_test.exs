@@ -60,15 +60,15 @@ defmodule Predicator.EvaluatorTest do
 
   describe "evaluate/2 with load instructions" do
     test "loads existing string key from context" do
-      instructions = [["load", "score"]]
-      context = %{"score" => 85}
+      instructions = [["load", "limit"]]
+      context = %{"limit" => 85}
 
       assert Evaluator.evaluate(instructions, context) == 85
     end
 
     test "returns :undefined for missing key" do
       instructions = [["load", "missing"]]
-      context = %{"score" => 85}
+      context = %{"limit" => 85}
 
       assert Evaluator.evaluate(instructions, context) == :undefined
     end
@@ -256,8 +256,8 @@ defmodule Predicator.EvaluatorTest do
     end
 
     test "returns result for load instruction" do
-      instructions = [["load", "score"]]
-      context = %{"score" => 85}
+      instructions = [["load", "limit"]]
+      context = %{"limit" => 85}
       assert Evaluator.evaluate!(instructions, context) == 85
     end
 

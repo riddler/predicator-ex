@@ -14,18 +14,18 @@ defmodule Predicator.CompilerTest do
     end
 
     test "compiles identifier to instructions" do
-      ast = {:identifier, "score", nil}
+      ast = {:identifier, "limit", nil}
       result = Compiler.to_instructions(ast)
 
-      assert result == [["load", "score"]]
+      assert result == [["load", "limit"]]
     end
 
     test "compiles comparison to instructions" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = Compiler.to_instructions(ast)
 
       assert result == [
-               ["load", "score"],
+               ["load", "limit"],
                ["lit", 85],
                ["compare", "GT"]
              ]
@@ -128,17 +128,17 @@ defmodule Predicator.CompilerTest do
     end
 
     test "converts identifier to string" do
-      ast = {:identifier, "score", nil}
+      ast = {:identifier, "limit", nil}
       result = Compiler.to_string(ast)
 
-      assert result == "score"
+      assert result == "limit"
     end
 
     test "converts comparison to string" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = Compiler.to_string(ast)
 
-      assert result == "score > 85"
+      assert result == "limit > 85"
     end
 
     test "works with all comparison operators" do
@@ -160,17 +160,17 @@ defmodule Predicator.CompilerTest do
     end
 
     test "converts with formatting options" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
 
       # Test different spacing
-      assert Compiler.to_string(ast, spacing: :normal) == "score > 85"
-      assert Compiler.to_string(ast, spacing: :compact) == "score>85"
-      assert Compiler.to_string(ast, spacing: :verbose) == "score  >  85"
+      assert Compiler.to_string(ast, spacing: :normal) == "limit > 85"
+      assert Compiler.to_string(ast, spacing: :compact) == "limit>85"
+      assert Compiler.to_string(ast, spacing: :verbose) == "limit  >  85"
 
       # Test different parentheses
-      assert Compiler.to_string(ast, parentheses: :minimal) == "score > 85"
-      assert Compiler.to_string(ast, parentheses: :explicit) == "(score > 85)"
-      assert Compiler.to_string(ast, parentheses: :none) == "score > 85"
+      assert Compiler.to_string(ast, parentheses: :minimal) == "limit > 85"
+      assert Compiler.to_string(ast, parentheses: :explicit) == "(limit > 85)"
+      assert Compiler.to_string(ast, parentheses: :none) == "limit > 85"
     end
 
     test "converts string literals correctly" do
@@ -200,7 +200,7 @@ defmodule Predicator.CompilerTest do
       alias Predicator.{Lexer, Parser}
 
       original_expressions = [
-        "score > 85",
+        "limit > 85",
         "age >= 18",
         ~s(name == "John"),
         "active != true",
@@ -223,8 +223,8 @@ defmodule Predicator.CompilerTest do
     test "AST -> instructions -> evaluation works with string representation" do
       alias Predicator.Evaluator
 
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
-      context = %{"score" => 90}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
+      context = %{"limit" => 90}
 
       # Convert to instructions and evaluate
       instructions = Compiler.to_instructions(ast)
@@ -233,13 +233,13 @@ defmodule Predicator.CompilerTest do
 
       # Convert to string for debugging/display
       string_repr = Compiler.to_string(ast)
-      assert string_repr == "score > 85"
+      assert string_repr == "limit > 85"
     end
   end
 
   describe "to_instructions_with_positions/2" do
     test "returns the same instruction list to_instructions/2 does" do
-      {:ok, ast} = Predicator.parse("score > 85 AND name == 'John'")
+      {:ok, ast} = Predicator.parse("limit > 85 AND name == 'John'")
 
       {instructions, _positions} = Compiler.to_instructions_with_positions(ast)
 
@@ -247,18 +247,18 @@ defmodule Predicator.CompilerTest do
     end
 
     test "maps each instruction index to its node's position" do
-      {:ok, ast} = Predicator.parse("score > 85")
+      {:ok, ast} = Predicator.parse("limit > 85")
 
       assert Compiler.to_instructions_with_positions(ast) ==
-               {[["load", "score"], ["lit", 85], ["compare", "GT"]],
+               {[["load", "limit"], ["lit", 85], ["compare", "GT"]],
                 %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
     end
 
     test "a nil-slotted AST compiles to an empty table" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
 
       assert Compiler.to_instructions_with_positions(ast) ==
-               {[["load", "score"], ["lit", 85], ["compare", "GT"]], %{}}
+               {[["load", "limit"], ["lit", 85], ["compare", "GT"]], %{}}
     end
 
     test "passes visitor options through" do
@@ -286,14 +286,14 @@ defmodule Predicator.CompilerTest do
 
   describe "to_instructions/2 and to_string/2 with a hand-built AST" do
     test "a positioned AST compiles and renders the same as a nil-slotted one" do
-      {:ok, positioned} = Predicator.parse("score > 85")
+      {:ok, positioned} = Predicator.parse("limit > 85")
 
       hand_built =
-        {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+        {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
 
       assert Compiler.to_instructions(positioned) == Compiler.to_instructions(hand_built)
       assert Compiler.to_string(positioned) == Compiler.to_string(hand_built)
-      assert Compiler.to_string(positioned) == "score > 85"
+      assert Compiler.to_string(positioned) == "limit > 85"
     end
   end
 

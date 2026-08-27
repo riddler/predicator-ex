@@ -33,21 +33,21 @@ defmodule Predicator.ParserProgramTest do
     end
 
     test "a bare expression is a valid statement" do
-      {:ok, tokens} = Lexer.tokenize("score > 85")
+      {:ok, tokens} = Lexer.tokenize("limit > 85")
 
       assert parse_program_positionless(tokens) ==
-               {:ok, {:program, [{:comparison, :gt, {:identifier, "score"}, {:literal, 85}}]}}
+               {:ok, {:program, [{:comparison, :gt, {:identifier, "limit"}, {:literal, 85}}]}}
     end
 
     test "assignments and expression statements mix freely" do
-      {:ok, tokens} = Lexer.tokenize("a = 1; score > 85; b = 2")
+      {:ok, tokens} = Lexer.tokenize("a = 1; limit > 85; b = 2")
 
       assert parse_program_positionless(tokens) ==
                {:ok,
                 {:program,
                  [
                    {:assignment, {:identifier, "a"}, {:literal, 1}},
-                   {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
+                   {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}},
                    {:assignment, {:identifier, "b"}, {:literal, 2}}
                  ]}}
     end
@@ -237,7 +237,7 @@ defmodule Predicator.ParserProgramTest do
     end
 
     test "position mode gives the program's point as its first token's position" do
-      {:ok, tokens} = Lexer.tokenize("score > 85; a = 1")
+      {:ok, tokens} = Lexer.tokenize("limit > 85; a = 1")
 
       assert {:ok, {:program, _statements, {1, 1}}} = Predicator.Parser.parse_program(tokens)
     end

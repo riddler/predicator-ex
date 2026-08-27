@@ -30,7 +30,7 @@ defmodule Predicator.ParserStringTokenArityTest do
   # error shape below - a source that already returns an error value before
   # the fix would be exercising some other, unrelated clause.
   @string_sites [
-    {"parse/2 (:377)", :compile, ~s|score "a"|},
+    {"parse/2 (:377)", :compile, ~s|limit "a"|},
     {"finish_program/4 (:477)", :compile_program, ~s|x = 1 "a"|},
     {"parse_block/1 (:661)", :compile_program, ~s|if true "a" { x = 1 }|},
     {"finish_block/4 (:703)", :compile_program, ~s|if true { x = 1 "a" }|},
@@ -108,7 +108,7 @@ defmodule Predicator.ParserStringTokenArityTest do
   # end_position slots are both exercised on an error path: a double-quoted
   # string, a single-quoted string, and a string containing a raw newline.
   @fixtures [
-    ~s|score > 85|,
+    ~s|limit > 85|,
     ~s|[1, 2, 3]|,
     ~s|{"a": 1, "b": 2}|,
     ~s|f(1, 2)|,

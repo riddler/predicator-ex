@@ -8,7 +8,8 @@
 [![License](https://img.shields.io/hexpm/l/predicator.svg)](https://github.com/riddler/predicator-ex/blob/main/LICENSE)
 
 Predicator is a secure, non-evaluative condition engine for end-user boolean
-predicates. A user-authored expression like `score > 85 AND active` compiles
+predicates. A user-authored expression like
+`amount <= budget_remaining AND card_active` compiles
 to a flat instruction list run by a small stack VM - there is no `eval`, no
 `Code.eval_string`, and no dynamic code execution anywhere in the pipeline, so
 untrusted input can never become code.
@@ -33,20 +34,29 @@ Predicator requires Elixir 1.18 or later and has no runtime dependencies.
 
 ## Quick Start
 
+Authorizing a card transaction against the account's remaining budget:
+
 ```elixir
-iex> Predicator.evaluate!("score > 85 AND active", %{"score" => 92, "active" => true})
+iex> Predicator.evaluate!("amount <= budget_remaining AND card_active", %{"amount" => 120, "budget_remaining" => 500, "card_active" => true})
 true
 
-iex> {:ok, instructions} = Predicator.compile("score > threshold")
-iex> Predicator.evaluate!(instructions, %{"score" => 95, "threshold" => 80})
+iex> {:ok, instructions} = Predicator.compile("amount > budget_remaining")
+iex> Predicator.evaluate!(instructions, %{"amount" => 940, "budget_remaining" => 500})
 true
 
-iex> Predicator.evaluate("score > 85", %{"score" => 92})
+iex> Predicator.evaluate("amount <= budget_remaining", %{"amount" => 120, "budget_remaining" => 500})
 {:ok, true}
 
-iex> {:ok, compiled} = Predicator.compile_with_positions("score > threshold")
-iex> Predicator.evaluate(compiled, %{"score" => 95, "threshold" => 80})
+iex> {:ok, compiled} = Predicator.compile_with_positions("amount > budget_remaining")
+iex> Predicator.evaluate(compiled, %{"amount" => 940, "budget_remaining" => 500})
 {:ok, true}
+```
+
+Routing a visitor through a signup wizard that is running an A/B test:
+
+```elixir
+iex> Predicator.evaluate!("step == 'payment' AND variant == 'B'", %{"step" => "payment", "variant" => "B"})
+true
 ```
 
 `compile_with_positions/1` and `compile_with_spans/1` return a

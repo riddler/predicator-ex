@@ -181,7 +181,7 @@ defmodule UnaryEvaluationTest do
     end
 
     test "unary minus with variable" do
-      assert {:ok, result} = evaluate("-score", %{"score" => 85})
+      assert {:ok, result} = evaluate("-limit", %{"limit" => 85})
       assert result == -85
     end
 
@@ -283,7 +283,7 @@ defmodule UnaryEvaluationTest do
     end
 
     test "unary bang with comparisons" do
-      assert {:ok, result} = evaluate("!(score > 90)", %{"score" => 85})
+      assert {:ok, result} = evaluate("!(limit > 90)", %{"limit" => 85})
       # !(85 > 90) = !false = true
       assert result == true
     end

@@ -4,15 +4,15 @@ Predicator supports nested data structure access using both dot notation and
 bracket notation, letting you reference deeply nested values in your context.
 
 ```elixir
-iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "scores" => [85, 92, 78, 96]}
+iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
 iex> Predicator.evaluate("user.name.first == 'John'", context)
 {:ok, true}
 
-iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "scores" => [85, 92, 78, 96]}
+iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
 iex> Predicator.evaluate("user.age > 18", context)
 {:ok, true}
 
-iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "scores" => [85, 92, 78, 96]}
+iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
 iex> Predicator.evaluate("config.database.port == 5432", context)
 {:ok, true}
 ```
@@ -20,11 +20,11 @@ iex> Predicator.evaluate("config.database.port == 5432", context)
 ## Bracket notation
 
 ```elixir
-iex> context = %{"user" => %{"name" => %{"first" => "John"}, "settings" => %{"theme" => "dark"}, "profile" => %{"role" => "admin"}}, "items" => ["apple"], "scores" => [85, 92]}
+iex> context = %{"user" => %{"name" => %{"first" => "John"}, "settings" => %{"theme" => "dark"}, "profile" => %{"role" => "admin"}}, "items" => ["apple"], "amounts" => [85, 92]}
 iex> Predicator.evaluate("user['name']['first'] == 'John'", context)
 {:ok, true}
 
-iex> context = %{"user" => %{"name" => %{"first" => "John"}, "settings" => %{"theme" => "dark"}, "profile" => %{"role" => "admin"}}, "items" => ["apple"], "scores" => [85, 92]}
+iex> context = %{"user" => %{"name" => %{"first" => "John"}, "settings" => %{"theme" => "dark"}, "profile" => %{"role" => "admin"}}, "items" => ["apple"], "amounts" => [85, 92]}
 iex> Predicator.evaluate("user['settings']['theme'] == 'dark'", context)
 {:ok, true}
 ```
@@ -32,16 +32,16 @@ iex> Predicator.evaluate("user['settings']['theme'] == 'dark'", context)
 ## Array access
 
 ```elixir
-iex> context = %{"items" => ["apple", "banana", "cherry"], "scores" => [85, 92, 78, 96]}
+iex> context = %{"items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
 iex> Predicator.evaluate("items[0] == 'apple'", context)
 {:ok, true}
 
-iex> context = %{"items" => ["apple", "banana", "cherry"], "scores" => [85, 92, 78, 96]}
-iex> Predicator.evaluate("scores[1] > 90", context)
+iex> context = %{"items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
+iex> Predicator.evaluate("amounts[1] > 90", context)
 {:ok, true}
 
-iex> context = %{"scores" => [85, 92, 78, 96], "index" => 2}
-iex> Predicator.evaluate("scores[index] > 80", context)
+iex> context = %{"amounts" => [85, 92, 78, 96], "index" => 2}
+iex> Predicator.evaluate("amounts[index] > 80", context)
 {:ok, false}
 
 iex> context = %{"items" => ["a", "b", "c"], "i" => 1}
@@ -117,7 +117,7 @@ iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
 
 - **Dot notation**: `user.profile.name` for nested object access
 - **Bracket notation**: `user['profile']['name']` for dynamic key access
-- **Array indexing**: `items[0]`, `scores[index]` for list access
+- **Array indexing**: `items[0]`, `amounts[index]` for list access
 - **Mixed styles**: `user.settings['theme']` combining both notations
 - **Unlimited nesting depth**: `app.database.config.settings.ssl`
 - **Dynamic and expression keys**: `items[index]`, `items[i + 1]`

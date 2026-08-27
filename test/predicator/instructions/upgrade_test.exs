@@ -58,7 +58,7 @@ defmodule Predicator.Instructions.UpgradeTest do
 
     test "a comparison feeding an and, evaluator_test.exs's composite" do
       legacy = [
-        ["load", "score"],
+        ["load", "limit"],
         ["lit", 85],
         ["compare", "GT"],
         ["load", "age"],
@@ -72,17 +72,17 @@ defmodule Predicator.Instructions.UpgradeTest do
       ]
 
       for context <- [
-            %{"score" => 90, "age" => 20, "admin" => false},
-            %{"score" => 90, "age" => 10, "admin" => false},
-            %{"score" => 10, "age" => 10, "admin" => true},
-            %{"score" => 10, "age" => 10, "admin" => false}
+            %{"limit" => 90, "age" => 20, "admin" => false},
+            %{"limit" => 90, "age" => 10, "admin" => false},
+            %{"limit" => 10, "age" => 10, "admin" => true},
+            %{"limit" => 10, "age" => 10, "admin" => false}
           ] do
         assert {:ok, upgraded} = Upgrade.upgrade(legacy)
 
         assert {:error, %EvaluationError{reason: "retired_opcode"}} =
                  Evaluator.evaluate(legacy, context)
 
-        expected = (context["score"] > 85 and context["age"] >= 18) or context["admin"] == true
+        expected = (context["limit"] > 85 and context["age"] >= 18) or context["admin"] == true
         assert Evaluator.evaluate(upgraded, context) == expected
       end
     end

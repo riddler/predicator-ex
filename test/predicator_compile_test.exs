@@ -5,10 +5,10 @@ defmodule PredicatorCompileTest do
 
   describe "compile/1" do
     test "compiles simple expression" do
-      {:ok, instructions} = Predicator.compile("score > 85")
+      {:ok, instructions} = Predicator.compile("limit > 85")
 
       expected = [
-        ["load", "score"],
+        ["load", "limit"],
         ["lit", 85],
         ["compare", "GT"]
       ]
@@ -57,10 +57,10 @@ defmodule PredicatorCompileTest do
     end
 
     test "handles parentheses" do
-      {:ok, instructions} = Predicator.compile("(score > 85)")
+      {:ok, instructions} = Predicator.compile("(limit > 85)")
 
       expected = [
-        ["load", "score"],
+        ["load", "limit"],
         ["lit", 85],
         ["compare", "GT"]
       ]
@@ -69,7 +69,7 @@ defmodule PredicatorCompileTest do
     end
 
     test "returns error for invalid syntax" do
-      result = Predicator.compile("score >")
+      result = Predicator.compile("limit >")
 
       assert {:error, %Predicator.Errors.ParseError{message: message, position: {1, 8}}} =
                result
@@ -81,15 +81,15 @@ defmodule PredicatorCompileTest do
 
   describe "compile_with_positions/1" do
     test "returns a %Predicator.Compiled{} with the instruction list and a side table" do
-      assert {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+      assert {:ok, compiled} = Predicator.compile_with_positions("limit > 85")
       assert %Predicator.Compiled{} = compiled
-      assert compiled.instructions == [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      assert compiled.instructions == [["load", "limit"], ["lit", 85], ["compare", "GT"]]
       assert compiled.positions == %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
     end
 
     test "the instruction list is identical to compile/1's" do
       for expression <- [
-            "score > 85",
+            "limit > 85",
             "a and b or not c",
             "len(name) + 1",
             "[1, 2, 3] contains x",
@@ -106,32 +106,32 @@ defmodule PredicatorCompileTest do
     end
 
     test "reports parse errors the same way compile/1 does" do
-      assert Predicator.compile_with_positions("score >") == Predicator.compile("score >")
+      assert Predicator.compile_with_positions("limit >") == Predicator.compile("limit >")
     end
   end
 
   describe "parse/2 with spans" do
     test "puts a span in every node's trailing slot" do
-      assert Predicator.parse("score > 85", spans: true) ==
+      assert Predicator.parse("limit > 85", spans: true) ==
                {:ok,
-                {:comparison, :gt, {:identifier, "score", {{1, 1}, {1, 6}}},
+                {:comparison, :gt, {:identifier, "limit", {{1, 1}, {1, 6}}},
                  {:literal, 85, {{1, 9}, {1, 11}}}, {{1, 1}, {1, 11}}}}
     end
 
     test "spans: false is the default and byte-identical to parse/1" do
-      assert Predicator.parse("score > 85", spans: false) == Predicator.parse("score > 85")
+      assert Predicator.parse("limit > 85", spans: false) == Predicator.parse("limit > 85")
     end
 
     test "reports lexer errors the same way" do
-      assert Predicator.parse("score > @", spans: true) == Predicator.parse("score > @")
+      assert Predicator.parse("limit > @", spans: true) == Predicator.parse("limit > @")
     end
   end
 
   describe "compile_with_spans/1" do
     test "returns a %Predicator.Compiled{} with the instruction list and a span table" do
-      assert {:ok, compiled} = Predicator.compile_with_spans("score > 85")
+      assert {:ok, compiled} = Predicator.compile_with_spans("limit > 85")
       assert %Predicator.Compiled{} = compiled
-      assert compiled.instructions == [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      assert compiled.instructions == [["load", "limit"], ["lit", 85], ["compare", "GT"]]
 
       assert compiled.positions ==
                %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
@@ -139,7 +139,7 @@ defmodule PredicatorCompileTest do
 
     test "the instruction list is identical to compile/1's" do
       for expression <- [
-            "score > 85",
+            "limit > 85",
             "a and b or not c",
             "len(name) + 1",
             "[1, 2, 3] contains x",
@@ -156,22 +156,22 @@ defmodule PredicatorCompileTest do
     end
 
     test "reports parse errors the same way compile/1 does" do
-      assert Predicator.compile_with_spans("score >") == Predicator.compile("score >")
+      assert Predicator.compile_with_spans("limit >") == Predicator.compile("limit >")
     end
   end
 
   describe "the compile arm carries a span in every mode (Phase 4)" do
     test "all six compile entry points return a ParseError with a non-nil span on a parse failure" do
-      assert {:error, %Predicator.Errors.ParseError{span: span}} = Predicator.compile("score >")
+      assert {:error, %Predicator.Errors.ParseError{span: span}} = Predicator.compile("limit >")
       refute is_nil(span)
 
       assert {:error, %Predicator.Errors.ParseError{span: span}} =
-               Predicator.compile_with_positions("score >")
+               Predicator.compile_with_positions("limit >")
 
       refute is_nil(span)
 
       assert {:error, %Predicator.Errors.ParseError{span: span}} =
-               Predicator.compile_with_spans("score >")
+               Predicator.compile_with_spans("limit >")
 
       refute is_nil(span)
 
@@ -210,8 +210,8 @@ defmodule PredicatorCompileTest do
     end
 
     test "compile/1 and compile_with_spans/1 return the same span for the same failing source" do
-      assert {:error, plain_error} = Predicator.compile("score >")
-      assert {:error, spanned_error} = Predicator.compile_with_spans("score >")
+      assert {:error, plain_error} = Predicator.compile("limit >")
+      assert {:error, spanned_error} = Predicator.compile_with_spans("limit >")
 
       assert plain_error.span == spanned_error.span
     end
@@ -301,10 +301,10 @@ defmodule PredicatorCompileTest do
 
   describe "compile!/1" do
     test "compiles successfully" do
-      instructions = Predicator.compile!("score > 85")
+      instructions = Predicator.compile!("limit > 85")
 
       expected = [
-        ["load", "score"],
+        ["load", "limit"],
         ["lit", 85],
         ["compare", "GT"]
       ]
@@ -317,12 +317,12 @@ defmodule PredicatorCompileTest do
       # is exactly the byte-identical-to-7.0.0 claim: the raised text is
       # "Compilation failed: " followed by the error's :message, " at line ",
       # its :position line, ", column ", and its :position column.
-      {:error, error} = Predicator.compile("score >")
+      {:error, error} = Predicator.compile("limit >")
       {line, column} = error.position
       expected = "Compilation failed: #{error.message} at line #{line}, column #{column}"
 
       assert_raise RuntimeError, expected, fn ->
-        Predicator.compile!("score >")
+        Predicator.compile!("limit >")
       end
     end
   end
@@ -338,9 +338,9 @@ defmodule PredicatorCompileTest do
           {{1, 8}, {1, 8}}
         )
 
-      assert {:error, ^expected} = Predicator.compile("score >")
-      assert {:error, ^expected} = Predicator.compile_with_positions("score >")
-      assert {:error, ^expected} = Predicator.compile_with_spans("score >")
+      assert {:error, ^expected} = Predicator.compile("limit >")
+      assert {:error, ^expected} = Predicator.compile_with_positions("limit >")
+      assert {:error, ^expected} = Predicator.compile_with_spans("limit >")
     end
 
     test "both program entry points return the same %ParseError{} for the same bad program" do
@@ -359,7 +359,7 @@ defmodule PredicatorCompileTest do
     end
 
     test "the message never carries the location" do
-      for source <- ["score >", "score > >"] do
+      for source <- ["limit >", "limit > >"] do
         assert {:error, %Predicator.Errors.ParseError{message: message}} =
                  Predicator.compile(source)
 
@@ -368,7 +368,7 @@ defmodule PredicatorCompileTest do
     end
 
     test "a compile/1 error equals the evaluate/3 error for the same source" do
-      assert Predicator.compile("score >") == Predicator.evaluate("score >", %{})
+      assert Predicator.compile("limit >") == Predicator.evaluate("limit >", %{})
     end
   end
 end

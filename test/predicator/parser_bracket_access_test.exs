@@ -86,12 +86,12 @@ defmodule Predicator.ParserBracketAccessTest do
     end
 
     test "parses bracket access in arithmetic" do
-      {:ok, tokens} = Lexer.tokenize("scores[0] + scores[1]")
+      {:ok, tokens} = Lexer.tokenize("limits[0] + limits[1]")
       result = parse_positionless(tokens)
 
       expected_ast =
-        {:arithmetic, :add, {:bracket_access, {:identifier, "scores"}, {:literal, 0}},
-         {:bracket_access, {:identifier, "scores"}, {:literal, 1}}}
+        {:arithmetic, :add, {:bracket_access, {:identifier, "limits"}, {:literal, 0}},
+         {:bracket_access, {:identifier, "limits"}, {:literal, 1}}}
 
       assert {:ok, ^expected_ast} = result
     end

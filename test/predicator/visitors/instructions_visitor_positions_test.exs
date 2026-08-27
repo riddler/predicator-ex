@@ -9,8 +9,8 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
   @corpus [
     "42",
     ~s("hello"),
-    "score",
-    "score > 85",
+    "limit",
+    "limit > 85",
     "1 + 2 * 3",
     "-x",
     "!flag",
@@ -57,7 +57,7 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
     end
 
     test "an identifier takes its own token's position" do
-      assert table("  score") == {[["load", "score"]], %{0 => {1, 3}}}
+      assert table("  limit") == {[["load", "limit"]], %{0 => {1, 3}}}
     end
 
     test "a duration takes its first number's position" do
@@ -67,8 +67,8 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
 
   describe "visit_with_positions/2 - operators point at the operator token" do
     test "comparison" do
-      assert table("score > 85") ==
-               {[["load", "score"], ["lit", 85], ["compare", "GT"]],
+      assert table("limit > 85") ==
+               {[["load", "limit"], ["lit", 85], ["compare", "GT"]],
                 %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
     end
 
@@ -246,17 +246,17 @@ defmodule Predicator.Visitors.InstructionsVisitorPositionsTest do
 
   describe "visit_with_positions/2 - position-free input" do
     test "a fully position-free AST yields an empty table" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
 
       assert InstructionsVisitor.visit_with_positions(ast) ==
-               {[["load", "score"], ["lit", 85], ["compare", "GT"]], %{}}
+               {[["load", "limit"], ["lit", 85], ["compare", "GT"]], %{}}
     end
 
     test "a mixed AST yields a partial table" do
-      ast = {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", {1, 1}}, {:literal, 85, nil}, nil}
 
       assert InstructionsVisitor.visit_with_positions(ast) ==
-               {[["load", "score"], ["lit", 85], ["compare", "GT"]], %{0 => {1, 1}}}
+               {[["load", "limit"], ["lit", 85], ["compare", "GT"]], %{0 => {1, 1}}}
     end
 
     test "an explicit nil position is omitted rather than stored" do

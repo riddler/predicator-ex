@@ -26,13 +26,13 @@ defmodule Predicator.Visitors.InstructionsVisitor do
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
       [["lit", 42]]
 
-      iex> ast = {:identifier, "score", nil}
+      iex> ast = {:identifier, "limit", nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
-      [["load", "score"]]
+      [["load", "limit"]]
 
-      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      iex> ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
-      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      [["load", "limit"], ["lit", 85], ["compare", "GT"]]
 
       iex> ast = {:logical_and, {:literal, true, nil}, {:literal, false, nil}, nil}
       iex> Predicator.Visitors.InstructionsVisitor.visit(ast, [])
@@ -96,9 +96,9 @@ defmodule Predicator.Visitors.InstructionsVisitor do
 
   ## Examples
 
-      iex> ast = {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}
+      iex> ast = {:comparison, :gt, {:identifier, "limit", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}
       iex> Predicator.Visitors.InstructionsVisitor.visit_with_positions(ast)
-      {[["load", "score"], ["lit", 85], ["compare", "GT"]],
+      {[["load", "limit"], ["lit", 85], ["compare", "GT"]],
        %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}}
 
       iex> Predicator.Visitors.InstructionsVisitor.visit_with_positions({:literal, 42, nil})

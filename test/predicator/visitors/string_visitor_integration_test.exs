@@ -7,7 +7,7 @@ defmodule Predicator.Visitors.StringVisitorIntegrationTest do
     "42",
     ~s("hello"),
     "'hello'",
-    "score",
+    "limit",
     "a > 1",
     "a + 1 * 2",
     "-a",
@@ -26,7 +26,7 @@ defmodule Predicator.Visitors.StringVisitorIntegrationTest do
     "3d8h",
     "3d ago",
     "next 2w",
-    "score::integer",
+    "limit::integer",
     "\"42\"::integer",
     "x::integer::string",
     "(1 + 2)::string",
@@ -54,7 +54,7 @@ defmodule Predicator.Visitors.StringVisitorIntegrationTest do
     test "round-trip with simple expression" do
       alias Predicator.Lexer
 
-      original = "score > 85"
+      original = "limit > 85"
       {:ok, tokens} = Lexer.tokenize(original)
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
@@ -192,30 +192,30 @@ defmodule Predicator.Visitors.StringVisitorIntegrationTest do
       alias Predicator.Lexer
 
       # Note: Parser removes unnecessary parentheses from AST
-      original = "(score > 85)"
+      original = "(limit > 85)"
       {:ok, tokens} = Lexer.tokenize(original)
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = StringVisitor.visit(ast, [])
       # Parentheses are removed by parser since they're not needed
-      assert result == "score > 85"
+      assert result == "limit > 85"
 
       # But we can add them back with explicit mode
       result_explicit = StringVisitor.visit(ast, parentheses: :explicit)
-      assert result_explicit == "(score > 85)"
+      assert result_explicit == "(limit > 85)"
     end
 
     test "handles complex expressions with whitespace normalization" do
       alias Predicator.Lexer
 
-      original_with_extra_spaces = "  score   >    85  "
+      original_with_extra_spaces = "  limit   >    85  "
       {:ok, tokens} = Lexer.tokenize(original_with_extra_spaces)
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = StringVisitor.visit(ast, [])
 
       # StringVisitor normalizes spacing
-      assert result == "score > 85"
+      assert result == "limit > 85"
     end
   end
 
@@ -223,7 +223,7 @@ defmodule Predicator.Visitors.StringVisitorIntegrationTest do
     test "round-trip with logical AND expression" do
       alias Predicator.Lexer
 
-      expression = "score > 85 AND age >= 18"
+      expression = "limit > 85 AND age >= 18"
       {:ok, tokens} = Lexer.tokenize(expression)
       {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])
@@ -256,7 +256,7 @@ defmodule Predicator.Visitors.StringVisitorIntegrationTest do
     test "round-trip with complex logical expression" do
       alias Predicator.Lexer
 
-      expression = "score > 85 AND age >= 18 OR admin == true"
+      expression = "limit > 85 AND age >= 18 OR admin == true"
       {:ok, tokens} = Lexer.tokenize(expression)
       {:ok, ast} = Predicator.Parser.parse(tokens)
       result = StringVisitor.visit(ast, [])
