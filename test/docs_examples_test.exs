@@ -4,8 +4,9 @@ defmodule Predicator.DocsExamplesTest do
 
   The docs are the library's front door; a stale example there is worse than
   no example. `doctest_file/1` requires Elixir 1.15+, which every version the
-  CI matrix runs satisfies - the guard exists only so that `mix test` on the
-  older end of `mix.exs`'s declared `~> 1.11` support range still compiles.
+  CI matrix runs satisfies - `mix.exs` now declares `~> 1.18`, so the guard is
+  vestigial and kept only as a cheap safeguard against a future widening of
+  the supported range.
   """
   use ExUnit.Case, async: true
 
