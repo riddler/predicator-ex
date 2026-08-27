@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.0.2] - 2026-08-27
+
+### Changed
+
+- **Documentation-only release; no code or predicate-language changes.** The
+  README's Quick Start is reworked into a worked example that compiles a rule
+  once and evaluates it per transaction, and a new "Running a short program"
+  section gives `execute/3`, `execute_value/3`, and the `:protected_roots`
+  refusal a front-door example for the first time - the statement surface has
+  shipped since 4.0.0 but was visible only in the language reference. Every
+  illustrative identifier across the README, the guides, the language
+  reference, and the moduledocs moves onto two canonical example domains
+  (authorizing a transaction against an account budget, and a signup wizard
+  running an A/B test). `docs/architecture.md` drops three stale facts: `=`
+  listed as a comparison operator (retired in 4.0.0), an ISA-version list that
+  stopped at v4, and a testing section naming property-based testing the
+  project does not do.
+
 ## [9.0.1] - 2026-08-24
 
 ### Changed
