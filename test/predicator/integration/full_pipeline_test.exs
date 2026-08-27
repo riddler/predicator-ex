@@ -6,8 +6,8 @@ defmodule Predicator.IntegrationTest do
 
   describe "full pipeline integration" do
     test "string -> tokens -> ast -> instructions -> evaluation" do
-      input = "score > 85"
-      context = %{"score" => 90}
+      input = "limit > 85"
+      context = %{"limit" => 90}
 
       # Lex
       {:ok, tokens} = Lexer.tokenize(input)
@@ -19,7 +19,7 @@ defmodule Predicator.IntegrationTest do
       instructions = Compiler.to_instructions(ast)
 
       assert instructions == [
-               ["load", "score"],
+               ["load", "limit"],
                ["lit", 85],
                ["compare", "GT"]
              ]
@@ -206,8 +206,8 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "mixed nested and simple context access" do
-      input = "score > 85 AND user.name.first == \"John\""
-      context = %{"score" => 90, "user" => %{"name" => %{"first" => "John"}}}
+      input = "limit > 85 AND user.name.first == \"John\""
+      context = %{"limit" => 90, "user" => %{"name" => %{"first" => "John"}}}
 
       {:ok, tokens} = Lexer.tokenize(input)
       {:ok, ast} = Parser.parse(tokens)
@@ -237,7 +237,7 @@ defmodule Predicator.IntegrationTest do
     end
 
     test "mixed-type non-literal list" do
-      assert Predicator.evaluate("[name, score]", %{"name" => "x", "score" => 1}) ==
+      assert Predicator.evaluate("[name, limit]", %{"name" => "x", "limit" => 1}) ==
                {:ok, ["x", 1]}
     end
 

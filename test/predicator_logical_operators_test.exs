@@ -7,18 +7,18 @@ defmodule PredicatorLogicalOperatorsTest do
 
   describe "logical operators - integration tests" do
     test "evaluates logical AND with true results" do
-      assert Predicator.evaluate("score > 85 AND age >= 18", %{"score" => 90, "age" => 25}) ==
+      assert Predicator.evaluate("limit > 85 AND age >= 18", %{"limit" => 90, "age" => 25}) ==
                {:ok, true}
     end
 
     test "evaluates logical AND with false results" do
-      assert Predicator.evaluate("score > 85 AND age >= 18", %{"score" => 80, "age" => 25}) ==
+      assert Predicator.evaluate("limit > 85 AND age >= 18", %{"limit" => 80, "age" => 25}) ==
                {:ok, false}
 
-      assert Predicator.evaluate("score > 85 AND age >= 18", %{"score" => 90, "age" => 16}) ==
+      assert Predicator.evaluate("limit > 85 AND age >= 18", %{"limit" => 90, "age" => 16}) ==
                {:ok, false}
 
-      assert Predicator.evaluate("score > 85 AND age >= 18", %{"score" => 80, "age" => 16}) ==
+      assert Predicator.evaluate("limit > 85 AND age >= 18", %{"limit" => 80, "age" => 16}) ==
                {:ok, false}
     end
 
@@ -44,20 +44,20 @@ defmodule PredicatorLogicalOperatorsTest do
     end
 
     test "evaluates complex logical expressions" do
-      # (score > 85 AND age >= 18) OR admin == true
-      context1 = %{"score" => 90, "age" => 20, "admin" => false}
+      # (limit > 85 AND age >= 18) OR admin == true
+      context1 = %{"limit" => 90, "age" => 20, "admin" => false}
 
-      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin == true", context1) ==
+      assert Predicator.evaluate("limit > 85 AND age >= 18 OR admin == true", context1) ==
                {:ok, true}
 
-      context2 = %{"score" => 80, "age" => 16, "admin" => false}
+      context2 = %{"limit" => 80, "age" => 16, "admin" => false}
 
-      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin == true", context2) ==
+      assert Predicator.evaluate("limit > 85 AND age >= 18 OR admin == true", context2) ==
                {:ok, false}
 
-      context3 = %{"score" => 80, "age" => 16, "admin" => true}
+      context3 = %{"limit" => 80, "age" => 16, "admin" => true}
 
-      assert Predicator.evaluate("score > 85 AND age >= 18 OR admin == true", context3) ==
+      assert Predicator.evaluate("limit > 85 AND age >= 18 OR admin == true", context3) ==
                {:ok, true}
     end
 
@@ -71,8 +71,8 @@ defmodule PredicatorLogicalOperatorsTest do
       # NOT false OR false AND true should be: (NOT false) OR (false AND true) = true OR false = true
       result =
         Predicator.evaluate(
-          "NOT expired == false OR role == \"user\" AND score > 85",
-          %{"expired" => true, "role" => "user", "score" => 90}
+          "NOT expired == false OR role == \"user\" AND limit > 85",
+          %{"expired" => true, "role" => "user", "limit" => 90}
         )
 
       assert result == {:ok, true}
@@ -80,8 +80,8 @@ defmodule PredicatorLogicalOperatorsTest do
       # Same expression with different values - should be: false OR true = true
       result =
         Predicator.evaluate(
-          "NOT expired == false OR role == \"user\" AND score > 85",
-          %{"expired" => false, "role" => "user", "score" => 90}
+          "NOT expired == false OR role == \"user\" AND limit > 85",
+          %{"expired" => false, "role" => "user", "limit" => 90}
         )
 
       assert result == {:ok, true}
@@ -89,50 +89,50 @@ defmodule PredicatorLogicalOperatorsTest do
       # Same expression with different values - should be: false OR false = false
       result =
         Predicator.evaluate(
-          "NOT expired == false OR role == \"user\" AND score > 85",
-          %{"expired" => false, "role" => "user", "score" => 80}
+          "NOT expired == false OR role == \"user\" AND limit > 85",
+          %{"expired" => false, "role" => "user", "limit" => 80}
         )
 
       assert result == {:ok, false}
     end
 
     test "evaluates parenthesized logical expressions" do
-      # (active == true OR role == \"admin\") AND score > 85
-      context1 = %{"active" => true, "role" => "user", "score" => 90}
+      # (active == true OR role == \"admin\") AND limit > 85
+      context1 = %{"active" => true, "role" => "user", "limit" => 90}
 
       result1 =
-        Predicator.evaluate("(active == true OR role == \"admin\") AND score > 85", context1)
+        Predicator.evaluate("(active == true OR role == \"admin\") AND limit > 85", context1)
 
       assert result1 == {:ok, true}
 
-      context2 = %{"active" => false, "role" => "admin", "score" => 90}
+      context2 = %{"active" => false, "role" => "admin", "limit" => 90}
 
       result2 =
-        Predicator.evaluate("(active == true OR role == \"admin\") AND score > 85", context2)
+        Predicator.evaluate("(active == true OR role == \"admin\") AND limit > 85", context2)
 
       assert result2 == {:ok, true}
 
-      context3 = %{"active" => false, "role" => "user", "score" => 90}
+      context3 = %{"active" => false, "role" => "user", "limit" => 90}
 
       result3 =
-        Predicator.evaluate("(active == true OR role == \"admin\") AND score > 85", context3)
+        Predicator.evaluate("(active == true OR role == \"admin\") AND limit > 85", context3)
 
       assert result3 == {:ok, false}
 
-      context4 = %{"active" => true, "role" => "admin", "score" => 80}
+      context4 = %{"active" => true, "role" => "admin", "limit" => 80}
 
       result4 =
-        Predicator.evaluate("(active == true OR role == \"admin\") AND score > 85", context4)
+        Predicator.evaluate("(active == true OR role == \"admin\") AND limit > 85", context4)
 
       assert result4 == {:ok, false}
     end
 
     test "compiles and decompiles logical expressions correctly" do
       original_expressions = [
-        "score > 85 AND age >= 18",
+        "limit > 85 AND age >= 18",
         "role == \"admin\" OR role == \"manager\"",
         "NOT expired == true",
-        "score > 85 AND age >= 18 OR admin == true",
+        "limit > 85 AND age >= 18 OR admin == true",
         "NOT false OR true AND false"
       ]
 
@@ -149,7 +149,7 @@ defmodule PredicatorLogicalOperatorsTest do
     end
 
     test "parse function returns correct AST for logical operators" do
-      {:ok, ast} = parse_positionless("score > 85 AND age >= 18")
+      {:ok, ast} = parse_positionless("limit > 85 AND age >= 18")
       assert match?({:logical_and, _, _}, ast)
 
       {:ok, ast} = parse_positionless(~s(role == "admin" OR role == "manager"))
@@ -171,7 +171,7 @@ defmodule PredicatorLogicalOperatorsTest do
     end
 
     test "evaluate! function works with logical operators" do
-      result = Predicator.evaluate!("score > 85 AND age >= 18", %{"score" => 90, "age" => 25})
+      result = Predicator.evaluate!("limit > 85 AND age >= 18", %{"limit" => 90, "age" => 25})
       assert result == true
 
       result = Predicator.evaluate!("NOT expired == true", %{"expired" => false})
@@ -180,10 +180,10 @@ defmodule PredicatorLogicalOperatorsTest do
 
     test "handles error cases in logical expressions" do
       # Syntax errors
-      result = Predicator.evaluate("score AND", %{"score" => 90})
+      result = Predicator.evaluate("limit AND", %{"limit" => 90})
       assert {:error, _message} = result
 
-      result = Predicator.evaluate("OR score > 85", %{"score" => 90})
+      result = Predicator.evaluate("OR limit > 85", %{"limit" => 90})
       assert {:error, _message} = result
 
       result = Predicator.evaluate("NOT", %{})
@@ -191,13 +191,13 @@ defmodule PredicatorLogicalOperatorsTest do
     end
 
     test "works with atom keys in context" do
-      assert Predicator.evaluate("score > 85 AND age >= 18", %{score: 90, age: 25}) == {:ok, true}
+      assert Predicator.evaluate("limit > 85 AND age >= 18", %{limit: 90, age: 25}) == {:ok, true}
 
       assert Predicator.evaluate("NOT expired == true", %{expired: false}) == {:ok, true}
     end
 
     test "works with mixed string and atom keys in context" do
-      assert Predicator.evaluate("score > 85 AND age >= 18", %{"score" => 90, age: 25}) ==
+      assert Predicator.evaluate("limit > 85 AND age >= 18", %{"limit" => 90, age: 25}) ==
                {:ok, true}
 
       result =
@@ -245,12 +245,12 @@ defmodule PredicatorLogicalOperatorsTest do
     end
 
     test "combines plain boolean expressions with comparisons" do
-      context = %{"active" => true, "score" => 90, "admin" => false}
+      context = %{"active" => true, "limit" => 90, "admin" => false}
 
-      assert Predicator.evaluate("active AND score > 85", context) == {:ok, true}
-      assert Predicator.evaluate("active AND score < 85", context) == {:ok, false}
-      assert Predicator.evaluate("admin OR score > 85", context) == {:ok, true}
-      assert Predicator.evaluate("NOT admin AND score > 85", context) == {:ok, true}
+      assert Predicator.evaluate("active AND limit > 85", context) == {:ok, true}
+      assert Predicator.evaluate("active AND limit < 85", context) == {:ok, false}
+      assert Predicator.evaluate("admin OR limit > 85", context) == {:ok, true}
+      assert Predicator.evaluate("NOT admin AND limit > 85", context) == {:ok, true}
     end
 
     test "compiles plain boolean expressions correctly" do
@@ -297,12 +297,12 @@ defmodule PredicatorLogicalOperatorsTest do
     end
 
     test "handles complex expressions with plain booleans and literals" do
-      context = %{"active" => true, "admin" => false, "score" => 95}
+      context = %{"active" => true, "admin" => false, "limit" => 95}
 
       # Mix of plain booleans, comparisons, and literals
-      assert Predicator.evaluate("active AND score > 90 OR admin", context) == {:ok, true}
+      assert Predicator.evaluate("active AND limit > 90 OR admin", context) == {:ok, true}
 
-      result = Predicator.evaluate("NOT admin AND (active OR score < 80)", context)
+      result = Predicator.evaluate("NOT admin AND (active OR limit < 80)", context)
       assert result == {:ok, true}
 
       assert Predicator.evaluate("false OR active AND true", context) == {:ok, true}
@@ -339,26 +339,26 @@ defmodule PredicatorLogicalOperatorsTest do
     end
 
     test "combines with comparisons" do
-      context = %{"score" => 85, "age" => 20, "admin" => false}
+      context = %{"limit" => 85, "age" => 20, "admin" => false}
 
-      assert Predicator.evaluate("score >= 80 and age >= 18", context) == {:ok, true}
-      assert Predicator.evaluate("score >= 90 and age >= 18", context) == {:ok, false}
-      assert Predicator.evaluate("score >= 90 or admin", context) == {:ok, false}
-      assert Predicator.evaluate("not admin and score >= 80", context) == {:ok, true}
+      assert Predicator.evaluate("limit >= 80 and age >= 18", context) == {:ok, true}
+      assert Predicator.evaluate("limit >= 90 and age >= 18", context) == {:ok, false}
+      assert Predicator.evaluate("limit >= 90 or admin", context) == {:ok, false}
+      assert Predicator.evaluate("not admin and limit >= 80", context) == {:ok, true}
     end
 
     test "respects operator precedence with lowercase operators" do
       # not false or false and true should be: (not false) or (false and true) = true or false = true
-      context = %{"expired" => true, "role" => "user", "score" => 90}
+      context = %{"expired" => true, "role" => "user", "limit" => 90}
 
       result =
-        Predicator.evaluate("not expired == false or role == \"user\" and score > 85", context)
+        Predicator.evaluate("not expired == false or role == \"user\" and limit > 85", context)
 
       assert result == {:ok, true}
     end
 
     test "works with mixed case operators" do
-      context = %{"active" => true, "admin" => false, "score" => 90}
+      context = %{"active" => true, "admin" => false, "limit" => 90}
 
       # Mix uppercase and lowercase
       assert Predicator.evaluate("active AND not admin", context) == {:ok, true}
@@ -398,12 +398,12 @@ defmodule PredicatorLogicalOperatorsTest do
     end
 
     test "works with complex expressions" do
-      context = %{"user" => "admin", "active" => true, "score" => 95, "verified" => false}
+      context = %{"user" => "admin", "active" => true, "limit" => 95, "verified" => false}
 
-      assert Predicator.evaluate("user == \"admin\" and active and score > 90", context) ==
+      assert Predicator.evaluate("user == \"admin\" and active and limit > 90", context) ==
                {:ok, true}
 
-      result = Predicator.evaluate("not verified or (active and score > 85)", context)
+      result = Predicator.evaluate("not verified or (active and limit > 85)", context)
       assert result == {:ok, true}
 
       assert Predicator.evaluate("verified and active or user == \"admin\"", context) ==

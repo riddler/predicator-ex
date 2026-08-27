@@ -108,7 +108,7 @@ defmodule Mix.Tasks.Corpus.GenerateTest do
   describe "run/1 - generator failures" do
     test "raises and reports every failing case's problem, not just the first" do
       write_cases([
-        %{"id" => "bad1", "source" => "score >"},
+        %{"id" => "bad1", "source" => "limit >"},
         %{"id" => "bad2", "source" => "1 / 0", "expected" => %{"result" => 999}}
       ])
 

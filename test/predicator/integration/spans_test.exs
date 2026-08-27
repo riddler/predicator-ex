@@ -8,8 +8,8 @@ defmodule Predicator.Integration.SpansTest do
     "'hello'",
     ~s("hello"),
     "#2024-01-15#",
-    "score",
-    "score > 85",
+    "limit",
+    "limit > 85",
     "a in [1, 2, 3]",
     "a contains 1",
     "a + 1 * 2 - 3 / 4 % 5",
@@ -57,7 +57,7 @@ defmodule Predicator.Integration.SpansTest do
 
     test "named nodes slice to exactly the text a reader would underline" do
       cases = [
-        {"score > 85", "score > 85"},
+        {"limit > 85", "limit > 85"},
         {"len(upper(name))", "len(upper(name))"},
         {"a[0][1]", "a[0][1]"},
         {"user.name.first", "user.name.first"},

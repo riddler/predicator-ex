@@ -29,11 +29,11 @@ defmodule Predicator.ParserPositionsTest do
     end
 
     test "identifier" do
-      assert {:ok, {:identifier, "score", {1, 1}}} = Predicator.parse("score")
+      assert {:ok, {:identifier, "limit", {1, 1}}} = Predicator.parse("limit")
     end
 
     test "a parenthesized expression keeps the inner node's own position" do
-      assert {:ok, {:identifier, "score", {1, 2}}} = Predicator.parse("(score)")
+      assert {:ok, {:identifier, "limit", {1, 2}}} = Predicator.parse("(limit)")
     end
   end
 

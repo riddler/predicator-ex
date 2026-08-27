@@ -57,7 +57,7 @@ building a context or a provider module first:
 
 ```elixir
 iex> custom_functions = %{"double" => {1, fn [n], _context -> {:ok, n * 2} end}}
-iex> Predicator.evaluate("double(score) > 100", %{"score" => 60}, functions: custom_functions)
+iex> Predicator.evaluate("double(limit) > 100", %{"limit" => 60}, functions: custom_functions)
 {:ok, true}
 ```
 

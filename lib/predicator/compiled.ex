@@ -40,19 +40,19 @@ defmodule Predicator.Compiled do
   ## Examples
 
       iex> compiled = Predicator.Compiled.new(
-      ...>   [["load", "score"], ["lit", 85], ["compare", "GT"]],
+      ...>   [["load", "limit"], ["lit", 85], ["compare", "GT"]],
       ...>   %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
       ...> )
       iex> compiled.instructions
-      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      [["load", "limit"], ["lit", 85], ["compare", "GT"]]
       iex> compiled.positions
       %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
 
   Recompiling the same source is deterministic, which is what makes
   "persist the source, recompile on load" a sound way to get positions back:
 
-      iex> {:ok, first} = Predicator.compile_with_positions("score > 85")
-      iex> {:ok, second} = Predicator.compile_with_positions("score > 85")
+      iex> {:ok, first} = Predicator.compile_with_positions("limit > 85")
+      iex> {:ok, second} = Predicator.compile_with_positions("limit > 85")
       iex> first == second
       true
   """

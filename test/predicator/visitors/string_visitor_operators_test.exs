@@ -27,12 +27,12 @@ defmodule Predicator.Visitors.StringVisitorOperatorsTest do
 
     test "formats logical AND with comparisons" do
       ast =
-        {:logical_and, {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+        {:logical_and, {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil},
          {:comparison, :gte, {:identifier, "age", nil}, {:literal, 18, nil}, nil}, nil}
 
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score > 85 AND age >= 18"
+      assert result == "limit > 85 AND age >= 18"
     end
 
     test "formats logical OR with comparisons" do
@@ -64,16 +64,16 @@ defmodule Predicator.Visitors.StringVisitorOperatorsTest do
     end
 
     test "formats complex nested logical expression" do
-      # (score > 85 AND age >= 18) OR admin = true
+      # (limit > 85 AND age >= 18) OR admin = true
       ast =
         {:logical_or,
-         {:logical_and, {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+         {:logical_and, {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil},
           {:comparison, :gte, {:identifier, "age", nil}, {:literal, 18, nil}, nil}, nil},
          {:comparison, :eq, {:identifier, "admin", nil}, {:literal, true, nil}, nil}, nil}
 
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score > 85 AND age >= 18 OR admin == true"
+      assert result == "limit > 85 AND age >= 18 OR admin == true"
     end
 
     test "formats logical operators with compact spacing" do
@@ -143,14 +143,14 @@ defmodule Predicator.Visitors.StringVisitorOperatorsTest do
     end
 
     test "formats mixed comparison and logical operations" do
-      # score > 85 AND NOT expired
+      # limit > 85 AND NOT expired
       ast =
-        {:logical_and, {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+        {:logical_and, {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil},
          {:logical_not, {:identifier, "expired", nil}, nil}, nil}
 
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score > 85 AND NOT expired"
+      assert result == "limit > 85 AND NOT expired"
     end
   end
 

@@ -121,10 +121,10 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - identifier nodes" do
     test "converts simple identifier" do
-      ast = {:identifier, "score", nil}
+      ast = {:identifier, "limit", nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score"
+      assert result == "limit"
     end
 
     test "converts identifier with underscores" do
@@ -144,10 +144,10 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - comparison nodes" do
     test "converts greater than comparison" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score > 85"
+      assert result == "limit > 85"
     end
 
     test "converts less than comparison" do
@@ -158,10 +158,10 @@ defmodule Predicator.Visitors.StringVisitorTest do
     end
 
     test "converts greater than or equal comparison" do
-      ast = {:comparison, :gte, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gte, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score >= 85"
+      assert result == "limit >= 85"
     end
 
     test "converts less than or equal comparison" do
@@ -193,10 +193,10 @@ defmodule Predicator.Visitors.StringVisitorTest do
     end
 
     test "converts identifier-to-identifier comparison" do
-      ast = {:comparison, :eq, {:identifier, "score", nil}, {:identifier, "threshold", nil}, nil}
+      ast = {:comparison, :eq, {:identifier, "limit", nil}, {:identifier, "threshold", nil}, nil}
       result = StringVisitor.visit(ast, [])
 
-      assert result == "score == threshold"
+      assert result == "limit == threshold"
     end
 
     test "converts boolean comparisons" do
@@ -209,38 +209,38 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - spacing options" do
     test "normal spacing (default)" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :normal)
 
-      assert result == "score > 85"
+      assert result == "limit > 85"
     end
 
     test "compact spacing" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :compact)
 
-      assert result == "score>85"
+      assert result == "limit>85"
     end
 
     test "verbose spacing" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, spacing: :verbose)
 
-      assert result == "score  >  85"
+      assert result == "limit  >  85"
     end
 
     test "spacing affects all operators" do
       operators_and_expected = [
-        {:gt, "score  >  85"},
-        {:lt, "score  <  85"},
-        {:gte, "score  >=  85"},
-        {:lte, "score  <=  85"},
-        {:eq, "score  ==  85"},
-        {:ne, "score  !=  85"}
+        {:gt, "limit  >  85"},
+        {:lt, "limit  <  85"},
+        {:gte, "limit  >=  85"},
+        {:lte, "limit  <=  85"},
+        {:eq, "limit  ==  85"},
+        {:ne, "limit  !=  85"}
       ]
 
       for {op, expected} <- operators_and_expected do
-        ast = {:comparison, op, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+        ast = {:comparison, op, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
         result = StringVisitor.visit(ast, spacing: :verbose)
         assert result == expected
       end
@@ -249,24 +249,24 @@ defmodule Predicator.Visitors.StringVisitorTest do
 
   describe "visit/2 - parentheses options" do
     test "minimal parentheses (default)" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :minimal)
 
-      assert result == "score > 85"
+      assert result == "limit > 85"
     end
 
     test "explicit parentheses" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :explicit)
 
-      assert result == "(score > 85)"
+      assert result == "(limit > 85)"
     end
 
     test "no parentheses" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = StringVisitor.visit(ast, parentheses: :none)
 
-      assert result == "score > 85"
+      assert result == "limit > 85"
     end
   end
 

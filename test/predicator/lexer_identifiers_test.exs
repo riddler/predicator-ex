@@ -5,10 +5,10 @@ defmodule Predicator.LexerIdentifiersTest do
 
   describe "tokenize/1 - identifiers and keywords" do
     test "tokenizes simple identifier" do
-      assert {:ok, tokens} = Lexer.tokenize("score")
+      assert {:ok, tokens} = Lexer.tokenize("limit")
 
       assert tokens == [
-               {:identifier, 1, 1, 5, "score"},
+               {:identifier, 1, 1, 5, "limit"},
                {:eof, 1, 6, 0, nil}
              ]
     end

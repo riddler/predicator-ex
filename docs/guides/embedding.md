@@ -12,17 +12,17 @@ naming why ([ADR-0003](https://github.com/riddler/predicator-ex/blob/main/docs/a
 list, which is the portable artifact:
 
 ```elixir
-iex> {:ok, instructions} = Predicator.compile("score > 85")
+iex> {:ok, instructions} = Predicator.compile("limit > 85")
 iex> instructions
-[["load", "score"], ["lit", 85], ["compare", "GT"]]
+[["load", "limit"], ["lit", 85], ["compare", "GT"]]
 ```
 
 `Predicator.compile!/1` is its raising form, for a caller that already treats
 a parse failure as a bug rather than an expected outcome:
 
 ```elixir
-iex> Predicator.compile!("score > 85")
-[["load", "score"], ["lit", 85], ["compare", "GT"]]
+iex> Predicator.compile!("limit > 85")
+[["load", "limit"], ["lit", 85], ["compare", "GT"]]
 ```
 
 `Predicator.compile_with_positions/1` and `Predicator.compile_with_spans/1`
@@ -30,17 +30,17 @@ return `{:ok, %Predicator.Compiled{}}` instead - the instructions and a
 source-location table as one value:
 
 ```elixir
-iex> {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+iex> {:ok, compiled} = Predicator.compile_with_positions("limit > 85")
 iex> compiled.instructions
-[["load", "score"], ["lit", 85], ["compare", "GT"]]
+[["load", "limit"], ["lit", 85], ["compare", "GT"]]
 ```
 
 `compiled.instructions` is byte-identical to what `compile/1` emits for the
 same source:
 
 ```elixir
-iex> {:ok, plain} = Predicator.compile("score > 85")
-iex> {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+iex> {:ok, plain} = Predicator.compile("limit > 85")
+iex> {:ok, compiled} = Predicator.compile_with_positions("limit > 85")
 iex> plain == compiled.instructions
 true
 ```
@@ -51,8 +51,8 @@ between compiling and evaluating
 ([ADR-0009](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0009-the-compiled-envelope-carries-the-position-table.md)):
 
 ```elixir
-iex> {:ok, compiled} = Predicator.compile_with_positions("score > 85")
-iex> Predicator.evaluate(compiled, %{"score" => 92})
+iex> {:ok, compiled} = Predicator.compile_with_positions("limit > 85")
+iex> Predicator.evaluate(compiled, %{"limit" => 92})
 {:ok, true}
 ```
 
@@ -73,8 +73,8 @@ table, and recompile with `compile_with_positions/1` (or
 `compile_with_spans/1`) on load. Recompiling the same source is deterministic:
 
 ```elixir
-iex> {:ok, first} = Predicator.compile_with_positions("score > 85")
-iex> {:ok, second} = Predicator.compile_with_positions("score > 85")
+iex> {:ok, first} = Predicator.compile_with_positions("limit > 85")
+iex> {:ok, second} = Predicator.compile_with_positions("limit > 85")
 iex> first == second
 true
 ```
@@ -97,14 +97,14 @@ ordinary Erlang term data:
 
 ```elixir
 iex> context = Predicator.Context.new(
-...>   %{"score" => 92},
+...>   %{"limit" => 92},
 ...>   providers: [Predicator.Functions.MathFunctions],
 ...>   builtins: false,
 ...>   host: %{tenant: "acme"}
 ...> )
 iex> binary = :erlang.term_to_binary(context)
 iex> restored = :erlang.binary_to_term(binary)
-iex> Predicator.evaluate("Math.max(score, 0) > 85", restored)
+iex> Predicator.evaluate("Math.max(limit, 0) > 85", restored)
 {:ok, true}
 ```
 
@@ -121,7 +121,7 @@ this depends on.
 instruction list needs:
 
 ```elixir
-iex> {:ok, instructions} = Predicator.compile("score > 85")
+iex> {:ok, instructions} = Predicator.compile("limit > 85")
 iex> Predicator.Instructions.required_isa(instructions)
 {:ok, 1}
 ```

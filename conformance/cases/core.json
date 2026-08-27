@@ -12,21 +12,21 @@
   },
   {
     "id": "comparison/gt-int-true",
-    "source": "score > 85",
-    "context": { "score": 90 },
+    "source": "limit > 85",
+    "context": { "limit": 90 },
     "expected": { "result": true }
   },
   {
     "id": "comparison/gt-int-false",
-    "source": "score > 85",
-    "context": { "score": 80 },
+    "source": "limit > 85",
+    "context": { "limit": 80 },
     "expected": { "result": false },
     "notes": "boundary is exclusive; see comparison/gt-int-boundary"
   },
   {
     "id": "comparison/gt-int-boundary",
-    "source": "score > 85",
-    "context": { "score": 85 },
+    "source": "limit > 85",
+    "context": { "limit": 85 },
     "expected": { "result": false },
     "notes": "85 is not > 85 - the boundary is exclusive"
   },
@@ -59,8 +59,8 @@
   },
   {
     "id": "logical/unary-minus",
-    "source": "-score",
-    "context": { "score": 5 },
+    "source": "-limit",
+    "context": { "limit": 5 },
     "expected": { "result": -5 }
   },
   {

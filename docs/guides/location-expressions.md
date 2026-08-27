@@ -38,7 +38,7 @@ iex> err.type
 
 ## Valid assignment targets
 
-- Simple identifiers: `user`, `score`, `config`
+- Simple identifiers: `user`, `limit`, `config`
 - Property access: `user.name`, `config.database.host`
 - Bracket access: `items[0]`, `user['profile']`, `data["key"]`
 - Mixed notation: `user.settings['theme']`, `data['users'][0].profile`
@@ -47,8 +47,8 @@ iex> err.type
 
 - Literals: `42`, `"hello"`, `true`, `#2024-01-15#`
 - Function calls: `len(name)`, `upper(role)`, `Math.max(a, b)`
-- Arithmetic expressions: `score + 1`, `items[i + 1]`
-- Comparison results: `score > 85`, `name == "John"`
+- Arithmetic expressions: `limit + 1`, `items[i + 1]`
+- Comparison results: `limit > 85`, `name == "John"`
 - Any computed expression that cannot serve as a memory location
 
 ## LocationError types

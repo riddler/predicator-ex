@@ -12,8 +12,8 @@
   },
   {
     "id": "arithmetic/add-number-to-string-concat",
-    "source": "\"score: \" + 5",
-    "expected": { "result": "score: 5" }
+    "source": "\"limit: \" + 5",
+    "expected": { "result": "limit: 5" }
   },
   {
     "id": "arithmetic/add-list-concat",

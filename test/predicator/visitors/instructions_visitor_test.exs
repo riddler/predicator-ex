@@ -30,10 +30,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - identifier nodes" do
     test "generates load instruction for identifier" do
-      ast = {:identifier, "score", nil}
+      ast = {:identifier, "limit", nil}
       result = InstructionsVisitor.visit(ast, [])
 
-      assert result == [["load", "score"]]
+      assert result == [["load", "limit"]]
     end
 
     test "generates load instruction for underscore identifier" do
@@ -46,11 +46,11 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
 
   describe "visit/2 - comparison nodes" do
     test "generates instructions for greater than comparison" do
-      ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
-               ["load", "score"],
+               ["load", "limit"],
                ["lit", 85],
                ["compare", "GT"]
              ]
@@ -68,11 +68,11 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for greater than or equal comparison" do
-      ast = {:comparison, :gte, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      ast = {:comparison, :gte, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
-               ["load", "score"],
+               ["load", "limit"],
                ["lit", 85],
                ["compare", "GTE"]
              ]
@@ -123,11 +123,11 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions with identifier-to-identifier comparison" do
-      ast = {:comparison, :eq, {:identifier, "score", nil}, {:identifier, "threshold", nil}, nil}
+      ast = {:comparison, :eq, {:identifier, "limit", nil}, {:identifier, "threshold", nil}, nil}
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
-               ["load", "score"],
+               ["load", "limit"],
                ["load", "threshold"],
                ["compare", "EQ"]
              ]
@@ -179,10 +179,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for complex logical expression" do
-      # (score > 85 AND age >= 18) OR admin = true
+      # (limit > 85 AND age >= 18) OR admin = true
       ast = {
         :logical_or,
-        {:logical_and, {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+        {:logical_and, {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil},
          {:comparison, :gte, {:identifier, "age", nil}, {:literal, 18, nil}, nil}, nil},
         {:comparison, :eq, {:identifier, "admin", nil}, {:literal, true, nil}, nil},
         nil
@@ -191,8 +191,8 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
-               # Left side of OR: (score > 85 AND age >= 18)
-               ["load", "score"],
+               # Left side of OR: (limit > 85 AND age >= 18)
+               ["load", "limit"],
                ["lit", 85],
                ["compare", "GT"],
                ["jump_if_falsy_or_pop", 4],
@@ -209,10 +209,10 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     end
 
     test "generates instructions for logical AND with comparisons" do
-      # score > 85 AND name = "John"
+      # limit > 85 AND name = "John"
       ast = {
         :logical_and,
-        {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil},
+        {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil},
         {:comparison, :eq, {:identifier, "name", nil}, {:literal, "John", nil}, nil},
         nil
       }
@@ -220,7 +220,7 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
-               ["load", "score"],
+               ["load", "limit"],
                ["lit", 85],
                ["compare", "GT"],
                ["jump_if_falsy_or_pop", 4],
@@ -275,13 +275,13 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     test "works with lexer and parser output" do
       alias Predicator.Lexer
 
-      {:ok, tokens} = Lexer.tokenize("score > 85")
+      {:ok, tokens} = Lexer.tokenize("limit > 85")
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
-               ["load", "score"],
+               ["load", "limit"],
                ["lit", 85],
                ["compare", "GT"]
              ]
@@ -305,13 +305,13 @@ defmodule Predicator.Visitors.InstructionsVisitorTest do
     test "works with logical AND expression" do
       alias Predicator.Lexer
 
-      {:ok, tokens} = Lexer.tokenize("score > 85 AND age >= 18")
+      {:ok, tokens} = Lexer.tokenize("limit > 85 AND age >= 18")
       {:ok, ast} = Predicator.Parser.parse(tokens)
 
       result = InstructionsVisitor.visit(ast, [])
 
       assert result == [
-               ["load", "score"],
+               ["load", "limit"],
                ["lit", 85],
                ["compare", "GT"],
                ["jump_if_falsy_or_pop", 4],

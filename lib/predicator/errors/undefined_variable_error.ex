@@ -17,8 +17,8 @@ defmodule Predicator.Errors.UndefinedVariableError do
   ## Examples
 
       %Predicator.Errors.UndefinedVariableError{
-        message: "Undefined variable: score",
-        variable: "score"
+        message: "Undefined variable: limit",
+        variable: "limit"
       }
 
       %Predicator.Errors.UndefinedVariableError{

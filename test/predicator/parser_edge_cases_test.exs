@@ -313,11 +313,11 @@ defmodule Predicator.ParserEdgeCasesTest do
   # named reproductions, which raised a CaseClauseError (or, for "next \"a\"",
   # a MatchError) before the fix.
   describe "a string literal in a rejected position" do
-    test "score \"a\" is a parse error, not a raise" do
-      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|score "a"|)
+    test "limit \"a\" is a parse error, not a raise" do
+      assert {:error, %Predicator.Errors.ParseError{}} = Predicator.compile(~s|limit "a"|)
 
       assert {:error, %Predicator.Errors.ParseError{}} =
-               Predicator.compile_program(~s|score "a"|)
+               Predicator.compile_program(~s|limit "a"|)
     end
 
     test "5 \"a\" is a parse error, not a raise" do
@@ -352,9 +352,9 @@ defmodule Predicator.ParserEdgeCasesTest do
   # always a valid duration start), so every source below places it after a
   # complete expression or in a position the grammar rejects outright.
   describe "a fractional duration literal in a rejected position" do
-    test "score 1.5s is a parse error, not a raise" do
+    test "limit 1.5s is a parse error, not a raise" do
       assert {:error, %Predicator.Errors.ParseError{message: message}} =
-               Predicator.compile(~s|score 1.5s|)
+               Predicator.compile(~s|limit 1.5s|)
 
       assert message == "Unexpected token number '1.5' after expression"
     end

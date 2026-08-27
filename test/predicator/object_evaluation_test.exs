@@ -21,9 +21,9 @@ defmodule Predicator.ObjectEvaluationTest do
 
     test "evaluates object with variable references" do
       result =
-        Predicator.evaluate("{user: name, score: points}", %{"name" => "Alice", "points" => 85})
+        Predicator.evaluate("{user: name, limit: points}", %{"name" => "Alice", "points" => 85})
 
-      assert {:ok, %{"user" => "Alice", "score" => 85}} = result
+      assert {:ok, %{"user" => "Alice", "limit" => 85}} = result
     end
 
     test "evaluates object with mixed value types" do
@@ -77,27 +77,27 @@ defmodule Predicator.ObjectEvaluationTest do
   describe "integration with existing operations" do
     test "object equality comparison" do
       # Test object equality using == operator
-      context = %{"user_data" => %{"score" => 85}}
+      context = %{"user_data" => %{"limit" => 85}}
 
       # First test that both sides evaluate correctly
-      {:ok, left} = Predicator.evaluate("{score: 85}", %{})
+      {:ok, left} = Predicator.evaluate("{limit: 85}", %{})
       {:ok, right} = Predicator.evaluate("user_data", context)
 
-      assert left == %{"score" => 85}
-      assert right == %{"score" => 85}
+      assert left == %{"limit" => 85}
+      assert right == %{"limit" => 85}
 
       # Then test the comparison
-      result = Predicator.evaluate("{score: 85} == user_data", context)
+      result = Predicator.evaluate("{limit: 85} == user_data", context)
       assert {:ok, true} = result
     end
 
     test "object inequality comparison" do
-      context = %{"user_data" => %{"score" => 90}}
+      context = %{"user_data" => %{"limit" => 90}}
 
-      result = Predicator.evaluate("{score: 85} != user_data", context)
+      result = Predicator.evaluate("{limit: 85} != user_data", context)
       assert {:ok, true} = result
 
-      result = Predicator.evaluate("{score: 90} != user_data", context)
+      result = Predicator.evaluate("{limit: 90} != user_data", context)
       assert {:ok, false} = result
     end
 

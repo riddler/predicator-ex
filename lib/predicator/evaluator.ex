@@ -346,7 +346,7 @@ defmodule Predicator.Evaluator do
       iex> Predicator.Evaluator.evaluate([["lit", 42]], %{})
       42
 
-      iex> Predicator.Evaluator.evaluate([["load", "score"]], %{"score" => 85})
+      iex> Predicator.Evaluator.evaluate([["load", "limit"]], %{"limit" => 85})
       85
 
       # With custom functions
@@ -382,7 +382,7 @@ defmodule Predicator.Evaluator do
       iex> Predicator.Evaluator.evaluate!([["lit", 42]], %{})
       42
 
-      iex> Predicator.Evaluator.evaluate!([["load", "score"]], %{"score" => 85})
+      iex> Predicator.Evaluator.evaluate!([["load", "limit"]], %{"limit" => 85})
       85
 
       # With custom functions
@@ -1402,8 +1402,8 @@ defmodule Predicator.Evaluator do
   > who bypasses that edge - `Predicator.Evaluator.evaluate/3` or
   > `Predicator.evaluator/2` handed a hand-built atom-keyed map.
   >
-  > For that caller the two answers are asymmetric: `%{score: 85}` *loads* as
-  > `:undefined` (no string key) while resolving as `{:ok, :score}` (present),
+  > For that caller the two answers are asymmetric: `%{limit: 85}` *loads* as
+  > `:undefined` (no string key) while resolving as `{:ok, :limit}` (present),
   > so the load is not recorded in `unbound_loads`. Bound-but-undefined is a
   > state this API already models, and treating a present atom key as unbound
   > bookkeeping would be the worse answer. Nothing reachable through
@@ -1411,13 +1411,13 @@ defmodule Predicator.Evaluator do
 
   ## Examples
 
-      iex> Predicator.Evaluator.resolve_key(%{"score" => 85}, "score")
-      {:ok, "score"}
+      iex> Predicator.Evaluator.resolve_key(%{"limit" => 85}, "limit")
+      {:ok, "limit"}
 
-      iex> Predicator.Evaluator.resolve_key(%{score: 85}, "score")
-      {:ok, :score}
+      iex> Predicator.Evaluator.resolve_key(%{limit: 85}, "limit")
+      {:ok, :limit}
 
-      iex> Predicator.Evaluator.resolve_key(%{"score" => 85}, "missing")
+      iex> Predicator.Evaluator.resolve_key(%{"limit" => 85}, "missing")
       :unbound
   """
   @spec resolve_key(Types.context(), binary()) :: {:ok, binary() | atom()} | :unbound

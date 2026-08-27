@@ -14,8 +14,8 @@
   },
   {
     "id": "access/dot-on-non-object-is-undefined",
-    "source": "score.foo",
-    "context": { "score": 5 },
+    "source": "limit.foo",
+    "context": { "limit": 5 },
     "expected": { "result": { "$type": "undefined" } }
   },
   {

@@ -14,8 +14,8 @@ defmodule Predicator do
       iex> Predicator.evaluate(instructions)
       {:ok, 42}
 
-      iex> instructions = [["load", "score"]]
-      iex> context = %{"score" => 85}
+      iex> instructions = [["load", "limit"]]
+      iex> context = %{"limit" => 85}
       iex> Predicator.evaluate(instructions, context)
       {:ok, 85}
 
@@ -32,19 +32,19 @@ defmodule Predicator do
   The context is a map containing variable bindings. Both string and atom keys
   are supported for flexibility:
 
-      %{"score" => 85, "name" => "Alice"}
-      %{score: 85, name: "Alice"}
+      %{"limit" => 85, "name" => "Alice"}
+      %{limit: 85, name: "Alice"}
 
   A bare map is merged with the builtin functions on every `evaluate/3` call -
   fine for one-off evaluation, wasteful when the same bindings are evaluated
   against repeatedly. `Predicator.Context.new/2` builds that merge once into a
   `%Predicator.Context{}`, which `evaluate/3` also accepts directly:
 
-      iex> context = Predicator.Context.new(%{"score" => 85})
-      iex> Predicator.evaluate("score > 80", context)
+      iex> context = Predicator.Context.new(%{"limit" => 85})
+      iex> Predicator.evaluate("limit > 80", context)
       {:ok, true}
-      iex> context = Predicator.Context.bind(context, "score", 90)
-      iex> Predicator.evaluate("score > 80", context)
+      iex> context = Predicator.Context.bind(context, "limit", 90)
+      iex> Predicator.evaluate("limit > 80", context)
       {:ok, true}
 
   A context also carries the unbound-variable policy. By default a load of an
@@ -93,7 +93,7 @@ defmodule Predicator do
   Evaluates a predicate expression or instruction list.
 
   This is the main entry point for Predicator evaluation. It accepts either:
-  - A string expression (e.g., "score > 85") which gets compiled automatically
+  - A string expression (e.g., "limit > 85") which gets compiled automatically
   - A pre-compiled instruction list for maximum performance
 
   ## Parameters
@@ -154,7 +154,7 @@ defmodule Predicator do
       {:ok, 5}
 
       # With context
-      iex> Predicator.evaluate("score > 85", %{"score" => 90})
+      iex> Predicator.evaluate("limit > 85", %{"limit" => 90})
       {:ok, true}
 
       # With custom functions
@@ -167,11 +167,11 @@ defmodule Predicator do
       {:ok, 42}
 
       # Type coercion with + operator (string concatenation)
-      iex> Predicator.evaluate("score + 'hello'", %{"score" => 5})
+      iex> Predicator.evaluate("limit + 'hello'", %{"limit" => 5})
       {:ok, "5hello"}
 
       # Error handling for incompatible types
-      iex> {:error, error} = Predicator.evaluate("score * true", %{"score" => 5})
+      iex> {:error, error} = Predicator.evaluate("limit * true", %{"limit" => 5})
       iex> String.contains?(error.message, "multiply requires")
       true
   """
@@ -317,7 +317,7 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> Predicator.evaluate!("score > 85", %{"score" => 90})
+      iex> Predicator.evaluate!("limit > 85", %{"limit" => 90})
       true
 
       iex> Predicator.evaluate!([["lit", 42]])
@@ -329,12 +329,12 @@ defmodule Predicator do
       42
 
       # A pre-compiled %Predicator.Compiled{}
-      iex> {:ok, compiled} = Predicator.compile_with_positions("score > 85")
-      iex> Predicator.evaluate!(compiled, %{"score" => 90})
+      iex> {:ok, compiled} = Predicator.compile_with_positions("limit > 85")
+      iex> Predicator.evaluate!(compiled, %{"limit" => 90})
       true
 
       # This would raise an exception:
-      # Predicator.evaluate!("score >", %{})
+      # Predicator.evaluate!("limit >", %{})
   """
   @spec evaluate!(
           binary() | Types.instruction_list() | Compiled.t(),
@@ -709,15 +709,15 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> {:ok, instructions} = Predicator.compile("score > 85")
+      iex> {:ok, instructions} = Predicator.compile("limit > 85")
       iex> instructions
-      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      [["load", "limit"], ["lit", 85], ["compare", "GT"]]
 
-      iex> {:error, error} = Predicator.compile("score >")
+      iex> {:error, error} = Predicator.compile("limit >")
       iex> {error.message, error.position}
       {"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input", {1, 8}}
 
-      iex> {:error, error} = Predicator.compile("score >")
+      iex> {:error, error} = Predicator.compile("limit >")
       iex> {error.message, error.position, error.span}
       {"Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input", {1, 8}, {{1, 8}, {1, 8}}}
 
@@ -746,9 +746,9 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> {:ok, compiled} = Predicator.compile_with_positions("score > 85")
+      iex> {:ok, compiled} = Predicator.compile_with_positions("limit > 85")
       iex> compiled.instructions
-      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      [["load", "limit"], ["lit", 85], ["compare", "GT"]]
       iex> compiled.positions
       %{0 => {1, 1}, 1 => {1, 9}, 2 => {1, 7}}
 
@@ -777,9 +777,9 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> {:ok, compiled} = Predicator.compile_with_spans("score > 85")
+      iex> {:ok, compiled} = Predicator.compile_with_spans("limit > 85")
       iex> compiled.instructions
-      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      [["load", "limit"], ["lit", 85], ["compare", "GT"]]
       iex> compiled.positions
       %{0 => {{1, 1}, {1, 6}}, 1 => {{1, 9}, {1, 11}}, 2 => {{1, 1}, {1, 11}}}
 
@@ -941,11 +941,11 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> Predicator.parse("score > 85")
-      {:ok, {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
+      iex> Predicator.parse("limit > 85")
+      {:ok, {:comparison, :gt, {:identifier, "limit", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
 
-      iex> Predicator.parse("score > 85", spans: true)
-      {:ok, {:comparison, :gt, {:identifier, "score", {{1, 1}, {1, 6}}}, {:literal, 85, {{1, 9}, {1, 11}}}, {{1, 1}, {1, 11}}}}
+      iex> Predicator.parse("limit > 85", spans: true)
+      {:ok, {:comparison, :gt, {:identifier, "limit", {{1, 1}, {1, 6}}}, {:literal, 85, {{1, 9}, {1, 11}}}, {{1, 1}, {1, 11}}}}
   """
   @spec parse(binary(), keyword()) ::
           {:ok, Parser.ast()} | {:error, binary(), pos_integer(), pos_integer(), Types.span()}
@@ -1010,9 +1010,9 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> ast = {:comparison, :gt, {:identifier, "score", nil}, {:literal, 85, nil}, nil}
+      iex> ast = {:comparison, :gt, {:identifier, "limit", nil}, {:literal, 85, nil}, nil}
       iex> Predicator.decompile(ast)
-      "score > 85"
+      "limit > 85"
 
       iex> ast = {:literal, 42, nil}
       iex> Predicator.decompile(ast)
@@ -1038,8 +1038,8 @@ defmodule Predicator do
 
   ## Examples
 
-      iex> Predicator.compile!("score > 85")
-      [["load", "score"], ["lit", 85], ["compare", "GT"]]
+      iex> Predicator.compile!("limit > 85")
+      [["load", "limit"], ["lit", 85], ["compare", "GT"]]
   """
   @spec compile!(binary()) :: Types.instruction_list()
   def compile!(expression) when is_binary(expression) do

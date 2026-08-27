@@ -77,11 +77,11 @@ defmodule Predicator.EvaluatorLogicalTest do
     end
 
     test "complex logical expression with variables" do
-      # (score > 85 AND age >= 18) OR admin = true, in jump form (the compiler
+      # (limit > 85 AND age >= 18) OR admin = true, in jump form (the compiler
       # has emitted jumps rather than and/or since 3.7.0; and/or is retired at
       # ISA v3 and this expresses the same program the two opcodes used to).
       instructions = [
-        ["load", "score"],
+        ["load", "limit"],
         ["lit", 85],
         ["compare", "GT"],
         ["jump_if_falsy_or_pop", 4],
@@ -94,13 +94,13 @@ defmodule Predicator.EvaluatorLogicalTest do
         ["compare", "EQ"]
       ]
 
-      context = %{"score" => 90, "age" => 20, "admin" => false}
+      context = %{"limit" => 90, "age" => 20, "admin" => false}
       assert Evaluator.evaluate(instructions, context) == true
 
-      context = %{"score" => 80, "age" => 16, "admin" => false}
+      context = %{"limit" => 80, "age" => 16, "admin" => false}
       assert Evaluator.evaluate(instructions, context) == false
 
-      context = %{"score" => 80, "age" => 16, "admin" => true}
+      context = %{"limit" => 80, "age" => 16, "admin" => true}
       assert Evaluator.evaluate(instructions, context) == true
     end
 
@@ -115,10 +115,10 @@ defmodule Predicator.EvaluatorLogicalTest do
     end
 
     test "mixed comparison and logical operations" do
-      # score > 85 AND NOT expired, in jump form (see the composite test
+      # limit > 85 AND NOT expired, in jump form (see the composite test
       # above for why)
       instructions = [
-        ["load", "score"],
+        ["load", "limit"],
         ["lit", 85],
         ["compare", "GT"],
         ["jump_if_falsy_or_pop", 3],
@@ -126,13 +126,13 @@ defmodule Predicator.EvaluatorLogicalTest do
         ["not"]
       ]
 
-      context = %{"score" => 90, "expired" => false}
+      context = %{"limit" => 90, "expired" => false}
       assert Evaluator.evaluate(instructions, context) == true
 
-      context = %{"score" => 80, "expired" => false}
+      context = %{"limit" => 80, "expired" => false}
       assert Evaluator.evaluate(instructions, context) == false
 
-      context = %{"score" => 90, "expired" => true}
+      context = %{"limit" => 90, "expired" => true}
       assert Evaluator.evaluate(instructions, context) == false
     end
   end

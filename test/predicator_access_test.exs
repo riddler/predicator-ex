@@ -92,7 +92,7 @@ defmodule PredicatorAccessTest do
         "user" => %{
           "name" => "John",
           "hobbies" => ["reading", "coding", "gaming"],
-          "scores" => [85, 92, 78]
+          "limits" => [85, 92, 78]
         }
       }
 
@@ -181,13 +181,13 @@ defmodule PredicatorAccessTest do
 
     test "evaluates bracket access in comparisons" do
       context = %{
-        "user" => %{"age" => 30, "score" => 95},
-        "thresholds" => %{"min_age" => 18, "passing_score" => 80}
+        "user" => %{"age" => 30, "limit" => 95},
+        "thresholds" => %{"min_age" => 18, "floor_limit" => 80}
       }
 
       assert Predicator.evaluate("user['age'] > 18", context) == {:ok, true}
 
-      assert Predicator.evaluate("user['score'] >= thresholds['passing_score']", context) ==
+      assert Predicator.evaluate("user['limit'] >= thresholds['floor_limit']", context) ==
                {:ok, true}
 
       assert Predicator.evaluate("user['age'] < thresholds['min_age']", context) == {:ok, false}
@@ -195,13 +195,13 @@ defmodule PredicatorAccessTest do
 
     test "evaluates bracket access in arithmetic expressions" do
       context = %{
-        "scores" => [85, 90, 78],
+        "limits" => [85, 90, 78],
         "multipliers" => [2, 3, 4],
         "bonuses" => %{"effort" => 5, "attendance" => 3}
       }
 
-      assert Predicator.evaluate("scores[0] + scores[1]", context) == {:ok, 175}
-      assert Predicator.evaluate("scores[0] * multipliers[0]", context) == {:ok, 170}
+      assert Predicator.evaluate("limits[0] + limits[1]", context) == {:ok, 175}
+      assert Predicator.evaluate("limits[0] * multipliers[0]", context) == {:ok, 170}
       assert Predicator.evaluate("bonuses['effort'] + bonuses['attendance']", context) == {:ok, 8}
     end
 
@@ -343,7 +343,7 @@ defmodule PredicatorAccessTest do
         "user['name']",
         "items[0]",
         "data['users'][index]['profile']['settings']",
-        "scores[0] + scores[1] > threshold['min']",
+        "limits[0] + limits[1] > threshold['min']",
         "user['active'] AND config['enabled']"
       ]
 

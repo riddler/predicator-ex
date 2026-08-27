@@ -22,7 +22,7 @@ defmodule Predicator.Errors.ParseError do
   span comes from the token stream, so it is present in every compile mode,
   not only the `_with_spans` ones:
 
-      iex> {:error, error} = Predicator.compile("score > > 5")
+      iex> {:error, error} = Predicator.compile("limit > > 5")
       iex> {error.position, error.span}
       {{1, 9}, {{1, 9}, {1, 10}}}
 

@@ -92,17 +92,17 @@ defmodule Predicator.Parser do
 
   ## Examples
 
-      iex> {:ok, tokens} = Predicator.Lexer.tokenize("score > 85")
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("limit > 85")
       iex> Predicator.Parser.parse(tokens)
-      {:ok, {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
+      {:ok, {:comparison, :gt, {:identifier, "limit", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
 
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("(age >= 18)")
       iex> Predicator.Parser.parse(tokens)
       {:ok, {:comparison, :gte, {:identifier, "age", {1, 2}}, {:literal, 18, {1, 9}}, {1, 6}}}
 
-      iex> {:ok, tokens} = Predicator.Lexer.tokenize("score > 85 AND age >= 18")
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("limit > 85 AND age >= 18")
       iex> Predicator.Parser.parse(tokens)
-      {:ok, {:logical_and, {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}, {:comparison, :gte, {:identifier, "age", {1, 16}}, {:literal, 18, {1, 23}}, {1, 20}}, {1, 12}}}
+      {:ok, {:logical_and, {:comparison, :gt, {:identifier, "limit", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}, {:comparison, :gte, {:identifier, "age", {1, 16}}, {:literal, 18, {1, 23}}, {1, 20}}, {1, 12}}}
   """
 
   alias Predicator.Cast
@@ -348,9 +348,9 @@ defmodule Predicator.Parser do
 
   ## Examples
 
-      iex> {:ok, tokens} = Predicator.Lexer.tokenize("score > 85")
+      iex> {:ok, tokens} = Predicator.Lexer.tokenize("limit > 85")
       iex> Predicator.Parser.parse(tokens)
-      {:ok, {:comparison, :gt, {:identifier, "score", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
+      {:ok, {:comparison, :gt, {:identifier, "limit", {1, 1}}, {:literal, 85, {1, 9}}, {1, 7}}}
 
       iex> {:ok, tokens} = Predicator.Lexer.tokenize("name == \\"John\\"")
       iex> Predicator.Parser.parse(tokens)

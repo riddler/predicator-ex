@@ -83,8 +83,8 @@ defmodule Predicator.Types do
 
   ## Examples
 
-      %{"score" => 85, "name" => "Alice"}
-      %{score: 85, name: "Alice"}
+      %{"limit" => 85, "name" => "Alice"}
+      %{limit: 85, name: "Alice"}
   """
   @type context :: %{required(binary() | atom()) => value()}
 
@@ -108,7 +108,7 @@ defmodule Predicator.Types do
   ## Examples
 
       ["lit", 42]           # Push literal 42 onto stack
-      ["load", "score"]     # Load variable 'score' from context
+      ["load", "limit"]     # Load variable 'limit' from context
       ["compare", "GT"]     # Pop two values, compare with >, push result
   """
   @type instruction :: [binary() | value()]
@@ -140,7 +140,7 @@ defmodule Predicator.Types do
 
   The end is **exclusive** - it names the position one past the last character -
   so on a single line `end_column - start_column` is the span's length, matching
-  LSP ranges. The identifier `score` at line 1 column 1 spans
+  LSP ranges. The identifier `limit` at line 1 column 1 spans
   `{{1, 1}, {1, 6}}`.
 
   A span composes two `t:position/0` values; a point position and a span answer

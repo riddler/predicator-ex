@@ -140,7 +140,7 @@ defmodule Predicator.Visitors.StringVisitorPrecedenceTest do
       "1 + 2 * 3 - 4 / 2",
       "x = (1 + 2) * 3",
       "x = 1 + 2 * 3",
-      "score::integer",
+      "limit::integer",
       "x::integer::string",
       "(1 + 2)::string",
       "(-1)::integer",

@@ -211,32 +211,32 @@ defmodule Predicator.ObjectIntegrationTest do
 
     test "combines objects with comparison operations" do
       context = %{
-        "score1" => 85,
-        "score2" => 92,
-        "passing_score" => 80,
-        "excellent_score" => 90
+        "limit1" => 85,
+        "limit2" => 92,
+        "floor_limit" => 80,
+        "premium_limit" => 90
       }
 
       result =
         Predicator.evaluate(
           ~s|{
-          score1_passing: score1 >= passing_score,
-          score2_passing: score2 >= passing_score,
-          score1_excellent: score1 >= excellent_score,
-          score2_excellent: score2 >= excellent_score,
-          better_score: score2 > score1,
-          scores_equal: score1 == score2
+          limit1_passing: limit1 >= floor_limit,
+          limit2_passing: limit2 >= floor_limit,
+          limit1_premium: limit1 >= premium_limit,
+          limit2_premium: limit2 >= premium_limit,
+          higher_limit: limit2 > limit1,
+          limits_equal: limit1 == limit2
         }|,
           context
         )
 
       assert {:ok, result_obj} = result
-      assert result_obj["score1_passing"] == true
-      assert result_obj["score2_passing"] == true
-      assert result_obj["score1_excellent"] == false
-      assert result_obj["score2_excellent"] == true
-      assert result_obj["better_score"] == true
-      assert result_obj["scores_equal"] == false
+      assert result_obj["limit1_passing"] == true
+      assert result_obj["limit2_passing"] == true
+      assert result_obj["limit1_premium"] == false
+      assert result_obj["limit2_premium"] == true
+      assert result_obj["higher_limit"] == true
+      assert result_obj["limits_equal"] == false
     end
 
     test "combines objects with unary operations" do

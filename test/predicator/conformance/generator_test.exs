@@ -51,12 +51,12 @@ defmodule Predicator.Conformance.GeneratorTest do
 
     test "context is decoded through the tagged codec and used for evaluation" do
       cases = [
-        %{"id" => "t/ctx", "source" => "score > 85", "context" => %{"score" => 90}}
+        %{"id" => "t/ctx", "source" => "limit > 85", "context" => %{"limit" => 90}}
       ]
 
       assert {:ok, %{tiers: %{1 => [completed]}}} = Generator.generate(cases)
       assert completed["expected_result"] == true
-      assert completed["context"] == %{"score" => 90}
+      assert completed["context"] == %{"limit" => 90}
     end
 
     test "notes are carried into the completed case; absent notes add no key" do
@@ -127,7 +127,7 @@ defmodule Predicator.Conformance.GeneratorTest do
 
   describe "generate/1 - failure mode: uncompilable source" do
     test "a parse-failing source is a generator error, not a case" do
-      cases = [%{"id" => "t/badsource", "source" => "score >"}]
+      cases = [%{"id" => "t/badsource", "source" => "limit >"}]
 
       assert {:error, [%{id: "t/badsource", problem: problem}]} = Generator.generate(cases)
       assert problem =~ "failed to compile"
@@ -233,7 +233,7 @@ defmodule Predicator.Conformance.GeneratorTest do
   describe "generate/1 - errors accumulate" do
     test "three independently-broken cases report three errors, not one" do
       cases = [
-        %{"id" => "t/bad1", "source" => "score >"},
+        %{"id" => "t/bad1", "source" => "limit >"},
         %{"id" => "t/bad2", "instructions" => [["nope"]]},
         %{"id" => "t/bad3", "source" => "42", "expected" => %{"result" => 1}}
       ]
@@ -249,8 +249,8 @@ defmodule Predicator.Conformance.GeneratorTest do
       cases = [
         %{
           "id" => "t/feat2",
-          "source" => "score > 85",
-          "context" => %{"score" => 90},
+          "source" => "limit > 85",
+          "context" => %{"limit" => 90},
           "features" => ["custom_tag"]
         }
       ]

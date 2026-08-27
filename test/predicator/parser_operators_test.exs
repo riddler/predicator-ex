@@ -7,9 +7,9 @@ defmodule Predicator.ParserOperatorsTest do
 
   describe "parse/1 - comparison expressions" do
     test "parses greater than comparison" do
-      {:ok, tokens} = Lexer.tokenize("score > 85")
+      {:ok, tokens} = Lexer.tokenize("limit > 85")
 
-      expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      expected = {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
 
@@ -21,9 +21,9 @@ defmodule Predicator.ParserOperatorsTest do
     end
 
     test "parses greater than or equal comparison" do
-      {:ok, tokens} = Lexer.tokenize("score >= 85")
+      {:ok, tokens} = Lexer.tokenize("limit >= 85")
 
-      expected = {:comparison, :gte, {:identifier, "score"}, {:literal, 85}}
+      expected = {:comparison, :gte, {:identifier, "limit"}, {:literal, 85}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
 
@@ -78,30 +78,30 @@ defmodule Predicator.ParserOperatorsTest do
 
   describe "parse/1 - parenthesized comparisons" do
     test "parses comparison in parentheses" do
-      {:ok, tokens} = Lexer.tokenize("(score > 85)")
+      {:ok, tokens} = Lexer.tokenize("(limit > 85)")
 
-      expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      expected = {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses parenthesized left operand" do
-      {:ok, tokens} = Lexer.tokenize("(score) > 85")
+      {:ok, tokens} = Lexer.tokenize("(limit) > 85")
 
-      expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      expected = {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses parenthesized right operand" do
-      {:ok, tokens} = Lexer.tokenize("score > (85)")
+      {:ok, tokens} = Lexer.tokenize("limit > (85)")
 
-      expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      expected = {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
 
     test "parses both operands parenthesized" do
-      {:ok, tokens} = Lexer.tokenize("(score) > (85)")
+      {:ok, tokens} = Lexer.tokenize("(limit) > (85)")
 
-      expected = {:comparison, :gt, {:identifier, "score"}, {:literal, 85}}
+      expected = {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}}
       assert parse_positionless(tokens) == {:ok, expected}
     end
   end
@@ -109,7 +109,7 @@ defmodule Predicator.ParserOperatorsTest do
   describe "logical operators" do
     test "parses simple AND expression" do
       tokens = [
-        {:identifier, 1, 1, 5, "score"},
+        {:identifier, 1, 1, 5, "limit"},
         {:gt, 1, 7, 1, ">"},
         {:integer, 1, 9, 2, 85},
         {:and_op, 1, 12, 3, "AND"},
@@ -122,7 +122,7 @@ defmodule Predicator.ParserOperatorsTest do
       result = parse_positionless(tokens)
 
       assert {:ok,
-              {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
+              {:logical_and, {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}},
                {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}}} = result
     end
 
@@ -329,9 +329,9 @@ defmodule Predicator.ParserOperatorsTest do
     end
 
     test "complex mixed expression with comparisons and logical operators" do
-      # score > 85 AND age >= 18 OR admin == true
+      # limit > 85 AND age >= 18 OR admin == true
       tokens = [
-        {:identifier, 1, 1, 5, "score"},
+        {:identifier, 1, 1, 5, "limit"},
         {:gt, 1, 7, 1, ">"},
         {:integer, 1, 9, 2, 85},
         {:and_op, 1, 12, 3, "AND"},
@@ -349,7 +349,7 @@ defmodule Predicator.ParserOperatorsTest do
 
       assert {:ok,
               {:logical_or,
-               {:logical_and, {:comparison, :gt, {:identifier, "score"}, {:literal, 85}},
+               {:logical_and, {:comparison, :gt, {:identifier, "limit"}, {:literal, 85}},
                 {:comparison, :gte, {:identifier, "age"}, {:literal, 18}}},
                {:comparison, :equal_equal, {:identifier, "admin"}, {:literal, true}}}} = result
     end

@@ -16,10 +16,10 @@ defmodule Predicator.ContextLocationTest do
     end
 
     test "resolves identifier with context" do
-      {:ok, tokens} = Lexer.tokenize("score")
+      {:ok, tokens} = Lexer.tokenize("limit")
       {:ok, ast} = Parser.parse(tokens)
 
-      assert {:ok, ["score"]} = ContextLocation.resolve(ast, %{"score" => 100})
+      assert {:ok, ["limit"]} = ContextLocation.resolve(ast, %{"limit" => 100})
     end
   end
 
@@ -174,7 +174,7 @@ defmodule Predicator.ContextLocationTest do
     end
 
     test "rejects comparison expressions" do
-      {:ok, tokens} = Lexer.tokenize("score > 80")
+      {:ok, tokens} = Lexer.tokenize("limit > 80")
       {:ok, ast} = Parser.parse(tokens)
 
       assert {:error, %LocationError{type: :not_assignable}} =
@@ -190,7 +190,7 @@ defmodule Predicator.ContextLocationTest do
     end
 
     test "rejects unary expressions" do
-      {:ok, tokens} = Lexer.tokenize("-score")
+      {:ok, tokens} = Lexer.tokenize("-limit")
       {:ok, ast} = Parser.parse(tokens)
 
       assert {:error, %LocationError{type: :not_assignable}} =

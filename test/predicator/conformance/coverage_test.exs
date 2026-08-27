@@ -7,8 +7,8 @@ defmodule Predicator.Conformance.CoverageTest do
 
   describe "extract_sources/1" do
     test "extracts a literal source from Predicator.evaluate/2" do
-      content = "Predicator.evaluate(\"score > 85\", %{\"score\" => 90})"
-      assert Coverage.extract_sources(content) == ["score > 85"]
+      content = "Predicator.evaluate(\"limit > 85\", %{\"limit\" => 90})"
+      assert Coverage.extract_sources(content) == ["limit > 85"]
     end
 
     test "extracts a literal source from Predicator.evaluate/3 with an opts argument" do
@@ -65,7 +65,7 @@ defmodule Predicator.Conformance.CoverageTest do
     end
 
     test "a source that fails to compile contributes nothing, without raising" do
-      freqs = Coverage.suite_pattern_frequencies(["score >", "1 > 2"])
+      freqs = Coverage.suite_pattern_frequencies(["limit >", "1 > 2"])
       assert freqs == %{"compare:GT" => 1, "lit" => 2}
     end
 

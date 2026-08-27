@@ -86,8 +86,8 @@ defmodule Predicator.Conformance.Generator do
         }
       ]
 
-      iex> Predicator.Conformance.Generator.generate([%{"id" => "bad", "source" => "score >"}])
-      {:error, [%{id: "bad", problem: "source \\"score >\\" failed to compile: Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"}]}
+      iex> Predicator.Conformance.Generator.generate([%{"id" => "bad", "source" => "limit >"}])
+      {:error, [%{id: "bad", problem: "source \\"limit >\\" failed to compile: Expected number, string, boolean, date, datetime, identifier, function call, list, object, or '(' but found end of input"}]}
   """
   @spec generate([authored_case()], keyword()) ::
           {:ok, %{tiers: %{pos_integer() => [completed_case()]}, manifest: map()}}

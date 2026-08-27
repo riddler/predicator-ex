@@ -26,7 +26,7 @@ defmodule Predicator.Errors.PositionTest do
     end
 
     test "attaches to an UndefinedVariableError" do
-      error = UndefinedVariableError.new("score")
+      error = UndefinedVariableError.new("limit")
 
       assert error.position == nil
       assert Errors.put_position(error, {1, 1}).position == {1, 1}
@@ -63,7 +63,7 @@ defmodule Predicator.Errors.PositionTest do
     end
 
     test "sets :span and :position on an UndefinedVariableError" do
-      error = UndefinedVariableError.new("score")
+      error = UndefinedVariableError.new("limit")
       decorated = Errors.put_position(error, {{1, 4}, {1, 9}})
 
       assert decorated.span == {{1, 4}, {1, 9}}

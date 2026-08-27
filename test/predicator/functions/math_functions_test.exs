@@ -383,8 +383,8 @@ defmodule Predicator.Functions.MathFunctionsTest do
     test "Math functions in conditional expressions", %{functions: functions} do
       {:ok, result} =
         Predicator.evaluate(
-          "Math.max(score, 0) > 50",
-          %{"score" => 75},
+          "Math.max(limit, 0) > 50",
+          %{"limit" => 75},
           providers: functions
         )
 
