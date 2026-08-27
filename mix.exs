@@ -2,7 +2,7 @@ defmodule Predicator.MixProject do
   use Mix.Project
 
   @app :predicator
-  @version "9.0.1"
+  @version "9.0.2"
   @description "A secure, non-evaling condition (boolean predicate) engine for end users"
   @source_url "https://github.com/riddler/predicator-ex"
   @deps [
