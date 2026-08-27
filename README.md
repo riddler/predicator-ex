@@ -14,9 +14,13 @@ to a flat instruction list run by a small stack VM - there is no `eval`, no
 `Code.eval_string`, and no dynamic code execution anywhere in the pipeline, so
 untrusted input can never become code.
 
-The language covers comparisons, arithmetic, logical operators, dates and
-durations, lists and objects, [nested data access](docs/guides/nested-data-access.md),
-and both [builtin and custom functions](docs/reference/language.md).
+The language covers comparisons, arithmetic, logical and membership operators
+(`in`, `contains`), dates and durations, lists and objects, type casts
+(`amount::integer`), [nested data access](docs/guides/nested-data-access.md),
+and both [builtin and custom functions](docs/reference/language.md). Beyond
+single predicates it also runs short *programs* - `;`-separated statements with
+assignment and `if`/`else` blocks - through
+[`Predicator.execute/3`](#running-a-short-program).
 
 ## Installation
 
@@ -40,15 +44,7 @@ Authorizing a card transaction against the account's remaining budget:
 iex> Predicator.evaluate!("amount <= budget_remaining AND card_active", %{"amount" => 120, "budget_remaining" => 500, "card_active" => true})
 true
 
-iex> {:ok, instructions} = Predicator.compile("amount > budget_remaining")
-iex> Predicator.evaluate!(instructions, %{"amount" => 940, "budget_remaining" => 500})
-true
-
 iex> Predicator.evaluate("amount <= budget_remaining", %{"amount" => 120, "budget_remaining" => 500})
-{:ok, true}
-
-iex> {:ok, compiled} = Predicator.compile_with_positions("amount > budget_remaining")
-iex> Predicator.evaluate(compiled, %{"amount" => 940, "budget_remaining" => 500})
 {:ok, true}
 ```
 
@@ -57,6 +53,56 @@ Routing a visitor through a signup wizard that is running an A/B test:
 ```elixir
 iex> Predicator.evaluate!("step == 'payment' AND variant == 'B'", %{"step" => "payment", "variant" => "B"})
 true
+```
+
+## A worked example: an authorization rule
+
+The shape most applications want is **compile once, evaluate many**. An
+authorization rule is authored by a human - a risk analyst, not a developer -
+stored as text, compiled when it is loaded, and then run against every
+transaction that arrives.
+
+Compile the rule once, when the account's ruleset is loaded:
+
+```elixir
+iex> rule = "amount <= budget_remaining AND card_active AND amount <= 2000"
+iex> {:ok, authorize} = Predicator.compile(rule)
+iex> hd(authorize)
+["load", "amount"]
+```
+
+`authorize` is a plain list of instructions - ordinary Erlang term data, so it
+can sit in ETS, in a GenServer's state, or in a database column. Run it against
+each transaction:
+
+```elixir
+iex> {:ok, authorize} = Predicator.compile("amount <= budget_remaining AND card_active AND amount <= 2000")
+iex> Predicator.evaluate(authorize, %{"amount" => 120, "budget_remaining" => 500, "card_active" => true})
+{:ok, true}
+iex> Predicator.evaluate(authorize, %{"amount" => 940, "budget_remaining" => 500, "card_active" => true})
+{:ok, false}
+```
+
+A transaction missing a field the rule names is an **error value, not an
+exception** - the whole library returns `{:ok, _} | {:error, _}` rather than
+raising at a leaf, so a malformed payload cannot take the caller down:
+
+```elixir
+iex> {:error, error} = Predicator.evaluate("amount <= budget_remaining", %{"amount" => 120})
+iex> error.variable
+"budget_remaining"
+iex> error.position
+{1, 11}
+```
+
+Because the rule text came from a human, the position is worth keeping: compile
+with `compile_with_positions/1` and a runtime error can be pointed at the
+offending span of the source the analyst actually typed.
+
+```elixir
+iex> {:ok, compiled} = Predicator.compile_with_positions("amount > budget_remaining")
+iex> Predicator.evaluate(compiled, %{"amount" => 940, "budget_remaining" => 500})
+{:ok, true}
 ```
 
 `compile_with_positions/1` and `compile_with_spans/1` return a
@@ -73,6 +119,44 @@ different source's instructions. See
 [Embedding compiled programs](docs/guides/embedding.md) for the full
 store/check/run lifecycle, including what to do when a stored artifact
 predates a retired opcode.
+
+### Running a short program
+
+`evaluate/3` answers a single question. `execute/3` runs a `;`-separated
+*program* - assignments and `if`/`else` blocks - and returns the resulting
+context, which is how a settlement decision gets recorded rather than merely
+computed:
+
+```elixir
+iex> program = "if amount > budget_remaining { decision = 'decline' } else { decision = 'approve' }"
+iex> {:ok, context} = Predicator.execute(program, %{"amount" => 940, "budget_remaining" => 500})
+iex> context.data["decision"]
+"decline"
+```
+
+`execute_value/3` returns the last expression statement's value alongside that
+context:
+
+```elixir
+iex> {:ok, approved?, context} = Predicator.execute_value("settled_amount = amount; settled_amount <= budget_remaining", %{"amount" => 120, "budget_remaining" => 500})
+iex> approved?
+true
+iex> context.data["settled_amount"]
+120
+```
+
+A program writes into the context, so a host that exposes its own state there
+will want `:protected_roots` - the roots a program may not overwrite:
+
+```elixir
+iex> {:error, error, _context} = Predicator.execute("card_active = true", %{}, protected_roots: ["card_active"])
+iex> error.reason
+"protected_root"
+```
+
+Statements, assignment, and blocks are covered in full by the
+[language reference](docs/reference/language.md). Note that `=` is assignment
+only, never equality - see "Migrating from `=`" below.
 
 ## Embedding Predicator in a host application
 
@@ -143,7 +227,7 @@ for storing a context alongside a compiled program.
 ## Documentation
 
 - [Language reference](docs/reference/language.md) - operators, builtin
-  functions, data types, and error shapes
+  functions, data types, statements and `if`/`else` blocks, and error shapes
 - [ISA reference](docs/isa.md) - the instruction set specification: opcodes,
   stack effects, error semantics, and versioning
 - [Nested data access](docs/guides/nested-data-access.md) - dot and bracket

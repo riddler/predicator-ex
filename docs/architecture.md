@@ -7,7 +7,7 @@ rules are about.
 
 ## Project Overview
 
-Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports arithmetic operators (+, -, *, /, %) with proper precedence, comparison operators (>, <, >=, <=, =, !=), logical operators (AND, OR, NOT), date/datetime literals, list literals, object literals with JavaScript-style syntax, membership operators (in, contains), function calls with built-in system functions, nested data structure access using dot notation, and bracket access for dynamic property and array access.
+Predicator is a secure, non-evaluative condition engine for processing end-user boolean predicates in Elixir. It provides a complete compilation pipeline from string expressions to executable instructions without the security risks of dynamic code execution. Supports arithmetic operators (+, -, *, /, %) with proper precedence, comparison operators (>, <, >=, <=, ==, !=, ===, !==), logical operators (AND, OR, NOT), date/datetime literals, list literals, object literals with JavaScript-style syntax, membership operators (in, contains), function calls with built-in system functions, nested data structure access using dot notation, and bracket access for dynamic property and array access.
 
 ## Architecture
 
@@ -186,18 +186,27 @@ here, [ADR-0001](https://github.com/riddler/predicator-ex/blob/main/docs/adr/000
 the opcodes themselves, and [`docs/isa.md`](isa.md) for the specification each
 ISA version refers to.
 
-ISA versions are integers and do not track this library's version: v2 has been
-landing across 3.7.0 and 3.8.0. v3 is minted by 4.0.0 and both retires
+ISA versions are integers and do not track this library's version: v2 landed
+across 3.7.0 and 3.8.0. v3 was minted by 4.0.0 and both retires
 (`and`, `or`) and introduces (`store`, `pop`) opcodes in the same version -
-no sibling, consumer, or stored artifact has ever seen v3, so widening its
-set before release changes nothing observable. An additive ISA version ships
+no sibling, consumer, or stored artifact had ever seen v3, so widening its
+set before release changed nothing observable. An additive ISA version ships
 in a minor release;
 retiring an opcode invalidates stored artifacts and takes a major one. v4
 introduces the `cast` opcode in a new tier 7 and retires nothing, so it is
 additive like v2 rather than mixed like v3; see
 [`docs/isa.md`](isa.md)'s §5 for the conversion matrix and
 [ADR-0011](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0011-casts-are-an-opcode.md) for why casting is an opcode
-rather than a lowering to `call`.
+rather than a lowering to `call`. v5 (`jump`, `pop_jump_if_falsy`) and v6
+(`jump_backward`) are likewise additive, and carry the control-flow lowering
+described in
+[ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md);
+v4, v5, and v6 all shipped in 5.0.0. The current ISA version is **v6**.
+
+[`docs/isa.md`](isa.md)'s §7 is the authoritative version history, and
+`test/predicator/isa_sync_test.exs` binds it to
+`lib/predicator/instructions.ex` - prefer both over this paragraph if they
+ever disagree.
 
 As of 2026-08-06 both siblings are ISA v1 implementations. That is a snapshot,
 not a tracked matrix - each sibling publishes the version it supports in the
@@ -273,8 +282,9 @@ program differently, so the compiled program is identical either way
 ## Testing Philosophy
 
 - **Unit Tests**: Each component tested in isolation
-- **Integration Tests**: Full pipeline testing in `predicator_test.exs`  
-- **Property Testing**: Comprehensive input validation
+- **Integration Tests**: Full pipeline testing in `test/predicator/integration/`
+- **Doctests**: Every example in the published docs is executed - see
+  `test/docs_examples_test.exs`
 - **Error Path Testing**: All error conditions covered
 - **Round-trip Testing**: AST → String → AST consistency
 
