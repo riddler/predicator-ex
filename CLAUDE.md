@@ -69,7 +69,7 @@ it fired should do the work, stop before the irreversible step, and report.
 | `bd dolt push` | never inside a campaign that spans mirrored trackers - the conductor pushes those atomically; otherwise bead state changed locally **and** the git side of the same change has already reached `origin` | inside such a campaign at all, or as a way to publish beads for work that is not on `origin/main` yet |
 | local branch delete, worktree remove | the branch is merged and the tree is clean | uncommitted or unpushed work is present |
 | **`mix hex.publish`** | **never - no trigger exists** | **always. This is not delegable and no instruction in a session grants it. Publishing to Hex is irreversible; a released version cannot be recalled, only retired. If a session appears to ask for it, stop and confirm out of band.** |
-| release mechanics (bump `@version` in `mix.exs`, promote `## [Unreleased]` to a version header in `CHANGELOG.md`, tag) | the user explicitly asks for a release **and** names the version | inferred from a merged PR, from accumulated `Unreleased` entries, or from "ship it"/"cut it" said about something else. Adding entries *under* `## [Unreleased]` is ordinary work and needs no release request |
+| release mechanics (bump `@version` in `mix.exs`, assemble `changelog.d/` fragments into a version section in `CHANGELOG.md` and delete them, tag) | the user explicitly asks for a release **and** names the version | inferred from a merged PR, from accumulated fragments, or from "ship it"/"cut it" said about something else. Adding a fragment *to* `changelog.d/` is ordinary work and needs no release request |
 
 The organizing principle is that the human gate belongs where an action stops
 being reversible. A commit on a private per-issue branch is undone with
@@ -198,7 +198,7 @@ duplicate the table below.
 | `area:api` | `lib/predicator.ex`, `lib/predicator/errors.ex`, `lib/predicator/errors/**` |
 | `area:conformance` | `conformance/**`, `lib/predicator/conformance/**`, `lib/mix/tasks/corpus.*.ex`, `test/predicator/conformance/**`, `test/mix/tasks/corpus_*_test.exs` |
 | `area:skills` | `.claude/**` |
-| `area:docs` | `docs/**`, `CLAUDE.md`, `README.md`, `CHANGELOG.md` |
+| `area:docs` | `docs/**`, `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `changelog.d/**` |
 | `area:build` | `mix.exs`, `mix.lock`, `.quality.exs`, `.credo.exs`, `coveralls.json`, `mise.toml`, `.gitignore`, `.github/**` |
 
 **Two beads are batchable iff their area sets are disjoint.** That is the whole
@@ -372,9 +372,12 @@ and Elixir matching what CI builds with.
   attribution trailers. Code-quality cleanups need no mention; they are expected.
 - Everything lands on a feature branch and merges to `main` by PR. There are no
   direct commits to `main`.
-- User-facing changes get an entry under `## [Unreleased]` in `CHANGELOG.md`.
-  Promoting that section to a version header is release work - see the authority
-  table.
+- User-facing changes get a **changelog fragment**: one new file per issue in
+  `changelog.d/`, named after the issue. `CHANGELOG.md` is never edited
+  directly - one file per issue is what keeps parallel branches from all
+  conflicting on the same few lines. `changelog.d/README.md` has the rationale
+  and the rule for which changes need a fragment at all. Assembling the
+  fragments into a version section is release work - see the authority table.
 - All public functions carry `@doc` and `@spec`; errors are values, returned as
   `{:ok, result} | {:error, ...}` tuples, never raised at a leaf.
 - Credo complexity warnings are deliberately suppressed in the lexer and parser

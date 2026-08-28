@@ -36,9 +36,11 @@ documented in place. They are not a licence to add more elsewhere.
 
 No lowered coverage threshold, no `enabled: false`, no `--skip-*` on the final
 check, no `@tag :skip`. Report a genuinely wrong finding and let a human
-decide. This repo has no `mix gate.verify`/`gate.guard_ledger`, so restate it
-here explicitly - CLAUDE.md and the ADR-0008 deny rules are the only other
-place this is said.
+decide. `mix quality.verify` (ex_quality's attestation, wired as
+`gate.attest`) catches a *narrowed* run, but nothing catches a *weakened*
+gate, and this repo has no `gate.guard_ledger` - so restate it here
+explicitly. CLAUDE.md and the ADR-0008 deny rules are the only other place
+this is said.
 
 ## Cover the error paths
 

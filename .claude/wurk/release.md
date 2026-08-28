@@ -9,7 +9,11 @@ not repeat.
 - `@version` is `mix.exs:5`.
 - The README pin is the `{:predicator, "~> 4.0"}` snippet at `README.md:26`,
   and moves only on a major/minor bump - a patch release leaves it alone.
-- `## [Unreleased]` in `CHANGELOG.md` is promoted to a dated version header.
+- The unreleased entries are the fragment files in `changelog.d/` (one per
+  issue; `changelog.d/README.md` is the rationale, not a fragment). A release
+  assembles them into a dated version section at the top of `CHANGELOG.md` and
+  deletes the fragments. `CHANGELOG.md` has no `## [Unreleased]` section to
+  promote, and none is ever created.
 
 ## The README pin's exact form
 
@@ -25,4 +29,4 @@ authority table; ADR-0006). Tag and push stay separately human-gated.
 ## The release trigger
 
 The user explicitly asks **and** names the version. Never inferred from a
-merged PR, accumulated `## [Unreleased]` entries, or "ship it".
+merged PR, accumulated `changelog.d/` fragments, or "ship it".
