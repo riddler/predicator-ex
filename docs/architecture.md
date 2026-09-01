@@ -273,6 +273,23 @@ program differently, so the compiled program is identical either way
 - Efficient instruction-based execution
 - Minimal memory allocation during evaluation
 
+### Observability
+
+- Predicator emits no `:telemetry` events and takes no telemetry dependency,
+  from either the compile path or the evaluate path. That is a decision, not
+  an omission: see
+  [ADR-0016](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0016-predicator-emits-no-telemetry.md),
+  which weighs it against the no-runtime-dependencies property, the caller's
+  existing coverage of the same work, and the datamodel values a
+  predicator-level event would naturally have carried
+- `compile/1` and `evaluate/3` are pure functions over values, so a host that
+  wants durations wraps the call in `:telemetry.span/3` at its own call site -
+  where it also holds the identity worth attaching to the event, which this
+  library does not
+- ADR-0016 reserves the event names, measurements, and bounded metadata a
+  future emission would have to use, so reopening the question is a decision
+  about the dependency rather than a fresh naming argument
+
 ### Complexity Management
 
 - Credo complexity warnings suppressed for lexer/parser with explanatory comments
