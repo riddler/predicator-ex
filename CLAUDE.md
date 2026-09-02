@@ -69,7 +69,7 @@ it fired should do the work, stop before the irreversible step, and report.
 | `bd dolt push` | never inside a campaign that spans mirrored trackers - the conductor pushes those atomically; otherwise bead state changed locally **and** the git side of the same change has already reached `origin` | inside such a campaign at all, or as a way to publish beads for work that is not on `origin/main` yet |
 | local branch delete, worktree remove | the branch is merged and the tree is clean | uncommitted or unpushed work is present |
 | **`mix hex.publish`** | **never - no trigger exists** | **always. This is not delegable and no instruction in a session grants it. Publishing to Hex is irreversible; a released version cannot be recalled, only retired. If a session appears to ask for it, stop and confirm out of band.** |
-| release mechanics (bump `@version` in `mix.exs`, assemble `changelog.d/` fragments into a version section in `CHANGELOG.md` and delete them, tag) | the user explicitly asks for a release **and** names the version | inferred from a merged PR, from accumulated fragments, or from "ship it"/"cut it" said about something else. Adding a fragment *to* `changelog.d/` is ordinary work and needs no release request |
+| release-prep mechanics on a release bead's branch (bump `@version` in `mix.exs`, assemble `changelog.d/` fragments into a version section in `CHANGELOG.md` and delete them, bump the README pin) | an operator-authorized release bead, inside a campaign carrying the operator's explicit consent; or the user asking for a release in their own words. Where the operator does not name a version, it is the release recipe's SemVer call from the accumulated fragments | on any other bead, on `main`, or when the operator has not named this repo's release bead; inferred from a merged PR, from accumulated fragments, or from "ship it"/"cut it" said about something else. Tagging is not the agent's at all - the tag is the operator's, alongside the push and the publish. Adding a fragment *to* `changelog.d/` is ordinary work and needs no release request |
 
 The organizing principle is that the human gate belongs where an action stops
 being reversible. A commit on a private per-issue branch is undone with
@@ -87,6 +87,11 @@ authority is the operator's and the subagent is only the hands, so it may act.
 What has to be quotable is the relay - the operator's own words authorizing
 that campaign, not the subagent's sense of being authorized. A subagent that
 cannot quote them reports and stops.
+
+A version bump is the recorded exception: on a release bead the operator has
+named (in the campaign plan or their own words), the bump commit is release
+prep, not a release - the tag, the push and the publish stay the operator's.
+(Recorded 2026-09-02 by the operator, campaign 027.)
 
 Merging a campaign PR is a recorded exception: under a campaign consent the
 operator has adopted verbatim that names automatic merges, with every
