@@ -28,5 +28,11 @@ authority table; ADR-0006). Tag and push stay separately human-gated.
 
 ## The release trigger
 
-The user explicitly asks **and** names the version. Never inferred from a
-merged PR, accumulated `changelog.d/` fragments, or "ship it".
+An operator-authorized release bead, inside a campaign carrying the
+operator's explicit consent; or the user asking for a release in their own
+words. Where the operator does not name a version, it is this recipe's
+SemVer call from the accumulated `changelog.d/` fragments. Never inferred
+from a merged PR, from accumulated fragments on their own, or from "ship
+it"/"cut it" said about something else. The tag, the push and the publish
+stay the operator's - see CLAUDE.md's authority table, which this section
+must not outrun.
