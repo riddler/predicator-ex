@@ -3,40 +3,45 @@
 Predicator supports nested data structure access using both dot notation and
 bracket notation, letting you reference deeply nested values in your context.
 
+The examples below use the card-authorization context the rest of the docs
+authorize against: an `account` with a holder, a budget and a status, the
+`transaction` being decided, and two lists - the signup wizard's `steps` and
+a run of recent `amounts`.
+
 ```elixir
-iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
-iex> Predicator.evaluate("user.name.first == 'John'", context)
+iex> context = %{"account" => %{"holder" => %{"first" => "Ada", "last" => "Byron"}, "budget" => %{"remaining" => 500, "limit" => 2000}, "status" => %{"card_active" => true, "tier" => "gold"}}, "transaction" => %{"amount" => 120, "currency" => "USD"}, "steps" => ["payment", "review", "confirm"], "amounts" => [85, 92, 78, 96]}
+iex> Predicator.evaluate("account.holder.first == 'Ada'", context)
 {:ok, true}
 
-iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
-iex> Predicator.evaluate("user.age > 18", context)
+iex> context = %{"account" => %{"holder" => %{"first" => "Ada", "last" => "Byron"}, "budget" => %{"remaining" => 500, "limit" => 2000}, "status" => %{"card_active" => true, "tier" => "gold"}}, "transaction" => %{"amount" => 120, "currency" => "USD"}, "steps" => ["payment", "review", "confirm"], "amounts" => [85, 92, 78, 96]}
+iex> Predicator.evaluate("transaction.amount <= account.budget.remaining", context)
 {:ok, true}
 
-iex> context = %{"user" => %{"age" => 47, "name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"theme" => "dark", "notifications" => true}}, "config" => %{"database" => %{"host" => "localhost", "port" => 5432}}, "items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
-iex> Predicator.evaluate("config.database.port == 5432", context)
+iex> context = %{"account" => %{"holder" => %{"first" => "Ada", "last" => "Byron"}, "budget" => %{"remaining" => 500, "limit" => 2000}, "status" => %{"card_active" => true, "tier" => "gold"}}, "transaction" => %{"amount" => 120, "currency" => "USD"}, "steps" => ["payment", "review", "confirm"], "amounts" => [85, 92, 78, 96]}
+iex> Predicator.evaluate("account.budget.limit == 2000", context)
 {:ok, true}
 ```
 
 ## Bracket notation
 
 ```elixir
-iex> context = %{"user" => %{"name" => %{"first" => "John"}, "settings" => %{"theme" => "dark"}, "profile" => %{"role" => "admin"}}, "items" => ["apple"], "amounts" => [85, 92]}
-iex> Predicator.evaluate("user['name']['first'] == 'John'", context)
+iex> context = %{"account" => %{"holder" => %{"first" => "Ada"}, "status" => %{"tier" => "gold"}, "budget" => %{"remaining" => 500}}, "steps" => ["payment"], "amounts" => [85, 92]}
+iex> Predicator.evaluate("account['holder']['first'] == 'Ada'", context)
 {:ok, true}
 
-iex> context = %{"user" => %{"name" => %{"first" => "John"}, "settings" => %{"theme" => "dark"}, "profile" => %{"role" => "admin"}}, "items" => ["apple"], "amounts" => [85, 92]}
-iex> Predicator.evaluate("user['settings']['theme'] == 'dark'", context)
+iex> context = %{"account" => %{"holder" => %{"first" => "Ada"}, "status" => %{"tier" => "gold"}, "budget" => %{"remaining" => 500}}, "steps" => ["payment"], "amounts" => [85, 92]}
+iex> Predicator.evaluate("account['status']['tier'] == 'gold'", context)
 {:ok, true}
 ```
 
 ## Array access
 
 ```elixir
-iex> context = %{"items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
-iex> Predicator.evaluate("items[0] == 'apple'", context)
+iex> context = %{"steps" => ["payment", "review", "confirm"], "amounts" => [85, 92, 78, 96]}
+iex> Predicator.evaluate("steps[0] == 'payment'", context)
 {:ok, true}
 
-iex> context = %{"items" => ["apple", "banana", "cherry"], "amounts" => [85, 92, 78, 96]}
+iex> context = %{"steps" => ["payment", "review", "confirm"], "amounts" => [85, 92, 78, 96]}
 iex> Predicator.evaluate("amounts[1] > 90", context)
 {:ok, true}
 
@@ -44,40 +49,40 @@ iex> context = %{"amounts" => [85, 92, 78, 96], "index" => 2}
 iex> Predicator.evaluate("amounts[index] > 80", context)
 {:ok, false}
 
-iex> context = %{"items" => ["a", "b", "c"], "i" => 1}
-iex> Predicator.evaluate("items[i + 1]", context)
-{:ok, "c"}
+iex> context = %{"steps" => ["payment", "review", "confirm"], "i" => 1}
+iex> Predicator.evaluate("steps[i + 1]", context)
+{:ok, "confirm"}
 
-iex> context = %{"items" => ["a", "b"]}
-iex> Predicator.evaluate("items[5] == 'z'", context)
+iex> context = %{"steps" => ["payment", "review"]}
+iex> Predicator.evaluate("steps[5] == 'confirm'", context)
 {:ok, :undefined}
 ```
 
-Bracket keys accept any expression, not just a bare variable - `items[i + 1]`
+Bracket keys accept any expression, not just a bare variable - `steps[i + 1]`
 computes the index before indexing. An out-of-bounds index returns
 `:undefined` rather than raising, the same as a missing map key.
 
 ## Mixed notation
 
 ```elixir
-iex> context = %{"user" => %{"settings" => %{"theme" => "dark"}, "profile" => %{"role" => "admin"}}}
-iex> Predicator.evaluate("user.settings['theme'] == 'dark'", context)
+iex> context = %{"account" => %{"status" => %{"tier" => "gold"}, "budget" => %{"remaining" => 500}}}
+iex> Predicator.evaluate("account.status['tier'] == 'gold'", context)
 {:ok, true}
 
-iex> context = %{"user" => %{"settings" => %{"theme" => "dark"}, "profile" => %{"role" => "admin"}}}
-iex> Predicator.evaluate("user['profile'].role == 'admin'", context)
+iex> context = %{"account" => %{"status" => %{"tier" => "gold"}, "budget" => %{"remaining" => 500}}}
+iex> Predicator.evaluate("account['budget'].remaining == 500", context)
 {:ok, true}
 ```
 
 ## Chained access and combined expressions
 
 ```elixir
-iex> context = %{"user" => %{"name" => %{"first" => "John", "last" => "Doe"}, "profile" => %{"role" => "admin"}, "settings" => %{"notifications" => true}}}
-iex> Predicator.evaluate("user['name']['first'] + ' ' + user['name']['last']", context)
-{:ok, "John Doe"}
+iex> context = %{"account" => %{"holder" => %{"first" => "Ada", "last" => "Byron"}, "budget" => %{"remaining" => 500}, "status" => %{"card_active" => true}}}
+iex> Predicator.evaluate("account['holder']['first'] + ' ' + account['holder']['last']", context)
+{:ok, "Ada Byron"}
 
-iex> context = %{"user" => %{"profile" => %{"role" => "admin"}, "settings" => %{"notifications" => true}}}
-iex> Predicator.evaluate("user.profile.role == 'admin' AND user.settings.notifications", context)
+iex> context = %{"account" => %{"budget" => %{"remaining" => 500}, "status" => %{"card_active" => true}}}
+iex> Predicator.evaluate("account.budget.remaining >= 100 AND account.status.card_active", context)
 {:ok, true}
 ```
 
@@ -86,8 +91,8 @@ iex> Predicator.evaluate("user.profile.role == 'admin' AND user.settings.notific
 A missing path returns `:undefined` rather than raising:
 
 ```elixir
-iex> context = %{"user" => %{"profile" => %{"role" => "admin"}}}
-iex> Predicator.evaluate("user.profile.email == 'test'", context)
+iex> context = %{"account" => %{"holder" => %{"first" => "Ada"}}}
+iex> Predicator.evaluate("account.holder.email == 'ada@example.com'", context)
 {:ok, :undefined}
 ```
 
@@ -100,27 +105,27 @@ keys to string keys deeply and eagerly. By the time access runs, only string
 keys remain:
 
 ```elixir
-iex> atom_context = %{user: %{name: %{first: "Jane"}}}
-iex> Predicator.evaluate("user.name.first == 'Jane'", atom_context)
+iex> atom_context = %{account: %{holder: %{first: "Ada"}}}
+iex> Predicator.evaluate("account.holder.first == 'Ada'", atom_context)
 {:ok, true}
 ```
 
 ## Nested lists
 
 ```elixir
-iex> list_context = %{"user" => %{"hobbies" => ["reading", "coding"]}}
-iex> Predicator.evaluate("'coding' in user.hobbies", list_context)
+iex> list_context = %{"account" => %{"networks" => ["visa", "mastercard"]}}
+iex> Predicator.evaluate("'visa' in account.networks", list_context)
 {:ok, true}
 ```
 
 ## Summary
 
-- **Dot notation**: `user.profile.name` for nested object access
-- **Bracket notation**: `user['profile']['name']` for dynamic key access
-- **Array indexing**: `items[0]`, `amounts[index]` for list access
-- **Mixed styles**: `user.settings['theme']` combining both notations
-- **Unlimited nesting depth**: `app.database.config.settings.ssl`
-- **Dynamic and expression keys**: `items[index]`, `items[i + 1]`
+- **Dot notation**: `account.holder.first` for nested object access
+- **Bracket notation**: `account['holder']['first']` for dynamic key access
+- **Array indexing**: `steps[0]`, `amounts[index]` for list access
+- **Mixed styles**: `account.status['tier']` combining both notations
+- **Unlimited nesting depth**: `account.budget.limits.daily.ceiling`
+- **Dynamic and expression keys**: `steps[index]`, `steps[i + 1]`
 - **Graceful fallback**: returns `:undefined` for missing paths or
   out-of-bounds access
 - **Type preservation**: maintains original data types (strings, numbers,
