@@ -54,7 +54,8 @@
         "test/docs_adr_links_test.exs",
         "test/predicator/conformance/values_test.exs",
         "test/predicator/visitor_clause_coverage_test.exs",
-        "test/predicator/parser_format_token_coverage_test.exs"
+        "test/predicator/parser_format_token_coverage_test.exs",
+        "test/predicator/vocabulary_sync_test.exs"
       ],
       "test_pattern": "\\btest\\s+\""
     }

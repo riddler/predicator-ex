@@ -139,6 +139,21 @@ period.
   verbatim rather than folding it into `:undefined`. See
   [`docs/isa.md`](isa.md) §3 for the null-versus-`:undefined` distinction
 
+- **Vocabulary** (`lib/predicator/vocabulary.ex`): The grammar's fixed
+  lexemes, published for editor tooling - operators, keywords, literal words,
+  brackets, separators and duration units, each with its
+  `Predicator.Lexer.t:token/0` type, a category, a display form and a one-line
+  doc - plus the callable function names, resolved through
+  `Predicator.Context.resolve_functions/1` so a host's own providers are
+  included. It is a reading surface only: nothing in the pipeline consults it,
+  and it participates in no lexing, parsing, compiling or evaluating. The
+  table is hand-written and bound to the lexer by
+  `test/predicator/vocabulary_sync_test.exs`, which checks it against
+  `token/0`'s union, `classify_identifier/1`'s clause heads,
+  `duration_unit?/1`'s clause heads, and a round-trip of every lexeme through
+  `Lexer.tokenize/1` - a token added to the lexer with no entry here turns the
+  suite red
+
 ### Compile entry points
 
 `lib/predicator.ex` exposes six compile functions, two families (expression,

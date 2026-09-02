@@ -224,6 +224,40 @@ the full provider API and the host slot, and [Embedding compiled
 programs](docs/guides/embedding.md#persisting-a-context-alongside-a-program)
 for storing a context alongside a compiled program.
 
+### Offering completion in an expression editor
+
+An editor that writes predicates needs the grammar's vocabulary, not just the
+function names. `Predicator.Vocabulary` publishes both, so an editor never
+keeps its own copy of the grammar to drift out of date:
+
+```elixir
+iex> Predicator.Vocabulary.by_category(:membership) |> Enum.map(& &1.lexeme)
+["in", "IN", "contains", "CONTAINS"]
+
+iex> Predicator.Vocabulary.tokens() |> Enum.find(&(&1.lexeme == "contains"))
+%{
+  display: "a contains b",
+  doc: "True when the left collection or string holds the right value",
+  category: :membership,
+  lexeme: "contains",
+  token_type: :contains_op
+}
+```
+
+`Vocabulary.all/1` is the whole completion list - every fixed lexeme followed
+by every callable function - and it takes the same `:builtins`, `:providers`
+and `:functions` options as `Predicator.Context.new/2`, so an editor embedded
+beside a host's own providers offers exactly the names that host will accept:
+
+```elixir
+Predicator.Vocabulary.all(providers: [MyApp.StateFunctions])
+```
+
+Function entries carry `:arity` and a `nil` `:doc`; a provider binds a name to
+`{arity, atom}` and carries no description, so there is nothing truthful to
+put there. `Vocabulary.keywords/0` is the narrower list an editor wants when
+deciding what *not* to offer as an identifier.
+
 ## Documentation
 
 - [Language reference](docs/reference/language.md) - operators, builtin
