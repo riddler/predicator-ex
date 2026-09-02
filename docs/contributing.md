@@ -44,17 +44,17 @@ tools that own them - `coveralls.json` for the 90% coverage minimum,
 5. Add compilation logic to `compiler.ex`
 6. Add string formatting to `string_visitor.ex`
 7. Point the new node at its operator token - see the "which token a node
-   blames" table in `docs/reference/ast.md`. The trailing slot is part of the
+   blames" table in [`docs/reference/ast.md`](reference/ast.md). The trailing slot is part of the
    node shape, not an add-on
 8. Give the new node a span rule too - see the "which characters a node
-   covers" table in `docs/reference/ast.md`
+   covers" table in [`docs/reference/ast.md`](reference/ast.md)
 9. Add comprehensive tests
 
 ## Adding New Data Types
 
 1. Update lexer tokenization (see date implementation)
 2. Update parser grammar and AST types, giving the node a source position and
-   a span rule - see `docs/reference/ast.md` for the blame-token and span
+   a span rule - see [`docs/reference/ast.md`](reference/ast.md) for the blame-token and span
    tables a new node must fit into
 3. Update type specifications in `types.ex`
 4. Add evaluation support with type checking

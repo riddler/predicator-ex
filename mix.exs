@@ -96,6 +96,7 @@ defmodule Predicator.MixProject do
       extras: [
         "README.md",
         "docs/reference/language.md",
+        "docs/reference/ast.md",
         "docs/isa.md",
         "docs/guides/nested-data-access.md",
         "docs/guides/custom-functions.md",

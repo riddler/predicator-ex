@@ -66,7 +66,7 @@ trailing slot last:
 held as a binary; the parser rejects any other name, so a `cast` node can
 never carry an invalid target. The names are contextual identifiers, not
 keywords - they are only special immediately after `::`
-([ADR-0011](../adr/0011-casts-are-an-opcode.md)).
+([ADR-0011](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0011-casts-are-an-opcode.md)).
 
 ## Object keys
 
@@ -109,7 +109,7 @@ start to the `rhs` end.
 `{:block, statements, pos}`, never `nil`. `else_block` is `nil` when there is
 no `else` and a `{:block, statements, pos}` when there is - including for
 `else { }`, whose empty block stays distinguishable from an absent one
-([ADR-0013](../adr/0013-control-flow-lowers-to-new-jump-opcodes.md)). A block
+([ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md)). A block
 introduces no scope: its `statements` are ordinary program statements, and a
 `store` inside one is visible after the block.
 
@@ -149,7 +149,7 @@ condition is consumed by `pop_jump_if_falsy` and its blocks are already
 stack-neutral by construction, and a `while`'s condition is consumed by
 `pop_jump_if_falsy` on every iteration including the last, so in both cases
 nothing is left for a `pop` to remove
-([ADR-0013](../adr/0013-control-flow-lowers-to-new-jump-opcodes.md)).
+([ADR-0013](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0013-control-flow-lowers-to-new-jump-opcodes.md)).
 
 `{:if, condition, then_block, nil, pos}` (no `else`) lowers to `condition`'s
 instructions, then `["pop_jump_if_falsy", offset]` sized to land one past the
