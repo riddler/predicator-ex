@@ -21,8 +21,8 @@ expressions parse into, see the node inventory in `docs/reference/ast.md`.
 - **Durations**: Natural units for time spans (e.g., `3d`, `2h`, `15m`)
   - In relative expressions: `3d ago`, `2w from now`, `next 1mo`, `last 1y`
   - In arithmetic: `#2024-01-10# + 5d`, `#2024-01-15T10:30:00Z# - 2h`
-- **Lists**: `[1, 2, 3]`, `['admin', 'manager']` (homogeneous collections)
-- **Objects**: `{}`, `{name: "John", age: 30}`, `{user: {role: "admin"}}`
+- **Lists**: `[1, 2, 3]`, `['payment', 'review']` (homogeneous collections)
+- **Objects**: `{}`, `{amount: 120, currency: "USD"}`, `{card: {network: "visa"}}`
   (JavaScript-style object literals)
 - **Identifiers**: `limit`, `user_name`, `is_active`, `user.profile.name`,
   `user['key']`, `items[0]` (variable references with dot notation and
@@ -71,11 +71,11 @@ iex> Predicator.evaluate("[1, 2] + [3]", %{})
 | Operator | Description | Example |
 |----------|-------------|---------|
 | `>`      | Greater than | `limit > 85`, `#2024-01-15# > #2024-01-10#` |
-| `<`      | Less than | `age < 30`, `created_at < #2024-01-15T10:00:00Z#` |
+| `<`      | Less than | `amount < 500`, `created_at < #2024-01-15T10:00:00Z#` |
 | `>=`     | Greater than or equal | `points >= 100` |
 | `<=`     | Less than or equal | `count <= 5` |
 | `==`     | Equal | `status == 'active'`, `date == #2024-01-15#` |
-| `!=`     | Not equal | `role != 'guest'` |
+| `!=`     | Not equal | `step != 'review'` |
 | `===`    | Strict equal (no type coercion) | `count === 5` |
 | `!==`    | Strict not equal (no type coercion) | `count !== "5"` |
 
@@ -107,8 +107,8 @@ could never be compared against one.
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `AND`    | Logical AND (case-insensitive) | `limit > 85 AND age >= 18` |
-| `OR`     | Logical OR (case-insensitive) | `role == 'admin' OR role == 'manager'` |
+| `AND`    | Logical AND (case-insensitive) | `limit > 85 AND card_active` |
+| `OR`     | Logical OR (case-insensitive) | `step == 'payment' OR step == 'review'` |
 | `NOT`    | Logical NOT (case-insensitive) | `NOT expired` |
 | `!`      | Unary logical negation | `!expired` |
 
@@ -119,7 +119,7 @@ could never be compared against one.
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `in`     | Element in collection | `role in ['admin', 'manager']` |
+| `in`     | Element in collection | `step in ['payment', 'review']` |
 | `contains` | Collection contains element | `[1, 2, 3] contains 2` |
 
 ## Type Casts
@@ -306,16 +306,16 @@ by an `else`. It runs its `then` block when `cond` is `true` and skips it
 otherwise; an `else` block runs when the condition does not:
 
 ```elixir
-iex> {:ok, ast} = Predicator.parse_program("if limit > 85 { grade = 'A' }")
+iex> {:ok, ast} = Predicator.parse_program("if limit > 85 { decision = 'approve' }")
 iex> ast
-{:program, [{:if, {:comparison, :gt, {:identifier, "limit", {1, 4}}, {:literal, 85, {1, 12}}, {1, 10}}, {:block, [{:assignment, {:identifier, "grade", {1, 17}}, {:string_literal, "A", :single, {1, 25}}, {1, 23}}], {1, 15}}, nil, {1, 1}}], {1, 1}}
+{:program, [{:if, {:comparison, :gt, {:identifier, "limit", {1, 4}}, {:literal, 85, {1, 12}}, {1, 10}}, {:block, [{:assignment, {:identifier, "decision", {1, 17}}, {:string_literal, "approve", :single, {1, 28}}, {1, 26}}], {1, 15}}, nil, {1, 1}}], {1, 1}}
 ```
 
 ```elixir
-iex> {:ok, ast} = Predicator.parse_program("if limit > 85 { grade = 'A' } else { grade = 'B' }")
+iex> {:ok, ast} = Predicator.parse_program("if limit > 85 { decision = 'approve' } else { decision = 'decline' }")
 iex> {:if, _condition, _then_block, else_block, _pos} = hd(elem(ast, 1))
 iex> else_block
-{:block, [{:assignment, {:identifier, "grade", {1, 38}}, {:string_literal, "B", :single, {1, 46}}, {1, 44}}], {1, 36}}
+{:block, [{:assignment, {:identifier, "decision", {1, 47}}, {:string_literal, "decline", :single, {1, 58}}, {1, 56}}], {1, 45}}
 ```
 
 `else if` chains are sugar, not a separate construct: `else if c2 { B }`
@@ -444,11 +444,11 @@ and `Null` stay ordinary identifiers.
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `len(string)` | String length | `len(name) > 3` |
-| `upper(string)` | Convert to uppercase | `upper(role) == 'ADMIN'` |
-| `lower(string)` | Convert to lowercase | `lower(name) == 'alice'` |
+| `len(string)` | String length | `len(cardholder) > 3` |
+| `upper(string)` | Convert to uppercase | `upper(network) == 'VISA'` |
+| `lower(string)` | Convert to lowercase | `lower(variant) == 'b'` |
 | `trim(string)` | Remove surrounding whitespace | `len(trim(input)) > 0` |
-| `starts_with(string, prefix)` | Prefix test | `starts_with(email, 'admin')` |
+| `starts_with(string, prefix)` | Prefix test | `starts_with(card_number, '4')` |
 | `ends_with(string, suffix)` | Suffix test | `ends_with(file, '.csv')` |
 | `substring(string, start[, len])` | Substring by offset | `substring(code, 0, 3) == 'ABC'` |
 | `index_of(string, sub)` | Index of substring, or `-1` | `index_of(path, '/') == 0` |
@@ -485,7 +485,7 @@ iex> Predicator.evaluate("index_of('hello world', 'nope')", %{})
 |----------|-------------|---------|---------|
 | `Math.abs(number)` | Absolute value | same type as the argument | `Math.abs(balance) < 100` |
 | `Math.max(a, b)` | Maximum of two numbers | the winning argument, type unchanged | `Math.max(limit1, limit2) > 85` |
-| `Math.min(a, b)` | Minimum of two numbers | the winning argument, type unchanged | `Math.min(age, 65) >= 18` |
+| `Math.min(a, b)` | Minimum of two numbers | the winning argument, type unchanged | `Math.min(amount, budget_remaining) >= 100` |
 | `Math.pow(base, exp)` | Exponentiation | integer when both are integers and `exp >= 0`; float otherwise | `Math.pow(2, 10) == 1024` |
 | `Math.sqrt(number)` | Square root | integer for a non-negative integer with an exact root; float otherwise | `Math.sqrt(144) == 12` |
 | `Math.floor(number)` | Round down | always an integer | `Math.floor(3.9) == 3` |
@@ -520,8 +520,8 @@ iex> Predicator.evaluate("Math.pow(2, 10) === 1024", %{})
 | Function | Description | Example |
 |----------|-------------|---------|
 | `Date.year(date)` | Extract year | `Date.year(created_at) == 2024` |
-| `Date.month(date)` | Extract month | `Date.month(birthday) == 12` |
-| `Date.day(date)` | Extract day | `Date.day(deadline) <= 15` |
+| `Date.month(date)` | Extract month | `Date.month(authorized_at) == 12` |
+| `Date.day(date)` | Extract day | `Date.day(settled_at) <= 15` |
 
 ```elixir
 iex> Predicator.evaluate("Date.year(created_at) == 2024", %{"created_at" => ~D[2024-03-15]})
