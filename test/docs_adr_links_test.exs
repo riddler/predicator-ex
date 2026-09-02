@@ -11,6 +11,11 @@ defmodule Predicator.DocsAdrLinksTest do
   file hexdocs never received. Nothing at compile time keeps this true -
   `extras:` is a literal list in `mix.exs`, and the citations are prose
   scattered across Markdown files - so this test reads both at test time.
+  The last describe block widens the same binding past ADRs. A published page
+  that cites a sibling page as a bare backticked path - `docs/reference/x.md`
+  rather than a link - is invisible to ex_doc: no warning when the target
+  moves, and no warning when the target was never published in the first
+  place, which is a reader following the cite into nothing (px-cwh).
   """
 
   use ExUnit.Case, async: true
@@ -24,7 +29,12 @@ defmodule Predicator.DocsAdrLinksTest do
   # trip it.
   @min_absolute_adr_links 20
 
+  # Anti-vacuity floor for the bare-citation scan below, same idiom. The tree
+  # carries 17 bare `docs/...md` citations across published extras as of
+  # px-cwh; the floor sits below that so ordinary docs work does not trip it.
+  @min_bare_docs_cites 12
   @link_target_regex ~r/\]\(\s*([^)\s]+)/
+  @bare_docs_cite_regex ~r/`(docs\/[A-Za-z0-9_.\/-]+\.md)`(?:\]\()?/
   @adr_path_regex ~r/(?:^|\/)adr\/(\d{4})-[^\/]*\.md$/
   @adr_extra_regex ~r/docs\/adr\//
 
@@ -82,6 +92,59 @@ defmodule Predicator.DocsAdrLinksTest do
                "#{source} links #{target}, naming ADR-#{adr}, but the " <>
                  "resolved path #{resolved} does not exist on disk"
       end
+    end
+  end
+
+  describe "bare docs/ path citations" do
+    # sabotage: point one of docs/isa.md's bare `docs/...md` cites at a page
+    # that is not in mix.exs's extras: -> red
+    test "every bare docs/ path cited by a published extra is itself published" do
+      published = published_extras()
+
+      for %{source: source, path: cited} <- bare_docs_cites() do
+        assert cited in published,
+               "#{source} cites `#{cited}` as a bare path, but #{cited} is not " <>
+                 "in mix.exs's extras:, so a hexdocs reader following the cite " <>
+                 "finds nothing - publish the page, or reword the citation"
+      end
+    end
+
+    # sabotage: rename one cited page on disk without fixing the cite -> red
+    test "every bare docs/ path cited by a published extra exists on disk" do
+      for %{source: source, path: cited} <- bare_docs_cites() do
+        assert File.exists?(cited),
+               "#{source} cites `#{cited}` as a bare path, but that file does " <>
+                 "not exist - a bare path is not a link, so ex_doc cannot warn " <>
+                 "about this one"
+      end
+    end
+
+    # sabotage: change @bare_docs_cite_regex to match nothing -> red
+    test "the scan finds the bare citations" do
+      cites = bare_docs_cites()
+
+      assert length(cites) >= @min_bare_docs_cites,
+             "expected at least #{@min_bare_docs_cites} bare `docs/...md` " <>
+               "citations across published extras, found #{length(cites)} - " <>
+               "the citation-scanning regex may be matching nothing"
+    end
+  end
+
+  # Every bare backticked `docs/....md` path in a published extra: a citation
+  # ex_doc never resolves and never warns about.
+  #
+  # Two exclusions. A cite that is a link's *text* - [`docs/x.md`](x.md) - is
+  # already a link and is ex_doc's to check, so it is dropped. CHANGELOG.md is
+  # dropped whole: it is a historical record whose old entries name pages by
+  # the path they had then, which is why mix.exs already exempts it from
+  # ex_doc's own undefined-reference warnings.
+  @spec bare_docs_cites() :: [map()]
+  defp bare_docs_cites do
+    for source <- published_extras(),
+        source != "CHANGELOG.md",
+        [match, cited] <- Regex.scan(@bare_docs_cite_regex, File.read!(source)),
+        not String.ends_with?(match, "](") do
+      %{source: source, path: cited}
     end
   end
 

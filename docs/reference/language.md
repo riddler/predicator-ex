@@ -3,7 +3,7 @@
 The complete Predicator expression language: data types, operators, builtin
 functions, decompile formatting, and error shapes. For the grammar with
 precedence, see [Architecture](../architecture.md); for the tree shape those
-expressions parse into, see the node inventory in `docs/reference/ast.md`.
+expressions parse into, see the node inventory in [`docs/reference/ast.md`](ast.md).
 
 ## Data Types
 
@@ -1094,7 +1094,7 @@ options only `:position` is set; passing `spans: true` to `evaluate/3` also
 sets `:span`, and in that case `:position` is set to the span's start, so a
 caller that only ever reads `:position` keeps working unchanged. The
 rendered `message` string is the same either way. See
-`docs/reference/ast.md` for what a span covers.
+[`docs/reference/ast.md`](ast.md) for what a span covers.
 
 An unbound variable's error is positioned at the *variable's own* load, not
 at the operator that rejected its `:undefined` value:

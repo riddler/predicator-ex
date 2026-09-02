@@ -804,7 +804,7 @@ What a reader might expect to find here and will not:
 
 - Source positions and spans - these travel in an Elixir-side side table,
   never serialized as part of the instruction list. See
-  `docs/reference/ast.md` for the blame-token and span tables, and
+  [`docs/reference/ast.md`](reference/ast.md) for the blame-token and span tables, and
   `docs/reference/language.md`'s "Error Shapes" for how they surface on an
   error.
 - Surface syntax, including the `=` grammar break
