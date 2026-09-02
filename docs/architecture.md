@@ -189,9 +189,11 @@ adopts a newer one on its own schedule. **A sibling running behind the current
 ISA version is an expected, documented state - not a defect.** ADR-0001 added
 four opcodes (`jump_if_falsy_or_pop`, `jump_if_true_or_pop`, `make_list`,
 `store`) to the ISA; the Elixir side now ships all four, and their `pop`
-companion, as of 4.0.0, but no sibling implements any of the four yet - see
-[`docs/isa.md`](isa.md)'s "Not in the ISA" section for what a sibling still
-has to add. The Elixir side ships
+companion, as of 4.0.0. As of 2026-08-08, when this sentence was written, no
+sibling implemented any of the four; that is a snapshot, not a tracked
+matrix, and each sibling publishes what it supports in the monorepo, which is
+the authority. See [`docs/isa.md`](isa.md)'s "Not in the ISA" section for
+what a sibling still has to add. The Elixir side ships
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` as of 3.7.0, so `AND` and `OR`
 short-circuit here, and a compiled instruction list containing either will not
 run on a sibling that hasn't adopted them. See
@@ -243,10 +245,12 @@ parse error. 3.8 warned first, so consumers got one release of notice before
 4.0 landed the break. See [ADR-0002](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0002-the-equals-grammar-break.md) for
 the decision record.
 
-The siblings' lexers still tokenize `=` as an equality operator
-(`impl/rb/lib/predicator/lexer.rex` line 21, `impl/ts/src/tokens.js` line 70),
-and their parsers will keep accepting `status = 'active'` until they adopt the
-same rule.
+As of 2026-08-04, when this paragraph was written, the siblings' lexers
+tokenized `=` as an equality operator: the `=` rule in
+`impl/rb/lib/predicator/lexer.rex` and the `=` token in
+`impl/ts/src/tokens.js`. Their parsers will keep accepting
+`status = 'active'` until they adopt the same rule. That is a snapshot, not a
+tracked matrix; the monorepo is the authority on what the siblings do now.
 
 Scope of the divergence:
 
