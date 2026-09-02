@@ -447,6 +447,65 @@ are unaffected.
   reported no diff for the file after each revert, and `mix test` reported "7
   tests, 0 failures" after each.
 
+- 2026-09-02 (`px-15q`): `test/predicator/vocabulary_sync_test.exs`, new
+  file. `Predicator.Vocabulary` publishes the grammar's fixed lexemes so a
+  downstream expression editor can offer completion without keeping its own
+  copy of the grammar - the exact drift this class exists to prevent, one repo
+  further out. The table is hand-written, so the six tests in this file are
+  what make it a derived artifact in practice: they check it against the
+  literal token tuples `tokenize_chars/4` builds, against
+  `classify_identifier/1`'s clause heads, against `duration_unit?/1`'s clause
+  heads - all three both ways - and by round-tripping every enumerated lexeme
+  through `Lexer.tokenize/1`. A vacuous
+  version ships an editor that silently cannot complete a token the language
+  gained. Twelve files now.
+
+  Sabotage pass verified 2026-09-02, eight mutations, all re-run against the
+  final shape of the test file after a Credo duplicate-code finding moved the
+  first angle off `Lexer.token/0`'s union and onto the lexer's literal token
+  tuples. Each mutation was applied and reverted by a script
+  (`px-15q-sabotage2.py` in the session scratchpad) that restores the file's
+  exact prior bytes; `git status --porcelain` reported the tracked sources
+  clean afterwards, and `mix test test/predicator/vocabulary_sync_test.exs`
+  reported "6 tests, 0 failures" on the restored tree. `mix test` recompiles a
+  changed `lib/` file before running, and every mutation's failure named the
+  mutated symbol, so no stale-beam masking occurred.
+
+  1. Renamed the `{:modulo, line, col, 1, "%"}` tuple in `tokenize_chars/4` to
+     `:modulox`. Two failures: the symbol test naming `{"%", :modulox}` as
+     emitted with no matching row, and the lexeme round-trip.
+  2. Deleted the `{"%", :modulo, ...}` row from `@tokens`. One failure, the
+     symbol test naming `{"%", :modulo}`. `%` is a symbol, so neither
+     clause-head angle can see it - this is the mutation that justifies the
+     source-tuple angle existing.
+  3. Renamed the `classify_identifier("last")` clause head and its returned
+     value to `"lastx"`. Three failures: the keyword test naming
+     `{"lastx", :last_op}`, the reverse-direction test naming `["last"]`, and
+     the round-trip, where `"last"` now lexes as an identifier.
+  4. Changed the `{"CONTAINS", :contains_op, ...}` row's token type to
+     `:in_op`. Two failures: the keyword test naming
+     `{"CONTAINS", :contains_op}`, and the round-trip naming both types.
+  5. Deleted the `{"NOT", :not_op, ...}` row from `@tokens`. One failure, on
+     the keyword test, naming `{"NOT", :not_op}`. The reverse-direction test
+     stayed green, correctly: dropping an entry cannot make the vocabulary
+     offer a word the lexer does not know. The two directions are not
+     redundant - mutation 3 is where the reverse one fires.
+  6. Removed the `duration_unit?("mo")` clause. Two failures: the duration
+     test's second assertion naming `["mo"]`, and the round-trip, where `1mo`
+     lexes to `[:integer]` once the unit is unknown.
+  7. Changed the `{"===", :strict_equal, ...}` row's token type to
+     `:equal_equal`. Two failures: the symbol test naming
+     `{"===", :strict_equal}`, and the round-trip naming both types.
+  8. Broke `function_token_type/1`'s `String.contains?(name, ".")` test so
+     every name came back `:function_name`. One failure, on the function
+     round-trip, naming `"Date.day"` - the first qualified builtin in sort
+     order.
+
+  The `@symbol_count 28` vacuity guard was not separately mutated: mutation 1
+  renames a tag rather than removing a tuple, so the count is held at 28 and
+  the later assertions are reached, which is the behaviour the guard is meant
+  to leave undisturbed.
+
 ## Enforcement: gate.sabotage, from 2026-08-12 (px-lxs)
 
 - **The discipline is now enforced, not only written down.** `px-lxs` declared
