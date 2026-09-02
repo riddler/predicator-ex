@@ -7,13 +7,13 @@ A custom function is provided by a module implementing the one-callback
 `Predicator.Context.new/2`'s `providers:` option:
 
 ```elixir
-defmodule MyApp.Predicates do
+defmodule MyApp.AccountPredicates do
   @behaviour Predicator.FunctionProvider
 
   @impl Predicator.FunctionProvider
-  def functions, do: %{"is_admin" => {0, :call_is_admin}}
+  def functions, do: %{"account_active" => {0, :call_account_active}}
 
-  def call_is_admin([], context), do: {:ok, context.host.role == :admin}
+  def call_account_active([], context), do: {:ok, context.host.account.status == :active}
 end
 ```
 
@@ -24,20 +24,20 @@ evaluation is running under, not a bare data map.
 ## The host slot
 
 `Context.new/2`'s `host:` option carries whatever a provider needs at call
-time - a request struct, a tenant id, a database connection - separately
-from the evaluated data, and `put_host/2` replaces it in O(1) without
-touching `data`. `host` is opaque: it is stored exactly as given, and there
-is no syntax that reads it from predicate text directly - only a function can
-see it. The same `(args, context)` convention applies to an inline closure,
-so `host:` works there too:
+time - the account record behind a card transaction, a tenant id, a
+database connection - separately from the evaluated data, and `put_host/2`
+replaces it in O(1) without touching `data`. `host` is opaque: it is stored
+exactly as given, and there is no syntax that reads it from predicate text
+directly - only a function can see it. The same `(args, context)`
+convention applies to an inline closure, so `host:` works there too:
 
 ```elixir
-iex> custom_functions = %{"is_admin" => {0, fn [], context -> {:ok, context.host.role == :admin} end}}
-iex> context = Predicator.Context.new(%{}, functions: custom_functions, host: %{role: :admin})
-iex> Predicator.evaluate("is_admin()", context)
+iex> custom_functions = %{"account_active" => {0, fn [], context -> {:ok, context.host.account.status == :active} end}}
+iex> context = Predicator.Context.new(%{}, functions: custom_functions, host: %{account: %{status: :active}})
+iex> Predicator.evaluate("account_active()", context)
 {:ok, true}
-iex> context = Predicator.Context.put_host(context, %{role: :guest})
-iex> Predicator.evaluate("is_admin()", context)
+iex> context = Predicator.Context.put_host(context, %{account: %{status: :frozen}})
+iex> Predicator.evaluate("account_active()", context)
 {:ok, false}
 ```
 
@@ -65,8 +65,8 @@ A closure can read the evaluation context, not just its arguments -
 `context.data` is the bound-variable map:
 
 ```elixir
-iex> custom_functions = %{"user_role" => {0, fn [], context -> {:ok, Map.get(context.data, "current_user_role", "guest")} end}}
-iex> Predicator.evaluate("user_role() == 'admin'", %{"current_user_role" => "admin"}, functions: custom_functions)
+iex> custom_functions = %{"holder_tier" => {0, fn [], context -> {:ok, Map.get(context.data, "account_tier", "standard")} end}}
+iex> Predicator.evaluate("holder_tier() == 'premium'", %{"account_tier" => "premium"}, functions: custom_functions)
 {:ok, true}
 ```
 
