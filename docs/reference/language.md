@@ -440,6 +440,12 @@ and `Null` stay ordinary identifiers.
 
 ## Builtin Functions
 
+The sections below are the prose enumeration; `Predicator.Vocabulary.functions/0`
+is the machine-readable one, returning every callable name with its arity,
+resolved exactly the way `Predicator.Context.new/2` resolves them. The two are
+meant to agree - if they ever disagree, `functions/0` is the source of truth,
+because it reads the same provider maps the evaluator dispatches through.
+
 ### String Functions
 
 | Function | Description | Example |
@@ -522,15 +528,23 @@ iex> Predicator.evaluate("Math.pow(2, 10) === 1024", %{})
 | `Date.year(date)` | Extract year | `Date.year(created_at) == 2024` |
 | `Date.month(date)` | Extract month | `Date.month(authorized_at) == 12` |
 | `Date.day(date)` | Extract day | `Date.day(settled_at) <= 15` |
+| `Date.now()` | Current UTC datetime | `Date.year(Date.now()) >= 2024` |
 
 ```elixir
 iex> Predicator.evaluate("Date.year(created_at) == 2024", %{"created_at" => ~D[2024-03-15]})
 {:ok, true}
 ```
 
-Numeric and date functions moved under the `Math.` and `Date.` namespaces to
-avoid colliding with likely user variable names; the unnamespaced string
-functions predate that convention and were left as-is.
+`Date.now()` reads the system clock, so it has no doctested example above -
+its value differs on every call. It is one of the two nondeterministic
+builtins, alongside `Math.random()`; the [porting guide](../guides/porting.md)
+names both as conformance exclusions for exactly that reason, so a
+cross-implementation test suite either stubs them or skips them.
+
+Numeric, date, and JSON functions sit under the `Math.`, `Date.`, and
+`JSON.` namespaces to avoid colliding with likely user variable names; the
+unnamespaced string and list functions predate that convention and were
+left as-is.
 
 ### List Functions
 
@@ -549,6 +563,39 @@ else each accepts. `+` also joins strings and numbers, which `concat`
 rejects with an `EvaluationError`. Neither one mixes a list with a scalar -
 `concat([1, 2], 3)` is an `EvaluationError` and `[1, 2] + 3` is a
 `TypeMismatchError`, so there is no coercion to fall back to.
+
+### JSON Functions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `JSON.stringify(value)` | Serialize a value to a JSON string | `len(JSON.stringify(authorization)) > 2` |
+| `JSON.parse(string)` | Parse a JSON string into a value | `JSON.parse(metadata).network == 'VISA'` |
+
+```elixir
+iex> Predicator.evaluate("JSON.stringify(authorization)", %{"authorization" => %{"network" => "VISA", "amount" => 42}})
+{:ok, ~s({"amount":42,"network":"VISA"})}
+
+iex> Predicator.evaluate("JSON.parse(metadata)", %{"metadata" => ~s({"network":"VISA"})})
+{:ok, %{"network" => "VISA"}}
+
+iex> Predicator.evaluate("JSON.parse(metadata).network == 'VISA'", %{"metadata" => ~s({"network":"VISA"})})
+{:ok, true}
+```
+
+`JSON.parse/1` returns a plain string-keyed value, so dot and bracket access
+reach into it directly - the third example above is the common shape, a JSON
+blob carried as one context string and read as data. It is strict about both
+halves: a non-string argument is an `EvaluationError`
+(`JSON.parse expects a string argument`), and malformed JSON is an
+`EvaluationError` naming the byte offset (`Invalid JSON: unexpected end of
+input at position 4`).
+
+`JSON.stringify/1` never raises. Elixir values with no JSON representation -
+tuples, PIDs, references, functions, non-string map keys, invalid UTF-8 -
+fall back to their `inspect/1` form rather than failing the predicate, which
+is what a predicate has always seen for such values. Key order in the output
+follows the map's own iteration order rather than any order the source
+declared, which is why `amount` precedes `network` in the first example above.
 
 ## Decompiling and Formatting Options
 
