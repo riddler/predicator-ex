@@ -65,7 +65,7 @@ it fired should do the work, stop before the irreversible step, and report.
 | `git rebase` onto `origin/main` | a branch landed on `origin/main` | a conflict appears - abort and report, do not resolve unasked |
 | `git push`, `gh pr create` | the user asks for it in their own words | inferred from "the work is done"; finishing an issue is not a request to publish it |
 | merging a campaign PR | a campaign consent the operator adopted verbatim that names automatic merges, with every named condition met (full gate green, CI green, firewall scan clean with a positive control, any named review gate passed) | outside such a consent; any named condition unmet; any PR the consent's carve-outs hold for the operator |
-| `bd close <id>` | never for a mirrored bead; otherwise the issue's branch is merged into `origin/main`, verified against the remote - see the merge-policy note below | always for a bead whose description carries a `mirrors:` line, campaign consent included; and at commit time, at PR-open time, or on a local merge that has not been pushed |
+| `bd close <id>` | never for a mirrored bead whose other half is not merged to its own repo's `origin/main`; a mirrored bead whose other half has **also** landed may be closed by the campaign conductor under a consent naming this exception, both halves together, each verified against its remote; otherwise the issue's branch is merged into `origin/main`, verified against the remote - see the merge-policy note below | always for a bead whose description carries a `mirrors:` line while its other half is unlanded, campaign consent included; and at commit time, at PR-open time, or on a local merge that has not been pushed |
 | `bd dolt push` | never inside a campaign that spans mirrored trackers - the conductor pushes those atomically; otherwise bead state changed locally **and** the git side of the same change has already reached `origin` | inside such a campaign at all, or as a way to publish beads for work that is not on `origin/main` yet |
 | local branch delete, worktree remove | the branch is merged and the tree is clean | uncommitted or unpushed work is present |
 | **`mix hex.publish`** | **never - no trigger exists** | **always. This is not delegable and no instruction in a session grants it. Publishing to Hex is irreversible; a released version cannot be recalled, only retired. If a session appears to ask for it, stop and confirm out of band.** |
@@ -81,7 +81,12 @@ Two rules override every row above. A current "do not commit", "do not push",
 or equivalent instruction from the current user or orchestrator wins outright.
 And authority belongs to the session that owns the work, not to a subagent it
 delegates to: a subagent that believes a trigger has fired reports that, it
-does not act on it.
+does not act on it. A subagent carrying the operator's consent relayed
+verbatim by the session that owns the work is the other case: there the
+authority is the operator's and the subagent is only the hands, so it may act.
+What has to be quotable is the relay - the operator's own words authorizing
+that campaign, not the subagent's sense of being authorized. A subagent that
+cannot quote them reports and stops.
 
 Merging a campaign PR is a recorded exception: under a campaign consent the
 operator has adopted verbatim that names automatic merges, with every
