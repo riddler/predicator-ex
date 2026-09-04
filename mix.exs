@@ -102,6 +102,7 @@ defmodule Predicator.MixProject do
         "docs/guides/custom-functions.md",
         "docs/guides/location-expressions.md",
         "docs/guides/embedding.md",
+        "docs/guides/simple-subset.md",
         "docs/guides/porting.md",
         "docs/architecture.md",
         "docs/contributing.md",
