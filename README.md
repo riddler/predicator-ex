@@ -234,7 +234,7 @@ keeps its own copy of the grammar to drift out of date:
 iex> Predicator.Vocabulary.by_category(:membership) |> Enum.map(& &1.lexeme)
 ["in", "IN", "contains", "CONTAINS"]
 
-iex> Predicator.Vocabulary.tokens() |> Enum.find(&(&1.lexeme == "contains"))
+iex> Predicator.Vocabulary.tokens() |> Enum.find(&(&1.lexeme == "contains")) |> Map.take([:lexeme, :token_type, :category, :display, :doc])
 %{
   display: "a contains b",
   doc: "True when the left collection or string holds the right value",
@@ -243,6 +243,24 @@ iex> Predicator.Vocabulary.tokens() |> Enum.find(&(&1.lexeme == "contains"))
   token_type: :contains_op
 }
 ```
+
+An entry in an operator category carries four more keys, for an editor whose
+operator control is a dropdown rather than a completion list: what to label
+the operator, how many operands it takes, which atom the parser builds for
+it, and which kinds of value it is worth offering for.
+
+```elixir
+iex> Predicator.Vocabulary.operators() |> Enum.find(&(&1.lexeme == "CONTAINS")) |> Map.take([:label, :arity, :ast_op, :value_kinds])
+%{
+  arity: 2,
+  label: "contains",
+  ast_op: :contains,
+  value_kinds: [:string, :number, :boolean, :date, :datetime, :duration]
+}
+```
+
+`Predicator.Simple.operators/1` is that read done for one kind of value at a
+time - see [the simple subset guide](docs/guides/simple-subset.md).
 
 `Vocabulary.all/1` is the whole completion list - every fixed lexeme followed
 by every callable function - and it takes the same `:builtins`, `:providers`

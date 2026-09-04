@@ -39,14 +39,52 @@ defmodule Predicator.VocabularyTest do
                  doc: doc
                } = entry
 
-        assert Map.keys(entry) |> Enum.sort() ==
-                 [:category, :display, :doc, :lexeme, :token_type]
-
         assert is_binary(lexeme) and lexeme != ""
         assert is_atom(token_type)
         assert category in Vocabulary.categories()
         assert is_binary(display) and display != ""
         assert is_binary(doc) and doc != ""
+      end
+    end
+
+    # An operator entry carries four more, and an entry outside an operator
+    # category carries none of them - the same shape function_entry/0 has
+    # against entry/0. Asserted as an exact key set in both directions so a
+    # key added to one kind of entry and not documented on the other is
+    # caught here.
+    test "an entry carries exactly the keys its kind of thing has" do
+      operators = MapSet.new(Vocabulary.operators(), & &1.lexeme)
+
+      for entry <- Vocabulary.tokens() do
+        expected =
+          if entry.lexeme in operators do
+            [
+              :arity,
+              :ast_op,
+              :category,
+              :display,
+              :doc,
+              :label,
+              :lexeme,
+              :token_type,
+              :value_kinds
+            ]
+          else
+            [:category, :display, :doc, :lexeme, :token_type]
+          end
+
+        assert entry |> Map.keys() |> Enum.sort() == expected,
+               "the entry for #{inspect(entry.lexeme)} carries " <>
+                 "#{inspect(entry |> Map.keys() |> Enum.sort())}"
+      end
+    end
+
+    test "the operator keys carry the kinds of value they are documented to carry" do
+      for entry <- Vocabulary.operators() do
+        assert is_binary(entry.label) and entry.label != ""
+        assert entry.arity in [0, 1, 2] or (is_list(entry.arity) and entry.arity != [])
+        assert is_atom(entry.ast_op)
+        assert entry.value_kinds == nil or is_list(entry.value_kinds)
       end
     end
 

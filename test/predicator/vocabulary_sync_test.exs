@@ -220,6 +220,113 @@ defmodule Predicator.VocabularySyncTest do
     end
   end
 
+  describe "the operator entries versus the parser" do
+    # sabotage: changed the `strict_equal:` row of @operator_extras to carry
+    # `:strict_equal` as its :ast_op instead of `:strict_eq` -> two failures:
+    # this test, naming "===", :strict_equal and :strict_eq, and the
+    # `operators(:boolean)` doctest in Predicator.Simple, since an :ast_op
+    # outside the subset's operator set stops `===` being offered at all;
+    # restored, confirmed green
+    test "every :ast_op is the atom the parser actually builds" do
+      for entry <- Vocabulary.operators(), entry.ast_op != nil do
+        source = operator_source(entry)
+
+        assert {:ok, ast} = Predicator.parse(source),
+               "#{inspect(source)} does not parse at all, so #{inspect(entry.lexeme)}'s " <>
+                 ":ast_op cannot be checked - fix the probe source in this test"
+
+        assert elem(ast, 0) in [:comparison, :membership],
+               "#{inspect(source)} parses to #{inspect(elem(ast, 0))}, not a comparison " <>
+                 "or a membership node"
+
+        assert elem(ast, 1) == entry.ast_op,
+               "Predicator.Vocabulary says #{inspect(entry.lexeme)} builds " <>
+                 "#{inspect(entry.ast_op)}, but #{inspect(source)} parses to " <>
+                 "#{inspect(elem(ast, 1))}"
+      end
+    end
+
+    # sabotage: gave the `eq:` row a non-nil :ast_op of `:eq` and the scalar
+    # kinds -> two failures: this test, on the :ast_op assertion, and the
+    # :ast_op-versus-parser test above, since `amount = 500` does not parse;
+    # restored, confirmed green
+    test "`=` carries no AST atom and no admitted kind, because the parser rejects it" do
+      entry = Enum.find(Vocabulary.operators(), &(&1.lexeme == "="))
+
+      assert entry.ast_op == nil
+      assert entry.value_kinds == []
+
+      assert {:error, message, _line, _col, _span} = Predicator.parse("amount = 500"),
+             "`=` now parses in expression position - the vocabulary row saying it " <>
+               "admits no value kind is stale"
+
+      assert message =~ "not an equality operator"
+    end
+  end
+
+  describe "the shape of an operator entry" do
+    # sabotage: misspelled the `:value_kinds` key in the Map.merge/2 that
+    # builds @entries -> 14 failures: this one naming ">" as missing the key,
+    # the value-kind enumeration test and the `=` test beside it, and every
+    # operators/1 test in simple_test.exs plus its doctests, since the whole
+    # admission table goes with the key; restored, confirmed green
+    test "every operator entry carries all four operator keys, and nothing else does" do
+      for entry <- Vocabulary.operators() do
+        for key <- [:label, :arity, :ast_op, :value_kinds] do
+          assert Map.has_key?(entry, key),
+                 "the operator entry for #{inspect(entry.lexeme)} is missing #{inspect(key)} - " <>
+                   "every operator category needs a row in @operator_extras"
+        end
+      end
+
+      non_operators = Vocabulary.tokens() -- Vocabulary.operators()
+
+      for entry <- non_operators, key <- [:label, :arity, :ast_op, :value_kinds] do
+        refute Map.has_key?(entry, key),
+               "the non-operator entry for #{inspect(entry.lexeme)} carries " <>
+                 "#{inspect(key)} - the operator keys belong to operator entries only"
+      end
+    end
+
+    # sabotage: added `:float` to @ordered_kinds -> one failure, this test,
+    # naming ">" and [:float]. The offered lists grow a kind operators/1's
+    # guard then refuses, which is exactly the drift this test catches;
+    # restored, confirmed green
+    test "every admitted value kind is one value_kinds/0 enumerates" do
+      known = MapSet.new(Vocabulary.value_kinds())
+
+      for entry <- Vocabulary.operators(), entry.value_kinds != nil do
+        unknown = entry.value_kinds |> MapSet.new() |> MapSet.difference(known)
+
+        assert unknown == MapSet.new(),
+               "#{inspect(entry.lexeme)} admits #{inspect(Enum.sort(unknown))}, which " <>
+                 "Predicator.Vocabulary.value_kinds/0 does not enumerate"
+      end
+    end
+
+    test "both spellings of a word operator carry the same operator keys" do
+      Vocabulary.operators()
+      |> Enum.group_by(& &1.token_type)
+      |> Enum.each(fn {token_type, entries} ->
+        shapes =
+          entries
+          |> Enum.map(&Map.take(&1, [:label, :arity, :ast_op, :value_kinds]))
+          |> Enum.uniq()
+
+        assert length(shapes) == 1,
+               "the entries for #{inspect(token_type)} disagree about their operator " <>
+                 "keys: #{inspect(shapes)}. Both cases of a word operator are the same " <>
+                 "operator"
+      end)
+    end
+  end
+
+  # A probe expression using `entry` in the position the parser reads it: `IN`
+  # takes a list on its right, every other admitted operator takes a scalar.
+  @spec operator_source(map()) :: binary()
+  defp operator_source(%{ast_op: :in, lexeme: lexeme}), do: "step #{lexeme} ['payment']"
+  defp operator_source(%{lexeme: lexeme}), do: "amount #{lexeme} 500"
+
   # A duration unit is only a unit directly after a number - `d` on its own is
   # an identifier - so it round-trips as `1d`, not as `d`.
   @spec round_trip_source(map()) :: binary()

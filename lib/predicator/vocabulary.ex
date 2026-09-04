@@ -24,7 +24,7 @@ defmodule Predicator.Vocabulary do
 
   ## Entries
 
-  Every static entry is a map with five keys:
+  Every static entry is a map with at least these five keys:
 
   - `:lexeme` - the exact source text, e.g. `">="`, `"contains"`
   - `:token_type` - the `t:Predicator.Lexer.token/0` tag it lexes to
@@ -39,6 +39,59 @@ defmodule Predicator.Vocabulary do
   `nil`: a provider binds a name to `{arity, atom}` and carries no description,
   so there is nothing truthful to put there, and an invented sentence in a
   documented field is worse than an absent one.
+
+  ## Operator entries
+
+  An entry in an operator category - the six categories `operators/0` returns -
+  carries four more keys, because a structured editor needs more about an
+  operator than a completion list does. A picklist has to name the operator in
+  a sentence, know how many operands it takes, know which atom the parser will
+  put in the AST for it, and know which kinds of value it is worth offering it
+  for at all:
+
+  - `:label` - a short phrase read in place of the operator, e.g. `"is at
+    least"` for `">="`. `:display` is a template and `:doc` is a sentence of
+    prose about the semantics; neither is a UI string, which is why this is
+    its own key
+  - `:arity` - how many operands the operator takes. `"-"` takes `[1, 2]`,
+    since it is both subtraction and negation
+  - `:ast_op` - the atom `Predicator.Parser.parse/2` puts in the node it
+    builds, which differs from `:token_type` for three operators (`:in_op`
+    becomes `:in`, `:contains_op` becomes `:contains`, `:strict_equal`
+    becomes `:strict_eq`). `nil` where no node carries the operator as an
+    atom of its own
+  - `:value_kinds` - the `t:value_kind/0`s the operator is worth offering for,
+    as the kind of the value on its right. `nil` for an operator that does not
+    compare a field against a value at all - the logical, arithmetic, temporal
+    and cast categories
+
+  Entries outside an operator category carry none of the four. That is the
+  shape `t:function_entry/0` already has against `t:entry/0`: an entry carries
+  the keys its kind of thing has, and no placeholder keys for the ones it does
+  not.
+
+  ### What `:value_kinds` admits, and two deliberate exclusions
+
+  The admissions follow `Predicator.Evaluator`'s own comparison semantics.
+  Ordered comparison (`>`, `>=`, `<`, `<=`) is admitted where the evaluator
+  orders the kind meaningfully: numbers and strings through its `types_match`
+  guard, dates and datetimes chronologically, durations as the numbers they
+  reduce to. Equality is admitted for every scalar kind. `in` takes a list on
+  its right and nothing else; `contains` takes a list on its *left*, so the
+  value beside it is a scalar of any kind.
+
+  Two things the evaluator does answer are still not admitted, because a
+  picklist offering them would be offering nonsense:
+
+  | Excluded | Why |
+  |---|---|
+  | Ordered comparison of booleans | `types_match` admits them, so `true > false` evaluates - by Erlang term order, which is not a fact about the author's data |
+  | Equality against a list | Lists compare with `==`, but the operator an author reaches for beside a list is `in`, and offering both invites writing the one that is almost never meant |
+
+  Neither exclusion narrows the grammar. Both are the kind of judgement
+  `Predicator.Simple` already records for the shapes it leaves out: the
+  language still accepts them, and the structured surface still does not offer
+  them.
 
   ## Case
 
@@ -108,6 +161,36 @@ defmodule Predicator.Vocabulary do
           doc: nil,
           arity: Predicator.Evaluator.function_arity()
         }
+
+  @typedoc """
+  The kind of a value on the right of an operator, as a structured editor
+  models it.
+
+  These are the kinds `Predicator.Simple` admits as a scalar or as a list of
+  them, and no others: there is no `:float`, because that subset excludes
+  float literals, and no `:relative_date`, because `3d ago` is a datetime by
+  the time anything compares it.
+  """
+  @type value_kind ::
+          :string | :number | :boolean | :date | :datetime | :duration | :list
+
+  @typedoc """
+  An operator entry: an `t:entry/0` plus what a structured editor needs in
+  order to offer the operator as a choice. See "Operator entries" above.
+  """
+  @type operator_entry :: %{
+          lexeme: binary(),
+          token_type: atom(),
+          category: category(),
+          display: binary(),
+          doc: binary(),
+          label: binary(),
+          arity: 0 | 1 | 2 | [1 | 2, ...],
+          ast_op: atom() | nil,
+          value_kinds: [value_kind()] | nil
+        }
+
+  @value_kinds [:string, :number, :boolean, :date, :datetime, :duration, :list]
 
   @categories [
     :comparison,
@@ -218,14 +301,77 @@ defmodule Predicator.Vocabulary do
     {"ms", :duration_unit, :duration_unit, "1ms", "Milliseconds"}
   ]
 
+  # The kinds an ordered comparison is worth offering for: the ones
+  # Predicator.Evaluator orders meaningfully. Booleans are excluded even
+  # though `types_match` admits them - see the moduledoc.
+  @ordered_kinds [:number, :string, :date, :datetime, :duration]
+
+  # The scalar kinds. Equality is offered for all of them, and so is the
+  # right-hand side of `contains`, whose left side is the list.
+  @scalar_kinds [:string, :number, :boolean, :date, :datetime, :duration]
+
+  # token_type => {label, arity, ast_op, value_kinds}, for the operator
+  # categories only. Keyed by token type rather than by lexeme because a word
+  # operator is enumerated in both cases and the two spellings are the same
+  # operator: `in` and `IN` share this row, as they should.
+  #
+  # `:eq` is the one comparison with no admitted kind at all. `=` lexes, but
+  # the parser rejects it in expression position ("'=' is not an equality
+  # operator - use '==' for equality"), so an editor that offered it would be
+  # offering source that cannot parse. Its empty list says exactly that, and
+  # says it in the same place as every other operator's answer.
+  @operator_extras %{
+    gt: {"is greater than", 2, :gt, @ordered_kinds},
+    gte: {"is at least", 2, :gte, @ordered_kinds},
+    lt: {"is less than", 2, :lt, @ordered_kinds},
+    lte: {"is at most", 2, :lte, @ordered_kinds},
+    eq: {"is equal to", 2, nil, []},
+    equal_equal: {"is equal to", 2, :equal_equal, @scalar_kinds},
+    strict_equal: {"is exactly equal to", 2, :strict_eq, @scalar_kinds},
+    ne: {"is not equal to", 2, :ne, @scalar_kinds},
+    strict_ne: {"is not exactly equal to", 2, :strict_ne, @scalar_kinds},
+    and_op: {"and", 2, nil, nil},
+    and_and: {"and", 2, nil, nil},
+    or_op: {"or", 2, nil, nil},
+    or_or: {"or", 2, nil, nil},
+    not_op: {"not", 1, nil, nil},
+    bang: {"not", 1, nil, nil},
+    plus: {"plus", 2, nil, nil},
+    minus: {"minus", [1, 2], nil, nil},
+    multiply: {"times", 2, nil, nil},
+    divide: {"divided by", 2, nil, nil},
+    modulo: {"remainder of", 2, nil, nil},
+    in_op: {"is one of", 2, :in, [:list]},
+    contains_op: {"contains", 2, :contains, @scalar_kinds},
+    ago_op: {"ago", 1, nil, nil},
+    from_op: {"from", 2, nil, nil},
+    now_op: {"now", 0, nil, nil},
+    next_op: {"next", 1, nil, nil},
+    last_op: {"last", 1, nil, nil},
+    double_colon: {"cast to", 2, nil, nil}
+  }
+
   @entries Enum.map(@tokens, fn {lexeme, token_type, category, display, doc} ->
-             %{
+             entry = %{
                lexeme: lexeme,
                token_type: token_type,
                category: category,
                display: display,
                doc: doc
              }
+
+             case Map.fetch(@operator_extras, token_type) do
+               {:ok, {label, arity, ast_op, value_kinds}} ->
+                 Map.merge(entry, %{
+                   label: label,
+                   arity: arity,
+                   ast_op: ast_op,
+                   value_kinds: value_kinds
+                 })
+
+               :error ->
+                 entry
+             end
            end)
 
   @doc """
@@ -254,7 +400,7 @@ defmodule Predicator.Vocabulary do
       false
 
   """
-  @spec tokens() :: [entry(), ...]
+  @spec tokens() :: [entry() | operator_entry(), ...]
   def tokens, do: @entries
 
   @doc """
@@ -273,21 +419,46 @@ defmodule Predicator.Vocabulary do
       ["true", "false", "null", "undefined"]
 
   """
-  @spec by_category(category()) :: [entry() | function_entry()]
+  @spec by_category(category()) :: [entry() | operator_entry() | function_entry()]
   def by_category(:function), do: functions()
   def by_category(category) when category in @categories, do: filter_category(@entries, category)
 
   @doc """
+  Every kind of value an operator can be offered for.
+
+  The vocabulary of `:value_kinds` on an `t:operator_entry/0`, enumerated so a
+  caller can iterate the kinds rather than hard-code them.
+
+  ## Examples
+
+      iex> Predicator.Vocabulary.value_kinds()
+      [:string, :number, :boolean, :date, :datetime, :duration, :list]
+
+  """
+  @spec value_kinds() :: [value_kind(), ...]
+  def value_kinds, do: @value_kinds
+
+  @doc """
   The entries that combine or compare values: the comparison, logical,
   arithmetic, membership, temporal, and cast categories.
+
+  Every entry here is an `t:operator_entry/0`, carrying `:label`, `:arity`,
+  `:ast_op`, and `:value_kinds` on top of what `tokens/0` carries. See
+  "Operator entries" in the module documentation for what each one means.
 
   ## Examples
 
       iex> Predicator.Vocabulary.operators() |> Enum.all?(&(&1.category != :literal))
       true
 
+      iex> Predicator.Vocabulary.operators() |> Enum.find(&(&1.lexeme == ">=")) |> Map.take([:label, :arity, :ast_op])
+      %{label: "is at least", arity: 2, ast_op: :gte}
+
+      iex> Predicator.Vocabulary.operators() |> Enum.find(&(&1.lexeme == "IN")) |> Map.fetch!(:value_kinds)
+      [:list]
+
   """
-  @spec operators() :: [entry(), ...]
+  @spec operators() :: [operator_entry(), ...]
   def operators, do: Enum.filter(@entries, &(&1.category in @operator_categories))
 
   @doc """
@@ -307,7 +478,7 @@ defmodule Predicator.Vocabulary do
       false
 
   """
-  @spec keywords() :: [entry(), ...]
+  @spec keywords() :: [entry() | operator_entry(), ...]
   def keywords do
     Enum.filter(@entries, fn entry ->
       entry.category != :duration_unit and entry.lexeme =~ ~r/\A[A-Za-z]+\z/
@@ -366,11 +537,11 @@ defmodule Predicator.Vocabulary do
       true
 
   """
-  @spec all() :: [entry() | function_entry(), ...]
-  @spec all(keyword()) :: [entry() | function_entry(), ...]
+  @spec all() :: [entry() | operator_entry() | function_entry(), ...]
+  @spec all(keyword()) :: [entry() | operator_entry() | function_entry(), ...]
   def all(opts \\ []), do: @entries ++ functions(opts)
 
-  @spec filter_category([entry()], category()) :: [entry()]
+  @spec filter_category([entry() | operator_entry()], category()) :: [entry() | operator_entry()]
   defp filter_category(entries, category), do: Enum.filter(entries, &(&1.category == category))
 
   @spec function_token_type(binary()) :: :function_name | :qualified_function_name
