@@ -68,16 +68,16 @@ does not describe.**
   no error arm, because it is handed an AST that already parsed - the only
   question left is whether that AST is picklist-shaped.
 - **`from_source/1` adds the parse arm: `{:ok, t()} | :outside |
-  {:error, compile_error}`.** Three answers, because there are three
+  {:error, ParseError.t()}`.** Three answers, because there are three
   situations: this is picklist-shaped, this is valid predicator that a picklist
   cannot draw, and this is not predicator at all. Collapsing the middle two is
   the mistake the rejected parser mode makes.
 - **`to_ast/1` returns the AST**, which is the value every existing predicator
   entry point already accepts.
-- **`to_source/1` returns source text, via `decompile/2`.** It is not a second
-  renderer: it is a call into the one this repo already ships, so a formatting
-  option added there reaches structured authoring for free and the two can
-  never disagree about how an operator is spelled.
+- **`to_source/2` returns source text, via `decompile/2`.** It is not a second
+  renderer: it is a call into the one this repo already ships, and it takes the
+  same options, so `:parentheses` and `:spacing` reach structured authoring for
+  free and the two can never disagree about how an operator is spelled.
 
 `:outside` is a bare atom rather than `{:error, :outside}` deliberately. Being
 outside the subset is not a failure, and a consumer that pattern-matches it as
@@ -133,7 +133,7 @@ all, and a reader must not mistake one kind of exclusion for the other.
 `Predicator.Visitors.StringVisitor`'s literal clause guards `is_integer(value)`
 and the module has no `is_float/1` clause, while `Predicator.parse/2` produces
 a float literal from `amount == 1.5` without complaint - so parse-then-decompile
-is partial today for any float. `to_source/1` runs through `decompile/2` and the
+is partial today for any float. `to_source/2` runs through `decompile/2` and the
 subset promises totality, so a float value kind cannot be admitted while that
 holds. The defect is tracked as **px-ggb**, the exclusion is pinned by a test
 asserting that a float source parses and classifies `:outside`, and admitting
