@@ -123,6 +123,10 @@ defmodule Predicator.Visitors.StringVisitor do
     Integer.to_string(value)
   end
 
+  defp do_visit({:literal, value, _position}, _opts) when is_float(value) do
+    float_to_source(value)
+  end
+
   defp do_visit({:literal, value, _position}, _opts) when is_boolean(value) do
     Atom.to_string(value)
   end
@@ -479,4 +483,60 @@ defmodule Predicator.Visitors.StringVisitor do
     do: " else " <> do_visit(nested, opts)
 
   defp render_else(block, opts), do: " else " <> do_visit(block, opts)
+
+  # px-ggb: the lexer's number rule is `digits "." digits` with no exponent
+  # form (take_number/4 in lexer.ex), so `Float.to_string/1` alone is not a
+  # writer: it switches to scientific notation at small and large magnitudes,
+  # and `1.0e-7` lexes as the float `1.0` followed by the identifier `e7`,
+  # which is a parse error. Both magnitudes are reachable from a parse -
+  # `0.0000001` parses to `1.0e-7` - so the exponent has to be expanded back
+  # into plain digits. Shifting the decimal point of the shortest
+  # representation names the same real number, so the expansion reads back as
+  # the same float. A negative float is rendered the way a negative integer
+  # already is, as a leading `-`; that parses back as a `unary` node rather
+  # than a negative literal, but the parser cannot produce a negative literal
+  # in the first place (see the exclusion table in `Predicator.Simple`).
+  @spec float_to_source(float()) :: binary()
+  defp float_to_source(value) do
+    case String.split(Float.to_string(value), "e") do
+      [plain] -> plain
+      [mantissa, exponent] -> shift_point(mantissa, String.to_integer(exponent))
+    end
+  end
+
+  @spec shift_point(binary(), integer()) :: binary()
+  defp shift_point(mantissa, exponent) do
+    {sign, unsigned} =
+      case mantissa do
+        "-" <> rest -> {"-", rest}
+        rest -> {"", rest}
+      end
+
+    [integer_digits, fraction_digits] = String.split(unsigned, ".")
+
+    # `Float.to_string/1`'s exponent form always carries a fraction digit, so
+    # `1.0e-7`'s trailing zero would otherwise expand to "0.00000010". Trimming
+    # it changes no value and does not move the point, which is counted from
+    # the left of the integer digits.
+    digits = integer_digits <> String.trim_trailing(fraction_digits, "0")
+
+    sign <> place_point(digits, String.length(integer_digits) + exponent)
+  end
+
+  # `point` is where the decimal point falls in `digits`, counted from the
+  # left; outside the digit string it is padded with zeros on that side.
+  @spec place_point(binary(), integer()) :: binary()
+  defp place_point(digits, point) when point <= 0 do
+    "0." <> String.duplicate("0", -point) <> digits
+  end
+
+  defp place_point(digits, point) do
+    length = String.length(digits)
+
+    if point >= length do
+      digits <> String.duplicate("0", point - length) <> ".0"
+    else
+      String.slice(digits, 0, point) <> "." <> String.slice(digits, point..-1//1)
+    end
+  end
 end
