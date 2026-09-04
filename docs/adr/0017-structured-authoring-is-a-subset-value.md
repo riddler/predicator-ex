@@ -122,6 +122,29 @@ introduced instead of. An author who needs `(a AND b) OR c` types it, and the
 component shows the text. That is a complete answer, and this ADR records it as
 one rather than as a gap with a schedule attached.
 
+### Two exclusions that are not decisions
+
+Everything excluded above is excluded permanently and on purpose. Two further
+value kinds are outside the subset today for reasons that are not decisions at
+all, and a reader must not mistake one kind of exclusion for the other.
+
+**A float is outside contingently, and only until a defect is fixed.**
+`Predicator.decompile/2` raises a `FunctionClauseError` on a float literal:
+`Predicator.Visitors.StringVisitor`'s literal clause guards `is_integer(value)`
+and the module has no `is_float/1` clause, while `Predicator.parse/2` produces
+a float literal from `amount == 1.5` without complaint - so parse-then-decompile
+is partial today for any float. `to_source/1` runs through `decompile/2` and the
+subset promises totality, so a float value kind cannot be admitted while that
+holds. The defect is tracked as **px-ggb**, the exclusion is pinned by a test
+asserting that a float source parses and classifies `:outside`, and admitting
+the value kind once px-ggb lands is a small change that flips that test.
+Nothing about a float is unsuited to a picklist.
+
+**A negative number is outside structurally.** `Predicator.parse/2` reads `-5`
+as a unary-minus node over a positive literal rather than as a negative
+literal, so a negative value cannot reach a clause from a parse at all. That is
+a fact about the AST rather than a decision taken here, and it is not a defect.
+
 ### The operator table has one source
 
 An operator a picklist offers is an entry in `Predicator.Vocabulary`, and
@@ -164,8 +187,8 @@ not to the consumer.
 
 - **A function-call clause kind is explicitly not in scope, and is the first
   follow-up candidate.** `len(name) > 3` is the shape - a call on the left of a
-  comparison - and it is the one exclusion above with an obvious picklist
-  rendering, since a function with a fixed arity is a dropdown plus its
+  comparison - and it is the one exclusion taken *by decision* with an obvious
+  picklist rendering, since a function with a fixed arity is a dropdown plus its
   arguments. It is left out here because it needs its own decisions (which
   providers a consumer may offer, and what an editor shows for a function whose
   `:doc` is `nil` under ADR-0014) and because leaving it out costs an author
