@@ -195,3 +195,52 @@ The invariant that catches most hand-built mistakes is the connective one:
 iex> Predicator.Simple.well_formed?(%Predicator.Simple{connective: :and, clauses: [{[root: "amount"], :gte, {:integer, 500}}]})
 false
 ```
+
+## Filling the operator dropdown
+
+A row of the form is *field / operator / value*, and the operator control has
+to be filled with something. Which operators belong there depends on the kind
+of value the row carries: `is at least` is a sensible choice beside an amount
+and a nonsense one beside a checkbox, and `is one of` only ever sits beside a
+list.
+
+`operators/1` answers that, one kind at a time:
+
+```elixir
+iex> Predicator.Simple.operators(:list)
+[%{op: :in, lexeme: "IN", label: "is one of", arity: 2}]
+```
+
+```elixir
+iex> Predicator.Simple.operators(:boolean) |> Enum.map(& &1.label)
+["is equal to", "is exactly equal to", "is not equal to", "is not exactly equal to", "contains"]
+```
+
+Each entry carries the four things a control needs: `:label` to show, `:op` to
+put in the clause the author is building, `:lexeme` for a preview of the source
+the row will render to, and `:arity`.
+
+```elixir
+iex> Predicator.Simple.operators(:number) |> Enum.find(&(&1.op == :gte))
+%{op: :gte, lexeme: ">=", label: "is at least", arity: 2}
+```
+
+The kinds are enumerated, so a form can build every dropdown it needs without
+naming them itself:
+
+```elixir
+iex> Predicator.Vocabulary.value_kinds()
+[:string, :number, :boolean, :date, :datetime, :duration, :list]
+```
+
+None of this is a table kept here. The labels, arities, AST atoms and per-kind
+admissions live on `Predicator.Vocabulary`'s operator entries, next to the
+lexemes the lexer is already checked against, and `operators/1` reads them.
+An operator the lexer would reject therefore cannot be offered - there is no
+second list for it to be offered from - and the tests hold that as an
+invariant over every kind.
+
+The two admissions that are narrower than the language are deliberate, and
+`Predicator.Vocabulary`'s documentation records why: ordered comparison is not
+offered for booleans, and equality is not offered against a list. Both still
+parse and still evaluate; a picklist just never suggests them.

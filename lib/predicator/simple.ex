@@ -72,9 +72,25 @@ defmodule Predicator.Simple do
 
   | Excluded | Why |
   |---|---|
-  | Float literals | `Predicator.decompile/2` has no clause for them and raises, so `to_source/2` could not stay total (px-4jp, 2026-09-04) |
+  | Float literals | `Predicator.decompile/2` has no clause for them and raises, so `to_source/2` could not stay total (px-ggb) |
   | Negative numbers | The parser reads `-5` as a `unary` node, never as a negative literal, so a negative literal could not have come from a parse and does not survive one |
   | `:eq`, and a bare binary `{:literal, "text"}` | Both decompile to source that parses back as a different node (`:equal_equal` and `:string_literal`), breaking the source round-trip |
+
+  ## Which operators an editor offers
+
+  `operators/1` answers, for one kind of value, which operators a row of the
+  form should offer. The answer is read from `Predicator.Vocabulary` - the
+  labels, the arities, the AST atoms and the per-kind admissions all live on
+  the operator entries there, so this module holds no second copy of the
+  grammar and a change to the language reaches the editor without one.
+
+      iex> Predicator.Simple.operators(:list)
+      [%{op: :in, lexeme: "IN", label: "is one of", arity: 2}]
+
+  The lexeme is the spelling `to_source/2` renders, not merely a spelling the
+  lexer accepts: a word operator is enumerated in both cases (`in` and `IN`),
+  and offering the one the decompiler does not write would put a label beside
+  a row that renders differently the moment it is saved.
 
   ## Purity
 
@@ -92,6 +108,7 @@ defmodule Predicator.Simple do
   @ops @comparison_ops ++ @membership_ops
   @quote_styles [:single, :double]
   @directions [:ago, :future, :next, :last]
+  @value_kinds Vocabulary.value_kinds()
 
   @typedoc """
   The connective joining the clauses.
@@ -322,6 +339,60 @@ defmodule Predicator.Simple do
   def duration_units do
     :duration_unit |> Vocabulary.by_category() |> Enum.map(& &1.lexeme)
   end
+
+  @doc """
+  The operators an editor should offer for a value of `kind`.
+
+  One entry per operator, in the order `Predicator.Vocabulary` enumerates
+  them, carrying everything a picklist row needs: `:op` is the atom to put in
+  a `t:clause/0`, `:lexeme` is the spelling `to_source/2` renders, `:label` is
+  the phrase to show, and `:arity` is how many operands the operator takes -
+  always 2 here, since every operator in the subset is a comparison or a
+  membership test.
+
+  Nothing is enumerated locally. The admissions are the `:value_kinds` on the
+  vocabulary's operator entries and the atoms are its `:ast_op`s, so an
+  operator this subset does not admit, or one the grammar does not admit for
+  this kind of value, is never offered - and neither is one the lexer would
+  reject. `test/predicator/simple_test.exs` holds that as an invariant over
+  every kind.
+
+  `kind` is guarded against `Predicator.Vocabulary.value_kinds/0`, so a
+  misspelled kind raises `FunctionClauseError` rather than answering with the
+  empty list that a kind with no operators would answer with.
+
+  ## Examples
+
+      iex> Predicator.Simple.operators(:boolean) |> Enum.map(& &1.op)
+      [:equal_equal, :strict_eq, :ne, :strict_ne, :contains]
+
+      iex> Predicator.Simple.operators(:number) |> Enum.find(&(&1.op == :gte))
+      %{op: :gte, lexeme: ">=", label: "is at least", arity: 2}
+
+      iex> Predicator.Simple.operators(:list) |> Enum.map(& &1.lexeme)
+      ["IN"]
+
+  """
+  @spec operators(Vocabulary.value_kind()) :: [
+          %{op: op(), lexeme: binary(), label: binary(), arity: 2}
+        ]
+  def operators(kind) when kind in @value_kinds do
+    Vocabulary.operators()
+    |> Enum.filter(&offered?(&1, kind))
+    |> Enum.map(&%{op: &1.ast_op, lexeme: &1.lexeme, label: &1.label, arity: &1.arity})
+  end
+
+  @spec offered?(map(), Vocabulary.value_kind()) :: boolean()
+  defp offered?(entry, kind) do
+    entry.ast_op in @ops and kind in entry.value_kinds and canonical_spelling?(entry.lexeme)
+  end
+
+  # A word operator is enumerated in both cases, and `Predicator.decompile/2`
+  # writes the upper-case one, so that is the spelling to offer. A symbol
+  # operator is unaffected: `">="` upcases to itself. The invariant that this
+  # is the spelling `to_source/2` actually renders is a test, not a comment.
+  @spec canonical_spelling?(binary()) :: boolean()
+  defp canonical_spelling?(lexeme), do: lexeme == String.upcase(lexeme)
 
   # -- from_ast ---------------------------------------------------------------
 

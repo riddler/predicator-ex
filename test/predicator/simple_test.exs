@@ -15,7 +15,9 @@ defmodule Predicator.SimpleTest do
   use ExUnit.Case, async: true
 
   alias Predicator.Errors.ParseError
+  alias Predicator.Lexer
   alias Predicator.Simple
+  alias Predicator.Vocabulary
 
   doctest Predicator.Simple
 
@@ -427,6 +429,115 @@ defmodule Predicator.SimpleTest do
     end
   end
 
+  describe "operators/1" do
+    test "offers only operators the lexer accepts, spelled as it accepts them" do
+      for kind <- Vocabulary.value_kinds(), offered <- Simple.operators(kind) do
+        assert {:ok, tokens} = Lexer.tokenize(offered.lexeme),
+               "operators(#{inspect(kind)}) offers #{inspect(offered.lexeme)}, which the " <>
+                 "lexer rejects outright"
+
+        types = tokens |> Enum.map(&elem(&1, 0)) |> Enum.reject(&(&1 == :eof))
+
+        entry = Enum.find(Vocabulary.operators(), &(&1.lexeme == offered.lexeme))
+
+        assert entry != nil,
+               "operators(#{inspect(kind)}) offers #{inspect(offered.lexeme)}, which is " <>
+                 "not a Predicator.Vocabulary operator entry at all"
+
+        assert entry.token_type in types,
+               "operators(#{inspect(kind)}) offers #{inspect(offered.lexeme)} as " <>
+                 "#{inspect(entry.token_type)}, but it lexes to #{inspect(types)}"
+      end
+    end
+
+    test "offers only operators a clause can carry" do
+      for kind <- Vocabulary.value_kinds(), offered <- Simple.operators(kind) do
+        simple = %Simple{connective: nil, clauses: [{[root: "amount"], offered.op, sample(kind)}]}
+
+        assert Simple.well_formed?(simple),
+               "operators(#{inspect(kind)}) offers #{inspect(offered.op)}, which " <>
+                 "well_formed?/1 rejects in a clause"
+      end
+    end
+
+    test "every offered operator round-trips through source for its kind" do
+      for kind <- Vocabulary.value_kinds(), offered <- Simple.operators(kind) do
+        simple = %Simple{connective: nil, clauses: [{[root: "amount"], offered.op, sample(kind)}]}
+
+        source = Simple.to_source(simple)
+
+        assert String.contains?(source, offered.lexeme),
+               "operators(#{inspect(kind)}) offers #{inspect(offered.lexeme)}, but the " <>
+                 "clause renders as #{inspect(source)} - the offered spelling is not the " <>
+                 "one to_source/2 writes"
+
+        assert {:ok, ^simple} = Simple.from_source(source),
+               "#{inspect(source)}, built from an offered operator, does not read back as " <>
+                 "the same value"
+      end
+    end
+
+    test "never offers an operator outside the subset" do
+      outside = [
+        "=",
+        "+",
+        "-",
+        "*",
+        "/",
+        "%",
+        "and",
+        "AND",
+        "or",
+        "OR",
+        "not",
+        "NOT",
+        "::",
+        "ago"
+      ]
+
+      for kind <- Vocabulary.value_kinds() do
+        offered = Simple.operators(kind) |> Enum.map(& &1.lexeme)
+
+        assert offered -- outside == offered,
+               "operators(#{inspect(kind)}) offers #{inspect(offered -- (offered -- outside))}, " <>
+                 "which no clause can carry"
+      end
+    end
+
+    test "offers `IN` for a list and nothing else, and never offers it elsewhere" do
+      assert Simple.operators(:list) == [
+               %{op: :in, lexeme: "IN", label: "is one of", arity: 2}
+             ]
+
+      for kind <- Vocabulary.value_kinds(), kind != :list do
+        refute :in in Enum.map(Simple.operators(kind), & &1.op),
+               "operators(#{inspect(kind)}) offers IN, whose right-hand side is a list"
+      end
+    end
+
+    test "offers no ordered comparison for a boolean" do
+      ops = Simple.operators(:boolean) |> Enum.map(& &1.op)
+
+      for op <- [:gt, :gte, :lt, :lte] do
+        refute op in ops
+      end
+    end
+
+    test "reads its labels and arities from the Vocabulary rather than a local table" do
+      for kind <- Vocabulary.value_kinds(), offered <- Simple.operators(kind) do
+        entry = Enum.find(Vocabulary.operators(), &(&1.lexeme == offered.lexeme))
+
+        assert offered.label == entry.label
+        assert offered.arity == entry.arity
+        assert offered.op == entry.ast_op
+      end
+    end
+
+    test "raises on a kind the vocabulary does not enumerate" do
+      assert_raise FunctionClauseError, fn -> Simple.operators(:float) end
+    end
+  end
+
   # -- helpers ----------------------------------------------------------------
 
   defp strip_positions({:literal, value, _pos}), do: {:literal, value, nil}
@@ -454,4 +565,12 @@ defmodule Predicator.SimpleTest do
 
   defp strip_positions({:bracket_access, target, key, _pos}),
     do: {:bracket_access, strip_positions(target), strip_positions(key), nil}
+
+  defp sample(:string), do: {:string, "active", :single}
+  defp sample(:number), do: {:integer, 500}
+  defp sample(:boolean), do: {:boolean, true}
+  defp sample(:date), do: {:date, ~D[2026-09-04]}
+  defp sample(:datetime), do: {:datetime, ~U[2026-09-04 12:00:00Z]}
+  defp sample(:duration), do: {:duration, [{3, "d"}]}
+  defp sample(:list), do: {:list, [{:string, "payment", :single}, {:string, "review", :single}]}
 end
