@@ -96,14 +96,17 @@ either.
 
 ### Mixed `and`/`or` is `:outside`, by decision (D28-3)
 
-**A subset value is a list of clauses joined by exactly ONE connective,
-`:and` or `:or`.** Not a mixture, at any depth. Also outside, by the same
-decision and for the same reason: parentheses, `not`, arithmetic, and function
-calls.
+**A subset value is a list of clauses under a single connective.**
+`connective` is `nil` for exactly one clause - a lone clause is joined to
+nothing, and `status == 'active'` by itself is inside the subset and is the
+commonest picklist state there is - and it is `:and` or `:or` for two or more.
+A mixture at any depth is `:outside`, and so are parentheses, `not`,
+arithmetic, and function calls, by the same decision and for the same reason.
 
 So these are inside:
 
 ```
+plan == 'pro'
 status == 'active' AND amount >= 500
 step in ['payment', 'review'] OR plan == 'pro'
 ```
@@ -124,7 +127,7 @@ one rather than as a gap with a schedule attached.
 
 ### Two exclusions that are not decisions
 
-Everything excluded above is excluded permanently and on purpose. Two further
+Everything excluded above is excluded by this decision, on purpose. Two further
 value kinds are outside the subset today for reasons that are not decisions at
 all, and a reader must not mistake one kind of exclusion for the other.
 
