@@ -1,6 +1,6 @@
 # ADR-0017: Structured authoring is a subset value over the AST, not a second grammar
 
-Status: proposed (2026-09-04, campaign-028)
+Status: accepted (2026-09-05, campaign-030; proposed 2026-09-04, campaign-028)
 
 ## Context
 
@@ -223,3 +223,12 @@ what it was contingent; this Note records only that the contingency is spent.
 
 The negative-number exclusion beside it is untouched and is still structural -
 a negative float stays outside for the same reason a negative integer does.
+
+### 2026-09-05: the status is now `accepted`
+
+The Consequences list's last bullet reads "Status is `proposed`" and describes
+the state this record was drafted in. That state has ended: the maintainer's
+campaign-030 grant accepted this record on 2026-09-05 and the header above
+says so. The bullet stands as written, under the same amend-by-addition rule
+as the paragraph above; this Note is the forward pointer it would otherwise
+lack.
