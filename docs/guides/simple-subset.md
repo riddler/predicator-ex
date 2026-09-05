@@ -100,6 +100,22 @@ iex> simple.clauses
 [{[root: "step"], :in, {:list, [{:string, "payment", :single}, {:string, "review", :single}]}}]
 ```
 
+A number is a number whether or not it has a decimal point. `{:integer, 500}`
+and `{:float, 19.99}` are two scalar shapes, because the AST literal differs
+and the round-trip has to preserve which one the author wrote, but they are
+one `value_kind` - `:number` - so a form offers the same operators for both
+and needs no branch:
+
+```elixir
+iex> {:ok, simple} = Predicator.Simple.from_source("card.amount >= 19.99")
+iex> simple.clauses
+[{[root: "card", property: "amount"], :gte, {:float, 19.99}}]
+
+iex> {:ok, simple} = Predicator.Simple.from_source("card.amount >= 19.99")
+iex> Predicator.Simple.to_source(simple)
+"card.amount >= 19.99"
+```
+
 Durations and relative dates are values like any other, which is what lets a
 form offer "in the last N days" as a value control:
 
@@ -115,14 +131,18 @@ Mixed `AND`/`OR`, parentheses, `NOT`, arithmetic, function calls, casts, and
 object literals are outside the subset by decision. Each of them needs a
 control a picklist does not have.
 
-Three narrower exclusions are worth knowing about, because they look like
+Two narrower exclusions are worth knowing about, because they look like
 oversights and are not. Each exists to keep the round-trip laws below true:
 
 | Excluded | Why |
 |---|---|
-| Float literals | `Predicator.decompile/2` has no clause for a float and raises on one, so admitting floats would make `to_source/2` partial |
-| Negative numbers | The parser reads `-5` as a `unary` node, so a negative literal is not something a parse can produce |
+| Negative numbers | The parser reads `-5` as a `unary` node, so a negative literal is not something a parse can produce. `-19.99` is excluded for the same reason, and by the same rule |
 | A bare binary `{:literal, "text"}` | It decompiles to `"text"`, which parses back as a `string_literal` - a different node |
+
+Float literals were a third exclusion until px-gv1, and it was a contingent
+one: `Predicator.decompile/2` had no clause for a float and raised on one,
+so admitting floats would have made `to_source/2` partial. px-ggb gave the
+writer that clause, so the exclusion went with its reason.
 
 The clause's path is always on the left. `amount >= 500` is in the subset and
 `500 <= amount` is not, because a form has one field control and it is on the
@@ -232,6 +252,9 @@ naming them itself:
 iex> Predicator.Vocabulary.value_kinds()
 [:string, :number, :boolean, :date, :datetime, :duration, :list]
 ```
+
+There is no `:float` in that list on purpose. A float is a `:number`, so a
+form builds one numeric dropdown rather than two identical ones.
 
 None of this is a table kept here. The labels, arities, AST atoms and per-kind
 admissions live on `Predicator.Vocabulary`'s operator entries, next to the

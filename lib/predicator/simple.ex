@@ -65,16 +65,33 @@ defmodule Predicator.Simple do
   or a non-negative integer, never a computed expression.
 
   A `t:value/0` is one scalar or a list of scalars. A scalar is a non-negative
-  integer, a boolean, a string (carrying the quote style it was written with),
-  a date, a datetime, a duration, or a relative date.
+  integer, a non-negative float, a boolean, a string (carrying the quote style
+  it was written with), a date, a datetime, a duration, or a relative date.
 
-  Three exclusions are deliberate and each has a reason:
+  Two exclusions are deliberate and each has a reason:
 
   | Excluded | Why |
   |---|---|
-  | Float literals | `Predicator.decompile/2` has no clause for them and raises, so `to_source/2` could not stay total (px-ggb) |
   | Negative numbers | The parser reads `-5` as a `unary` node, never as a negative literal, so a negative literal could not have come from a parse and does not survive one |
   | `:eq`, and a bare binary `{:literal, "text"}` | Both decompile to source that parses back as a different node (`:equal_equal` and `:string_literal`), breaking the source round-trip |
+
+  Float literals were a third exclusion until px-gv1. It was contingent, not
+  structural: `Predicator.decompile/2` had no clause for a float and raised,
+  so `to_source/2` could not have stayed total. px-ggb gave the writer that
+  clause, so the reason went and the exclusion went with it.
+
+  ## Integers and floats are one kind, and two shapes
+
+  A float is its own `t:scalar/0` shape, `{:float, 19.99}`, because the AST
+  literal it builds differs from an integer's and the round-trip laws have to
+  preserve which one an author wrote.
+
+      iex> Predicator.Simple.from_source("card.amount >= 19.99")
+      {:ok, %Predicator.Simple{connective: nil, clauses: [{[root: "card", property: "amount"], :gte, {:float, 19.99}}]}}
+
+  It is **not** its own `t:Predicator.Vocabulary.value_kind/0`. For choosing an
+  operator both are `:number`, since every operator worth offering beside
+  `19.99` is one worth offering beside `500`. See `operators/1`.
 
   ## Which operators an editor offers
 
@@ -156,6 +173,7 @@ defmodule Predicator.Simple do
   """
   @type scalar ::
           {:integer, non_neg_integer()}
+          | {:float, float()}
           | {:boolean, boolean()}
           | {:string, binary(), :single | :double}
           | {:date, Date.t()}
@@ -359,7 +377,9 @@ defmodule Predicator.Simple do
 
   `kind` is guarded against `Predicator.Vocabulary.value_kinds/0`, so a
   misspelled kind raises `FunctionClauseError` rather than answering with the
-  empty list that a kind with no operators would answer with.
+  empty list that a kind with no operators would answer with. `:number` is the
+  kind for an integer and for a float alike - there is no `:float` kind to ask
+  for, by the decision recorded above.
 
   ## Examples
 
@@ -493,6 +513,9 @@ defmodule Predicator.Simple do
   defp scalar_from_ast({:literal, value, _pos}) when is_integer(value) and value >= 0,
     do: {:ok, {:integer, value}}
 
+  defp scalar_from_ast({:literal, value, _pos}) when is_float(value) and value >= 0,
+    do: {:ok, {:float, value}}
+
   defp scalar_from_ast({:literal, %Date{} = value, _pos}), do: {:ok, {:date, value}}
   defp scalar_from_ast({:literal, %DateTime{} = value, _pos}), do: {:ok, {:datetime, value}}
 
@@ -540,6 +563,7 @@ defmodule Predicator.Simple do
 
   @spec scalar_to_ast(scalar()) :: Parser.ast()
   defp scalar_to_ast({:integer, value}), do: {:literal, value, nil}
+  defp scalar_to_ast({:float, value}), do: {:literal, value, nil}
   defp scalar_to_ast({:boolean, value}), do: {:literal, value, nil}
   defp scalar_to_ast({:date, value}), do: {:literal, value, nil}
   defp scalar_to_ast({:datetime, value}), do: {:literal, value, nil}
@@ -571,6 +595,7 @@ defmodule Predicator.Simple do
 
   @spec scalar?(term()) :: boolean()
   defp scalar?({:integer, value}) when is_integer(value), do: value >= 0
+  defp scalar?({:float, value}) when is_float(value), do: value >= 0
   defp scalar?({:boolean, value}), do: is_boolean(value)
   defp scalar?({:string, value, style}) when style in @quote_styles, do: is_binary(value)
   defp scalar?({:date, %Date{}}), do: true

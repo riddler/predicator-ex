@@ -36,6 +36,10 @@ defmodule Predicator.SimpleTest do
   @scalars [
     {:integer, 0},
     {:integer, 500},
+    {:float, 0.0},
+    {:float, 19.99},
+    {:float, 500.0},
+    {:float, 0.0000001},
     {:boolean, true},
     {:boolean, false},
     {:string, "active", :single},
@@ -55,7 +59,9 @@ defmodule Predicator.SimpleTest do
               {:list, []},
               {:list, [{:string, "payment", :single}]},
               {:list, [{:string, "payment", :single}, {:string, "review", :single}]},
-              {:list, [{:integer, 1}, {:integer, 2}, {:integer, 3}]}
+              {:list, [{:integer, 1}, {:integer, 2}, {:integer, 3}]},
+              {:list, [{:float, 1.5}, {:float, 2.0}]},
+              {:list, [{:integer, 1}, {:float, 1.5}]}
             ]
 
   defp single_clauses do
@@ -229,14 +235,29 @@ defmodule Predicator.SimpleTest do
       assert Simple.from_source("'active' == status") == :outside
     end
 
-    test "a float literal is outside, because decompile/2 cannot render one" do
-      # Predicator.decompile/2 raises FunctionClauseError on {:literal, 1.5, _}
-      # (StringVisitor has no is_float clause). Admitting floats would make
-      # to_source/2 partial, so the subset excludes them. See px-4jp.
-      assert {:ok, {:comparison, _op, _left, {:literal, 1.5, _pos}, _cpos}} =
-               Predicator.parse("amount == 1.5")
+    test "a float literal is inside, now that decompile/2 renders one" do
+      # This test pinned the opposite until px-gv1. The exclusion was contingent
+      # on Predicator.decompile/2 raising FunctionClauseError on
+      # {:literal, 1.5, _} (px-ggb: StringVisitor had no is_float clause).
+      # px-ggb gave the writer that clause, so the reason went and the exclusion
+      # went with it. The property is still pinned, in the other direction.
+      assert {:ok, {:comparison, _op, _left, {:literal, 19.99, _pos}, _cpos}} =
+               Predicator.parse("card.amount == 19.99")
 
-      assert Simple.from_source("amount == 1.5") == :outside
+      assert {:ok, %Simple{clauses: [{path, :equal_equal, value}]} = simple} =
+               Simple.from_source("card.amount == 19.99")
+
+      assert path == [root: "card", property: "amount"]
+      assert value == {:float, 19.99}
+      assert Simple.to_source(simple) == "card.amount == 19.99"
+      assert Simple.from_ast(Simple.to_ast(simple)) == {:ok, simple}
+    end
+
+    test "a negative float is outside, exactly as a negative integer is" do
+      assert {:ok, {:comparison, _op, _left, {:unary, :minus, _operand, _upos}, _cpos}} =
+               Predicator.parse("card.amount == -19.99")
+
+      assert Simple.from_source("card.amount == -19.99") == :outside
     end
 
     test "a negative number is outside: the parser reads it as a unary node" do
@@ -266,7 +287,6 @@ defmodule Predicator.SimpleTest do
     test "answers :outside rather than raising for every non-subset node shape" do
       nodes = [
         {:literal, 1, nil},
-        {:literal, 1.5, nil},
         {:literal, nil, nil},
         {:literal, :undefined, nil},
         {:literal, "bare", nil},
@@ -395,13 +415,14 @@ defmodule Predicator.SimpleTest do
         {[property: "brand"], :gte, {:integer, 500}},
         {[root: "amount", root: "other"], :gte, {:integer, 500}},
         {[root: "amount"], :gte, {:integer, -1}},
-        {[root: "amount"], :gte, {:float, 1.5}},
+        {[root: "amount"], :gte, {:float, -1.5}},
+        {[root: "amount"], :gte, {:float, 1}},
         {[root: "amount"], :gte, {:string, "pro", :backtick}},
         {[root: "amount"], :gte, {:duration, []}},
         {[root: "amount"], :gte, {:duration, [{3, "parsec"}]}},
         {[root: "amount"], :gte, {:relative_date, [{3, "d"}], :sideways}},
         {[root: "cart", key: -1], :gte, {:integer, 1}},
-        {[root: "amount"], :gte, {:list, [{:float, 1.5}]}},
+        {[root: "amount"], :gte, {:list, [{:float, -1.5}]}},
         {[root: "amount"], :gte},
         :not_a_clause
       ]
@@ -409,6 +430,16 @@ defmodule Predicator.SimpleTest do
       for clause <- bad do
         refute Simple.well_formed?(%Simple{connective: nil, clauses: [clause]}),
                "expected #{inspect(clause)} to be rejected"
+      end
+    end
+
+    test "accepts a non-negative float, as a scalar and inside a list" do
+      for value <- [{:float, 0.0}, {:float, 19.99}, {:list, [{:float, 1.5}, {:integer, 2}]}] do
+        assert Simple.well_formed?(%Simple{
+                 connective: nil,
+                 clauses: [{[root: "card", property: "amount"], :gte, value}]
+               }),
+               "expected #{inspect(value)} to be accepted"
       end
     end
 
@@ -534,7 +565,28 @@ defmodule Predicator.SimpleTest do
     end
 
     test "raises on a kind the vocabulary does not enumerate" do
-      assert_raise FunctionClauseError, fn -> Simple.operators(:float) end
+      # `:float` used to be this test's example. It is a poor one since px-gv1:
+      # a float is admitted, under the `:number` kind, so the raise would read
+      # as a statement that floats are unsupported.
+      refute :decimal in Vocabulary.value_kinds()
+      assert_raise FunctionClauseError, fn -> Simple.operators(:decimal) end
+    end
+
+    test "offers the same operators for a float value as for an integer one" do
+      # px-gv1 folded floats into `:number` rather than giving them a kind of
+      # their own. That is what makes this assertion sayable at all: one kind,
+      # one list, and no branch for an editor to get wrong.
+      refute :float in Vocabulary.value_kinds()
+
+      for offered <- Simple.operators(:number) do
+        simple = %Simple{
+          connective: nil,
+          clauses: [{[root: "card", property: "amount"], offered.op, {:float, 19.99}}]
+        }
+
+        assert Simple.well_formed?(simple)
+        assert Simple.from_source(Simple.to_source(simple)) == {:ok, simple}
+      end
     end
   end
 
