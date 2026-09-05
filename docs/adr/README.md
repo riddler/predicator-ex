@@ -42,8 +42,11 @@ appended and never rewritten, they cite the pull requests and beads that moved
 the world, and they leave every line above them intact: a note-only change
 shows zero removed lines in `git diff -- docs/adr/`. Because the record itself
 is not edited, a note carries no status line of its own and the ADR keeps the
-status it had. ADR-0017 here uses the form; so do statifier-ui's ADR-0014
-through ADR-0017 and opentelemetry_statifier's ADR-0002.
+status it had. ADR-0017 here is the shape to copy. Sibling repos amend their
+own records by addition under a `## Notes` foot too - statifier-ui's ADR-0014
+through ADR-0017, opentelemetry_statifier's ADR-0002 - but their subsection
+headings are their own and some carry no date; this paragraph fixes the shape
+used here, not there.
 
 **When a decision earns an ADR.** The test is whether someone will later ask
 "why is it like this" and find that the rule alone does not answer. A rule that
