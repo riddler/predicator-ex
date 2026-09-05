@@ -61,6 +61,7 @@ defmodule Predicator.VocabularyTest do
             [
               :arity,
               :ast_op,
+              :canonical,
               :category,
               :display,
               :doc,
@@ -85,7 +86,22 @@ defmodule Predicator.VocabularyTest do
         assert entry.arity in [0, 1, 2] or (is_list(entry.arity) and entry.arity != [])
         assert is_atom(entry.ast_op)
         assert entry.value_kinds == nil or is_list(entry.value_kinds)
+        assert is_boolean(entry.canonical)
       end
+    end
+
+    test "exactly one spelling of every operator is the canonical one" do
+      Vocabulary.operators()
+      |> Enum.group_by(& &1.token_type)
+      |> Enum.each(fn {token_type, entries} ->
+        canonical = Enum.filter(entries, & &1.canonical)
+
+        assert length(canonical) == 1,
+               "#{inspect(token_type)} is enumerated as " <>
+                 "#{inspect(Enum.map(entries, & &1.lexeme))} and marks " <>
+                 "#{inspect(Enum.map(canonical, & &1.lexeme))} canonical - exactly one " <>
+                 "spelling is the one Predicator.decompile/2 writes"
+      end)
     end
 
     test "no doc ends in a period, so a consumer can punctuate it itself" do

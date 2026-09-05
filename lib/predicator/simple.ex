@@ -425,12 +425,14 @@ defmodule Predicator.Simple do
   always 2 here, since every operator in the subset is a comparison or a
   membership test.
 
-  Nothing is enumerated locally. The admissions are the `:value_kinds` on the
-  vocabulary's operator entries and the atoms are its `:ast_op`s, so an
-  operator this subset does not admit, or one the grammar does not admit for
-  this kind of value, is never offered - and neither is one the lexer would
-  reject. `test/predicator/simple_test.exs` holds that as an invariant over
-  every kind.
+  Nothing is enumerated locally, and nothing about the vocabulary is re-derived
+  here. The admissions are the `:value_kinds` on the vocabulary's operator
+  entries, the atoms are its `:ast_op`s, and the choice between the two
+  spellings of a word operator is its `:canonical` marker - so an operator this
+  subset does not admit, or one the grammar does not admit for this kind of
+  value, is never offered, and neither is the lower-case spelling of one
+  `to_source/2` would render in upper case.
+  `test/predicator/simple_test.exs` holds that as an invariant over every kind.
 
   `kind` is guarded against `Predicator.Vocabulary.value_kinds/0`, so a
   misspelled kind raises `FunctionClauseError` rather than answering with the
@@ -461,15 +463,8 @@ defmodule Predicator.Simple do
 
   @spec offered?(map(), Vocabulary.value_kind()) :: boolean()
   defp offered?(entry, kind) do
-    entry.ast_op in @ops and kind in entry.value_kinds and canonical_spelling?(entry.lexeme)
+    entry.ast_op in @ops and kind in entry.value_kinds and entry.canonical
   end
-
-  # A word operator is enumerated in both cases, and `Predicator.decompile/2`
-  # writes the upper-case one, so that is the spelling to offer. A symbol
-  # operator is unaffected: `">="` upcases to itself. The invariant that this
-  # is the spelling `to_source/2` actually renders is a test, not a comment.
-  @spec canonical_spelling?(binary()) :: boolean()
-  defp canonical_spelling?(lexeme), do: lexeme == String.upcase(lexeme)
 
   # -- from_ast ---------------------------------------------------------------
 
