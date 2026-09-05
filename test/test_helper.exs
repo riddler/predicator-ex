@@ -313,6 +313,54 @@ defmodule Predicator.Conformance.SchemaValidator do
   end
 end
 
+defmodule Predicator.EscapeCorpus do
+  @moduledoc """
+  The corpus of awkward values the string writer's escaping is tested over.
+
+  Enumerated from the characters the lexer's string rule gives meaning to
+  rather than transcribed from examples, so it ranges over the combinations -
+  a backslash immediately before a quote is the case a naive escape order gets
+  wrong - instead of over the ones someone happened to think of.
+
+  Shared by `string_visitor_escape_test.exs` (px-v3b, string literals) and
+  `string_visitor_object_key_escape_test.exs` (px-0tz, quoted object keys)
+  because both surfaces are read back by the same lexer rule and so have the
+  same awkward cases. Lives in `test_helper.exs`, matching this repo's
+  existing test-support pattern (`Predicator.SpanSlicing`,
+  `Predicator.ASTShape` above) rather than a `test/support/` directory, which
+  would need an `elixirc_paths` change to `mix.exs`.
+  """
+
+  # `take_string/6` in `lexer.ex` decodes `\\`, `\"`, `\'`, `\n`, `\t` and
+  # `\r`, and keeps a raw newline, tab or return verbatim.
+  @special ["\\", "'", "\"", "\n", "\t", "\r"]
+  @filler ["", "a", "ab"]
+
+  @doc "The characters the lexer's string rule treats specially."
+  @spec special() :: [binary()]
+  def special, do: @special
+
+  @doc "Every corpus value: the specials alone, in pairs, and surrounded by ordinary text."
+  @spec values() :: [binary()]
+  def values do
+    singles = @special ++ @filler
+
+    pairs =
+      for left <- @special, right <- @special, do: left <> right
+
+    surrounded =
+      for prefix <- @filler,
+          special <- @special,
+          suffix <- @filler,
+          do: prefix <> special <> suffix
+
+    triples =
+      for left <- @special, right <- @special, do: left <> right <> "z"
+
+    Enum.uniq(singles ++ pairs ++ surrounded ++ triples)
+  end
+end
+
 # Ensure the Predicator application is started before tests run
 # This ensures system functions are registered and available
 Application.ensure_all_started(:predicator)

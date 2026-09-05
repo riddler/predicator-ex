@@ -479,14 +479,27 @@ defmodule Predicator.Visitors.StringVisitor do
     |> String.replace(quote_char, "\\" <> quote_char)
   end
 
+  # px-0tz: a quoted object key is read by the same string rule as a string
+  # literal (`parse_object_key/1` in `parser.ex` consumes a STRING token), so
+  # it needs exactly the escaping `quoted_string/2` above applies and for the
+  # same reasons - a key carrying a backslash used to render it unescaped and
+  # parse back as a different key, silently. Both quoted clauses therefore go
+  # through `escape_within/2` rather than escaping the quote character alone:
+  # two escape implementations in one writer is how this defect outlived the
+  # px-v3b fix that introduced the helper.
+  #
+  # The identifier style has no escaping to do. The parser only ever produces
+  # it for a bare identifier, which by construction contains neither a quote
+  # nor a backslash, and quoting one on the writer's own initiative would
+  # switch a style the writer is required to render as asked for.
   @spec format_object_key(Parser.object_key()) :: binary()
   defp format_object_key({:object_key, value, :identifier, _position}), do: value
 
   defp format_object_key({:object_key, value, :double, _position}),
-    do: ~s("#{String.replace(value, "\"", "\\\"")}")
+    do: ~s("#{escape_within(value, "\"")}")
 
   defp format_object_key({:object_key, value, :single, _position}),
-    do: ~s('#{String.replace(value, "'", "\\'")}')
+    do: ~s('#{escape_within(value, "'")}')
 
   # ADR-0013: `else if` is parser sugar with no AST node of its own - the
   # else slot is a synthetic block holding exactly one `if`
