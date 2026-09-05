@@ -96,7 +96,9 @@ defmodule Predicator.Simple do
   ## Which operators an editor offers
 
   `operators/1` answers, for one kind of value, which operators a row of the
-  form should offer. The answer is read from `Predicator.Vocabulary` - the
+  form should offer. `value_kind/1` answers which kind a value is, so
+  the pair composes into the whole question a row asks and a consumer keeps
+  no translation of its own. The answer is read from `Predicator.Vocabulary` - the
   labels, the arities, the AST atoms and the per-kind admissions all live on
   the operator entries there, so this module holds no second copy of the
   grammar and a change to the language reaches the editor without one.
@@ -357,6 +359,61 @@ defmodule Predicator.Simple do
   def duration_units do
     :duration_unit |> Vocabulary.by_category() |> Enum.map(& &1.lexeme)
   end
+
+  @doc """
+  The `t:Predicator.Vocabulary.value_kind/0` that governs `value`.
+
+  `operators/1` answers which operators belong beside a kind of value.
+  This answers which kind a value is, so the two compose into the whole
+  question an editor row asks - `value |> value_kind() |> operators()` - and
+  no consumer has to keep its own translation from the subset's scalar tags
+  to the vocabulary's kinds. Two consumers writing that translation
+  separately could disagree about the same value; there is one answer here
+  instead, and it is this package's.
+
+  The mapping is not one-to-one, and the two places it is not are decisions
+  rather than omissions.
+
+  An integer and a float are two `t:scalar/0` shapes and one kind, `:number`,
+  for the reason recorded above: every operator worth offering beside `19.99`
+  is one worth offering beside `500`.
+
+      iex> Predicator.Simple.value_kind({:integer, 500})
+      :number
+
+      iex> Predicator.Simple.value_kind({:float, 19.99})
+      :number
+
+  A relative date is `:datetime`. There is no `:relative_date` kind and this
+  is not a gap left for a consumer to judge: `30d ago` is a point in time by
+  the time anything compares it - `Predicator.Evaluator` resolves it against
+  `DateTime.utc_now/0` and pushes a `t:DateTime.t/0` - so the operators that
+  apply to it are the datetime operators, and a kind of its own would name
+  the same list under a second name.
+
+      iex> Predicator.Simple.value_kind({:relative_date, [{30, "d"}], :ago})
+      :datetime
+
+      iex> Predicator.Simple.operators(:datetime) == Predicator.Simple.operators(:date)
+      true
+
+  A list is `:list` whatever its members are, which is what makes `IN` the
+  operator offered for it.
+
+      iex> Predicator.Simple.value_kind({:list, [{:string, "payment", :single}]})
+      :list
+
+  """
+  @spec value_kind(value()) :: Vocabulary.value_kind()
+  def value_kind({:list, _members}), do: :list
+  def value_kind({:integer, _number}), do: :number
+  def value_kind({:float, _number}), do: :number
+  def value_kind({:boolean, _boolean}), do: :boolean
+  def value_kind({:string, _binary, _style}), do: :string
+  def value_kind({:date, _date}), do: :date
+  def value_kind({:datetime, _datetime}), do: :datetime
+  def value_kind({:duration, _units}), do: :duration
+  def value_kind({:relative_date, _units, _direction}), do: :datetime
 
   @doc """
   The operators an editor should offer for a value of `kind`.

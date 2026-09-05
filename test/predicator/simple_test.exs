@@ -460,6 +460,103 @@ defmodule Predicator.SimpleTest do
     end
   end
 
+  describe "value_kind/1" do
+    # The pinning enumeration. Every scalar tag the subset admits appears
+    # here with the kind it maps to, written out rather than derived, so a
+    # change to the mapping has to be made twice - once in the function and
+    # once here - and cannot happen as a side effect of something else.
+    @kind_by_tag [
+      {{:integer, 0}, :number},
+      {{:integer, 500}, :number},
+      {{:float, 19.99}, :number},
+      {{:boolean, true}, :boolean},
+      {{:string, "active", :single}, :string},
+      {{:string, "visa", :double}, :string},
+      {{:date, ~D[2024-01-15]}, :date},
+      {{:datetime, ~U[2024-01-15 10:30:00Z]}, :datetime},
+      {{:duration, [{3, "d"}]}, :duration},
+      {{:relative_date, [{30, "d"}], :ago}, :datetime},
+      {{:relative_date, [{2, "w"}], :future}, :datetime},
+      {{:relative_date, [{1, "m"}], :next}, :datetime},
+      {{:relative_date, [{1, "m"}], :last}, :datetime},
+      {{:list, []}, :list},
+      {{:list, [{:string, "payment", :single}]}, :list},
+      {{:list, [{:integer, 1}, {:float, 1.5}]}, :list}
+    ]
+
+    test "maps every value in the pinned enumeration to its kind" do
+      for {value, kind} <- @kind_by_tag do
+        assert Simple.value_kind(value) == kind,
+               "value_kind(#{inspect(value)}) should be #{inspect(kind)}"
+      end
+    end
+
+    test "answers a kind the vocabulary enumerates, for every value in the corpus" do
+      kinds = Vocabulary.value_kinds()
+
+      for value <- @values do
+        assert Simple.value_kind(value) in kinds,
+               "value_kind(#{inspect(value)}) answered a kind outside " <>
+                 "Vocabulary.value_kinds()"
+      end
+    end
+
+    test "covers every scalar tag the subset admits" do
+      # The enumeration above is only pinning if it is complete. Both lists
+      # are tags, not values, so adding a scalar shape to `t:scalar/0` and to
+      # the test corpus turns this red until the mapping names it too.
+      pinned = @kind_by_tag |> Enum.map(fn {value, _kind} -> elem(value, 0) end) |> Enum.uniq()
+      admitted = @values |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+
+      assert Enum.sort(pinned) == Enum.sort(admitted)
+    end
+
+    test "composes with operators/1 for every value in the corpus" do
+      for value <- @values do
+        offered = value |> Simple.value_kind() |> Simple.operators()
+
+        assert is_list(offered) and offered != [],
+               "no operator is offered for #{inspect(value)}"
+      end
+    end
+
+    test "answers :datetime for a relative date, whose operators are the date ones" do
+      # There is no `:relative_date` kind: the evaluator resolves `30d ago`
+      # against `DateTime.utc_now/0`, so it is a point in time by the time
+      # anything compares it. `:date` and `:datetime` carry identical
+      # operator lists, so the answer costs an editor nothing either way -
+      # what it buys is that the package, not each consumer, decides it.
+      assert Simple.value_kind({:relative_date, [{30, "d"}], :ago}) == :datetime
+      refute :relative_date in Vocabulary.value_kinds()
+      assert Simple.operators(:datetime) == Simple.operators(:date)
+    end
+
+    test "leaves the per-kind operator answers exactly as they were" do
+      # The acceptance criterion of px-e1l: adding the value-to-kind function
+      # changes no existing answer. Every kind the vocabulary enumerates is
+      # named here with the operators it offered before this bead, spelled
+      # out rather than read back from the code under test.
+      expected = %{
+        string: ["<", "<=", ">", ">=", "==", "===", "!=", "!==", "CONTAINS"],
+        number: ["<", "<=", ">", ">=", "==", "===", "!=", "!==", "CONTAINS"],
+        boolean: ["==", "===", "!=", "!==", "CONTAINS"],
+        date: ["<", "<=", ">", ">=", "==", "===", "!=", "!==", "CONTAINS"],
+        datetime: ["<", "<=", ">", ">=", "==", "===", "!=", "!==", "CONTAINS"],
+        duration: ["<", "<=", ">", ">=", "==", "===", "!=", "!==", "CONTAINS"],
+        list: ["IN"]
+      }
+
+      assert Enum.sort(Map.keys(expected)) == Enum.sort(Vocabulary.value_kinds()),
+             "the pinned table and Vocabulary.value_kinds() have diverged"
+
+      for {kind, lexemes} <- expected do
+        assert Simple.operators(kind) |> Enum.map(& &1.lexeme) |> Enum.sort() ==
+                 Enum.sort(lexemes),
+               "operators(#{inspect(kind)}) changed"
+      end
+    end
+  end
+
   describe "operators/1" do
     test "offers only operators the lexer accepts, spelled as it accepts them" do
       for kind <- Vocabulary.value_kinds(), offered <- Simple.operators(kind) do
