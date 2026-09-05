@@ -167,9 +167,18 @@ defmodule Predicator.Vocabulary do
   models it.
 
   These are the kinds `Predicator.Simple` admits as a scalar or as a list of
-  them, and no others: there is no `:float`, because that subset excludes
-  float literals, and no `:relative_date`, because `3d ago` is a datetime by
-  the time anything compares it.
+  them, and no others.
+
+  `:number` covers integer and float literals together. They are two shapes in
+  `t:Predicator.Simple.scalar/0`, because the AST literal differs and the
+  round-trip has to preserve which one was written, but they are one kind
+  here: every operator worth offering beside `19.99` is worth offering beside
+  `500`, so a `:float` kind would duplicate `:number`'s list exactly and make
+  every editor branch on a distinction that changes nothing it renders
+  (px-gv1).
+
+  There is no `:relative_date` either, because `3d ago` is a datetime by the
+  time anything compares it.
   """
   @type value_kind ::
           :string | :number | :boolean | :date | :datetime | :duration | :list
