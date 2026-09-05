@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.4.0] - 2026-09-05
+
+### Added
+
+- `Predicator.Simple.value_kind/1` maps a subset value to the
+  `Predicator.Vocabulary.value_kind/0` that governs it, so a structured editor
+  composes it with `operators/1` instead of keeping its own translation from
+  scalar tags to kinds. A relative date answers `:datetime`, since `30d ago`
+  is a point in time by the time anything compares it.
+
+### Fixed
+
+- The string writer escapes a backslash inside a quoted object key, in both
+  quote styles, so `{'a\b': 1}` survives parse-then-decompile instead of
+  rendering source that parses back to a different key - or, for a key ending
+  in a backslash, source that does not parse at all. Quoted keys now go
+  through the same escaping helper as string literals rather than a second
+  copy of it.
+
 ## [9.3.0] - 2026-09-05
 
 ### Added
