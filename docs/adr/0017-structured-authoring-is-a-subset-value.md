@@ -200,3 +200,26 @@ not to the consumer.
 - **Status is `proposed`.** Per `docs/adr/README.md`, an agent may draft and
   only the maintainer accepts; the flip to `accepted` is a separate reviewed
   change.
+
+## Notes
+
+### 2026-09-05: the float exclusion is lifted
+
+The contingent exclusion recorded under "Two exclusions that are not
+decisions" has resolved on both halves, and a float is inside the subset as of
+predicator 9.3.0.
+
+- [#209](https://github.com/riddler/predicator-ex/pull/209) closed **px-ggb**:
+  `Predicator.Visitors.StringVisitor` gained its `is_float` literal clause, so
+  parse-then-decompile is total for a float literal and `to_source/2` can
+  render one.
+- [#211](https://github.com/riddler/predicator-ex/pull/211) removed the
+  exclusion: `Predicator.Simple` reads a non-negative float as a new
+  `{:float, value}` scalar shape under the existing `:number` value kind, and
+  the test that pinned a float source as `:outside` now pins the opposite.
+
+The paragraph above stands as the record of why the exclusion existed and on
+what it was contingent; this Note records only that the contingency is spent.
+
+The negative-number exclusion beside it is untouched and is still structural -
+a negative float stays outside for the same reason a negative integer does.
