@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.3.0] - 2026-09-05
+
+### Added
+
+- `Predicator.Simple` admits float literals. `card.amount >= 19.99` is now
+  inside the picklist-renderable subset: `from_ast/1` and `from_source/1`
+  read a non-negative float as the new `{:float, value}` scalar, and
+  `to_ast/1` and `to_source/2` round-trip it under both laws. The exclusion
+  was contingent on `Predicator.decompile/2` raising on a float, which
+  px-ggb fixed.
+
+  A float is **not** a new `Predicator.Vocabulary.value_kind/0`. Integers
+  and floats are both `:number`, so `Predicator.Simple.operators/1` offers
+  the same operators for either and an editor needs no new branch. A
+  negative float stays outside, exactly as a negative integer does: the
+  parser reads `-19.99` as a `unary` node, not as a literal.
+
+### Fixed
+
+- `Predicator.decompile/2` renders a float literal instead of raising, so
+  `amount == 1.5` survives parse-then-decompile like any other literal.
+- The string writer escapes a backslash inside a string literal, in both
+  quote styles, so a value containing one survives parse-then-decompile
+  instead of rendering source that parses back differently - or, for a value
+  of a single backslash, source that does not parse at all. The quote style
+  asked for is still the style that comes back.
+
 ## [9.2.0] - 2026-09-04
 
 ### Added
