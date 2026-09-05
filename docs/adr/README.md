@@ -33,6 +33,18 @@ whose *decision* still holds but whose *consequences* have moved is amended in
 place by a later ADR that says so at the top and names the sentences it
 replaces - ADR-0003 does this to ADR-0001 - and the amended ADR stays accepted.
 
+A third form amends by addition rather than by replacement: a dated note. An
+ADR whose text is still an accurate account of the decision as made, but whose
+surrounding world has moved - a contingency spent, a status flipped, a referent
+a later reader will trip on - grows a `## Notes` section at its foot, and one
+`### <YYYY-MM-DD>: <what moved>` subsection under it per movement. Notes are
+appended and never rewritten, they cite the pull requests and beads that moved
+the world, and they leave every line above them intact: a note-only change
+shows zero removed lines in `git diff -- docs/adr/`. Because the record itself
+is not edited, a note carries no status line of its own and the ADR keeps the
+status it had. ADR-0017 here uses the form; so do statifier-ui's ADR-0014
+through ADR-0017 and opentelemetry_statifier's ADR-0002.
+
 **When a decision earns an ADR.** The test is whether someone will later ask
 "why is it like this" and find that the rule alone does not answer. A rule that
 explains itself needs no ADR, and writing one anyway adds a file and a
