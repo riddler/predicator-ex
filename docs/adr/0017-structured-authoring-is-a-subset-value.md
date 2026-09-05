@@ -232,3 +232,16 @@ campaign-030 grant accepted this record on 2026-09-05 and the header above
 says so. The bullet stands as written, under the same amend-by-addition rule
 as the paragraph above; this Note is the forward pointer it would otherwise
 lack.
+
+### 2026-09-05: which paragraph the first Note means
+
+The first Note above closes "The paragraph above stands as the record of why
+the exclusion existed and on what it was contingent", and does not name the
+paragraph. It is not the bullet list of pull requests immediately above that
+sentence. It is the paragraph opening **"A float is outside contingently, and
+only until a defect is fixed."**, under "Two exclusions that are not
+decisions" in the Decision section - the paragraph that states the exclusion,
+the missing `is_float/1` clause behind it, and the **px-ggb** contingency it
+was held on. That paragraph stays as written. Naming it here rather than
+editing the Note keeps this record amend-by-addition, under the dated-note
+form in `docs/adr/README.md`.
