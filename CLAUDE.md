@@ -86,7 +86,15 @@ verbatim by the session that owns the work is the other case: there the
 authority is the operator's and the subagent is only the hands, so it may act.
 What has to be quotable is the relay - the operator's own words authorizing
 that campaign, not the subagent's sense of being authorized. A subagent that
-cannot quote them reports and stops.
+cannot quote them reports and stops. A relay unlocks nothing the rows above
+forbid outright: closing a mirrored bead whose other half has not landed,
+`mix hex.publish`, and tagging or cutting a release stay forbidden however
+the consent arrives. The two recorded exceptions below are the only
+openings, and both are narrow - the release-prep row's version bump and
+changelog promotion with no tag, and the campaign-merge row's merge of a
+campaign PR - each available only under a campaign's own explicit consent
+clause naming it, with the tag, the push and the publish that follow still
+the operator's.
 
 A version bump is the recorded exception: on a release bead the operator has
 named (in the campaign plan or their own words), the bump commit is release
