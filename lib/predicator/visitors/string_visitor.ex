@@ -138,23 +138,12 @@ defmodule Predicator.Visitors.StringVisitor do
   defp do_visit({:literal, value, _position}, _opts) when is_binary(value) do
     # For backwards compatibility with older AST nodes that still use {:literal, string}
     # Default to double quotes
-    escaped = String.replace(value, "\"", "\\\"")
-    "\"#{escaped}\""
+    quoted_string(value, :double)
   end
 
   defp do_visit({:string_literal, value, quote_type, _position}, _opts) when is_binary(value) do
     # Use the original quote type to preserve round-trip accuracy
-    case quote_type do
-      :double ->
-        # Escape double quotes and wrap in double quotes
-        escaped = String.replace(value, "\"", "\\\"")
-        "\"#{escaped}\""
-
-      :single ->
-        # Escape single quotes and wrap in single quotes
-        escaped = String.replace(value, "'", "\\'")
-        "'#{escaped}'"
-    end
+    quoted_string(value, quote_type)
   end
 
   defp do_visit({:literal, value, position}, opts) when is_list(value) do
@@ -460,6 +449,34 @@ defmodule Predicator.Visitors.StringVisitor do
   @spec get_parentheses_mode(keyword()) :: :minimal | :explicit | :none
   defp get_parentheses_mode(opts) do
     Keyword.get(opts, :parentheses, :minimal)
+  end
+
+  # px-v3b: the lexer reads `\` inside a string literal as the opening half of
+  # a two-character escape (`take_string/6` in `lexer.ex`), so a backslash in
+  # the value has to be written as `\\` or it consumes whatever follows it -
+  # the closing quote included. That is how a value of a single backslash used
+  # to render as the unterminated source `'\'`. Escaping the backslash first
+  # and the quote character second is the order that survives; the reverse
+  # would go back and double the backslash the quote escape had just
+  # introduced.
+  #
+  # Those two characters are the whole set. The lexer also decodes `\n`, `\t`
+  # and `\r`, but it accepts a raw newline, tab or carriage return inside a
+  # literal and keeps it verbatim, so writing those raw already parses back to
+  # the same value. The quote style is rendered as asked for and never
+  # switched: consumers of the structured-authoring subset derive their
+  # quoting by round-tripping probe values through this writer, so a writer
+  # that silently answered in the other style would break the assumption they
+  # are built on (operator ruling on px-v3b, 2026-09-04).
+  @spec quoted_string(binary(), :double | :single) :: binary()
+  defp quoted_string(value, :double), do: ~s("#{escape_within(value, "\"")}")
+  defp quoted_string(value, :single), do: ~s('#{escape_within(value, "'")}')
+
+  @spec escape_within(binary(), binary()) :: binary()
+  defp escape_within(value, quote_char) do
+    value
+    |> String.replace("\\", "\\\\")
+    |> String.replace(quote_char, "\\" <> quote_char)
   end
 
   @spec format_object_key(Parser.object_key()) :: binary()
