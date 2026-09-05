@@ -231,6 +231,20 @@ iex> Predicator.Simple.operators(:list)
 [%{op: :in, lexeme: "IN", label: "is one of", arity: 2}]
 ```
 
+The other half of that question is which kind the row's value is, and
+`value_kind/1` answers it, so a form composes the two rather than keeping a
+translation of its own:
+
+```elixir
+iex> {:ok, simple} = Predicator.Simple.from_source("card.amount >= 19.99")
+iex> [{_path, _op, value}] = simple.clauses
+iex> Predicator.Simple.value_kind(value)
+:number
+```
+
+Two consumers writing that translation separately could disagree about the
+same value, which is the reason it lives here.
+
 ```elixir
 iex> Predicator.Simple.operators(:boolean) |> Enum.map(& &1.label)
 ["is equal to", "is exactly equal to", "is not equal to", "is not exactly equal to", "contains"]
@@ -255,6 +269,20 @@ iex> Predicator.Vocabulary.value_kinds()
 
 There is no `:float` in that list on purpose. A float is a `:number`, so a
 form builds one numeric dropdown rather than two identical ones.
+
+There is no `:relative_date` either, and that is the same kind of decision
+rather than an omission. `30d ago` is a point in time by the time anything
+compares it - the evaluator resolves it against the current moment and
+pushes a `DateTime` - so `value_kind/1` answers `:datetime` for it and the
+operators that apply are the datetime ones:
+
+```elixir
+iex> Predicator.Simple.value_kind({:relative_date, [{30, "d"}], :ago})
+:datetime
+```
+
+A kind of its own would name the same operator list under a second name and
+make every form branch on a distinction that changes nothing it renders.
 
 None of this is a table kept here. The labels, arities, AST atoms and per-kind
 admissions live on `Predicator.Vocabulary`'s operator entries, next to the
