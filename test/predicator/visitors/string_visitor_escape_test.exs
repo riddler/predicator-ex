@@ -25,28 +25,10 @@ defmodule Predicator.Visitors.StringVisitorEscapeTest do
   alias Predicator.Visitors.StringVisitor
 
   # Every character the lexer's string rule gives meaning to, plus ordinary
-  # text to sit them next to. `take_string/6` in `lexer.ex` decodes `\\`, `\"`,
-  # `\'`, `\n`, `\t` and `\r`, and keeps a raw newline, tab or return verbatim.
-  @special ["\\", "'", "\"", "\n", "\t", "\r"]
-  @filler ["", "a", "ab"]
-
-  defp values do
-    singles = @special ++ @filler
-
-    pairs =
-      for left <- @special, right <- @special, do: left <> right
-
-    surrounded =
-      for prefix <- @filler,
-          special <- @special,
-          suffix <- @filler,
-          do: prefix <> special <> suffix
-
-    triples =
-      for left <- @special, right <- @special, do: left <> right <> "z"
-
-    Enum.uniq(singles ++ pairs ++ surrounded ++ triples)
-  end
+  # text to sit them next to. The enumeration lives in
+  # `Predicator.EscapeCorpus` (test_helper.exs) because the object-key suite
+  # (px-0tz) is read back by the same lexer rule and needs the same cases.
+  defp values, do: Predicator.EscapeCorpus.values()
 
   describe "a string literal renders to source that parses back to an equal node" do
     test "for every value in the corpus, in both quote styles" do
