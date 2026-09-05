@@ -245,3 +245,24 @@ the missing `is_float/1` clause behind it, and the **px-ggb** contingency it
 was held on. That paragraph stays as written. Naming it here rather than
 editing the Note keeps this record amend-by-addition, under the dated-note
 form in `docs/adr/README.md`.
+
+### 2026-09-05: "four functions" names the seam, not the export count
+
+The Decision's first sentence reads "`Predicator.Simple` is a struct with four
+functions across the seam", and the four bullets that follow it enumerate what
+it counts: `from_ast/1`, `from_source/1`, `to_ast/1`, and `to_source/2`. Those
+are the functions that carry a value **across** the seam between an AST and a
+picklist, which is the decision this section is making.
+
+`Predicator.Simple` exports eight functions as of predicator 9.4.0 - the four
+above plus `well_formed?/1`, `duration_units/0`, `value_kind/1`, and
+`operators/1` - so a cold reader can take the sentence for an inventory that
+has gone stale. It is not one. The other four answer questions *about* the
+subset and cross nothing; the sentence was never a count of the module's
+exports, and it does not become wrong as more of them are added.
+
+Nothing above changes. This Note records only which reading of "four" is the
+intended one. It was raised by the direction review on
+[#218](https://github.com/riddler/predicator-ex/pull/218), which accepted this
+record, and recorded by
+[#221](https://github.com/riddler/predicator-ex/pull/221) under **px-353**.

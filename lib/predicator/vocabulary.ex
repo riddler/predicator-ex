@@ -43,11 +43,12 @@ defmodule Predicator.Vocabulary do
   ## Operator entries
 
   An entry in an operator category - the six categories `operators/0` returns -
-  carries four more keys, because a structured editor needs more about an
+  carries five more keys, because a structured editor needs more about an
   operator than a completion list does. A picklist has to name the operator in
   a sentence, know how many operands it takes, know which atom the parser will
-  put in the AST for it, and know which kinds of value it is worth offering it
-  for at all:
+  put in the AST for it, know which kinds of value it is worth offering it for
+  at all, and - where the same operator is enumerated twice - know which of the
+  two spellings to write:
 
   - `:label` - a short phrase read in place of the operator, e.g. `"is at
     least"` for `">="`. `:display` is a template and `:doc` is a sentence of
@@ -64,8 +65,12 @@ defmodule Predicator.Vocabulary do
     as the kind of the value on its right. `nil` for an operator that does not
     compare a field against a value at all - the logical, arithmetic, temporal
     and cast categories
+  - `:canonical` - whether this spelling is the one `Predicator.decompile/2`
+    writes for the operator. See "Case" below: a word operator is enumerated in
+    both cases, and only one of the two entries is the spelling a caller that
+    means to render source should offer
 
-  Entries outside an operator category carry none of the four. That is the
+  Entries outside an operator category carry none of the five. That is the
   shape `t:function_entry/0` already has against `t:entry/0`: an entry carries
   the keys its kind of thing has, and no placeholder keys for the ones it does
   not.
@@ -100,6 +105,17 @@ defmodule Predicator.Vocabulary do
   `:token_type`. An editor offering only one of them would be offering a house
   style the grammar does not have. `if`, `else`, `while`, and the temporal
   words are lower-case only, and are enumerated only that way.
+
+  Enumerating both cases leaves a caller that renders source with a question
+  the enumeration alone cannot answer: of the two entries for one operator,
+  which spelling does `Predicator.decompile/2` write? That is a fact about this
+  vocabulary, so `:canonical` answers it here rather than leaving each caller
+  to re-derive it. It is `false` on exactly one thing: the lower-case entry of
+  a word operator enumerated in both cases. Every other operator entry is the
+  only spelling there is and is therefore its own canonical one - `">="`, and
+  the lower-case-only temporal words alike. It says nothing about what parses:
+  both spellings lex to the same token type, and an editor offering completions
+  wants both.
 
   ## Examples
 
@@ -196,7 +212,8 @@ defmodule Predicator.Vocabulary do
           label: binary(),
           arity: 0 | 1 | 2 | [1 | 2, ...],
           ast_op: atom() | nil,
-          value_kinds: [value_kind()] | nil
+          value_kinds: [value_kind()] | nil,
+          canonical: boolean()
         }
 
   @value_kinds [:string, :number, :boolean, :date, :datetime, :duration, :list]
@@ -360,6 +377,37 @@ defmodule Predicator.Vocabulary do
     double_colon: {"cast to", 2, nil, nil}
   }
 
+  # `:canonical` is derived from @tokens rather than tabled, because the fact
+  # it records is a fact about @tokens: a spelling is non-canonical only when
+  # this table enumerates a second spelling of the same operator that
+  # `Predicator.Visitors.StringVisitor` - what `Predicator.decompile/2` runs -
+  # writes instead. That happens exactly for the word operators enumerated in
+  # both cases, where the visitor writes the upper-case one.
+  #
+  # A token type this table enumerates once is therefore its own canonical
+  # spelling whatever its case, which is why the test is not simply "upper
+  # case". `>=` upcases to itself and would pass that test, but `last`, `now`,
+  # and the other lower-case-only temporal words would fail it while being the
+  # only spelling there is. That the marker matches what `to_source/2` actually
+  # renders is pinned by a test, in `test/predicator/simple_test.exs`, not by
+  # this comment.
+  @non_canonical_spellings @tokens
+                           |> Enum.group_by(
+                             fn {_lexeme, token_type, _category, _display, _doc} ->
+                               token_type
+                             end,
+                             fn {lexeme, _token_type, _category, _display, _doc} -> lexeme end
+                           )
+                           |> Enum.flat_map(fn
+                             {_token_type, [_only]} ->
+                               []
+
+                             {token_type, spellings} ->
+                               spellings
+                               |> Enum.reject(&(&1 == String.upcase(&1)))
+                               |> Enum.map(&{&1, token_type})
+                           end)
+
   @entries Enum.map(@tokens, fn {lexeme, token_type, category, display, doc} ->
              entry = %{
                lexeme: lexeme,
@@ -375,7 +423,8 @@ defmodule Predicator.Vocabulary do
                    label: label,
                    arity: arity,
                    ast_op: ast_op,
-                   value_kinds: value_kinds
+                   value_kinds: value_kinds,
+                   canonical: {lexeme, token_type} not in @non_canonical_spellings
                  })
 
                :error ->
@@ -452,8 +501,9 @@ defmodule Predicator.Vocabulary do
   arithmetic, membership, temporal, and cast categories.
 
   Every entry here is an `t:operator_entry/0`, carrying `:label`, `:arity`,
-  `:ast_op`, and `:value_kinds` on top of what `tokens/0` carries. See
-  "Operator entries" in the module documentation for what each one means.
+  `:ast_op`, `:value_kinds`, and `:canonical` on top of what `tokens/0`
+  carries. See "Operator entries" in the module documentation for what each one
+  means.
 
   ## Examples
 
@@ -465,6 +515,9 @@ defmodule Predicator.Vocabulary do
 
       iex> Predicator.Vocabulary.operators() |> Enum.find(&(&1.lexeme == "IN")) |> Map.fetch!(:value_kinds)
       [:list]
+
+      iex> Predicator.Vocabulary.operators() |> Enum.filter(&(&1.token_type == :in_op)) |> Enum.map(&{&1.lexeme, &1.canonical})
+      [{"in", false}, {"IN", true}]
 
   """
   @spec operators() :: [operator_entry(), ...]
