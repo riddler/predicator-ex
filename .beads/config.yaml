@@ -65,4 +65,4 @@
 # - linear.api_key  → use LINEAR_API_KEY env var instead
 # - github.token    → use GITHUB_TOKEN env var instead
 
-sync.remote: "git@github.com:riddler/predicator-ex.git"
+sync.remote: "https://doltremoteapi.dolthub.com/johnnyt/predicator-ex"

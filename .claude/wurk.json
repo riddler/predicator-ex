@@ -5,6 +5,7 @@
 
   "beads": {
     "prefix": "px",
+    "sync": "dolthub",
     "topology": "beads",
     "areas": {
       "labels": [
