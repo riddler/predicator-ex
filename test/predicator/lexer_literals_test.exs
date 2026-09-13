@@ -273,6 +273,18 @@ defmodule Predicator.LexerLiteralsTest do
                Lexer.tokenize("#not-a-date#")
     end
 
+    # px-0gc fixed the same accumulation in `take_string/6`; the date clause
+    # kept `<<c>>`, which truncated a non-ASCII codepoint to its low byte and
+    # made the error message invalid UTF-8 where a host read it.
+    # Sabotage: revert the `<<c::utf8>>` in `take_date/5` to `<<c>>` and this
+    # test goes red on `String.valid?/1`.
+    test "an invalid-date error message keeps a non-ASCII character intact" do
+      assert {:error, message, 1, 1, _span} = Lexer.tokenize("#2024-01-1\u00e9#")
+
+      assert String.valid?(message)
+      assert message == "Invalid date format: 2024-01-1\u00e9"
+    end
+
     test "returns error for invalid datetime format" do
       assert {:error, "Invalid datetime format: 2024-01-15T25:00:00Z", 1, 1, {{1, 1}, {1, 23}}} =
                Lexer.tokenize("#2024-01-15T25:00:00Z#")
