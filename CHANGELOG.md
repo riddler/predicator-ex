@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.4.1] - 2026-09-13
+
+### Added
+
+- `Predicator.Vocabulary.operators/0` entries carry a `:canonical` boolean:
+  whether this spelling is the one `Predicator.decompile/2` writes. A word
+  operator is enumerated in both cases, so a caller that renders source can now
+  read which of the two to use instead of deriving it from the lexeme.
+
+### Fixed
+
+- A string literal keeps its non-ASCII characters: `"café"` and `"✓"` evaluate
+  to themselves instead of to one truncated byte per codepoint.
+- A `\u` escape in a string literal is refused with an error naming it, instead
+  of silently decoding to the bare letter; predicator has no numeric escape, so
+  the character is written directly.
+
 ## [9.4.0] - 2026-09-05
 
 ### Added
