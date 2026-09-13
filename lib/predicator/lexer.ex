@@ -694,6 +694,17 @@ defmodule Predicator.Lexer do
     {:ok, acc, rest, count, line, col + 1}
   end
 
+  # `\uXXXX` is refused rather than decoded. A string literal is already UTF-8
+  # source text, so the character can be written directly; adding a numeric
+  # escape would be a language addition every predicator implementation would
+  # have to match, which is not this fix's to make. The refusal is explicit so
+  # the escape never silently decodes to the bare letter instead.
+  defp take_string([?\\ | [?u | _rest]], _acc, _count, _quote_type, _line, _col) do
+    {:error,
+     "Unsupported escape sequence \\u in string literal: predicator has no " <>
+       "numeric escape; write the character itself (string literals are UTF-8)"}
+  end
+
   # A two-character escape never contains a source newline, even when it
   # decodes to one: `\n` is backslash-then-n in the source.
   defp take_string([?\\ | [escaped | rest]], acc, count, quote_type, line, col) do
@@ -705,7 +716,9 @@ defmodule Predicator.Lexer do
         ?n -> "\n"
         ?t -> "\t"
         ?r -> "\r"
-        c -> <<c>>
+        # The source is a charlist of codepoints, so an escaped non-ASCII
+        # character has to be re-encoded as UTF-8, not as one byte.
+        c -> <<c::utf8>>
       end
 
     take_string(rest, acc <> char, count + 2, quote_type, line, col + 2)
@@ -715,8 +728,10 @@ defmodule Predicator.Lexer do
     take_string(rest, acc <> "\n", count + 1, quote_type, line + 1, 1)
   end
 
+  # `c` is a codepoint, not a byte: `<<c::utf8>>` keeps a non-ASCII character
+  # intact where `<<c>>` would truncate it to its low byte.
   defp take_string([c | rest], acc, count, quote_type, line, col) do
-    take_string(rest, acc <> <<c>>, count + 1, quote_type, line, col + 1)
+    take_string(rest, acc <> <<c::utf8>>, count + 1, quote_type, line, col + 1)
   end
 
   @spec take_date(charlist(), binary(), pos_integer(), pos_integer(), pos_integer()) ::

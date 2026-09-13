@@ -249,6 +249,58 @@ defmodule Predicator.LexerTest do
     end
   end
 
+  describe "tokenize/1 - non-ASCII string literals" do
+    test "keeps a two-byte codepoint intact" do
+      assert {:ok, tokens} = Lexer.tokenize(~s("café"))
+
+      assert [{:string, 1, 1, 6, value, :double, {1, 7}}, {:eof, 1, 7, 0, nil}] = tokens
+      assert value == "café"
+      assert String.valid?(value)
+      assert byte_size(value) == 5
+    end
+
+    test "keeps a three-byte codepoint intact" do
+      assert {:ok, [{:string, 1, 1, 3, value, :double, _end_position} | _rest]} =
+               Lexer.tokenize(~s("✓"))
+
+      assert value == "✓"
+      assert String.valid?(value)
+      assert byte_size(value) == 3
+    end
+
+    test "keeps a four-byte codepoint intact" do
+      assert {:ok, [{:string, 1, 1, 3, value, :double, _end_position} | _rest]} =
+               Lexer.tokenize(~s("🎉"))
+
+      assert value == "🎉"
+      assert String.valid?(value)
+      assert byte_size(value) == 4
+    end
+
+    test "keeps non-ASCII intact in a single-quoted literal" do
+      assert {:ok, [{:string, 1, 1, 8, value, :single, _end_position} | _rest]} =
+               Lexer.tokenize(~s('café ✓'))
+
+      assert value == "café ✓"
+      assert String.valid?(value)
+    end
+
+    test "keeps an escaped non-ASCII character intact" do
+      assert {:ok, [{:string, 1, 1, 4, value, :double, _end_position} | _rest]} =
+               Lexer.tokenize(~S("\é"))
+
+      assert value == "é"
+      assert String.valid?(value)
+    end
+
+    test "refuses a \\u escape by name instead of decoding it to the bare letter" do
+      assert {:error, message, 1, 1, _span} = Lexer.tokenize(~s("\\u0041"))
+
+      assert message =~ "\\u"
+      assert message =~ "string literal"
+    end
+  end
+
   describe "additional edge cases for coverage" do
     test "handles carriage return characters" do
       input = "limit > 85\r\nAND age >= 18"
