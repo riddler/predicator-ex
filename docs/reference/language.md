@@ -9,7 +9,8 @@ expressions parse into, see the node inventory in [`docs/reference/ast.md`](ast.
 
 - **Numbers**: `42`, `-17` (integers), `3.14`, `-2.5` (floats)
 - **Strings**: `'hello'`, `'world'` (single-quoted) or `"hello"`, `"world"`
-  (double-quoted, with escape sequences)
+  (double-quoted); both quote styles take the same escape sequences, see
+  "String escapes" below
 - **Booleans**: `true`, `false` (or plain identifiers like `active`, `expired`)
 - **Undefined**: `undefined` - the absent/unset value; see "Undefined and
   Sparse Data" below
@@ -27,6 +28,48 @@ expressions parse into, see the node inventory in [`docs/reference/ast.md`](ast.
 - **Identifiers**: `limit`, `user_name`, `is_active`, `user.profile.name`,
   `user['key']`, `items[0]` (variable references with dot notation and
   bracket notation for nested data)
+
+### String escapes
+
+Inside either quote style a backslash introduces an escape sequence. Six are
+recognized:
+
+| Escape | Produces |
+|---|---|
+| `\"` | double quote |
+| `\'` | single quote |
+| `\\` | backslash |
+| `\n` | newline |
+| `\t` | tab |
+| `\r` | carriage return |
+
+All six are recognized in both quote styles - the quote character that does
+not delimit the literal needs no escape, but escaping it is still accepted.
+Any other escaped character stands for itself and the backslash is dropped,
+so `"a\qb"` is `aqb`.
+
+```elixir
+iex> Predicator.evaluate(~S{"say \"hi\""}, %{})
+{:ok, "say \"hi\""}
+
+iex> Predicator.evaluate(~S{'it\'s'}, %{})
+{:ok, "it's"}
+
+iex> Predicator.evaluate(~S{"a\qb"}, %{})
+{:ok, "aqb"}
+```
+
+There is no numeric escape. A `\u` sequence is refused at parse time with an
+error naming it, rather than decoding to the bare letter:
+
+```elixir
+iex> {:error, err} = Predicator.compile("\"caf\\u00e9\"")
+iex> err.message
+"Unsupported escape sequence \\u in string literal: predicator has no numeric escape; write the character itself (string literals are UTF-8)"
+```
+
+String literals are UTF-8 source text, so the character is written directly -
+`"café"` rather than any escaped spelling of its codepoint.
 
 ## Arithmetic Operators
 
