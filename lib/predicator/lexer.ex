@@ -757,8 +757,12 @@ defmodule Predicator.Lexer do
     take_date(rest, acc <> "\n", count + 1, line + 1, 1)
   end
 
+  # `c` is a codepoint, not a byte: `<<c::utf8>>` keeps a non-ASCII character
+  # intact where `<<c>>` would truncate it to its low byte. A date literal's
+  # grammar is ASCII-only, so the character only ever reaches the error
+  # message - but a truncated byte makes that message invalid UTF-8.
   defp take_date([c | rest], acc, count, line, col) do
-    take_date(rest, acc <> <<c>>, count + 1, line, col + 1)
+    take_date(rest, acc <> <<c::utf8>>, count + 1, line, col + 1)
   end
 
   @spec parse_date_content(binary()) ::
