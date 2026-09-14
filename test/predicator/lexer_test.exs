@@ -299,6 +299,19 @@ defmodule Predicator.LexerTest do
       assert message =~ "\\u"
       assert message =~ "string literal"
     end
+
+    # Sabotage: drop the `?U` from the `when u in [?u, ?U]` guard on the
+    # refusal clause in `take_string/6` and this goes red - `\\U0041` falls
+    # through to the generic escape clause and lexes as "U0041".
+    test "refuses an uppercase \\U escape with the same error as \\u" do
+      assert {:error, message, 1, 1, _span} = Lexer.tokenize(~s("\\U0041"))
+
+      assert message =~ "\\u"
+      assert message =~ "string literal"
+
+      assert {:error, lower_message, 1, 1, _span} = Lexer.tokenize(~s("\\u0041"))
+      assert message == lower_message
+    end
   end
 
   describe "additional edge cases for coverage" do

@@ -694,11 +694,14 @@ defmodule Predicator.Lexer do
     {:ok, acc, rest, count, line, col + 1}
   end
 
-  # `\uXXXX` is refused rather than decoded. A string literal is already UTF-8
-  # source text, so the character can be written directly; a bug fix has no
-  # mandate to add grammar. The refusal is explicit so the escape never
-  # silently decodes to the bare letter instead.
-  defp take_string([?\\ | [?u | _rest]], _acc, _count, _quote_type, _line, _col) do
+  # `\uXXXX` is refused rather than decoded, in either spelling of the letter.
+  # A string literal is already UTF-8 source text, so the character can be
+  # written directly; a bug fix has no mandate to add grammar. The refusal is
+  # explicit so the escape never silently decodes to the bare letter instead,
+  # and `\U` is refused with `\u` because two spellings of one escape refused
+  # differently is the defect.
+  defp take_string([?\\ | [u | _rest]], _acc, _count, _quote_type, _line, _col)
+       when u in [?u, ?U] do
     {:error,
      "Unsupported escape sequence \\u in string literal: predicator has no " <>
        "numeric escape; write the character itself (string literals are UTF-8)"}
