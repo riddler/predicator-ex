@@ -45,8 +45,8 @@ recognized:
 
 All six are recognized in both quote styles - the quote character that does
 not delimit the literal needs no escape, but escaping it is still accepted.
-Any other escaped character stands for itself and the backslash is dropped,
-so `"a\qb"` is `aqb`.
+Any other escaped character, apart from the refused `\u` and `\U` below,
+stands for itself and the backslash is dropped, so `"a\qb"` is `aqb`.
 
 ```elixir
 iex> Predicator.evaluate(~S{"say \"hi\""}, %{})
@@ -60,11 +60,17 @@ iex> Predicator.evaluate(~S{"a\qb"}, %{})
 ```
 
 There is no numeric escape. A `\u` sequence is refused at parse time with an
-error naming it, rather than decoding to the bare letter:
+error naming it, rather than decoding to the bare letter. `\U` is refused the
+same way, with the same error: both spellings of the letter are the refused
+escape, so neither decodes silently.
 
 ```elixir
 iex> {:error, err} = Predicator.compile("\"caf\\u00e9\"")
 iex> err.message
+"Unsupported escape sequence \\u in string literal: predicator has no numeric escape; write the character itself (string literals are UTF-8)"
+
+iex> {:error, upper} = Predicator.compile("\"caf\\U00e9\"")
+iex> upper.message
 "Unsupported escape sequence \\u in string literal: predicator has no numeric escape; write the character itself (string literals are UTF-8)"
 ```
 
