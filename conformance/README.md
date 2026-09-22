@@ -257,6 +257,11 @@ version, and grow that record only by verify-then-add.
    predicator or a misreading of `docs/isa.md`, and either way it gets sorted
    out in review, not silently.
 
+The `library/*` cases are the family's shared example world - a library's
+loans, holds, renewals and patron standing - and its definition lives in the
+statifier engine repository's `conformance/README.md`, so a new library row is
+authored against that world rather than against a parallel one invented here.
+
 ## Known uncovered
 
 ### Opcodes excluded from the coverage rule

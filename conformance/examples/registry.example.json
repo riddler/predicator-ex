@@ -2,7 +2,7 @@
 "claims": [
 {"surface":"evaluator","tier":1}
 ],
-"corpus_hash": "sha256:548f54cacdcb700df0c47d67f86a944b5dbe6b0c6f96ef0c4c6fbb95b0494892",
+"corpus_hash": "sha256:bb60ec82faba2e82ef1e7abaac8d26257db2a77cd4ce0c083b683c5bc063fd43",
 "entries": [
 {"case_id":"comparison/eq-string-true","surface":"compiler","tier":1},
 {"case_id":"comparison/gt-int-boundary","surface":"compiler","tier":1},
@@ -62,6 +62,8 @@
 {"case_id":"legacy/and-true-true","surface":"evaluator","tier":1},
 {"case_id":"legacy/or-false-true","surface":"evaluator","tier":1},
 {"case_id":"legacy/or-rejects-non-boolean","surface":"evaluator","tier":1},
+{"case_id":"library/holds-pending-negation","surface":"evaluator","tier":1},
+{"case_id":"library/max-renewals-boundary","surface":"evaluator","tier":1},
 {"case_id":"logical/and-short-circuit-false","surface":"evaluator","tier":1},
 {"case_id":"logical/not-true","surface":"evaluator","tier":1},
 {"case_id":"logical/or-short-circuit-true","surface":"evaluator","tier":1},

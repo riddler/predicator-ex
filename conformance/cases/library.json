@@ -1,0 +1,180 @@
+[
+  {
+    "id": "library/renew-allowed",
+    "source": "renewals < max_renewals and not holds_pending and patron.standing == \"good\"",
+    "context": {
+      "renewals": 1,
+      "max_renewals": 2,
+      "holds_pending": false,
+      "patron": { "id": "p-1", "standing": "good" }
+    },
+    "expected": { "result": true },
+    "tier": 3,
+    "notes": "the renewal guard of the library example world, in full: under the renewal limit, no hold waiting on the copy, and the patron in good standing. The three refusal rows below flip one conjunct each and change nothing else"
+  },
+  {
+    "id": "library/renew-refused-by-hold",
+    "source": "renewals < max_renewals and not holds_pending and patron.standing == \"good\"",
+    "context": {
+      "renewals": 1,
+      "max_renewals": 2,
+      "holds_pending": true,
+      "patron": { "id": "p-1", "standing": "good" }
+    },
+    "expected": { "result": false },
+    "tier": 3
+  },
+  {
+    "id": "library/renew-refused-at-max",
+    "source": "renewals < max_renewals and not holds_pending and patron.standing == \"good\"",
+    "context": {
+      "renewals": 2,
+      "max_renewals": 2,
+      "holds_pending": false,
+      "patron": { "id": "p-1", "standing": "good" }
+    },
+    "expected": { "result": false },
+    "tier": 3
+  },
+  {
+    "id": "library/renew-refused-blocked-standing",
+    "source": "renewals < max_renewals and not holds_pending and patron.standing == \"good\"",
+    "context": {
+      "renewals": 1,
+      "max_renewals": 2,
+      "holds_pending": false,
+      "patron": { "id": "p-2", "standing": "blocked" }
+    },
+    "expected": { "result": false },
+    "tier": 3
+  },
+  {
+    "id": "library/standing-good-no-fines",
+    "source": "patron.standing == \"good\" and fines_owed == 0",
+    "context": {
+      "patron": { "id": "p-1", "standing": "good" },
+      "fines_owed": 0
+    },
+    "expected": { "result": true },
+    "tier": 3
+  },
+  {
+    "id": "library/fine-owed",
+    "source": "patron.standing == \"good\" and fines_owed == 0",
+    "context": {
+      "patron": { "id": "p-1", "standing": "good" },
+      "fines_owed": 1
+    },
+    "expected": { "result": false },
+    "tier": 3,
+    "notes": "the same guard as the row above with one unpaid fine against the patron. fines_owed counts unpaid fines; the example world fixes no currency and no amount"
+  },
+  {
+    "id": "library/due-soon-window",
+    "source": "loan_period.days - 3 == 18",
+    "context": {
+      "loan_period": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 21,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "expected": { "result": true },
+    "tier": 3,
+    "notes": "hand-decode: the due-soon reminder sits three days before the end of the 21-day loan period, at 18 days from checkout. The subtraction is over the duration's days field, not over two durations: docs/isa.md section 5 gives subtract clauses for number-number, Date-Date, DateTime-DateTime and Date/DateTime-duration only, so a duration-duration subtraction is a TypeMismatchError and no window can be computed that way. A duration context value is tagged-value encoded; see conformance/README.md"
+  },
+  {
+    "id": "library/pickup-window",
+    "source": "7d",
+    "expected": {
+      "result": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 7,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "tier": 4,
+    "notes": "the pickup window of the example world: a hold that becomes available is held for seven days"
+  },
+  {
+    "id": "library/overdue-days",
+    "source": "overdue.days < lost_after.days",
+    "context": {
+      "overdue": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 7,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      },
+      "lost_after": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 28,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "expected": { "result": true },
+    "tier": 3,
+    "notes": "hand-decode: a copy seven days overdue has not yet reached the 28-day point at which the example world declares it lost. The comparison reads the days field of each duration rather than comparing the two durations: docs/isa.md section 5 leaves ordering between two maps, which is what a duration is at the value level, unspecified for siblings"
+  },
+  {
+    "id": "library/max-renewals-boundary",
+    "source": "renewals < max_renewals",
+    "context": {
+      "renewals": 2,
+      "max_renewals": 2
+    },
+    "expected": { "result": false },
+    "tier": 1,
+    "notes": "the renewal limit is exclusive at the boundary: the second renewal is the last one allowed, and a third is refused"
+  },
+  {
+    "id": "library/nested-patron",
+    "source": "loan.patron.standing == \"good\"",
+    "context": {
+      "loan": {
+        "copy": "c-1",
+        "branch": "b-1",
+        "patron": { "id": "p-1", "standing": "good" }
+      }
+    },
+    "expected": { "result": true },
+    "tier": 3,
+    "notes": "hand-decode: two chained property reads over a nested context - the loan carries the patron, and the patron carries the standing. The keys a host supplies are strings; docs/isa.md section 5 makes a missing key undefined rather than an error"
+  },
+  {
+    "id": "library/holds-pending-negation",
+    "source": "not holds_pending",
+    "context": {
+      "holds_pending": true
+    },
+    "expected": { "result": false },
+    "tier": 1
+  }
+]
