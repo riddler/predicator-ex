@@ -631,7 +631,7 @@ iex> Predicator.evaluate("JSON.parse(metadata).network == 'VISA'", %{"metadata" 
 {:ok, true}
 ```
 
-`JSON.parse/1` returns a plain string-keyed value, so dot and bracket access
+`JSON.parse(string)` returns a plain string-keyed value, so dot and bracket access
 reach into it directly - the third example above is the common shape, a JSON
 blob carried as one context string and read as data. It is strict about both
 halves: a non-string argument is an `EvaluationError`
@@ -639,7 +639,7 @@ halves: a non-string argument is an `EvaluationError`
 `EvaluationError` naming the byte offset (`Invalid JSON: unexpected end of
 input at position 4`).
 
-`JSON.stringify/1` never raises. Elixir values with no JSON representation -
+`JSON.stringify(value)` never raises. Elixir values with no JSON representation -
 tuples, PIDs, references, functions, non-string map keys, invalid UTF-8 -
 fall back to their `inspect/1` form rather than failing the predicate, which
 is what a predicate has always seen for such values. Key order in the output
