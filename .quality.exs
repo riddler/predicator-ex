@@ -3,8 +3,9 @@
 # Two ways to run:
 #
 #   mix quality                 - full gate: format, compile, credo --strict,
-#                                 dialyzer, dependency audit, full suite with
-#                                 coverage. Required green before every commit.
+#                                 dialyzer, dependency audit, docs, doc links,
+#                                 full suite with coverage. Required green
+#                                 before every commit.
 #
 #   mix quality --profile loop  - inner loop while implementing: skips dialyzer
 #                                 and coverage, runs only the tests covering
@@ -27,6 +28,21 @@
 
   credo: [
     strict: true
+  ],
+
+  # The two docs stages make this gate the pre-publish check for the package's
+  # docs. Docs runs `mix docs` and fails on any ExDoc warning. Doc links fails
+  # on the link rules ExDoc accepts silently: a README relative link to a file
+  # not in the package files, a published relative link to a file that is not
+  # an extra, two extras sharing a basename, a silent rewrite to a different
+  # extra. Both are opt-in in ex_quality; `:auto` runs them when :ex_doc is
+  # installed.
+  docs: [
+    enabled: :auto
+  ],
+
+  doc_links: [
+    enabled: :auto
   ],
 
   profiles: [
