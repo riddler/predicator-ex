@@ -55,12 +55,16 @@ defmodule Predicator.MixProject do
   defp package do
     [
       name: @app,
-      # Deliberately excludes docs/ - hexdocs is built from docs()'s extras:
-      # paths read off the publisher's disk, not from this tarball, so the
-      # markdown sources only bloat what mix deps.get downloads.
+      # Every file README.md links to relatively ships in this tarball. hex.pm
+      # renders the package page from the README inside the tarball, so a
+      # relative link there resolves to that path in the tarball and answers
+      # 404 unless the file ships; the same link also works on GitHub and, since
+      # each target is an extra in docs(), on hexdocs. A README link to a new
+      # file adds it both here and to docs()'s extras. The rest of docs/ stays
+      # out: hexdocs builds from docs()'s extras on the publisher's disk.
       #
-      # The whole conformance apparatus is excluded on the same principle:
-      # nothing an application does at runtime touches it, and the audience
+      # The whole conformance apparatus is excluded because nothing an
+      # application does at runtime touches it, and the audience
       # that does - sibling implementers - works from a git checkout. That is
       # three things, excluded three ways (px-35i.4):
       #
@@ -75,7 +79,19 @@ defmodule Predicator.MixProject do
       # Nothing under lib/ outside those two directories references
       # Predicator.Conformance, so dropping it cannot break a consumer's
       # compile. A test guards that invariant.
-      files: ~w(lib/predicator* mix.exs README.md LICENSE CHANGELOG.md),
+      files: ~w(
+        lib/predicator* mix.exs README.md LICENSE CHANGELOG.md
+        docs/reference/language.md
+        docs/isa.md
+        docs/guides/nested-data-access.md
+        docs/guides/custom-functions.md
+        docs/guides/location-expressions.md
+        docs/guides/embedding.md
+        docs/guides/simple-subset.md
+        docs/guides/porting.md
+        docs/architecture.md
+        docs/contributing.md
+      ),
       exclude_patterns: [~r{\Alib/predicator/conformance/}],
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
@@ -90,9 +106,11 @@ defmodule Predicator.MixProject do
       canonical: "https://hexdocs.pm/predicator",
       source_url: @source_url,
       main: "readme",
-      # These paths are read off disk at publish time and need no entry in
-      # package()'s files: list - the docs tarball hexdocs hosts is built by
-      # mix docs, separately from the package tarball mix deps.get fetches.
+      # These paths are read off disk at publish time: the docs tarball hexdocs
+      # hosts is built by mix docs, separately from the package tarball. An
+      # extra that README.md links to relatively is ALSO listed in package()'s
+      # files:, because hex.pm renders the README from the package tarball and
+      # a relative link there answers 404 unless the target ships in it.
       extras: [
         "README.md",
         "docs/reference/language.md",
