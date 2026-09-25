@@ -1,6 +1,6 @@
 # ADR-0017: Structured authoring is a subset value over the AST, not a second grammar
 
-Status: accepted (2026-09-05, campaign-030; proposed 2026-09-04, campaign-028)
+Status: accepted (2026-09-05; proposed 2026-09-04)
 
 ## Context
 
@@ -60,7 +60,7 @@ the AST. The parser has no mode, there is no second grammar, and an expression
 outside the subset is a normal predicator expression that the subset simply
 does not describe.**
 
-### The subset is a value, with a total classifier (D28-1)
+### The subset is a value, with a total classifier
 
 `Predicator.Simple` is a struct with four functions across the seam:
 
@@ -94,7 +94,7 @@ either.
    that included them would be asserting that the renderer reproduces the
    original whitespace, which is not a property anyone wants.
 
-### Mixed `and`/`or` is `:outside`, by decision (D28-3)
+### Mixed `and`/`or` is `:outside`, by decision
 
 **A subset value is a list of clauses under a single connective.**
 `connective` is `nil` for exactly one clause - a lone clause is joined to
@@ -228,7 +228,7 @@ a negative float stays outside for the same reason a negative integer does.
 
 The Consequences list's last bullet reads "Status is `proposed`" and describes
 the state this record was drafted in. That state has ended: the maintainer's
-campaign-030 grant accepted this record on 2026-09-05 and the header above
+grant accepted this record on 2026-09-05 and the header above
 says so. The bullet stands as written, under the same amend-by-addition rule
 as the paragraph above; this Note is the forward pointer it would otherwise
 lack.
