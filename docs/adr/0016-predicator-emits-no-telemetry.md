@@ -1,6 +1,6 @@
 # ADR-0016: Predicator emits no telemetry; the event contract is reserved, not shipped
 
-Status: accepted (2026-09-01, campaign-025; unqualified direction-agent verdict)
+Status: accepted (2026-09-01; unqualified direction-agent verdict)
 
 ## Context
 

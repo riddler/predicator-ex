@@ -1,0 +1,239 @@
+# Exact strings the maintainers' planning-reference scan may pass. Each is
+# this repository's own numbered list, never a reference to anything outside
+# it. One exact string per line; a line starting with "# " is a comment. An
+# entry allows a match only where the entry's text covers it on the same
+# line, so each entry is kept to the few words around the one it allows.
+#
+# The R-numbered entries are the five checks of the check step that
+# conformance/RATCHET.md defines (the pin, rule 1 with its tier, rule 2's
+# encoding, no regression, completeness), and the lines that cite them. The
+# Q-numbered entries are the open questions a plan or research document
+# under docs/ numbers for itself, and the lines (in docs/ and in lib/
+# comments) that cite them.
+
+# conformance/RATCHET.md
+and R5 completeness
+R1: the
+R2: rule
+R3: rule
+R4: no
+R5: completeness
+- **R1, the
+- **R2** is
+- **R3** is
+- **R4** is
+- **R5** is
+reads R5 as
+1; R4
+them, R5 ignores
+
+# conformance/schema/registry.json
+rule R5). May
+
+# docs/guides/porting.md
+the R1-R5 check
+- **R5, completeness**:
+- **R4, no
+R4 protects
+though R5 does
+
+# docs/plans/260807-px-35i.8-sibling-conformance-ratchet.md
+R1: the
+R2: rule
+R3: rule
+R4: no
+R5: completeness
+- **R1, the
+- **R2** is
+- **R3** is
+- **R4** is
+- **R5** is
+reads R5 as
+1; R4 protects
+them, R5 ignores
+] R1's remedy
+where R1 is,
+of R1-R5 the
+(so R5 completeness
+is R3 of
+(R5), since
+place R5 is
+R5 completeness
+completeness (R5) should
+[x] R1's remedy
+
+# docs/plans/260807-px-t2v-isa-retirement-mechanics.md
+and R5 completeness
+R5 completeness
+
+# docs/plans/260807-px-tbv.1-statement-grammar.md
+| Q1 is
+bead (Q7). If
+
+# docs/plans/260807-px-tbv.9-retire-legacy-and-or-opcodes.md
+R5 completeness
+and R5 completeness
+
+# docs/plans/260808-px-ids-store-segment-position.md
+research Q7 without
+(research Q4). The
+/ Q8).
+its Q1-Q8
+and Q1, Q3,
+Q1, Q3, Q5,
+Q3, Q5, Q7
+Q5, Q7 are
+
+# docs/plans/260808-px-suw-sabotage-binding-tests.md
+the R5 test)
+
+# docs/plans/260808-px-tbv.10-execute-last-value.md
+plan Q3 (`docs/plans/260808-px-tbv.2-store-opcode-execute.md:240-256`)
+plan Q3 (`:240-256`)
+Q3 below
+**Q1. Mechanism:
+px-tbv.2's Q3 without
+**Q2. Shape:
+**Q3. The
+**Q4. On
+**Q5. `last_value`
+from Q3, in
+from Q3: `pop`
+function (Q2) on
+`docs/plans/260808-px-tbv.2-store-opcode-execute.md:240-256` (Q3, the
+
+# docs/plans/260808-px-tbv.11-store-failure-position.md
+(see Q5 below).
+See Q1 and
+semantics (Q4).
+`LocationError` (Q7) or
+(Q8).
+B/C/D (Q1):
+of Q4 that
+Q2, Q3,
+Q2, Q3, Q4,
+Q3, Q4, Q7,
+Q4, Q7, Q8
+Q7, Q8 all
+**Q1 -
+**Q2 -
+**Q3 -
+**Q4 -
+**Q5 -
+**Q6 -
+**Q7 -
+**Q8 -
+the Q2 no-regression
+assertions (Q5) -
+move (Q6). Add
+too, Q3), and
+unmodified (Q6)
+(Q2); a
+guards (Q6).
+
+# docs/plans/260808-px-tbv.2-store-opcode-execute.md
+Q4 below.
+decides Q9
+Research Q8; that
+Q3 below
+See Q4.
+**Q1. ISA
+**Q2. `["store",
+**Q3. `store`
+**Q4. A
+**Q5. `execute/2`
+**Q6. `Compiler.to_instructions/2`
+**Q7. Corpus:
+**Q8. The
+(see Q4);
+per Q4's table.
+of Q2 and
+and Q4:
+Q4's wrapping
+node_position}]` (Q3). Take
+inflate (Q2). Comment
+`iex` (Q4's wrapping
+§1 (Q1).
+from Q2/Q3 and
+against Q2/Q3's tables.
+is Q1 above;
+"cheaply"; Q3 explains
+- Q4/Q5 on
+
+# docs/plans/260808-px-ycj-porting-embedding-docs.md
+R1-R5 check
+signal** (R5,
+revision: R5 says
+entry, R4
+step R1-R5 (`:239-287`)
+
+# docs/plans/260812-px-ocp-undefined-literal.md
+rule R5 -
+and R5 completeness
+encoding, R5 completeness).
+
+# docs/plans/260813-px-24y-null-literal-grammar.md
+R5 completeness
+and R5 completeness
+encoding, R5 completeness).
+
+# docs/plans/260814-px-wy8-registry-entry-uniqueness.md
+and R5 completeness
+the R5 completeness
+the R5 block;
+plus R5. Correct
+
+# docs/plans/260815-px-2gx-ratchet-entry-sort-order.md
+scalars; R5 (`:140`)
+satisfy R5 completeness
+pin, R5, and
+(`check/3`, R3)
+
+# docs/research/260807-px-t2v-px-z5m-isa-retirement-and-pop.md
+- R5 completeness:
+`case_id`; R5 completeness
+2, R5
+`RATCHET.md`'s R1 makes
+
+# docs/research/260808-px-9ab-sabotage-notes.md
+pin, R5, and
+
+# docs/research/260808-px-tbv.11-store-failure-position.md
+segment (Q2).
+
+# docs/research/260808-px-tbv.2-store-opcode-execute.md
+- Q4 and
+and Q5, the
+plan, Q1). A
+
+# docs/research/260813-px-24y-null-literal-grammar.md
+RATCHET's R5 completeness
+step's R1 (`:248-249`,
+and R5 completeness
+
+# docs/research/260814-px-jl2-registry-example-provenance.md
+| R5 completeness
+is R1, R2
+R1, R2 (rule
+tier), R3 (encoding),
+and R5 of
+
+# docs/research/260814-px-wy8-registry-entry-uniqueness.md
+the R5
+| R5 completeness
+what R5's membership
+defect R3 exists
+and R3
+
+# lib/predicator/evaluator.ex
+`:position`/`:span` (Q4,
+
+# lib/predicator/visitors/instructions_visitor.ex
+empty (Q3, docs/isa.md
+instruction (Q2).
+segment (Q2).
+
+# test/predicator/conformance/ratchet_registry_test.exs
+the R5
+"RATCHET.md R5: completeness
+exercises R5 against
