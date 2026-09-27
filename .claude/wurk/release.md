@@ -42,7 +42,8 @@ time. That is the recipe repairing drift, not a mistake to correct back.
 ## `mix hex.publish` has no trigger, ever
 
 Not delegable, and no instruction in a session grants it (CLAUDE.md's
-authority table; ADR-0006). Tag and push stay separately human-gated.
+authority table; ADR-0006). The tag is a separate step with its own owner -
+see the release trigger below.
 
 ## The release trigger
 
@@ -51,6 +52,10 @@ operator's explicit consent; or the user asking for a release in their own
 words. Where the operator does not name a version, it is this recipe's
 SemVer call from the accumulated `changelog.d/` fragments. Never inferred
 from a merged PR, from accumulated fragments on their own, or from "ship
-it"/"cut it" said about something else. The tag, the push and the publish
-stay the operator's - see CLAUDE.md's authority table, which this section
-must not outrun.
+it"/"cut it" said about something else. Once the prep is merged to
+`origin/main`, the conductor or the session that owns the release bead tags
+that merged commit with the new version and pushes the tag (CLAUDE.md's
+Release preps paragraph). The publish - `mix hex.publish`, a docs republish
+included - stays the operator's one release step, and no consent or relay
+delegates it - see CLAUDE.md's authority table, which this section must not
+outrun.
