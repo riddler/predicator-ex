@@ -47,9 +47,10 @@ see the release trigger below.
 
 ## The release trigger
 
-An operator-authorized release bead, inside a campaign carrying the
-operator's explicit consent; or the user asking for a release in their own
-words. Where the operator does not name a version, it is this recipe's
+A release bead the operator has named (in the campaign plan or their own
+words) - the family norm, not a grant a campaign consent has to name
+(CLAUDE.md's Release preps paragraph); or the user asking for a release in
+their own words. Where the operator does not name a version, it is this recipe's
 SemVer call from the accumulated `changelog.d/` fragments. Never inferred
 from a merged PR, from accumulated fragments on their own, or from "ship
 it"/"cut it" said about something else. Once the prep is merged to
