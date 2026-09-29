@@ -226,3 +226,34 @@ a bad release without changing anything about the instruction set itself.
   it and must stop and report. That is the intended behavior, and the
   alternative - letting an agent decide that this particular push is obviously
   fine - is the blast-radius rule wearing a different hat.
+
+## Notes
+
+### 2026-09-29: the merged prep's tag has an owner
+
+The Decision's paragraph opening **"The adjacent row shows the criterion is
+doing real work."** gives release mechanics - tagging among them - a trigger
+only when the user asks for a release, and the Consequences bullet on skills
+has `/release` leave tag, push, and publish alone. Both still describe the
+decision as made; the world around the tag has moved.
+
+`CLAUDE.md`'s **Release preps** paragraph (ruled by the operator, 2026-09-25)
+makes the version bump and the tag of a release prep the family norm: on a
+release bead the operator has named, once the prep is merged to
+`origin/main`, the conductor or the session that owns the release bead tags
+that merged commit with the new version and pushes the tag. The publish -
+`mix hex.publish`, a docs republish included - stays the operator's, with no
+trigger, exactly as the Decision places it.
+
+- [#235](https://github.com/riddler/predicator-ex/pull/235) wrote that
+  paragraph into `CLAUDE.md`.
+- [#237](https://github.com/riddler/predicator-ex/pull/237) gave the release
+  recipe's tag sentences the same owner.
+- The release-prep row's trigger in the authority table now names the same
+  norm (ruled by the operator, 2026-09-27): a release bead the operator has
+  named is enough, and no campaign consent has to name the bump.
+
+The criterion is untouched: the tag follows a merge the table already gates,
+and `mix hex.publish` is still the one action with no trigger. The paragraphs
+above stand as written; this Note is the forward pointer they would
+otherwise lack.
