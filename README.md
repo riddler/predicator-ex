@@ -329,9 +329,9 @@ walks the path from picking a version to recording a conformance claim.
 ## Development
 
 See `CLAUDE.md` for the contributor workflow and
-[docs/contributing.md](docs/contributing.md) for the quality-check commands
+[docs/contributing.md](https://github.com/riddler/predicator-ex/blob/main/docs/contributing.md) for the quality-check commands
 and the checklists for adding operators and data types.
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT - see [LICENSE](https://github.com/riddler/predicator-ex/blob/main/LICENSE).

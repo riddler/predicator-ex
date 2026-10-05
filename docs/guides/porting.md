@@ -1,4 +1,4 @@
-# Porting Predicator
+# How to port Predicator
 
 This guide is for someone implementing predicator's instruction set in another
 runtime - a sibling to the Ruby and JavaScript implementations, or a new one.

@@ -1,4 +1,4 @@
-# Custom Functions
+# How to add custom functions
 
 A custom function is provided by a module implementing the one-callback
 `Predicator.FunctionProvider` behaviour, `functions/0`, which returns

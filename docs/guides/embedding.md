@@ -1,4 +1,4 @@
-# Embedding Compiled Programs
+# How to embed compiled programs
 
 This guide is for a host that compiles a predicate once, persists the result,
 and evaluates it many times later - possibly under a different build of this
