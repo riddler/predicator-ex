@@ -92,6 +92,7 @@ defmodule Predicator.MixProject do
         docs/guides/simple-subset.md
         docs/guides/porting.md
         docs/architecture.md
+        docs/explanation/why-a-predicate-language-of-its-own.md
         docs/contributing.md
       ),
       exclude_patterns: [~r{\Alib/predicator/conformance/}],
@@ -132,7 +133,8 @@ defmodule Predicator.MixProject do
         "docs/guides/nested-data-access.md",
         "docs/guides/location-expressions.md",
         "docs/guides/simple-subset.md",
-        "docs/architecture.md"
+        "docs/architecture.md",
+        "docs/explanation/why-a-predicate-language-of-its-own.md"
       ],
       groups_for_extras: [
         "How-to guides": [
@@ -148,7 +150,10 @@ defmodule Predicator.MixProject do
           "docs/guides/location-expressions.md",
           "docs/guides/simple-subset.md"
         ],
-        Explanation: ["docs/architecture.md"]
+        Explanation: [
+          "docs/architecture.md",
+          "docs/explanation/why-a-predicate-language-of-its-own.md"
+        ]
       ],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]
