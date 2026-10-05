@@ -468,6 +468,40 @@ first `jump_backward` a program takes fails; a malformed value (anything that
 is not a non-negative integer) raises `ArgumentError`, the same host-API-misuse
 line `:on_unbound` draws.
 
+### Running a program from Elixir
+
+`Predicator.evaluate/3` answers a single question. `Predicator.execute/3` runs
+a program and returns the context it leaves behind, which is how a decision
+gets recorded rather than merely computed:
+
+```elixir
+iex> program = "if renewals < 3 { decision = 'renew' } else { decision = 'refuse' }"
+iex> {:ok, context} = Predicator.execute(program, %{"renewals" => 3})
+iex> context.data["decision"]
+"refuse"
+```
+
+`Predicator.execute_value/3` returns the last expression statement's value
+alongside that context:
+
+```elixir
+iex> {:ok, renewed?, context} = Predicator.execute_value("renewals = renewals + 1; renewals <= 3", %{"renewals" => 2})
+iex> renewed?
+true
+iex> context.data["renewals"]
+3
+```
+
+A program writes into the context, so a host that keeps its own state there
+passes `:protected_roots` - the roots a program may not overwrite. A write to
+one is an error value, never a silent change:
+
+```elixir
+iex> {:error, error, _context} = Predicator.execute("on_hold = false", %{}, protected_roots: ["on_hold"])
+iex> error.reason
+"protected_root"
+```
+
 ### Reserved words
 
 `if`, `else`, and `while` are reserved words: none of the three can be used
@@ -645,6 +679,58 @@ fall back to their `inspect/1` form rather than failing the predicate, which
 is what a predicate has always seen for such values. Key order in the output
 follows the map's own iteration order rather than any order the source
 declared, which is why `amount` precedes `network` in the first example above.
+
+## The vocabulary for an editor
+
+An editor that writes predicates needs the grammar's vocabulary, not just the
+function names. `Predicator.Vocabulary` publishes both, so an editor never
+keeps its own copy of the grammar to drift out of date:
+
+```elixir
+iex> Predicator.Vocabulary.by_category(:membership) |> Enum.map(& &1.lexeme)
+["in", "IN", "contains", "CONTAINS"]
+
+iex> Predicator.Vocabulary.tokens() |> Enum.find(&(&1.lexeme == "contains")) |> Map.take([:lexeme, :token_type, :category, :display, :doc])
+%{
+  display: "a contains b",
+  doc: "True when the left collection or string holds the right value",
+  category: :membership,
+  lexeme: "contains",
+  token_type: :contains_op
+}
+```
+
+An entry in an operator category carries four more keys, for an editor whose
+operator control is a dropdown rather than a completion list: what to label
+the operator, how many operands it takes, which atom the parser builds for
+it, and which kinds of value it is worth offering for.
+
+```elixir
+iex> Predicator.Vocabulary.operators() |> Enum.find(&(&1.lexeme == "CONTAINS")) |> Map.take([:label, :arity, :ast_op, :value_kinds])
+%{
+  arity: 2,
+  label: "contains",
+  ast_op: :contains,
+  value_kinds: [:string, :number, :boolean, :date, :datetime, :duration]
+}
+```
+
+`Predicator.Simple.operators/1` is that read done for one kind of value at a
+time - see [the simple subset guide](../guides/simple-subset.md).
+
+`Vocabulary.all/1` is the whole completion list - every fixed lexeme followed
+by every callable function - and it takes the same `:builtins`, `:providers`
+and `:functions` options as `Predicator.Context.new/2`, so an editor embedded
+beside a host's own providers offers exactly the names that host will accept:
+
+```elixir
+Predicator.Vocabulary.all(providers: [MyApp.LoanFunctions])
+```
+
+Function entries carry `:arity` and a `nil` `:doc`; a provider binds a name to
+`{arity, atom}` and carries no description, so there is nothing truthful to
+put there. `Vocabulary.keywords/0` is the narrower list an editor wants when
+deciding what *not* to offer as an identifier.
 
 ## Decompiling and Formatting Options
 
