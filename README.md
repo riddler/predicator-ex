@@ -82,6 +82,7 @@ process's state or in a database column until the next loan comes back.
   - [API reference](https://hexdocs.pm/predicator/api-reference.html): every public module and function.
   - [The changelog](CHANGELOG.md): what changed in each version.
 - Understand
+  - [Why a predicate language of its own](docs/explanation/why-a-predicate-language-of-its-own.md): the alternatives turned down - rules in code, `eval`, host calls by name, a JSON rule format - and what the choice costs.
   - [Architecture](docs/architecture.md): the compilation pipeline, the component map, and the design decisions behind them.
   - [Cross-language siblings](docs/architecture.md#cross-language-siblings): how implementations in other languages adopt each instruction-set version.
   - [Why `=` is assignment, never equality](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0002-the-equals-grammar-break.md): the grammar break and what it left untouched.
