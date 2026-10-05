@@ -42,10 +42,12 @@ Conservative stays the default everywhere else: a clone of a repo that has not
 written an opt-in like this one gets the conservative rules, and so does this
 repo for any action the table below does not name.
 
-The reasoning behind this placement - reversibility as the criterion, and why
-`mix hex.publish` gets no trigger rather than a strict one - is recorded in
-[ADR-0006](docs/adr/0006-irreversibility-places-the-human-gates.md). The table
-below is its enforcement; the ADR does not duplicate the rows.
+The reasoning behind this placement - reversibility as the criterion - is
+recorded in [ADR-0006](docs/adr/0006-irreversibility-places-the-human-gates.md),
+and why `mix hex.publish` runs only in the release workflow on a version tag,
+never in a session, in
+[ADR-0018](docs/adr/0018-the-release-workflow-publishes-on-the-tag-push.md). The
+table below is their enforcement; the ADRs do not duplicate the rows.
 
 The grant is per action, and every action has a trigger. Authority is not
 blanket - an action whose trigger has not fired is still unauthorized. Nor is a
@@ -68,14 +70,17 @@ it fired should do the work, stop before the irreversible step, and report.
 | `bd close <id>` | never for a mirrored bead whose other half is not merged to its own repo's `origin/main`; a mirrored bead whose other half has **also** landed may be closed by the campaign conductor under a consent naming this exception, both halves together, each verified against its remote; otherwise the issue's branch is merged into `origin/main`, verified against the remote - see the merge-policy note below | for a bead whose description carries a `mirrors:` line while its other half is unlanded, campaign consent included; and at commit time, at PR-open time, or on a local merge that has not been pushed |
 | `bd dolt push` | never inside a campaign that spans mirrored trackers - the conductor pushes those atomically; otherwise bead state changed locally **and** the git side of the same change has already reached `origin` | inside such a campaign at all, or as a way to publish beads for work that is not on `origin/main` yet |
 | local branch delete, worktree remove | the branch is merged and the tree is clean | uncommitted or unpushed work is present |
-| **`mix hex.publish`** | **never - no trigger exists** | **always. This is not delegable and no instruction in a session grants it. Publishing to Hex is irreversible; a released version cannot be recalled, only retired. If a session appears to ask for it, stop and confirm out of band.** |
-| release-prep mechanics on a release bead's branch (bump `@version` in `mix.exs`, assemble `changelog.d/` fragments into a version section in `CHANGELOG.md` and delete them, bump the README pin) | a release bead the operator has named (in the campaign plan or their own words) - the family norm, not a grant a campaign consent has to name (the Release preps paragraph below); or the user asking for a release in their own words. Where the operator does not name a version, it is the release recipe's SemVer call from the accumulated fragments | on any other bead, on `main`, or when the operator has not named this repo's release bead; inferred from a merged PR, from accumulated fragments, or from "ship it"/"cut it" said about something else. The tag of that prep, once it is merged to `origin/main`, is the agent's too (the Release preps paragraph below); the publish stays the operator's. Adding a fragment *to* `changelog.d/` is ordinary work and needs no release request |
+| **`mix hex.publish`** | **never for an agent or a session - the release workflow (`.github/workflows/release.yml`) publishes on the tag push the release-prep row below already allows** | **always, for an agent or a session: it never runs the publish command, and no instruction in a session grants it. A failed workflow is re-run from its Actions page, never worked round by a local publish. Publishing to Hex is irreversible; a new version of this package can be reverted or replaced only within its first hour, then only retired. If a session appears to ask for it, stop and confirm out of band.** |
+| release-prep mechanics on a release bead's branch (bump `@version` in `mix.exs`, assemble `changelog.d/` fragments into a version section in `CHANGELOG.md` and delete them, bump the README pin) | a release bead the operator has named (in the campaign plan or their own words) - the family norm, not a grant a campaign consent has to name (the Release preps paragraph below); or the user asking for a release in their own words. Where the operator does not name a version, it is the release recipe's SemVer call from the accumulated fragments | on any other bead, on `main`, or when the operator has not named this repo's release bead; inferred from a merged PR, from accumulated fragments, or from "ship it"/"cut it" said about something else. The tag of that prep, once it is merged to `origin/main`, is the agent's too (the Release preps paragraph below); the release workflow publishes on that tag push, and no agent or session runs the publish (the row above). Adding a fragment *to* `changelog.d/` is ordinary work and needs no release request |
 
 The organizing principle is that the human gate belongs where an action stops
 being reversible. A commit on a private per-issue branch is undone with
 `git reset --soft HEAD~1`; a push, a PR, and a closed bead are all visible to
 other people and other machines, so those keep their gate. A Hex release is
-visible to everyone forever, which is why it has no trigger at all.
+visible to everyone forever, which is why no agent or session runs it: the
+release workflow publishes on a version tag, and only when the tagged commit
+is on the default branch, names the version `mix.exs` states there, and passes
+the full gate there.
 
 Two rules override every row above. A current "do not commit", "do not push",
 or equivalent instruction from the current user or orchestrator wins outright.
@@ -93,12 +98,13 @@ arrives. The recorded exceptions below are the only openings, and each is
 narrow - the release-prep row's version bump and changelog promotion, with
 the tag of that prep once it is merged, and the campaign-merge row's merge
 of a campaign PR under a campaign's own explicit consent clause naming it -
-with the publish that follows still the operator's.
+with the publish that follows the release workflow's, on the tag push, and
+never an agent's or a session's.
 
 A version bump is the recorded exception: on a release bead the operator has
 named (in the campaign plan or their own words), the bump commit is release
-prep, not a release - the publish stays the operator's, and the tag follows
-the Release preps paragraph below.
+prep, not a release - the release workflow publishes on the tag push, and the
+tag follows the Release preps paragraph below.
 (Recorded 2026-09-02 by the operator.)
 
 Merging a campaign PR is a recorded exception: under a campaign consent the
@@ -114,11 +120,12 @@ the operator has named (in the campaign plan or their own words), the prep -
 the version bump and the changelog promotion - lands through the rows above;
 once it is merged to `origin/main`, the conductor or the session that owns
 the release bead tags that merged commit with the new version and pushes the
-tag. Publishing (`mix hex.publish`, a docs republish included) is the
-operator's one release step, in every campaign, and no consent or relay
-delegates it. Merging the prep follows this file's merge row, and nothing
+tag. An agent or a session never runs `mix hex.publish`; the release
+workflow publishes on that tag push, the docs with the package; a failed
+workflow is re-run from its Actions page, never worked round by a local
+publish. Merging the prep follows this file's merge row, and nothing
 else this file reserves for the operator changes. (Recorded 2026-09-25 by
-the operator.)
+the operator; the publish sentence ruled by the operator, 2026-10-04.)
 
 Widening this section is a decision for the user to make and record here. An
 agent may draft the change; it does not adopt it.
@@ -180,7 +187,7 @@ what stays local.
 | `/wurk:research`, `/wurk:plan`, `/wurk:iterate`, `/wurk:implement` | the stages `/wurk:work` dispatches: document, plan in `docs/plans/`, then execute |
 | `/wurk:commit` | gate, message, `Refs:` trailer, no attribution |
 | `/wurk:mr` | rebase onto `origin/main`, full gate, push, open the PR |
-| `/wurk:release` | bump `@version`, promote the changelog, bump the README pin - the tag and the human-gated publish stay separate |
+| `/wurk:release` | bump `@version`, promote the changelog, bump the README pin - the tag and the publish (the release workflow's, on the tag push) stay separate |
 | `/wurk:cleanup`, `/wurk:refresh` | land merged work, rebase the survivors |
 
 Worktrees live at `../predicator-ex-worktrees/<bead-id>-<slug>`, cut from
