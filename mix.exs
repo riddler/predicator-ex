@@ -62,6 +62,8 @@ defmodule Predicator.MixProject do
       # each target is an extra in docs(), on hexdocs. A README link to a new
       # file adds it both here and to docs()'s extras. The rest of docs/ stays
       # out: hexdocs builds from docs()'s extras on the publisher's disk.
+      # docs/contributing.md and LICENSE ship but are not extras: the README
+      # links both by absolute GitHub URL.
       #
       # The whole conformance apparatus is excluded because nothing an
       # application does at runtime touches it, and the audience
@@ -111,26 +113,42 @@ defmodule Predicator.MixProject do
       # extra that README.md links to relatively is ALSO listed in package()'s
       # files:, because hex.pm renders the README from the package tarball and
       # a relative link there answers 404 unless the target ships in it.
+      #
+      # The groups are the family's kinds of page, in its order: How-to guides,
+      # Reference, Explanation. README.md (main) and CHANGELOG.md stay
+      # ungrouped at the top; every other extra sits in exactly one group. A
+      # page in docs/guides/ that describes a surface rather than a task is
+      # grouped as Reference; its file stays where it is. Decision records and
+      # planning notes are not extras: the README links the records on GitHub.
       extras: [
         "README.md",
+        "CHANGELOG.md",
+        "docs/guides/custom-functions.md",
+        "docs/guides/embedding.md",
+        "docs/guides/porting.md",
         "docs/reference/language.md",
         "docs/reference/ast.md",
         "docs/isa.md",
         "docs/guides/nested-data-access.md",
-        "docs/guides/custom-functions.md",
         "docs/guides/location-expressions.md",
-        "docs/guides/embedding.md",
         "docs/guides/simple-subset.md",
-        "docs/guides/porting.md",
-        "docs/architecture.md",
-        "docs/contributing.md",
-        "CHANGELOG.md",
-        "LICENSE"
+        "docs/architecture.md"
       ],
       groups_for_extras: [
-        Reference: ~r{docs/(reference/|isa\.md)},
-        Guides: ~r{docs/guides/},
-        Architecture: ~r{docs/architecture}
+        "How-to guides": [
+          "docs/guides/custom-functions.md",
+          "docs/guides/embedding.md",
+          "docs/guides/porting.md"
+        ],
+        Reference: [
+          "docs/reference/language.md",
+          "docs/reference/ast.md",
+          "docs/isa.md",
+          "docs/guides/nested-data-access.md",
+          "docs/guides/location-expressions.md",
+          "docs/guides/simple-subset.md"
+        ],
+        Explanation: ["docs/architecture.md"]
       ],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]
