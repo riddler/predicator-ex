@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.4.3] - 2026-10-05
+
+A documentation release: no library code changes, and a program compiles and
+evaluates exactly as it did in 9.4.2.
+
+### Documentation
+
+- The hexdocs sidebar groups its pages by kind: How-to guides (custom
+  functions, embedding compiled programs, porting), Reference (the language,
+  the AST, the instruction set, nested data access, location expressions, the
+  simple subset) and Explanation (the architecture, and the new page below),
+  with the README and this changelog ungrouped at the top. The three how-to
+  guides' titles now start "How to"; no file is renamed. The contributing
+  guide and the license are no longer hexdocs pages; both still ship in the
+  package and the README links them on GitHub.
+- A new page, "Why a predicate language of its own", explains who writes a
+  rule and who executes it, the alternatives turned down, and what the
+  language buys and costs.
+- The README is rewritten as an introduction: what the package is, why it
+  exists, the install line, one basic usage example, and a documentation map
+  grouped by the reader's question. The short-program and editor-vocabulary
+  examples it carried move into the language reference, as "Running a program
+  from Elixir" and "The vocabulary for an editor".
+- Every page the README links to relatively now ships in the package, so the
+  links resolve on the hex.pm package page as well as on GitHub and hexdocs.
+
 ## [9.4.2] - 2026-09-22
 
 ### Fixed
