@@ -39,11 +39,12 @@ If the two carriers ever disagree on major or minor, the pin edit goes straight
 to the current major/minor in one move rather than stepping one release at a
 time. That is the recipe repairing drift, not a mistake to correct back.
 
-## `mix hex.publish` has no trigger, ever
+## `mix hex.publish` is the release workflow's, never a session's
 
-Not delegable, and no instruction in a session grants it (CLAUDE.md's
-authority table; ADR-0006). The tag is a separate step with its own owner -
-see the release trigger below.
+An agent or a session never runs `mix hex.publish`; the release workflow
+publishes on the tag push; a failed workflow is re-run from its Actions page,
+never worked round by a local publish (CLAUDE.md's authority table; ADR-0018).
+The tag is a separate step with its own owner - see the release trigger below.
 
 ## The release trigger
 
@@ -56,7 +57,6 @@ from a merged PR, from accumulated fragments on their own, or from "ship
 it"/"cut it" said about something else. Once the prep is merged to
 `origin/main`, the conductor or the session that owns the release bead tags
 that merged commit with the new version and pushes the tag (CLAUDE.md's
-Release preps paragraph). The publish - `mix hex.publish`, a docs republish
-included - stays the operator's one release step, and no consent or relay
-delegates it - see CLAUDE.md's authority table, which this section must not
-outrun.
+Release preps paragraph). The release workflow publishes on that tag push,
+the docs with the package, and no agent or session runs `mix hex.publish` -
+see CLAUDE.md's authority table, which this section must not outrun.
