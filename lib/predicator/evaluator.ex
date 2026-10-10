@@ -814,6 +814,18 @@ defmodule Predicator.Evaluator do
     compare_chronological(DateTime.compare(left, date_to_datetime(right)), operator)
   end
 
+  # Two lists, or two plain maps, under an ordering operator: members compare
+  # by order_members/2, so two dates or two datetimes inside them order by
+  # instant, as they do at the top level (ADR-0019). Equality keeps the
+  # structural `==` of the clause below.
+  defp compare_values(left, right, operator)
+       when operator in ["GT", "LT", "GTE", "LTE"] and
+              ((is_list(left) and is_list(right)) or
+                 (is_map(left) and is_map(right) and not is_struct(left) and
+                    not is_struct(right))) do
+    compare_chronological(order_members(left, right), operator)
+  end
+
   defp compare_values(left, right, operator) when types_match(left, right) do
     case operator do
       "GT" -> left > right
@@ -836,6 +848,61 @@ defmodule Predicator.Evaluator do
       "GTE" -> comparison in [:gt, :eq]
       "LTE" -> comparison in [:lt, :eq]
       "NE" -> comparison != :eq
+    end
+  end
+
+  # Erlang term order, except that a pair of dates, or a pair of datetimes,
+  # at any depth inside a list or a plain map compares by instant. A pair
+  # level by instant steps to the next member. Every other pair - a mixed
+  # Date/DateTime pair included - keeps its term order (ADR-0019).
+  @spec order_members(term(), term()) :: :lt | :eq | :gt
+  defp order_members(%Date{} = left, %Date{} = right), do: Date.compare(left, right)
+  defp order_members(%DateTime{} = left, %DateTime{} = right), do: DateTime.compare(left, right)
+
+  defp order_members([left | left_rest], [right | right_rest]) do
+    case order_members(left, right) do
+      :eq -> order_members(left_rest, right_rest)
+      decided -> decided
+    end
+  end
+
+  # Term order compares two maps by size, then by keys in key order, and
+  # only then by values in key order; with the same key set, the values
+  # decide, walked in that same key order.
+  defp order_members(left, right)
+       when is_map(left) and is_map(right) and not is_struct(left) and not is_struct(right) and
+              map_size(left) == map_size(right) do
+    if Enum.all?(Map.keys(left), &Map.has_key?(right, &1)) do
+      left
+      |> :maps.iterator(:ordered)
+      |> order_map_values(right)
+    else
+      order_terms(left, right)
+    end
+  end
+
+  defp order_members(left, right), do: order_terms(left, right)
+
+  @spec order_map_values(:maps.iterator(), map()) :: :lt | :eq | :gt
+  defp order_map_values(iterator, right) do
+    case :maps.next(iterator) do
+      :none ->
+        :eq
+
+      {key, value, next} ->
+        case order_members(value, Map.fetch!(right, key)) do
+          :eq -> order_map_values(next, right)
+          decided -> decided
+        end
+    end
+  end
+
+  @spec order_terms(term(), term()) :: :lt | :eq | :gt
+  defp order_terms(left, right) do
+    cond do
+      left < right -> :lt
+      left > right -> :gt
+      true -> :eq
     end
   end
 
