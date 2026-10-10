@@ -418,9 +418,19 @@ reference survives an edit above it.
       bytes. Not a locale collation: no case folding, no accent folding.
     - **booleans** - `false < true`.
     - **lists** - element-wise, comparing the first position where the two
-      differ; a proper prefix sorts before the longer list.
+      differ; a proper prefix sorts before the longer list. Two `Date`
+      members, or two `DateTime` members, compare chronologically, as the
+      same pair does at the top level, at any depth; a member pair at the
+      same instant does not differ, so the next position decides. Every
+      other member pair keeps its term order, a mixed `Date`/`DateTime`
+      member pair included: that pair is not decided by this rule, and the
+      conformance corpus does not exercise it. `EQ`/`NE` on two lists stay
+      structural equality. These sentences state what this bullet already
+      required and move no ISA version
+      ([ADR-0019](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0019-chronological-members-order-by-instant.md)).
     - **maps** - the Elixir reference implementation orders these by Erlang
-      term order (size first, then sorted keys, then values). **A sibling
+      term order (size first, then sorted keys, then values), with the
+      lists rule's exception for two `Date` or two `DateTime` values. **A sibling
       should treat ordering comparisons between two maps as unspecified**
       rather than reproduce that rule; the conformance corpus does not
       exercise them. `EQ`/`NE`/`STRICT_EQ`/`STRICT_NE` on two maps are

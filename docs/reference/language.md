@@ -138,7 +138,10 @@ iex> Predicator.evaluate("[1, 2] + [3]", %{})
 
 - **Same type**: `Date`/`Date` and `DateTime`/`DateTime` compare
   chronologically via `Date.compare/2` and `DateTime.compare/2`, never by
-  Erlang's raw struct-key ordering.
+  Erlang's raw struct-key ordering. The same holds for two dates, or two
+  datetimes, inside two lists or two objects compared with `>`, `<`, `>=` or
+  `<=`: `[#2026-01-02#] > [#2025-12-31#]` is `true`. `==` and `!=` on two
+  lists or two objects stay structural.
 - **Mixed pair**: a `Date` compared against a `DateTime` is coerced to
   `00:00:00` UTC of that day, then compared as two `DateTime`s. This applies
   to ordering (`>`, `<`, `>=`, `<=`), `==`/`!=`, and `in`/`contains`

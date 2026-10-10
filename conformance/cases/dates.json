@@ -36,5 +36,34 @@
     "source": "#2024-01-15# === #2024-01-15T00:00:00Z#",
     "expected": { "result": false },
     "notes": "docs/isa.md: a Date is never strictly equal to a DateTime, since strict equality is Elixir === and the two are different structs - even at the same instant"
+  },
+  {
+    "id": "dates/lt-date-list-members-by-instant",
+    "source": "[#2026-01-02#] < [#2025-12-31#]",
+    "expected": { "result": false },
+    "notes": "docs/isa.md: two lists compare element-wise, and two Date members inside them compare chronologically, as the same pair does at the top level - not by the struct's field order, which reads the day before the month and year"
+  },
+  {
+    "id": "dates/gt-date-list-members-by-instant",
+    "source": "[#2026-01-02#] > [#2025-12-31#]",
+    "expected": { "result": true }
+  },
+  {
+    "id": "dates/lt-datetime-list-members-by-instant",
+    "source": "[#2026-01-01T00:00:00Z#] < [#2025-12-31T00:00:00Z#]",
+    "expected": { "result": false },
+    "notes": "docs/isa.md: two DateTime members inside two lists compare chronologically"
+  },
+  {
+    "id": "dates/date-list-level-member-steps-to-next",
+    "source": "[#2026-01-01#, #2026-01-02#] < [#2026-01-01#, #2025-12-31#]",
+    "expected": { "result": false },
+    "notes": "a Date member pair level by instant steps to the next member, which decides chronologically"
+  },
+  {
+    "id": "dates/datetime-list-level-member-steps-to-next",
+    "source": "[#2026-01-01T00:00:00Z#, #2026-01-02T00:00:00Z#] >= [#2026-01-01T00:00:00Z#, #2025-12-31T00:00:00Z#]",
+    "expected": { "result": true },
+    "notes": "a DateTime member pair level by instant steps to the next member, which decides chronologically"
   }
 ]
