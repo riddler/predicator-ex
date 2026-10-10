@@ -1,6 +1,6 @@
 # ADR-0018: The release workflow publishes on the tag push
 
-Status: proposed (2026-10-04)
+Status: accepted (2026-10-10, predicator 9.4.3; proposed 2026-10-04)
 
 Supersedes the publish sentences of
 [ADR-0006](0006-irreversibility-places-the-human-gates.md), and only those. It
@@ -136,3 +136,35 @@ replace, a revert, or a docs-only publish included.
 - **This decision does not move the instruction set.** No grammar, opcode,
   compiled format or stored artifact changes, and no ISA version is bumped;
   ADR-0003's obligations are not engaged.
+
+## Notes
+
+### 2026-10-10: the status is now `accepted`
+
+This record stayed proposed until the release workflow it decides had
+published a version, and it has. predicator 9.4.3 is the first version
+published through `.github/workflows/release.yml`: the tag `v9.4.3`, on the
+commit `f423083f` that the 9.4.3 release prep
+([#243](https://github.com/riddler/predicator-ex/pull/243)) merged, started
+<https://github.com/riddler/predicator-ex/actions/runs/37309522889>, whose
+branch, version and Hex checks, full gate and publish step all passed on its
+first attempt. No later version has been published through the workflow.
+The workflow itself landed in
+[#239](https://github.com/riddler/predicator-ex/pull/239). Flipping this
+record on its first workflow publish, with that run and its commit as the
+evidence, was ruled by the operator, 2026-10-06; the evidence this Note names
+and the version the Status line names were decided by the conductor under a
+standing consent, 2026-10-10.
+
+Every claim above was re-verified on 2026-10-10 against `origin/main` at
+`f423083f`, which no commit has followed: the workflow's tag-only trigger,
+its read-only token, its branch, version and Hex checks run before the
+toolchain, the gate read from `gate.full` in `.claude/wurk.json`, the key in
+the publish step alone, the docs published with the package, and the coverage
+upload left out; `CLAUDE.md`'s publish row, release-prep row, relay paragraph,
+version-bump exception and **Release preps** paragraph;
+`.claude/wurk/release.md`'s publish section and release trigger; each
+ADR-0006 sentence quoted at the top, still present and unedited; and Hex's
+one-hour window for a new version of an existing package, in
+`mix help hex.publish`. No claim had moved, so no sentence above is
+superseded.
