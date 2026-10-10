@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.4.4] - 2026-10-10
+
+One changed answer: ordering two lists, or two maps, now compares two date
+members, or two datetime members, by instant, as a top-level pair already
+did. Every other answer is the one 9.4.3 gives. The conformance corpus hash
+moves with this release, so a sibling implementation re-vendors the corpus
+at 9.4.4.
+
+### Changed
+
+- Ordering two lists, or two maps, now compares two date members, or two
+  datetime members, by instant, as a top-level pair does:
+  `[#2026-01-02#] > [#2025-12-31#]` is `true` where it was `false`; a pair
+  at the same instant steps to the next member, and equality, membership and
+  mixed date and datetime members keep their answers. The conformance corpus
+  gains five `dates/` member cases, tier 1 moves from 65 to 70 cases, and
+  the corpus hash advances from `sha256:bb60ec82...` to
+  `sha256:ddc5cf82...`, so a sibling re-vendors at this release.
+
 ## [9.4.3] - 2026-10-05
 
 A documentation release: no library code changes, and a program compiles and
