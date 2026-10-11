@@ -20,7 +20,7 @@
 | [0016](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0016-predicator-emits-no-telemetry.md) | Predicator emits no telemetry; the event contract is reserved, not shipped | accepted |
 | [0017](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0017-structured-authoring-is-a-subset-value.md) | Structured authoring is a subset value over the AST, not a second grammar | accepted |
 | [0018](0018-the-release-workflow-publishes-on-the-tag-push.md) | The release workflow publishes on the tag push; no agent or session runs `mix hex.publish` (supersedes ADR-0006's publish sentences) | accepted |
-| [0019](0019-chronological-members-order-by-instant.md) | Two dates, or two datetimes, inside lists and maps order by instant, as the top level does | proposed |
+| [0019](0019-chronological-members-order-by-instant.md) | Two dates, or two datetimes, inside lists and maps order by instant, as the top level does | accepted |
 
 Link form is load-bearing: ADRs are not published to hexdocs, so a published
 extra (README.md, docs/isa.md, ...) cites an ADR by absolute GitHub URL - a

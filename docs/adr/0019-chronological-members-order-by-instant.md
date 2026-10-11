@@ -1,6 +1,6 @@
 # ADR-0019: Chronological members of lists and maps order by instant
 
-Status: proposed (2026-10-10)
+Status: accepted (2026-10-10, predicator 9.4.4; proposed 2026-10-10)
 
 ## Context
 
@@ -96,3 +96,35 @@ used when it corrected its own wording without a version move.
   container equality chronological would close it.
 - **The mixed member pair stays open.** Deciding it - most likely by the
   top-level coercion - changes more answers and is a decision of its own.
+
+## Notes
+
+### 2026-10-10: the status is now `accepted`
+
+This record stayed proposed until the code it decides had shipped in a
+published version, and it has. predicator 9.4.4 carries it: the change
+landed in [#245](https://github.com/riddler/predicator-ex/pull/245) at
+`1f022584`, the 9.4.4 release prep
+([#246](https://github.com/riddler/predicator-ex/pull/246)) merged at
+`ecff778e`, and the tag `v9.4.4` on that commit started
+<https://github.com/riddler/predicator-ex/actions/runs/38095733683>, whose
+branch, version and Hex checks, full gate and publish step all passed on its
+first attempt; Hex shows 9.4.4 as the latest version. The flip was decided by
+the conductor under a standing consent, 2026-10-10.
+
+Every claim above was re-verified on 2026-10-10 against `origin/main` at
+`ecff778e`, which no commit has followed: the chronological clauses and the
+container clause of `compare_values/3` and the type-matched clause's
+structural `==` in `lib/predicator/evaluator.ex`; `order_members/2`'s date,
+datetime, list and same-key map arms, with term order for every other pair,
+the mixed pair included; the unchanged `values_equal?/2` behind `in` and
+`contains`; the mixed pair's term-order answer (a `Date` sorts before a
+`DateTime`) and the different-precision `DateTime` pair that is level for
+ordering and unequal under `==`; the quoted sentences and the lists and maps
+bullets of `docs/isa.md` sections 1 and 5, with the ISA still at v6 there and
+in `conformance/manifest.json`; the five member cases in
+`conformance/cases/dates.json`, with no mixed member pair and no map ordering
+anywhere in the corpus; the map arm pinned by
+`test/predicator/evaluator_member_ordering_test.exs`; and the changed answer
+under Changed in the 9.4.4 section of `CHANGELOG.md`. No claim had moved, so
+no sentence above is superseded.
