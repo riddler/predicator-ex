@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.5.0] - 2026-10-13
+
+Two new public modules, `Predicator.AST` and `Predicator.Analysis`. Every
+existing function gives the answer 9.4.4 gives, and the conformance corpus
+hash does not move: the new analysis surface sits outside the tier files, the
+manifest and the hash.
+
+### Added
+
+- `Predicator.AST.prewalk/3`, `postwalk/3` and `reduce/3` walk a parsed expression, statement or program in `Macro`'s shape, threading an accumulator, visiting children in source order and leaving each node's position untouched.
+- `Predicator.Analysis.references/1`, `calls/1` and `assignments/1` list every variable a program reads, every function it calls and every location it stores to, in source order, as maps with a path (strings, integer indexes and `:dynamic` for a computed key) or a name and arity, and a position; each accepts a source string, an AST, a program, an instruction list or a compiled envelope, and the instruction forms give the same answers as the AST.
+
+### Documentation
+
+- A guide on analysing expressions and an expanded AST reference page cover the traversal and the analysis functions.
+
 ## [9.4.4] - 2026-10-10
 
 One changed answer: ordering two lists, or two maps, now compares two date
