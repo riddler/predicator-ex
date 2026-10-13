@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riddler/predicator-ex/conformance/schema/analysis_corpus.json",
+  "title": "Predicator conformance analysis case",
+  "description": "One completed, shipped case as it appears in conformance/analysis/corpus.json - one JSON object per line, produced by mix corpus.generate from an authored analysis case (schema/analysis_case.json). See conformance/README.md, \"The analysis surface\".",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Human-chosen, path-like, unique, stable forever, always under analysis/.",
+      "pattern": "^analysis/[a-z0-9]+(?:[-_][a-z0-9]+)*(?:/[a-z0-9]+(?:[-_][a-z0-9]+)*)*$"
+    },
+    "source": {
+      "type": ["string", "null"],
+      "description": "The program, or null for a case authored as instructions. A runner reading the source compares positions as written."
+    },
+    "instructions": {
+      "type": "array",
+      "description": "The instruction list, tagged-value encoded: what the source compiles to as a program, or the authored list. A runner reading the instructions compares every position as null.",
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": true
+      }
+    },
+    "references": {
+      "type": "array",
+      "description": "Every variable read, in source order.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "integer" },
+                {
+                  "type": "object",
+                  "properties": { "$type": { "enum": ["dynamic"] } },
+                  "required": ["$type"],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "position": {
+            "type": ["array", "null"],
+            "description": "[line, column], 1-based, where the path starts; null when read from instructions.",
+            "items": { "type": "integer" }
+          }
+        },
+        "required": ["path", "position"],
+        "additionalProperties": false
+      }
+    },
+    "calls": {
+      "type": "array",
+      "description": "Every function call, in source order, an outer call before the calls in its arguments.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name as written, dots included."
+          },
+          "arity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "position": {
+            "type": ["array", "null"],
+            "description": "[line, column], 1-based, of the call; null when read from instructions.",
+            "items": { "type": "integer" }
+          }
+        },
+        "required": ["name", "arity", "position"],
+        "additionalProperties": false
+      }
+    },
+    "assignments": {
+      "type": "array",
+      "description": "Every location the program stores to, in source order.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "integer" },
+                {
+                  "type": "object",
+                  "properties": { "$type": { "enum": ["dynamic"] } },
+                  "required": ["$type"],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "position": {
+            "type": ["array", "null"],
+            "description": "[line, column], 1-based, where the location starts; null when read from instructions.",
+            "items": { "type": "integer" }
+          }
+        },
+        "required": ["path", "position"],
+        "additionalProperties": false
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free text, carried over from the authored case unchanged."
+    }
+  },
+  "required": ["id", "source", "instructions", "references", "calls", "assignments"],
+  "additionalProperties": false
+}

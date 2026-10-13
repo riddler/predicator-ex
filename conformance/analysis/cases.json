@@ -1,0 +1,142 @@
+[
+  {
+    "id": "analysis/reads-nothing",
+    "source": "1 + 2 > 2",
+    "notes": "an expression with no variable and no call answers three empty lists"
+  },
+  {
+    "id": "analysis/reference-root",
+    "source": "renewals < max_renewals",
+    "notes": "each variable is one reference, in source order"
+  },
+  {
+    "id": "analysis/reference-property-chain",
+    "source": "patron.standing == 'good'",
+    "notes": "a property chain is one reference whose path runs from the root variable"
+  },
+  {
+    "id": "analysis/reference-every-occurrence",
+    "source": "loan.renewals < 3 and loan.renewals >= 0",
+    "notes": "every occurrence is listed; a caller that wants a set dedupes"
+  },
+  {
+    "id": "analysis/reference-literal-index",
+    "source": "patron.loans[0].due_on < today",
+    "notes": "a literal integer index is an integer segment"
+  },
+  {
+    "id": "analysis/reference-string-key",
+    "source": "loan['due_on'] < today",
+    "notes": "a literal string key is a string segment, the same as a property"
+  },
+  {
+    "id": "analysis/reference-dynamic-key",
+    "source": "holds[position].patron_id == patron.id",
+    "notes": "a computed key is the dynamic segment; the path continues past it, and the key's own reads follow the chain"
+  },
+  {
+    "id": "analysis/reference-dynamic-literal-key",
+    "source": "holds[true] == 1",
+    "notes": "a literal key that is neither a string nor an integer is the dynamic segment too"
+  },
+  {
+    "id": "analysis/reference-membership",
+    "source": "patron.standing in allowed_standings",
+    "notes": "both operands of a membership test are read"
+  },
+  {
+    "id": "analysis/reference-in-list-and-object",
+    "source": "[renewals, holds.count] == [1, 0] or {limit: max_renewals}.limit > 2",
+    "notes": "reads inside list and object literals are listed; a chain rooted at a literal reads no variable"
+  },
+  {
+    "id": "analysis/reference-short-circuit-order",
+    "source": "fines > 0 and standing != 'good' or override",
+    "notes": "the operands of and and or are listed in source order"
+  },
+  {
+    "id": "analysis/call-simple",
+    "source": "len(title) > 0",
+    "notes": "a call lists its name and arity; its argument is a reference"
+  },
+  {
+    "id": "analysis/call-zero-arity",
+    "source": "Date.now() > due_on",
+    "notes": "a qualified name is reported as written, dots included"
+  },
+  {
+    "id": "analysis/call-nested-in-argument",
+    "source": "concat(upper(trim(title)), author) == heading",
+    "notes": "a call nested in another call's arguments is listed, the outer call first"
+  },
+  {
+    "id": "analysis/call-sibling-arguments",
+    "source": "substring(lower(title), len(prefix), 3) == prefix",
+    "notes": "calls in sibling arguments are listed left to right after the outer call"
+  },
+  {
+    "id": "analysis/call-result-chain",
+    "source": "lookup(patron.id).standing == 'good'",
+    "notes": "a chain rooted at a call's result reads no variable: the argument is the only reference"
+  },
+  {
+    "id": "analysis/assignment-root",
+    "source": "renewals = renewals + 1",
+    "notes": "the location an assignment writes is not a read; its value's reads are"
+  },
+  {
+    "id": "analysis/assignment-property-chain",
+    "source": "loan.renewals = 1; loan.due_on = next_due",
+    "notes": "each statement's store is listed in source order"
+  },
+  {
+    "id": "analysis/assignment-literal-keys",
+    "source": "patron['loans'][0] = loan",
+    "notes": "literal bracket keys in a location are string and integer segments"
+  },
+  {
+    "id": "analysis/assignment-dynamic-key",
+    "source": "fines[patron_id] = fines[patron_id] + amount",
+    "notes": "a computed key in a location is the dynamic segment, and the key itself is a read"
+  },
+  {
+    "id": "analysis/assignment-in-control-flow",
+    "source": "if overdue { standing = 'blocked' } else { notices[day] = len(holds) }",
+    "notes": "stores inside both branches of an if are listed, with the condition's and the branches' reads and calls"
+  },
+  {
+    "id": "analysis/assignment-in-loop",
+    "source": "count = 0; while count < len(holds) { count = count + 1 }",
+    "notes": "a while loop's condition and body are read once each, in source order"
+  },
+  {
+    "id": "analysis/instructions-reference-and-call",
+    "instructions": [
+      ["load", "patron"],
+      ["access", "loans"],
+      ["call", "len", 1],
+      ["load", "limit"],
+      ["compare", "LT"]
+    ],
+    "notes": "an instruction list carries no positions: every position is null"
+  },
+  {
+    "id": "analysis/instructions-dynamic-store",
+    "instructions": [
+      ["lit", "fines"],
+      ["load", "patron_id"],
+      ["lit", 5],
+      ["store", 2]
+    ],
+    "notes": "a store whose segment is not a string or integer literal stores to the dynamic segment, and that segment's reads are listed"
+  },
+  {
+    "id": "analysis/instructions-retired-and",
+    "instructions": [
+      ["load", "eligible"],
+      ["load", "approved"],
+      ["and"]
+    ],
+    "notes": "the retired and opcode still reads both operands"
+  }
+]

@@ -16,6 +16,8 @@ defmodule Mix.Tasks.Corpus.GenerateTest do
       Path.join(System.tmp_dir!(), "corpus_generate_test_#{System.unique_integer([:positive])}")
 
     File.mkdir_p!(Path.join(tmp, "conformance/cases"))
+    File.mkdir_p!(Path.join(tmp, "conformance/analysis"))
+    File.write!(Path.join(tmp, "conformance/analysis/cases.json"), "[]")
     original_cwd = File.cwd!()
     File.cd!(tmp)
 
@@ -29,6 +31,10 @@ defmodule Mix.Tasks.Corpus.GenerateTest do
 
   defp write_cases(cases) do
     File.write!("conformance/cases/seed.json", JSON.encode!(cases))
+  end
+
+  defp write_analysis_cases(cases) do
+    File.write!("conformance/analysis/cases.json", JSON.encode!(cases))
   end
 
   describe "run/1 - writing" do
@@ -138,6 +144,64 @@ defmodule Mix.Tasks.Corpus.GenerateTest do
     end
   end
 
+  describe "run/1 - the analysis surface" do
+    test "writes conformance/analysis/corpus.json, one case per line" do
+      write_cases([%{"id" => "t/lit", "source" => "42"}])
+
+      write_analysis_cases([
+        %{"id" => "analysis/b", "source" => "b"},
+        %{"id" => "analysis/a", "source" => "a"}
+      ])
+
+      capture_io(fn -> Task.run([]) end)
+
+      lines = "conformance/analysis/corpus.json" |> File.read!() |> String.split("\n", trim: true)
+      assert Enum.map(lines, &JSON.decode!(&1)["id"]) == ["analysis/a", "analysis/b"]
+    end
+
+    test "leaves the manifest and its corpus_hash exactly as the evaluator cases alone make them" do
+      write_cases([%{"id" => "t/lit", "source" => "42"}])
+      capture_io(fn -> Task.run([]) end)
+      without_analysis = File.read!("conformance/manifest.json")
+
+      write_analysis_cases([%{"id" => "analysis/a", "source" => "a.b > f(c)"}])
+      capture_io(fn -> Task.run([]) end)
+
+      assert File.read!("conformance/manifest.json") == without_analysis
+    end
+
+    test "--check raises naming the analysis corpus when an analysis case changes" do
+      write_cases([%{"id" => "t/lit", "source" => "42"}])
+      write_analysis_cases([%{"id" => "analysis/a", "source" => "a"}])
+      capture_io(fn -> Task.run([]) end)
+
+      write_analysis_cases([%{"id" => "analysis/a", "source" => "b"}])
+
+      {_stdout, stderr} =
+        with_io(:stderr, fn ->
+          assert_raise Mix.Error, ~r/out of date/, fn ->
+            capture_io(fn -> Task.run(["--check"]) end)
+          end
+        end)
+
+      assert stderr =~ "stale: conformance/analysis/corpus.json"
+      refute stderr =~ "stale: conformance/manifest.json"
+    end
+
+    test "an analysis case that fails is reported and nothing is written" do
+      write_cases([%{"id" => "t/lit", "source" => "42"}])
+      write_analysis_cases([%{"id" => "analysis/bad", "source" => "a >"}])
+
+      output =
+        capture_io(:stderr, fn ->
+          assert_raise Mix.Error, ~r/1 error/, fn -> Task.run([]) end
+        end)
+
+      assert output =~ "analysis/bad"
+      refute File.exists?("conformance/manifest.json")
+    end
+  end
+
   describe "build_files/0" do
     test "returns the file map directly, without touching disk" do
       write_cases([%{"id" => "t/lit", "source" => "42"}])
@@ -145,6 +209,7 @@ defmodule Mix.Tasks.Corpus.GenerateTest do
       assert {:ok, files} = Task.build_files()
       assert Map.has_key?(files, "conformance/manifest.json")
       assert Map.has_key?(files, "conformance/corpus/tier-1.json")
+      assert Map.has_key?(files, "conformance/analysis/corpus.json")
       refute File.exists?("conformance/manifest.json")
     end
   end

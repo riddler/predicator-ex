@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/riddler/predicator-ex/conformance/schema/analysis_case.json",
+  "title": "Predicator conformance authored analysis case",
+  "description": "An authored case in conformance/analysis/cases.json, before mix corpus.generate completes it. A case names a program; the expected answers are always computed, never authored. See conformance/README.md, \"The analysis surface\".",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Human-chosen, path-like, unique, stable forever, always under analysis/. Never renamed once shipped.",
+      "pattern": "^analysis/[a-z0-9]+(?:[-_][a-z0-9]+)*(?:/[a-z0-9]+(?:[-_][a-z0-9]+)*)*$"
+    },
+    "source": {
+      "type": "string",
+      "description": "A predicator program (an expression is a program of one statement). Exactly one of source or instructions is present."
+    },
+    "instructions": {
+      "type": "array",
+      "description": "A raw instruction list, tagged-value encoded, for a case no source compiles to. Exactly one of source or instructions is present.",
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": true
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free text carried into the shipped analysis corpus."
+    }
+  },
+  "required": ["id"],
+  "oneOf": [
+    { "required": ["source"] },
+    { "required": ["instructions"] }
+  ],
+  "additionalProperties": false
+}
