@@ -18,5 +18,6 @@ defmodule Predicator.DocsExamplesTest do
     doctest_file("docs/guides/location-expressions.md")
     doctest_file("docs/guides/embedding.md")
     doctest_file("docs/guides/simple-subset.md")
+    doctest_file("docs/guides/analysing-expressions.md")
   end
 end

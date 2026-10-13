@@ -302,3 +302,50 @@ from a child.
 
 A parenthesized expression's span includes its parentheses and composes to the
 outermost pair.
+
+## Traversing and analysing the tree
+
+Two modules read this shape so a tool does not hand-write a clause per node
+kind. How to use them is the
+[how-to guide](../guides/analysing-expressions.md); this section says what
+each one does with the nodes on this page.
+
+`Predicator.AST` walks anything `t:Predicator.Parser.visitable/0` names: the
+expression nodes, `assignment`, `if` and `while`, a `block`, or a whole
+`program`.
+`Predicator.AST.prewalk/3` and `Predicator.AST.postwalk/3` thread an
+accumulator through a callback that may replace a node, before and after the
+node's children respectively; `Predicator.AST.reduce/3` folds over every node
+without rewriting. The callback sees each node once, whole, with its trailing
+slot as the parser put it; no walk reads, changes or drops that slot. Children
+are visited in source order, and three shapes have a stated rule:
+
+| Node | What the walk does |
+|---|---|
+| `object` | visits each entry's value in entry order; the `object_key` is part of the entry, never handed to the callback |
+| `duration` | has no children: its `{integer, unit}` pairs are plain data |
+| `relative_date` | walks its `duration` as a child |
+
+`Predicator.Analysis` answers three questions with those walks and with a
+second reading of the compiled instructions: `references/1` lists each
+variable read as a path, `calls/1` each function call with its name and arity,
+and `assignments/1` each location a program stores to. A path is a list of
+segments - a string, an integer for a literal index, or `:dynamic` for any
+other key, a computed one or a literal that is neither a string nor an integer - read off the access chain this page describes: an `identifier`
+wrapped in `property_access` and `bracket_access` nodes. A chain rooted at
+anything other than an `identifier` reads no variable.
+
+The position of a read is the trailing slot this page's first section
+describes: the span of the whole chain when the tree carries spans, and
+otherwise the point position of the chain's root variable. An assignment's
+position is its own node's span when the tree carries spans, and otherwise the
+root variable's point position, so it starts where the written location
+starts. A call's position is the `function_call` node's own: the point of the name
+token, or the span from the name through the closing parenthesis when the tree
+carries spans.
+An assignment's location is not a read; the bracket keys inside it are.
+
+`Predicator.Analysis` also accepts instruction lists and
+`Predicator.Compiled` envelopes, and gives the same paths, calls and stores
+for the same source. A bare instruction list carries no trailing slots, so
+every position read from one is `nil`.
