@@ -69,6 +69,7 @@ process's state or in a database column until the next loan comes back.
 - Do
   - [Add custom functions](docs/guides/custom-functions.md): give rules a function of your own, and the host state it reads.
   - [Embed compiled programs](docs/guides/embedding.md): store a compiled rule, check its instruction-set version, and evaluate it later.
+  - [List what a rule reads and calls](docs/guides/analysing-expressions.md): the variables and functions an expression uses, and a check of them against a declared set.
   - [Port Predicator to another language](docs/guides/porting.md): implement the instruction set and verify it against the conformance corpus.
 - Look up
   - [Language reference](docs/reference/language.md): operators, builtin functions, data types, statements, and error shapes.

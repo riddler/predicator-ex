@@ -91,6 +91,7 @@ defmodule Predicator.MixProject do
         docs/guides/embedding.md
         docs/guides/simple-subset.md
         docs/guides/porting.md
+        docs/guides/analysing-expressions.md
         docs/architecture.md
         docs/explanation/why-a-predicate-language-of-its-own.md
         docs/contributing.md
@@ -127,6 +128,7 @@ defmodule Predicator.MixProject do
         "docs/guides/custom-functions.md",
         "docs/guides/embedding.md",
         "docs/guides/porting.md",
+        "docs/guides/analysing-expressions.md",
         "docs/reference/language.md",
         "docs/reference/ast.md",
         "docs/isa.md",
@@ -140,7 +142,8 @@ defmodule Predicator.MixProject do
         "How-to guides": [
           "docs/guides/custom-functions.md",
           "docs/guides/embedding.md",
-          "docs/guides/porting.md"
+          "docs/guides/porting.md",
+          "docs/guides/analysing-expressions.md"
         ],
         Reference: [
           "docs/reference/language.md",
