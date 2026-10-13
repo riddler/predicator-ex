@@ -1,6 +1,6 @@
 # ADR-0020: Analysis is a reading surface over both forms of a program
 
-Status: proposed (2026-10-13)
+Status: accepted (2026-10-13, predicator 9.5.0; proposed 2026-10-13)
 
 ## Context
 
@@ -177,3 +177,47 @@ unchanged, and the ratchet registry does not yet name the analysis surface.
 The placement of the analysis surface outside the evaluator and compiler
 surfaces was decided by the conductor under a standing consent, 2026-10-13.
 Nothing under `lib/` that ships in the package changes with it.
+
+### 2026-10-13: the status is now `accepted`
+
+This record stayed proposed until the code it decides had shipped in a
+published version, and it has. predicator 9.5.0 carries it: the traversal it
+builds on landed in [#248](https://github.com/riddler/predicator-ex/pull/248)
+at `01f5ddc9`, the analysis and this record in
+[#249](https://github.com/riddler/predicator-ex/pull/249) at `6103ecf9`, the
+corpus's analysis surface in
+[#250](https://github.com/riddler/predicator-ex/pull/250) at `6bf0d8ad`, the
+9.5.0 release prep ([#252](https://github.com/riddler/predicator-ex/pull/252))
+merged at `fd7fb015`, and the tag `v9.5.0` on that commit started
+<https://github.com/riddler/predicator-ex/actions/runs/38413868048>, whose
+branch, version and Hex checks, full gate and publish step all passed on its
+first attempt; Hex shows 9.5.0 as the latest version. The flip was decided by
+the conductor under a standing consent, 2026-10-13. The consequence above
+that reads "Status is `proposed`" is met here: the flip is this separate
+change, made once the code shipped.
+
+Every claim above was re-verified on 2026-10-13 against `origin/main` at
+`fd7fb015`, which no commit has followed: `references/1`, `calls/1` and
+`assignments/1` in `lib/predicator/analysis.ex`, each answering `{:ok, list}`
+in the item shapes and segment rules of the two tables, with the outer call
+first and a qualified name kept whole; a chain rooted anywhere but a variable
+yielding no reference, and an assignment's location read as no reference
+while its bracket keys are; the path position rule beside the store blame
+rule in `lib/predicator/visitors/instructions_visitor.ex`; the five input
+forms, with a source string read through `Predicator.parse_program/2`; the
+symbolic stack of the instruction form, its ordering and its short-circuit
+merge; the `ParseError` that `Predicator.compile_program/1` answers and the
+evaluator's `"unknown_instruction"` reason, with no new reason term; the two
+binding tests named above, the clause coverage test reading both clause lists
+both ways with the retired `and` and `or` included, and the forms test
+comparing the AST with both envelopes on positions and with the bare list on
+paths and calls only; the context's citations of `Predicator.Compiled`'s
+storage advice, `Predicator.ContextLocation`'s resolution against a context,
+`Predicator.AST`'s walks, `Predicator.Vocabulary`'s sync test and
+[ADR-0002](0002-the-equals-grammar-break.md). Between `v9.4.4` and `v9.5.0`
+no parser, compiler, evaluator or opcode file changed, `docs/isa.md` and
+`conformance/manifest.json` did not move, and no evaluator or compiler case
+changed. The one change under `lib/` that is not an addition, the extended
+`mix corpus.generate` task, is the corpus decision the 2026-10-13 Note above
+records, and that task does not ship in the package; that Note's own claims
+hold at the same SHA. No other sentence above is superseded.
