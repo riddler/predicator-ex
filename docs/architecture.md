@@ -153,6 +153,15 @@ period.
   `duration_unit?/1`'s clause heads, and a round-trip of every lexeme through
   `Lexer.tokenize/1` - a token added to the lexer with no entry here turns the
   suite red
+- **Analysis** (`lib/predicator/analysis.ex`): `references/1`, `calls/1` and
+  `assignments/1` list every variable read, function call and store target of
+  a program, in source order, as maps carrying a path (or a name and arity)
+  and a position. Each reads a source string, an AST, a program, an
+  instruction list or a `Predicator.Compiled` envelope; the instruction form
+  rebuilds paths through a symbolic stack and agrees with the AST form. Like
+  Vocabulary it is a reading surface only, bound to the parser's node kinds and
+  the opcode table by `test/predicator/analysis_clause_coverage_test.exs`. See
+  [ADR-0020](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0020-analysis-is-a-reading-surface-over-both-forms.md)
 
 ### Compile entry points
 

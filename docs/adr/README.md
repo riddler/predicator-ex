@@ -21,6 +21,7 @@
 | [0017](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0017-structured-authoring-is-a-subset-value.md) | Structured authoring is a subset value over the AST, not a second grammar | accepted |
 | [0018](0018-the-release-workflow-publishes-on-the-tag-push.md) | The release workflow publishes on the tag push; no agent or session runs `mix hex.publish` (supersedes ADR-0006's publish sentences) | accepted |
 | [0019](0019-chronological-members-order-by-instant.md) | Two dates, or two datetimes, inside lists and maps order by instant, as the top level does | accepted |
+| [0020](0020-analysis-is-a-reading-surface-over-both-forms.md) | Analysis is a reading surface over both forms of a program: references, calls and assignments from the AST or the instruction list | proposed |
 
 Link form is load-bearing: ADRs are not published to hexdocs, so a published
 extra (README.md, docs/isa.md, ...) cites an ADR by absolute GitHub URL - a
