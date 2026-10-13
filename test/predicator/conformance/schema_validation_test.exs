@@ -69,6 +69,64 @@ defmodule Predicator.Conformance.SchemaValidationTest do
     end
   end
 
+  describe "the analysis surface validates against its own schemas" do
+    # sabotage: schema/analysis_corpus.json calls.items required gains "module" -> red
+    test "each case in conformance/analysis/corpus.json satisfies schema/analysis_corpus.json" do
+      schema = read_schema("analysis_corpus.json")
+      lines = "conformance/analysis/corpus.json" |> File.read!() |> String.split("\n", trim: true)
+
+      assert lines != []
+
+      for line <- lines do
+        analysis_case = JSON.decode!(line)
+
+        assert :ok == SchemaValidator.validate(schema, analysis_case),
+               "analysis case #{inspect(analysis_case["id"])} fails schema/analysis_corpus.json: " <>
+                 inspect(SchemaValidator.validate(schema, analysis_case))
+      end
+    end
+
+    # sabotage: schema/analysis_case.json root required gains "notes" -> red
+    test "each case in conformance/analysis/cases.json satisfies schema/analysis_case.json" do
+      schema = read_schema("analysis_case.json")
+      cases = "conformance/analysis/cases.json" |> File.read!() |> JSON.decode!()
+
+      assert cases != []
+
+      for authored_case <- cases do
+        assert :ok == SchemaValidator.validate(schema, authored_case),
+               "analysis case #{inspect(authored_case["id"])} fails schema/analysis_case.json: " <>
+                 inspect(SchemaValidator.validate(schema, authored_case))
+      end
+    end
+
+    # sabotage: schema/analysis_corpus.json's dynamic segment enum gains "computed" -> red
+    test "a path segment is a string, an integer or the dynamic marker, and nothing else" do
+      schema = read_schema("analysis_corpus.json")
+
+      base = %{
+        "id" => "analysis/example",
+        "source" => "a",
+        "instructions" => [["load", "a"], ["pop"]],
+        "calls" => [],
+        "assignments" => []
+      }
+
+      with_segment = fn segment ->
+        Map.put(base, "references", [%{"path" => ["a", segment], "position" => [1, 1]}])
+      end
+
+      assert :ok == SchemaValidator.validate(schema, with_segment.("b"))
+      assert :ok == SchemaValidator.validate(schema, with_segment.(0))
+      assert :ok == SchemaValidator.validate(schema, with_segment.(%{"$type" => "dynamic"}))
+
+      assert {:error, _reason} =
+               SchemaValidator.validate(schema, with_segment.(%{"$type" => "computed"}))
+
+      assert {:error, _reason} = SchemaValidator.validate(schema, with_segment.(true))
+    end
+  end
+
   describe "schema/report.json is internally consistent" do
     # sabotage: schema/report.json results.items.properties.result.enum gains "skip" -> red
     test ~s(the result enum is exactly ["pass", "fail"] - the structural half of never-skip) do

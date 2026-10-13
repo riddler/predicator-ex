@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Corpus.Generate do
-  @shortdoc "Regenerates the shipped conformance corpus from conformance/cases/*.json"
+  @shortdoc "Regenerates the shipped conformance corpus from its authored cases"
 
   @moduledoc """
   Regenerates `conformance/corpus/tier-*.json` and `conformance/manifest.json`
@@ -13,6 +13,12 @@ defmodule Mix.Tasks.Corpus.Generate do
   id, via `Predicator.Conformance.JSON.encode_lines/1`) and the manifest, and
   is otherwise deliberately free of logic - anything that needs a test belongs
   in `Predicator.Conformance.*`, not here.
+
+  It also regenerates the analysis surface: `conformance/analysis/corpus.json`
+  from the authored `conformance/analysis/cases.json`, through
+  `Predicator.Conformance.AnalysisGenerator.generate/1`. That file sits
+  outside the tier files, the manifest and `corpus_hash`, so the evaluator and
+  compiler surfaces read exactly as they did before it existed.
 
   ## Usage
 
@@ -28,12 +34,14 @@ defmodule Mix.Tasks.Corpus.Generate do
 
   use Mix.Task
 
-  alias Predicator.Conformance.Generator
+  alias Predicator.Conformance.{AnalysisGenerator, Generator}
   alias Predicator.Conformance.JSON, as: CanonicalJSON
 
   @cases_glob "conformance/cases/*.json"
   @corpus_dir "conformance/corpus"
   @manifest_path "conformance/manifest.json"
+  @analysis_cases_path "conformance/analysis/cases.json"
+  @analysis_corpus_path "conformance/analysis/corpus.json"
 
   @typedoc "Relative path (from the project root) mapped to the exact bytes it should contain."
   @type file_map :: %{String.t() => binary()}
@@ -51,9 +59,11 @@ defmodule Mix.Tasks.Corpus.Generate do
 
   @doc """
   Reads `conformance/cases/*.json`, runs `Predicator.Conformance.Generator.generate/1`,
-  and returns the exact file map `mix corpus.generate` would write: relative
-  path (from the project root) mapped to the exact bytes that file should
-  contain.
+  reads `conformance/analysis/cases.json`, runs
+  `Predicator.Conformance.AnalysisGenerator.generate/1`, and returns the exact
+  file map `mix corpus.generate` would write: relative path (from the project
+  root) mapped to the exact bytes that file should contain. A failure on
+  either surface fails the whole map.
 
   Public so `test/predicator/conformance/corpus_freshness_test.exs` can
   regenerate in memory and byte-compare against the checked-in files without
@@ -64,8 +74,13 @@ defmodule Mix.Tasks.Corpus.Generate do
   @spec build_files() :: {:ok, file_map()} | {:error, [Generator.case_error()]}
   def build_files do
     with {:ok, authored} <- read_authored_cases(),
-         {:ok, %{tiers: tiers, manifest: manifest}} <- Generator.generate(authored) do
-      {:ok, assemble_files(tiers, manifest)}
+         {:ok, %{tiers: tiers, manifest: manifest}} <- Generator.generate(authored),
+         {:ok, analysis_authored} <- decode_case_file(@analysis_cases_path),
+         {:ok, analysis_cases} <- AnalysisGenerator.generate(analysis_authored) do
+      {:ok,
+       tiers
+       |> assemble_files(manifest)
+       |> Map.put(@analysis_corpus_path, CanonicalJSON.encode_lines(analysis_cases))}
     end
   end
 
@@ -144,8 +159,11 @@ defmodule Mix.Tasks.Corpus.Generate do
 
   @spec write(file_map()) :: :ok
   defp write(files) do
-    File.mkdir_p!(@corpus_dir)
-    Enum.each(files, fn {path, content} -> File.write!(path, content) end)
+    Enum.each(files, fn {path, content} ->
+      File.mkdir_p!(Path.dirname(path))
+      File.write!(path, content)
+    end)
+
     Mix.shell().info("Wrote #{map_size(files)} file(s) to conformance/.")
   end
 

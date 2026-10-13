@@ -160,3 +160,20 @@ opcode added without an analysis clause turns the suite red.
 - **Status is `proposed`.** Per `docs/adr/README.md`, an agent may draft and
   only the maintainer accepts; the flip to `accepted` is a separate reviewed
   change once the code ships in a published version.
+
+## Notes
+
+### 2026-10-13: the conformance corpus gains an analysis surface
+
+The consequence above that this decision adds "no conformance corpus entry"
+held for the change it records, and the later decision it names has now been
+taken: the corpus carries a third surface for analysis, beside the evaluator
+and the compiler and outside both, specified in `conformance/README.md`
+("The analysis surface"). Its cases are generated from this module's answers
+in the shape decided here, with a computed key spelled `{"$type": "dynamic"}`
+and a position as `[line, column]` or `null`. The evaluator and compiler
+surfaces, their cases, the tier files, the manifest and `corpus_hash` are
+unchanged, and the ratchet registry does not yet name the analysis surface.
+The placement of the analysis surface outside the evaluator and compiler
+surfaces was decided by the conductor under a standing consent, 2026-10-13.
+Nothing under `lib/` that ships in the package changes with it.

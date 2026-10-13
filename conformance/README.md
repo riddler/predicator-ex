@@ -28,7 +28,9 @@ implementation actually produces.
 
 ## The two surfaces
 
-Each case exercises up to two independent things a sibling implements:
+Each case in `conformance/cases/` and `conformance/corpus/` exercises up to
+two independent things a sibling implements (a third surface, the analysis
+one, has files of its own; see "The analysis surface" below):
 
 1. **The evaluator.** Run `instructions` (already-compiled, tagged-value
    encoded) against `context`, and compare the result to `expected_result`
@@ -261,6 +263,78 @@ The `library/*` cases are the family's shared example world - a library's
 loans, holds, renewals and patron standing - and its definition lives in the
 statifier engine repository's `conformance/README.md`, so a new library row is
 authored against that world rather than against a parallel one invented here.
+
+## The analysis surface
+
+A third surface, beside the evaluator and the compiler, and separate from
+both: `Predicator.Analysis` lists what a program reads, calls and stores
+without running it, and a sibling that mirrors that analysis checks itself
+against `conformance/analysis/corpus.json`. Nothing above changes for it. The
+evaluator and compiler surfaces keep their cases, their tier files, their
+manifest and their `corpus_hash`; the analysis files sit outside all four, so
+a runner that does not implement analysis reads the corpus exactly as it did
+before this surface existed.
+
+**The files.** `conformance/analysis/cases.json` is the authored source, a
+JSON array validated by `conformance/schema/analysis_case.json`: each case has
+an `id` under `analysis/`, exactly one of `source` (a program; an expression
+is a program of one statement) or `instructions` (a tagged-value encoded
+instruction list), and optional `notes`. A case never authors its expected
+answers. `mix corpus.generate` computes them from `Predicator.Analysis` and
+writes `conformance/analysis/corpus.json`, one case per line, sorted by id,
+validated by `conformance/schema/analysis_corpus.json`; `mix corpus.generate
+--check` and the corpus freshness test byte-compare it like every other
+generated file. A shipped case carries `id`, `source` (`null` for a case
+authored as instructions), `instructions`, `references`, `calls`,
+`assignments` and, when authored, `notes`.
+
+**What a runner compares.** For each case, a runner runs its own analysis and
+compares the three lists, in order, item for item:
+
+- `references`: every variable read, in source order, each
+  `{"path": [segment, ...], "position": position}`;
+- `calls`: every function call, in source order, an outer call before the
+  calls in its arguments, each `{"name": string, "arity": integer,
+  "position": position}`, the name as written, dots included;
+- `assignments`: every location the program stores to, in source order, each
+  `{"path": [segment, ...], "position": position}`.
+
+Every occurrence is listed; nothing is deduplicated. A runner may read either
+form of a case, or both:
+
+- **From `source`** (when it is non-`null`): parse it as a program and compare
+  every field, positions included.
+- **From `instructions`**: analyse the list as it stands and compare every
+  field with each `position` read as `null`, since an instruction list carries
+  no positions. For a case authored as `source`, `instructions` is what that
+  source compiles to as a program, and the generator refuses a case whose two
+  forms disagree on anything but positions, so one expected set serves both.
+
+**The JSON spelling.** A path segment is a JSON string (a variable or
+property name, or a string literal key), a JSON integer (a literal integer
+index), or `{"$type": "dynamic"}` for any other bracket key: a computed key,
+or a literal that is neither a string nor an integer. The path continues past
+a dynamic segment, and a computed key's own reads are listed as references of
+their own. The `$type` object follows the tagged-value encoding above, so a
+segment that is the string `"dynamic"` stays a plain string. A position is
+`[line, column]`, both 1-based, where the path or the call starts, or `null`.
+
+**Success cases only.** Every case here is a program the analysis answers; a
+source that does not parse, or an instruction the analysis cannot read, fails
+generation rather than becoming a case. How an implementation reports such a
+failure is not part of this surface yet.
+
+**Not in the registry yet.** `conformance/schema/report.json`'s `surface` and
+`conformance/RATCHET.md`'s registry name the evaluator and the compiler only.
+The analysis surface stays outside both until a sibling's runner opts in to
+it; widening them then is its own change. The Never-skip rule above applies
+to an analysis runner all the same: every case it reads is a pass or a fail.
+
+**The sibling port is a follow-on.** Mirroring `Predicator.AST`,
+`Predicator.Analysis` and this surface in predicator-ts is later work, after a
+predicator release carries them, and is not done with this surface. Its
+vendored corpus and runners read the evaluator and compiler surfaces
+unchanged until it opts in.
 
 ## Known uncovered
 
