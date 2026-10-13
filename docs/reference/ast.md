@@ -77,7 +77,9 @@ recording whether the key was written bare (`{name: 1}`), double-quoted
 (`{"name": 1}`), or single-quoted (`{'name': 1}`), so
 `Predicator.Visitors.StringVisitor` can decompile it back exactly as written.
 An `{:object, entries, pos}` node's `entries` are `{object_key, expression}`
-pairs.
+pairs. The `Predicator.AST` walks treat a key as part of its entry rather
+than a node: they never hand it to the callback and visit only the entry's
+expression.
 
 ## Statement nodes
 
