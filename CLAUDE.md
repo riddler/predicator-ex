@@ -361,7 +361,7 @@ required, this file wins.
 
 The full reference is **`deps/ex_quality/usage-rules.md`**, vendored with the
 dependency, so it is the version of the tool this repo actually runs
-(`{:ex_quality, "~> 0.15"}`). Read it when a stage fails in a way its own
+(`{:ex_quality, "~> 0.16"}`). Read it when a stage fails in a way its own
 output does not explain, or when you need the shape of the JSON report. Fetch
 it with `mix deps.get` if `deps/` is cold; do not go looking for the rules on
 the web instead.

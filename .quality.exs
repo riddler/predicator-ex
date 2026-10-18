@@ -4,8 +4,8 @@
 #
 #   mix quality                 - full gate: format, compile, credo --strict,
 #                                 dialyzer, dependency audit, docs, doc links,
-#                                 full suite with coverage. Required green
-#                                 before every commit.
+#                                 README shape, full suite with coverage.
+#                                 Required green before every commit.
 #
 #   mix quality --profile loop  - inner loop while implementing: skips dialyzer
 #                                 and coverage, runs only the tests covering
@@ -43,6 +43,15 @@
 
   doc_links: [
     enabled: :auto
+  ],
+
+  # The README stage checks the README keeps the shape of an introduction and
+  # a map: what, why, install, one basic-usage snippet, and the links grouped
+  # by the reader's question. Findings fail the gate. The line ceiling comes
+  # from `readme_max_lines` in `.claude/diataxis.md`.
+  readme: [
+    enabled: :auto,
+    severity: :error
   ],
 
   profiles: [

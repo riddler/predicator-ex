@@ -78,7 +78,7 @@ process's state or in a database column until the next loan comes back.
   - [Nested data access](docs/guides/nested-data-access.md): dot and bracket notation over deep contexts.
   - [Location expressions](docs/guides/location-expressions.md): the targets an assignment may write, and how they resolve.
   - [The simple subset](docs/guides/simple-subset.md): a rule as field, operator and value rows, for a form-based editor.
-  - [AST reference](https://github.com/riddler/predicator-ex/blob/main/docs/reference/ast.md): the tree `Predicator.parse/2` returns, node by node.
+  - [AST reference](docs/reference/ast.md): the tree `Predicator.parse/2` returns, node by node.
   - [ISA reference](docs/isa.md): the instruction set's opcodes, stack effects, error semantics and versions.
   - [API reference](https://hexdocs.pm/predicator/api-reference.html): every public module and function.
   - [The changelog](CHANGELOG.md): what changed in each version.
