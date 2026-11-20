@@ -91,7 +91,8 @@ iex> path
 [root: "cart", key: "items"]
 ```
 
-Operators are the comparisons and the two membership operators. Values are one
+Operators are the comparisons and the three membership operators (`in`,
+`contains` and `intersects`). Values are one
 scalar or a list of them:
 
 ```elixir
@@ -228,7 +229,10 @@ list.
 
 ```elixir
 iex> Predicator.Simple.operators(:list)
-[%{op: :in, lexeme: "IN", label: "is one of", arity: 2}]
+[
+  %{op: :in, lexeme: "IN", label: "is one of", arity: 2},
+  %{op: :intersects, lexeme: "INTERSECTS", label: "shares a member with", arity: 2}
+]
 ```
 
 The other half of that question is which kind the row's value is, and

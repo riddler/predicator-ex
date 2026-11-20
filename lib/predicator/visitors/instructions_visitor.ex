@@ -547,6 +547,7 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   @spec map_membership_op(Parser.membership_op()) :: binary()
   defp map_membership_op(:in), do: "in"
   defp map_membership_op(:contains), do: "contains"
+  defp map_membership_op(:intersects), do: "intersects"
 
   # A presence node's opcode operand, and whether `not` follows it
   # (ADR-0021's compile table).

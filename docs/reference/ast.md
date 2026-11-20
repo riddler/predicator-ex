@@ -74,6 +74,9 @@ In a `presence` node, `kind` is `:blank`, `:present` or `:defined`, and
 record which of the six spellings was written
 ([ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)).
 
+In a `membership` node, `op` is `:in`, `:contains` or `:intersects`
+(ADR-0021).
+
 ## Object keys
 
 Object keys have their own node - `{:object_key, value, style, pos}` - rather

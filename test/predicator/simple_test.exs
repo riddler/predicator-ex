@@ -543,7 +543,7 @@ defmodule Predicator.SimpleTest do
         date: ["<", "<=", ">", ">=", "==", "===", "!=", "!==", "CONTAINS"],
         datetime: ["<", "<=", ">", ">=", "==", "===", "!=", "!==", "CONTAINS"],
         duration: ["<", "<=", ">", ">=", "==", "===", "!=", "!==", "CONTAINS"],
-        list: ["IN"]
+        list: ["IN", "INTERSECTS"]
       }
 
       assert Enum.sort(Map.keys(expected)) == Enum.sort(Vocabulary.value_kinds()),
@@ -632,14 +632,15 @@ defmodule Predicator.SimpleTest do
       end
     end
 
-    test "offers `IN` for a list and nothing else, and never offers it elsewhere" do
+    test "offers `IN` and `INTERSECTS` for a list and nothing else, and never elsewhere" do
       assert Simple.operators(:list) == [
-               %{op: :in, lexeme: "IN", label: "is one of", arity: 2}
+               %{op: :in, lexeme: "IN", label: "is one of", arity: 2},
+               %{op: :intersects, lexeme: "INTERSECTS", label: "shares a member with", arity: 2}
              ]
 
-      for kind <- Vocabulary.value_kinds(), kind != :list do
-        refute :in in Enum.map(Simple.operators(kind), & &1.op),
-               "operators(#{inspect(kind)}) offers IN, whose right-hand side is a list"
+      for kind <- Vocabulary.value_kinds(), kind != :list, op <- [:in, :intersects] do
+        refute op in Enum.map(Simple.operators(kind), & &1.op),
+               "operators(#{inspect(kind)}) offers #{op}, whose right-hand side is a list"
       end
     end
 

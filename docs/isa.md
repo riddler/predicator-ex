@@ -109,10 +109,14 @@ each row.
   increases, so total work is at most `(budget + 1) * length(program)`
   instructions.
 - **`:undefined` is a first-class value**, not an absence. Some opcodes
-  propagate it (`compare` under a non-strict operator, `in`, `contains`),
-  some reject it (`not`, the arithmetic five, `unary_minus`, `unary_bang`,
-  legacy `and`/`or`), and the jumps treat it as falsy. Each opcode's
-  subsection below says which. `null` is also a first-class value, and the
+  propagate it (`compare` under a non-strict operator, `in`, `contains`,
+  `intersects`), some reject it (`not`, the arithmetic five, `unary_minus`,
+  `unary_bang`, legacy `and`/`or`), and the jumps treat it as falsy. Each
+  opcode's subsection below says which. From ISA v7 the three containment
+  opcodes reject no operand at all: an operand pairing they cannot test
+  answers `:undefined`, as `compare` answers a type mismatch under a
+  non-strict operator, and none of them produces a `TypeMismatchError`
+  ([ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)). `null` is also a first-class value, and the
   two are not the same thing: `:undefined` is an absence (no value was ever
   supplied), while `null` is a value that is present and empty. The opcodes
   treat them alike at a jump (both falsy) but differently under `===` and
@@ -275,8 +279,8 @@ Every opcode is **ISA v1** except `jump_if_falsy_or_pop`,
 `jump_if_true_or_pop`, and `make_list`, which are **v2** (ADR-0001),
 `store` and `pop`, which are **v3**, `cast`, which is **v4** (ADR-0011),
 `jump` and `pop_jump_if_falsy`, which are **v5** (ADR-0013),
-`jump_backward`, which is **v6** (ADR-0013), and `presence`, which is
-**v7** (ADR-0021).
+`jump_backward`, which is **v6** (ADR-0013), and `presence` and
+`intersects`, which are **v7** (ADR-0021).
 
 ### Tiers
 
@@ -296,7 +300,7 @@ row's tier does not depend on the value types the expression happens to use
 | 7 | casts | `cast` |
 | 8 | control flow | `jump`, `pop_jump_if_falsy` |
 | 9 | loops | `jump_backward` |
-| 10 | presence and overlap | `presence` |
+| 10 | presence and overlap | `presence`, `intersects` |
 
 Tiers are defined by opcode, not by value. A date comparison
 (`[["lit", Date], ["lit", Date], ["compare", "GT"]]`) is tier 1 by opcode,
@@ -340,6 +344,7 @@ feature tags, not by tiers.
 | `pop_jump_if_falsy` | offset (int > 0) | 1 | 0 | v5 | 8 | yes | - |
 | `jump_backward` | offset (int > 0) | 0 | 0 | v6 | 9 | yes | - |
 | `presence` | `"blank"` or `"defined"` (string) | 1 | 1 | v7 | 10 | yes | - |
+| `intersects` | - | 2 | 1 | v7 | 10 | yes | - |
 
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` pop 0 or 1 values and push
 0: on the taken branch they leave the value on the stack (net 0 change), and
@@ -457,9 +462,25 @@ reference survives an edit above it.
 - **`not`** (`execute_logical_not/1`) - boolean required; `:undefined`,
   `null`, or any other type is `TypeMismatchError` (operation `logical_not`,
   expected `boolean`).
-- **`in`** (`execute_membership/2`) - `left in right`. Either operand
-  `:undefined` pushes `:undefined`. The right operand must be a list, else
-  `TypeMismatchError` (operation `in`, expected `list`). Membership uses
+- **`in`** (`execute_membership/2`, `containment/2`) - `left in right`; the
+  right operand is the container. It never produces a `TypeMismatchError`;
+  per pairing (ISA v7,
+  [ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)):
+  - either operand `:undefined` pushes `:undefined`, as at v6;
+  - a list container pushes `true` when a member equals the left operand
+    under `values_equal?/2`, else `false`, as at v6. A string member is
+    matched whole, never as a substring;
+  - a string container and a string on the left push `true` when the left
+    occurs in the container, else `false`: case-sensitive, by code point,
+    with no normalization and no locale, and the empty string occurs in
+    every string (v7; v6 answered `TypeMismatchError`);
+  - every other pairing pushes `:undefined`: a `null`, number, boolean,
+    `Date`, `DateTime`, duration or object container, or a string container
+    with a left operand that is not a string (v7; v6 answered
+    `TypeMismatchError`, operation `in`, expected `list`). An object
+    container is given no containment meaning.
+
+  Membership uses
   type-matched equality with chronological date comparison
   (`values_equal?/2`), and `:undefined` is never equal to anything. `null`
   is the one place `null` behaves as a value rather than an absence:
@@ -471,10 +492,25 @@ reference survives an edit above it.
   already disagree about `:undefined` in the opposite direction
   (`undefined in [undefined]` propagates `:undefined` rather than answering
   `false`), so the two operators were never one predicate.
-- **`contains`** (`execute_membership/2`) - `left contains right`. Mirror of
-  `in`; the **left** operand must be the list, and the type mismatch is
-  reported against the left operand's type. `null` on the right behaves as
-  it does under `in`: identity via `values_equal?/2`, not propagation.
+- **`contains`** (`execute_membership/2`, `containment/2`) - `left contains
+  right`. Mirror of `in`: the **left** operand is the container, and each
+  pairing answers exactly as it does under `in` with the operands swapped -
+  a list container tests membership, two strings test for a substring, an
+  `:undefined` operand propagates, and every other pairing pushes
+  `:undefined` (v7; v6 answered `TypeMismatchError`, operation `contains`,
+  expected `list`). `null` on the right of a list container behaves as it
+  does under `in`: identity via `values_equal?/2`, not propagation.
+- **`intersects`** (`execute_intersects/1`) - `left intersects right` pops
+  two values and pushes `true` when some member of the left list equals
+  some member of the right list under `values_equal?/2` (the equality `in`
+  uses), else `false`; an empty list on either side pushes `false` (ISA v7,
+  [ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)).
+  Either operand `:undefined` pushes `:undefined`, and so does every other
+  pairing: a string, number, boolean, `null`, `Date`, `DateTime`, duration
+  or object on either side. It never produces a `TypeMismatchError`. An
+  empty stack, or a stack of one, is `EvaluationError` insufficient
+  operands. `a intersects b` compiles its two operands, left first,
+  followed by `["intersects"]`.
 - **`presence`** (`execute_presence/2`, `blank?/1`) - pops one value and
   pushes `true` or `false`; it never errors on a value (ISA v7,
   [ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)).
@@ -885,7 +921,7 @@ What a reader might expect to find here and will not:
 | v4 | `cast` | - | 5.0.0 |
 | v5 | `jump`, `pop_jump_if_falsy` | - | 5.0.0 |
 | v6 | `jump_backward` | - | 5.0.0 |
-| v7 | `presence` | - | 9.6.0 |
+| v7 | `presence`, `intersects`; `in` and `contains` widened: two strings are a substring test, and every other pairing that is not a list container answers `:undefined` where v6 answered a `TypeMismatchError` | - | 9.6.0 |
 
 This table records the release each opcode was *introduced* in, and, now that
 an opcode has been retired, the release each was *removed* in - both ends of

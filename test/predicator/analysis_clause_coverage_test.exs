@@ -26,7 +26,7 @@ defmodule Predicator.AnalysisClauseCoverageTest do
   @constructor_count 24
 
   # Every row of docs/isa.md section 4's opcode table, retired rows included.
-  @opcode_count 32
+  @opcode_count 33
 
   setup do
     {:ok, types} = Code.Typespec.fetch_types(Parser)

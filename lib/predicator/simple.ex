@@ -109,7 +109,10 @@ defmodule Predicator.Simple do
   grammar and a change to the language reaches the editor without one.
 
       iex> Predicator.Simple.operators(:list)
-      [%{op: :in, lexeme: "IN", label: "is one of", arity: 2}]
+      [
+        %{op: :in, lexeme: "IN", label: "is one of", arity: 2},
+        %{op: :intersects, lexeme: "INTERSECTS", label: "shares a member with", arity: 2}
+      ]
 
   The lexeme is the spelling `to_source/2` renders, not merely a spelling the
   lexer accepts: a word operator is enumerated in both cases (`in` and `IN`),
@@ -128,7 +131,7 @@ defmodule Predicator.Simple do
   alias Predicator.Vocabulary
 
   @comparison_ops [:gt, :gte, :lt, :lte, :equal_equal, :ne, :strict_eq, :strict_ne]
-  @membership_ops [:in, :contains]
+  @membership_ops [:in, :contains, :intersects]
   @presence_ops %{
     is_blank: {:blank, false},
     is_not_blank: {:blank, true},
@@ -163,6 +166,7 @@ defmodule Predicator.Simple do
           | :strict_ne
           | :in
           | :contains
+          | :intersects
 
   @typedoc """
   A presence test, spelled after its source: `:is_not_blank` is
@@ -478,7 +482,7 @@ defmodule Predicator.Simple do
       %{op: :gte, lexeme: ">=", label: "is at least", arity: 2}
 
       iex> Predicator.Simple.operators(:list) |> Enum.map(& &1.lexeme)
-      ["IN"]
+      ["IN", "INTERSECTS"]
 
   """
   @spec operators(Vocabulary.value_kind()) :: [

@@ -171,8 +171,44 @@ could never be compared against one.
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `in`     | Element in collection | `step in ['payment', 'review']` |
-| `contains` | Collection contains element | `[1, 2, 3] contains 2` |
+| `in`     | Element in collection, or substring in string | `step in ['payment', 'review']` |
+| `contains` | Collection contains element, or string contains substring | `[1, 2, 3] contains 2` |
+| `intersects` | The two lists share a member | `loan.tags intersects ['poetry', 'drama']` |
+
+Each operator answers a value for every pair of operands and never a type
+error ([ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)).
+`in` and `contains` are mirrors: `x in c` and `c contains x` give the same
+answer.
+
+- A list container tests membership, with the equality described under
+  "Comparing dates and datetimes" above. A string inside a list is matched
+  whole, never as a substring.
+- Two strings test for a substring: case-sensitive, by code point, with no
+  normalization, and the empty string is contained in every string.
+- An `:undefined` operand gives `:undefined`.
+- Every other pairing gives `:undefined`: a `null`, number, boolean, date,
+  datetime, duration or object container, or a string container with a
+  needle that is not a string.
+- `a intersects b` is `true` when some member of the list `a` equals some
+  member of the list `b` under the same equality `in` uses, and `false`
+  otherwise, an empty list on either side included. An `:undefined` operand,
+  or an operand that is not a list, gives `:undefined`.
+
+`intersects`, like the presence words, is read as an operator only directly
+after an operand, so it stays an ordinary name everywhere else. It is
+accepted as `intersects` and `INTERSECTS`, and sits at the precedence of
+`in` and `contains`.
+
+```elixir
+iex> Predicator.evaluate("title contains 'Moby'", %{"title" => "Moby Dick"})
+{:ok, true}
+iex> Predicator.evaluate("'Moby' in ['Moby Dick']", %{})
+{:ok, false}
+iex> Predicator.evaluate("shelf contains 'a'", %{"shelf" => nil})
+{:ok, :undefined}
+iex> Predicator.evaluate("loan.tags intersects ['poetry', 'drama']", %{"loan" => %{"tags" => ["fiction", "poetry"]}})
+{:ok, true}
+```
 
 ## Presence Operators
 
@@ -728,7 +764,7 @@ keeps its own copy of the grammar to drift out of date:
 
 ```elixir
 iex> Predicator.Vocabulary.by_category(:membership) |> Enum.map(& &1.lexeme)
-["in", "IN", "contains", "CONTAINS"]
+["in", "IN", "contains", "CONTAINS", "intersects", "INTERSECTS"]
 
 iex> Predicator.Vocabulary.tokens() |> Enum.find(&(&1.lexeme == "contains")) |> Map.take([:lexeme, :token_type, :category, :display, :doc])
 %{
@@ -955,7 +991,7 @@ others treat it as a type error.
 | Comparison, strict (`===`, `!==`) | handled, not rejected | ordinary `true`/`false` |
 | `AND`, `OR` | propagated, treated as falsy | short-circuits or falls through |
 | `NOT` | rejected | error (type mismatch) |
-| `in`, `contains` | propagated | `:undefined` |
+| `in`, `contains`, `intersects` | propagated | `:undefined` |
 | `is [not] blank`, `present`, `defined` | handled, not rejected | ordinary `true`/`false` |
 
 Dot access, bracket access, and function arguments are not in this table

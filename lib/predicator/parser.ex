@@ -24,7 +24,7 @@ defmodule Predicator.Parser do
       logical_or   → logical_and ( "OR" | "||" logical_and )*
       logical_and  → logical_not ( "AND" | "&&" logical_not )*
       logical_not  → "NOT" | "!" logical_not | comparison
-      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "==" | "!=" | "===" | "!==" | "in" | "contains" ) addition )?
+      comparison   → addition ( ( ">" | "<" | ">=" | "<=" | "==" | "!=" | "===" | "!==" | "in" | "contains" | "intersects" ) addition )?
       addition     → multiplication ( ( "+" | "-" ) multiplication )*
       multiplication → unary ( ( "*" | "/" | "%" ) unary )*
       unary        → ( "-" | "!" ) unary | postfix
@@ -150,7 +150,8 @@ defmodule Predicator.Parser do
   - `{:logical_not, operand, pos}` - A logical NOT expression
   - `{:list, elements, pos}` - A list literal
   - `{:object, entries, pos}` - An object literal whose keys are `t:object_key/0`
-  - `{:membership, operator, left, right, pos}` - A membership operation (in/contains)
+  - `{:membership, operator, left, right, pos}` - A membership operation (in, contains,
+    or intersects; ADR-0021)
   - `{:presence, kind, negated?, expr, pos}` - A presence test (`expr is [not] blank`,
     `present` or `defined`); `kind` is `:blank`, `:present` or `:defined`, and
     `negated?` records whether the author wrote `not` (ADR-0021)
@@ -308,7 +309,7 @@ defmodule Predicator.Parser do
   @typedoc """
   Membership operators in the AST.
   """
-  @type membership_op :: :in | :contains
+  @type membership_op :: :in | :contains | :intersects
 
   @typedoc """
   The word after `is` (and an optional `not`) in a presence test (ADR-0021).
@@ -1047,40 +1048,17 @@ defmodule Predicator.Parser do
             end
 
           # Membership operators
-          {op_type, op_line, op_col, _len, _value}
+          {op_type, _line, _col, _len, _value} = token
           when op_type in [:in_op, :contains_op] ->
-            operator = map_membership_operator(op_type)
-            op_state = advance(new_state)
+            parse_membership(state, new_state, left, map_membership_operator(op_type), token)
 
-            case parse_addition(op_state) do
-              {:ok, right, final_state} ->
-                ast =
-                  {:membership, operator, left, right,
-                   binary_loc(state, {op_line, op_col}, left, right)}
-
-                {:ok, ast, final_state}
-
-              {:error, _message, _line, _col, _span} = error ->
-                error
-            end
-
-          # Presence operators (ADR-0021): `is [not] blank`, `present` or
-          # `defined`. The words are read by position - only here, directly
-          # after a complete operand - so each stays an ordinary identifier
-          # everywhere else. A sequence that is not a whole presence suffix
-          # falls through, unconsumed, to the error every such sequence already
-          # answered.
-          {:identifier, op_line, op_col, _len, _word} = token ->
-            case presence_suffix(new_state, token) do
-              {:ok, kind, negated?, last, final_state} ->
-                location =
-                  loc(state, {op_line, op_col}, fn -> {node_start(left), token_end(last)} end)
-
-                {:ok, {:presence, kind, negated?, left, location}, final_state}
-
-              :no_match ->
-                {:ok, left, new_state}
-            end
+          # Operator words read by position (ADR-0021): `intersects`, and the
+          # presence suffix `is [not] blank`, `present` or `defined`. Each is
+          # read only here, directly after a complete operand, so each stays
+          # an ordinary identifier everywhere else.
+          {op_type, _line, _col, _len, _word} = token
+          when op_type in [:identifier, :function_name] ->
+            parse_word_operator(state, new_state, left, token)
 
           # Not a comparison, return the addition expression
           _token ->
@@ -1700,6 +1678,67 @@ defmodule Predicator.Parser do
   defp paren_loc(%{spans?: true}, node, open, close) do
     put_elem(node, tuple_size(node) - 1, {token_start(open), token_end(close)})
   end
+
+  # The right operand of a membership operator (`in`, `contains`,
+  # `intersects`) whose token is `op_token`, the unconsumed token at
+  # `new_state`. `state` is where the left operand began.
+  @spec parse_membership(parser_state(), parser_state(), ast(), membership_op(), Lexer.token()) ::
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
+  defp parse_membership(state, new_state, left, operator, op_token) do
+    {_type, op_line, op_col, _len, _value} = op_token
+
+    case parse_addition(advance(new_state)) do
+      {:ok, right, final_state} ->
+        ast =
+          {:membership, operator, left, right, binary_loc(state, {op_line, op_col}, left, right)}
+
+        {:ok, ast, final_state}
+
+      {:error, _message, _line, _col, _span} = error ->
+        error
+    end
+  end
+
+  # An identifier (or a function name, when `(` follows it) directly after a
+  # complete operand. `intersects` is a membership operator here; an
+  # identifier that opens a whole presence suffix is a presence test. Any
+  # other word is left unconsumed, so it answers the error every such
+  # sequence already answered.
+  @spec parse_word_operator(parser_state(), parser_state(), ast(), Lexer.token()) ::
+          {:ok, ast(), parser_state()}
+          | {:error, binary(), pos_integer(), pos_integer(), Predicator.Types.span()}
+  defp parse_word_operator(state, new_state, left, {op_type, op_line, op_col, _len, word} = token) do
+    case {overlap_word(word), op_type} do
+      {:intersects, _op_type} ->
+        parse_membership(state, new_state, left, :intersects, token)
+
+      {nil, :identifier} ->
+        case presence_suffix(new_state, token) do
+          {:ok, kind, negated?, last, final_state} ->
+            location =
+              loc(state, {op_line, op_col}, fn -> {node_start(left), token_end(last)} end)
+
+            {:ok, {:presence, kind, negated?, left, location}, final_state}
+
+          :no_match ->
+            {:ok, left, new_state}
+        end
+
+      {nil, :function_name} ->
+        {:ok, left, new_state}
+    end
+  end
+
+  # The overlap operator's word, in the two letter cases the lexer accepts for
+  # a word operator (`in` and `IN`). It is not a lexer keyword - it lexes as
+  # an ordinary identifier, or as a function name when `(` follows it - so
+  # this is its one list; test/predicator/vocabulary_sync_test.exs reads these
+  # clause heads against Predicator.Vocabulary's entries for it.
+  @spec overlap_word(binary()) :: :intersects | nil
+  defp overlap_word("intersects"), do: :intersects
+  defp overlap_word("INTERSECTS"), do: :intersects
+  defp overlap_word(_other), do: nil
 
   # Reads `is [not] (blank | present | defined)` starting at `is_token`, the
   # unconsumed token at `state`. Answers the kind, whether `not` was written,

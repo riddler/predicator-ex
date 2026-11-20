@@ -48,7 +48,8 @@ defmodule Predicator.AnalysisFormsTest do
     "#2026-01-01# < day",
     "undefined == missing",
     "\"text\" + suffix",
-    "loan.note is not blank or patron.email is defined"
+    "loan.note is not blank or patron.email is defined",
+    "loan.tags intersects patron.interests"
   ]
 
   @programs [
