@@ -57,9 +57,10 @@ defmodule Predicator.Vocabulary do
   - `:arity` - how many operands the operator takes. `"-"` takes `[1, 2]`,
     since it is both subtraction and negation
   - `:ast_op` - the atom `Predicator.Parser.parse/2` puts in the node it
-    builds, which differs from `:token_type` for three operators (`:in_op`
+    builds, which differs from `:token_type` for four operators (`:in_op`
     becomes `:in`, `:contains_op` becomes `:contains`, `:strict_equal`
-    becomes `:strict_eq`). `nil` where no node carries the operator as an
+    becomes `:strict_eq`, and `intersects`, which lexes as an `:identifier`,
+    becomes `:intersects`). `nil` where no node carries the operator as an
     atom of its own
   - `:value_kinds` - the `t:value_kind/0`s the operator is worth offering for,
     as the kind of the value on its right. `nil` for an operator that does not
@@ -81,9 +82,10 @@ defmodule Predicator.Vocabulary do
   Ordered comparison (`>`, `>=`, `<`, `<=`) is admitted where the evaluator
   orders the kind meaningfully: numbers and strings through its `types_match`
   guard, dates and datetimes chronologically, durations as the numbers they
-  reduce to. Equality is admitted for every scalar kind. `in` takes a list on
-  its right and nothing else; `contains` takes a list on its *left*, so the
-  value beside it is a scalar of any kind.
+  reduce to. Equality is admitted for every scalar kind. `in` is offered with
+  a list on its right; `contains` takes its container on its *left*, so the
+  value beside it is a scalar of any kind; `intersects` takes a list on both
+  sides, so it is offered with a list on its right.
 
   Two things the evaluator does answer are still not admitted, because a
   picklist offering them would be offering nonsense:
@@ -107,6 +109,8 @@ defmodule Predicator.Vocabulary do
   words are lower-case only, and are enumerated only that way. The presence
   words are accepted in both cases and enumerated in both, under
   `:presence`; `Predicator.decompile/2` writes them in lower case.
+  `intersects` is accepted and enumerated in both cases too, under
+  `:membership`, and like `in` and `contains` it is written in upper case.
 
   Enumerating both cases leaves a caller that renders source with a question
   the enumeration alone cannot answer: of the two entries for one operator,
@@ -281,13 +285,18 @@ defmodule Predicator.Vocabulary do
 
     # Membership
     {"in", :in_op, :membership, "a in [b, c]",
-     "True when the left value is a member of the right"},
+     "True when the left value is a member of the right list, or occurs in the right string"},
     {"IN", :in_op, :membership, "a IN [b, c]",
-     "True when the left value is a member of the right"},
+     "True when the left value is a member of the right list, or occurs in the right string"},
     {"contains", :contains_op, :membership, "a contains b",
      "True when the left collection or string holds the right value"},
     {"CONTAINS", :contains_op, :membership, "a CONTAINS b",
      "True when the left collection or string holds the right value"},
+    # Read by position, so each spelling lexes as an identifier (ADR-0021)
+    {"intersects", :identifier, :membership, "a intersects [b, c]",
+     "True when the two lists share a member"},
+    {"INTERSECTS", :identifier, :membership, "a INTERSECTS [b, c]",
+     "True when the two lists share a member"},
 
     # Presence words, read by position, so each lexes as an identifier
     {"is", :identifier, :presence, "a is blank",
@@ -361,7 +370,9 @@ defmodule Predicator.Vocabulary do
   # token_type => {label, arity, ast_op, value_kinds}, for the operator
   # categories only. Keyed by token type rather than by lexeme because a word
   # operator is enumerated in both cases and the two spellings are the same
-  # operator: `in` and `IN` share this row, as they should.
+  # operator: `in` and `IN` share this row, as they should. A word read by
+  # position lexes as an `:identifier`, so its row is keyed by
+  # `{:identifier, lower-case word}` instead (`intersects`, ADR-0021).
   #
   # `:eq` is the one comparison with no admitted kind at all. `=` lexes, but
   # the parser rejects it in expression position ("'=' is not an equality
@@ -369,6 +380,7 @@ defmodule Predicator.Vocabulary do
   # offering source that cannot parse. Its empty list says exactly that, and
   # says it in the same place as every other operator's answer.
   @operator_extras %{
+    {:identifier, "intersects"} => {"shares a member with", 2, :intersects, [:list]},
     gt: {"is greater than", 2, :gt, @ordered_kinds},
     gte: {"is at least", 2, :gte, @ordered_kinds},
     lt: {"is less than", 2, :lt, @ordered_kinds},
@@ -399,6 +411,16 @@ defmodule Predicator.Vocabulary do
     double_colon: {"cast to", 2, nil, nil}
   }
 
+  # The key the spellings of one operator share: its token type, or, for a
+  # word read by position (which lexes as an `:identifier`), the token type
+  # and the word in lower case - so `intersects` and `INTERSECTS` are one
+  # operator and no presence word joins them. Evaluated while the module body
+  # compiles, by the two attributes below.
+  operator_key = fn
+    :identifier, lexeme -> {:identifier, String.downcase(lexeme)}
+    token_type, _lexeme -> token_type
+  end
+
   # `:canonical` is derived from @tokens rather than tabled, because the fact
   # it records is a fact about @tokens: a spelling is non-canonical only when
   # this table enumerates a second spelling of the same operator that
@@ -415,8 +437,8 @@ defmodule Predicator.Vocabulary do
   # this comment.
   @non_canonical_spellings @tokens
                            |> Enum.group_by(
-                             fn {_lexeme, token_type, _category, _display, _doc} ->
-                               token_type
+                             fn {lexeme, token_type, _category, _display, _doc} ->
+                               operator_key.(token_type, lexeme)
                              end,
                              fn {lexeme, _token_type, _category, _display, _doc} -> lexeme end
                            )
@@ -424,10 +446,10 @@ defmodule Predicator.Vocabulary do
                              {_token_type, [_only]} ->
                                []
 
-                             {token_type, spellings} ->
+                             {key, spellings} ->
                                spellings
                                |> Enum.reject(&(&1 == String.upcase(&1)))
-                               |> Enum.map(&{&1, token_type})
+                               |> Enum.map(&{&1, key})
                            end)
 
   @entries Enum.map(@tokens, fn {lexeme, token_type, category, display, doc} ->
@@ -439,14 +461,16 @@ defmodule Predicator.Vocabulary do
                doc: doc
              }
 
-             case Map.fetch(@operator_extras, token_type) do
+             key = operator_key.(token_type, lexeme)
+
+             case Map.fetch(@operator_extras, key) do
                {:ok, {label, arity, ast_op, value_kinds}} ->
                  Map.merge(entry, %{
                    label: label,
                    arity: arity,
                    ast_op: ast_op,
                    value_kinds: value_kinds,
-                   canonical: {lexeme, token_type} not in @non_canonical_spellings
+                   canonical: {lexeme, key} not in @non_canonical_spellings
                  })
 
                :error ->
@@ -567,7 +591,7 @@ defmodule Predicator.Vocabulary do
   @spec keywords() :: [entry() | operator_entry(), ...]
   def keywords do
     Enum.filter(@entries, fn entry ->
-      entry.category not in [:duration_unit, :presence] and
+      entry.category not in [:duration_unit, :presence] and entry.token_type != :identifier and
         entry.lexeme =~ ~r/\A[A-Za-z]+\z/
     end)
   end

@@ -93,7 +93,8 @@ defmodule Predicator.Instructions do
     "jump" => %{isa: 5, tier: 8},
     "pop_jump_if_falsy" => %{isa: 5, tier: 8},
     "jump_backward" => %{isa: 6, tier: 9},
-    "presence" => %{isa: 7, tier: 10}
+    "presence" => %{isa: 7, tier: 10},
+    "intersects" => %{isa: 7, tier: 10}
   }
 
   @doc """
@@ -285,6 +286,10 @@ defmodule Predicator.Instructions do
       {:ok, 2}
 
       iex> {:ok, instructions} = Predicator.compile("a is blank")
+      iex> Predicator.Instructions.required_isa(instructions)
+      {:ok, 7}
+
+      iex> {:ok, instructions} = Predicator.compile("a intersects b")
       iex> Predicator.Instructions.required_isa(instructions)
       {:ok, 7}
 

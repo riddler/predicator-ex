@@ -360,6 +360,7 @@ defmodule Predicator.Visitors.StringVisitor do
   @spec format_membership_operator(Parser.membership_op()) :: binary()
   defp format_membership_operator(:in), do: "IN"
   defp format_membership_operator(:contains), do: "CONTAINS"
+  defp format_membership_operator(:intersects), do: "INTERSECTS"
 
   # Renders a binary infix node ("left <op_str> right"), wrapping either
   # child in parentheses when :minimal mode requires it for precedence, and

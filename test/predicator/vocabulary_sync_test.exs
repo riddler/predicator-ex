@@ -231,6 +231,60 @@ defmodule Predicator.VocabularySyncTest do
     end
   end
 
+  describe "Vocabulary versus the parser's overlap word" do
+    setup do
+      {:ok, source: File.read!("lib/predicator/parser.ex")}
+    end
+
+    # `intersects` is no lexer keyword either - it lexes as an identifier, or
+    # as a function name before `(`, and is an operator only directly after
+    # an operand (ADR-0021). Its one list is the parser's overlap_word/1
+    # clause heads, read against the :membership entries that lex as an
+    # identifier.
+    #
+    # sabotage (vocabulary side): deleted the `{"INTERSECTS", :identifier,
+    # :membership, ...}` row from @tokens -> one failure, this test, on the
+    # assertion naming ["INTERSECTS"] as read by the parser and not
+    # enumerated; restored, confirmed green
+    #
+    # sabotage (parser side): deleted the `overlap_word("INTERSECTS")`
+    # clause -> two failures: this test, on the assertion naming
+    # ["INTERSECTS"] as enumerated and not read, and the :ast_op test above;
+    # restored, confirmed green
+    test "the overlap words match overlap_word/1's clause heads, both ways", %{source: source} do
+      words = overlap_word_clauses(source)
+
+      assert words != MapSet.new(),
+             "parsing lib/predicator/parser.ex found no overlap_word/1 clause " <>
+               "heads - the source-parsing logic in this test likely needs " <>
+               "updating to match the module's shape"
+
+      enumerated =
+        :membership
+        |> Vocabulary.by_category()
+        |> Enum.filter(&(&1.token_type == :identifier))
+        |> MapSet.new(& &1.lexeme)
+
+      assert MapSet.difference(words, enumerated) == MapSet.new(),
+             "the parser reads overlap word(s) " <>
+               "#{inspect(Enum.sort(MapSet.difference(words, enumerated)))} that " <>
+               "Predicator.Vocabulary does not enumerate"
+
+      assert MapSet.difference(enumerated, words) == MapSet.new(),
+             "Predicator.Vocabulary enumerates overlap word(s) " <>
+               "#{inspect(Enum.sort(MapSet.difference(enumerated, words)))} that " <>
+               "the parser does not read"
+    end
+
+    test "no overlap word is offered as a keyword" do
+      keywords = MapSet.new(Vocabulary.keywords(), & &1.lexeme)
+
+      for entry <- Vocabulary.by_category(:membership), entry.token_type == :identifier do
+        refute entry.lexeme in keywords
+      end
+    end
+  end
+
   describe "round-tripping the vocabulary through the lexer" do
     # sabotage: changed the `{"===", :strict_equal, ...}` row's token type to
     # `:equal_equal` -> two failures: this one naming "===" and both types,
@@ -422,6 +476,19 @@ defmodule Predicator.VocabularySyncTest do
 
       _other_clause ->
         []
+    end)
+    |> MapSet.new()
+  end
+
+  # Parses `source` and collects the literal binary of every `overlap_word/1`
+  # clause answering a word. The catch-all answers nil and is dropped.
+  @spec overlap_word_clauses(String.t()) :: MapSet.t(binary())
+  defp overlap_word_clauses(source) do
+    source
+    |> private_clauses(:overlap_word)
+    |> Enum.flat_map(fn
+      {word, kind} when is_binary(word) and is_atom(kind) and kind != nil -> [word]
+      _other_clause -> []
     end)
     |> MapSet.new()
   end

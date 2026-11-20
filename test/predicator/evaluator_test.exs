@@ -335,18 +335,10 @@ defmodule Predicator.EvaluatorTest do
       assert message =~ "Logical NOT requires a boolean"
     end
 
-    test "handles invalid membership operations" do
-      # IN with non-list on right side
-      instructions = [["lit", 1], ["lit", "not_a_list"], ["in"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
-      assert message =~ "requires a list"
-
-      # CONTAINS with non-list on left side
-      instructions = [["lit", "not_a_list"], ["lit", 1], ["contains"]]
-      result = Evaluator.evaluate(instructions)
-      assert {:error, %Predicator.Errors.TypeMismatchError{message: message}} = result
-      assert message =~ "requires a list"
+    test "a string container with a non-string needle answers undefined" do
+      # ADR-0021: no containment pairing is a type mismatch
+      assert Evaluator.evaluate([["lit", 1], ["lit", "not_a_list"], ["in"]]) == :undefined
+      assert Evaluator.evaluate([["lit", "not_a_list"], ["lit", 1], ["contains"]]) == :undefined
     end
   end
 

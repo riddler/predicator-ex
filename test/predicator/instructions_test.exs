@@ -79,7 +79,8 @@ defmodule Predicator.InstructionsTest do
                      "jump",
                      "pop_jump_if_falsy",
                      "jump_backward",
-                     "presence"
+                     "presence",
+                     "intersects"
                    ]
                )
     end
@@ -245,6 +246,13 @@ defmodule Predicator.InstructionsTest do
     test "presence is an ISA v7 tier-10 opcode" do
       assert {:ok, 7} = Instructions.required_isa([["load", "x"], ["presence", "blank"]])
       assert {:ok, 10} = Instructions.tier("presence")
+    end
+
+    test "intersects is an ISA v7 tier-10 opcode" do
+      assert {:ok, 7} = Instructions.required_isa([["load", "a"], ["load", "b"], ["intersects"]])
+      assert {:ok, 10} = Instructions.tier("intersects")
+      refute MapSet.member?(Instructions.opcode_set(6), "intersects")
+      assert MapSet.member?(Instructions.opcode_set(7), "intersects")
     end
 
     test "opcode_set(6) excludes presence and opcode_set(7) includes it" do

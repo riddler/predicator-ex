@@ -103,16 +103,17 @@ defmodule Predicator.EvaluatorEdgeCasesTest do
       assert position != nil
     end
 
-    test "handles contains operation with incompatible types" do
-      instructions = [["lit", "not_a_list"], ["lit", "item"], ["contains"]]
-      result = Evaluator.evaluate(instructions, %{})
-      assert match?({:error, _}, result)
+    test "contains on two strings is a substring test" do
+      assert Evaluator.evaluate([["lit", "not_a_list"], ["lit", "item"], ["contains"]], %{}) ==
+               false
+
+      assert Evaluator.evaluate([["lit", "not_a_list"], ["lit", "a_l"], ["contains"]], %{}) ==
+               true
     end
 
-    test "handles in operation with incompatible types" do
-      instructions = [["lit", "item"], ["lit", "not_a_list"], ["in"]]
-      result = Evaluator.evaluate(instructions, %{})
-      assert match?({:error, _}, result)
+    test "in on two strings is a substring test" do
+      assert Evaluator.evaluate([["lit", "item"], ["lit", "not_a_list"], ["in"]], %{}) == false
+      assert Evaluator.evaluate([["lit", "list"], ["lit", "not_a_list"], ["in"]], %{}) == true
     end
   end
 end

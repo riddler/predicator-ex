@@ -570,6 +570,11 @@ defmodule Predicator.Evaluator do
     execute_membership(evaluator, :contains)
   end
 
+  # Overlap instruction (ISA v7, ADR-0021): two lists share a member
+  defp execute_instruction(%__MODULE__{} = evaluator, ["intersects"]) do
+    execute_intersects(evaluator)
+  end
+
   # Presence instruction (ISA v7, ADR-0021): answers a boolean for every value
   defp execute_instruction(%__MODULE__{} = evaluator, ["presence", kind])
        when kind in ["blank", "defined"] do
@@ -954,52 +959,57 @@ defmodule Predicator.Evaluator do
     {:error, EvaluationError.insufficient_operands(:logical_not, 0, 1)}
   end
 
+  # Containment is total (ADR-0021): a list container tests membership under
+  # `values_equal?/2`, two strings test for a substring, an `:undefined`
+  # operand propagates, and every other pairing answers `:undefined`. No
+  # pairing is a type mismatch.
   @spec execute_membership(t(), :in | :contains) :: {:ok, t()} | {:error, term()}
   defp execute_membership(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :in) do
-    # left IN right - check if left is a member of right (list)
-    case {left, right} do
-      {:undefined, _value} ->
-        {:ok, %__MODULE__{evaluator | stack: [Undefined.value() | rest]}}
-
-      {_value, :undefined} ->
-        {:ok, %__MODULE__{evaluator | stack: [Undefined.value() | rest]}}
-
-      {_value, list} when is_list(list) ->
-        result = Enum.any?(list, fn item -> values_equal?(left, item) end)
-        {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
-
-      {_value, non_list} ->
-        {:error, TypeMismatchError.unary(:in, :list, get_value_type(non_list), non_list)}
-    end
+    # left IN right - the right operand is the container
+    {:ok, %__MODULE__{evaluator | stack: [containment(right, left) | rest]}}
   end
 
   defp execute_membership(%__MODULE__{stack: [right | [left | rest]]} = evaluator, :contains) do
-    # left CONTAINS right - check if left (list) contains right (value)
-    case {left, right} do
-      {:undefined, _value} ->
-        {:ok, %__MODULE__{evaluator | stack: [Undefined.value() | rest]}}
-
-      {_value, :undefined} ->
-        {:ok, %__MODULE__{evaluator | stack: [Undefined.value() | rest]}}
-
-      {list, _value} when is_list(list) ->
-        result = Enum.any?(list, fn item -> values_equal?(item, right) end)
-        {:ok, %__MODULE__{evaluator | stack: [result | rest]}}
-
-      {non_list, _value} ->
-        {:error,
-         TypeMismatchError.unary(
-           :contains,
-           :list,
-           get_value_type(non_list),
-           non_list
-         )}
-    end
+    # left CONTAINS right - the left operand is the container
+    {:ok, %__MODULE__{evaluator | stack: [containment(left, right) | rest]}}
   end
 
   defp execute_membership(%__MODULE__{stack: stack}, operation) do
     {:error, EvaluationError.insufficient_operands(operation, length(stack), 2)}
   end
+
+  @spec containment(Types.value(), Types.value()) :: boolean() | :undefined
+  defp containment(:undefined, _needle), do: Undefined.value()
+  defp containment(_container, :undefined), do: Undefined.value()
+
+  defp containment(container, needle) when is_list(container),
+    do: Enum.any?(container, &values_equal?(&1, needle))
+
+  # Case-sensitive, by code point, no normalization: for two valid UTF-8
+  # strings a byte match is a code point match, and the empty needle occurs
+  # in every string.
+  defp containment(container, needle) when is_binary(container) and is_binary(needle),
+    do: String.contains?(container, needle)
+
+  defp containment(_container, _needle), do: Undefined.value()
+
+  # `left intersects right` (ISA v7, ADR-0021): two lists share a member under
+  # the equality `in` uses; an `:undefined` operand or any other pairing
+  # answers `:undefined`.
+  @spec execute_intersects(t()) :: {:ok, t()} | {:error, term()}
+  defp execute_intersects(%__MODULE__{stack: [right | [left | rest]]} = evaluator) do
+    {:ok, %__MODULE__{evaluator | stack: [intersects(left, right) | rest]}}
+  end
+
+  defp execute_intersects(%__MODULE__{stack: stack}) do
+    {:error, EvaluationError.insufficient_operands(:intersects, length(stack), 2)}
+  end
+
+  @spec intersects(Types.value(), Types.value()) :: boolean() | :undefined
+  defp intersects(left, right) when is_list(left) and is_list(right),
+    do: Enum.any?(left, fn member -> Enum.any?(right, &values_equal?(member, &1)) end)
+
+  defp intersects(_left, _right), do: Undefined.value()
 
   @spec execute_presence(t(), binary()) :: {:ok, t()} | {:error, term()}
   defp execute_presence(%__MODULE__{stack: [value | rest]} = evaluator, "blank"),

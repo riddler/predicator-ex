@@ -445,6 +445,7 @@ defmodule Predicator.Analysis do
   defp step(["not"], i, state), do: {:ok, combine(state, 1, i)}
   defp step(["in"], i, state), do: {:ok, combine(state, 2, i)}
   defp step(["contains"], i, state), do: {:ok, combine(state, 2, i)}
+  defp step(["intersects"], i, state), do: {:ok, combine(state, 2, i)}
   defp step(["add"], i, state), do: {:ok, combine(state, 2, i)}
   defp step(["subtract"], i, state), do: {:ok, combine(state, 2, i)}
   defp step(["multiply"], i, state), do: {:ok, combine(state, 2, i)}

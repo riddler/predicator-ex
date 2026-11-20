@@ -155,14 +155,10 @@ defmodule PredicatorCollectionsTest do
       assert result == {:ok, true}
     end
 
-    test "handles error cases" do
-      # IN with non-list on right side
-      result = Predicator.evaluate("1 in 2", %{})
-      assert {:error, _message} = result
-
-      # CONTAINS with non-list on left side
-      result = Predicator.evaluate("1 contains 2", %{})
-      assert {:error, _message} = result
+    test "a container that is neither a list nor a string answers undefined" do
+      # ADR-0021: containment is total, so neither is an error
+      assert Predicator.evaluate("1 in 2", %{}) == {:ok, :undefined}
+      assert Predicator.evaluate("1 contains 2", %{}) == {:ok, :undefined}
     end
   end
 

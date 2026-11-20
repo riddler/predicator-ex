@@ -34,20 +34,589 @@
     "expected": { "result": { "$type": "undefined" } }
   },
   {
-    "id": "membership/in-right-must-be-list",
+    "id": "membership/in-string-container-miss",
     "source": "role in \"notalist\"",
-    "context": { "role": "x" },
-    "expected": {
-      "error": { "type": "TypeMismatchError", "reason": "in" }
+    "context": {
+      "role": "x"
     },
-    "notes": "in's right operand must be a list"
+    "expected": {
+      "result": false
+    },
+    "notes": "two strings are a substring test; replaces membership/in-right-must-be-list"
   },
   {
-    "id": "membership/contains-left-must-be-list",
+    "id": "membership/contains-string-container-number-needle",
     "source": "\"x\" contains 1",
     "expected": {
-      "error": { "type": "TypeMismatchError", "reason": "contains" }
+      "result": {
+        "$type": "undefined"
+      }
     },
-    "notes": "contains is the mirror of in - the left operand must be the list"
+    "notes": "a string container with a non-string needle answers undefined; replaces membership/contains-left-must-be-list"
+  },
+  {
+    "id": "membership/contains-substring-hit",
+    "source": "title contains \"Moby\"",
+    "context": {
+      "title": "Moby Dick"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/contains-substring-miss",
+    "source": "title contains \"Whale\"",
+    "context": {
+      "title": "Moby Dick"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/contains-substring-whole-string",
+    "source": "title contains \"Moby Dick\"",
+    "context": {
+      "title": "Moby Dick"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/contains-needle-longer-than-container",
+    "source": "\"Moby\" contains \"Moby Dick\"",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/contains-empty-needle",
+    "source": "title contains \"\"",
+    "context": {
+      "title": "Moby Dick"
+    },
+    "expected": {
+      "result": true
+    },
+    "notes": "the empty string is contained in every string"
+  },
+  {
+    "id": "membership/contains-empty-needle-empty-container",
+    "source": "\"\" contains \"\"",
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/contains-case-sensitive",
+    "source": "title contains \"moby\"",
+    "context": {
+      "title": "Moby Dick"
+    },
+    "expected": {
+      "result": false
+    },
+    "notes": "the substring test is case-sensitive"
+  },
+  {
+    "id": "membership/contains-multibyte-needle",
+    "source": "branch contains \"ü\"",
+    "context": {
+      "branch": "Zürich"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/contains-no-normalization",
+    "source": "word contains \"i\"",
+    "context": {
+      "word": "naïve"
+    },
+    "expected": {
+      "result": false
+    },
+    "notes": "U+00EF is one code point, not i followed by a combining mark"
+  },
+  {
+    "id": "membership/in-substring-hit",
+    "source": "\"cd\" in \"abcdef\"",
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/in-substring-miss",
+    "source": "\"dc\" in \"abcdef\"",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/in-empty-needle",
+    "source": "\"\" in title",
+    "context": {
+      "title": "Moby Dick"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/in-case-sensitive",
+    "source": "\"DICK\" in title",
+    "context": {
+      "title": "Moby Dick"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/in-multibyte-needle",
+    "source": "\"ü\" in branch",
+    "context": {
+      "branch": "Zürich"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/contains-list-string-member-matched-whole",
+    "source": "[\"Moby Dick\"] contains \"Moby\"",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/in-list-string-member-matched-whole",
+    "source": "\"Moby\" in [\"Moby Dick\"]",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/contains-null-container",
+    "source": "shelf contains \"a\"",
+    "context": {
+      "shelf": null
+    },
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/contains-number-container",
+    "source": "123 contains 2",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/contains-boolean-container",
+    "source": "true contains true",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/contains-date-container",
+    "source": "#2026-03-01# contains 1",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/contains-datetime-container",
+    "source": "#2026-03-01T09:00:00Z# contains 1",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/contains-duration-container",
+    "source": "3d contains 3",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/contains-object-container",
+    "source": "{title: \"Dune\"} contains \"title\"",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    },
+    "notes": "an object container has no containment meaning"
+  },
+  {
+    "id": "membership/contains-string-container-null-needle",
+    "source": "title contains null",
+    "context": {
+      "title": "Moby Dick"
+    },
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/in-null-container",
+    "source": "\"a\" in shelf",
+    "context": {
+      "shelf": null
+    },
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/in-number-container",
+    "source": "2 in 123",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/in-boolean-container",
+    "source": "true in true",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/in-date-container",
+    "source": "1 in #2026-03-01#",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/in-datetime-container",
+    "source": "1 in #2026-03-01T09:00:00Z#",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/in-duration-container",
+    "source": "3 in 3d",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/in-object-container",
+    "source": "\"title\" in {title: \"Dune\"}",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    },
+    "notes": "an object container has no containment meaning"
+  },
+  {
+    "id": "membership/in-string-container-number-needle",
+    "source": "1 in \"123\"",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/or-over-null-container-undefined",
+    "source": "false OR shelf contains \"a\"",
+    "context": {
+      "shelf": null
+    },
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    },
+    "notes": "the right side of OR answers undefined, never an error"
+  },
+  {
+    "id": "membership/intersects-hit",
+    "source": "loan.tags intersects [\"poetry\", \"drama\"]",
+    "context": {
+      "loan": {
+        "tags": [
+          "fiction",
+          "poetry"
+        ]
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/intersects-miss",
+    "source": "loan.tags intersects [\"history\", \"drama\"]",
+    "context": {
+      "loan": {
+        "tags": [
+          "fiction",
+          "poetry"
+        ]
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/intersects-upper-case",
+    "source": "loan.tags INTERSECTS [\"poetry\"]",
+    "context": {
+      "loan": {
+        "tags": [
+          "fiction",
+          "poetry"
+        ]
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/intersects-empty-left",
+    "source": "[] intersects [\"poetry\"]",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/intersects-empty-right",
+    "source": "[\"poetry\"] intersects []",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/intersects-both-empty",
+    "source": "[] intersects []",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/intersects-mixed-types-miss",
+    "source": "[1, \"a\"] intersects [\"1\", true]",
+    "expected": {
+      "result": false
+    },
+    "notes": "equality is type-matched, with no coercion"
+  },
+  {
+    "id": "membership/intersects-mixed-types-hit",
+    "source": "[1, \"a\"] intersects [true, \"a\"]",
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/intersects-dates",
+    "source": "[#2026-03-01#, #2026-04-01#] intersects due",
+    "context": {
+      "due": [
+        {
+          "$type": "date",
+          "value": "2026-04-01"
+        }
+      ]
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "membership/intersects-date-datetime-same-instant",
+    "source": "[#2026-03-01#] intersects due",
+    "context": {
+      "due": [
+        {
+          "$type": "datetime",
+          "value": "2026-03-01T00:00:00Z"
+        }
+      ]
+    },
+    "expected": {
+      "result": true
+    },
+    "notes": "a date and a datetime compare by instant"
+  },
+  {
+    "id": "membership/intersects-null-members",
+    "source": "[null] intersects [1, null]",
+    "expected": {
+      "result": true
+    },
+    "notes": "null is equal to itself"
+  },
+  {
+    "id": "membership/intersects-null-member-miss",
+    "source": "[null] intersects [1, 2]",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "membership/intersects-undefined-members",
+    "source": "[missing] intersects [missing]",
+    "expected": {
+      "result": false
+    },
+    "notes": "undefined is equal to nothing"
+  },
+  {
+    "id": "membership/intersects-undefined-left",
+    "source": "patron.missing intersects [1]",
+    "context": {
+      "patron": {}
+    },
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-undefined-right",
+    "source": "[1] intersects patron.missing",
+    "context": {
+      "patron": {}
+    },
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-string-left",
+    "source": "\"poetry\" intersects [\"poetry\"]",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-string-right",
+    "source": "[\"poetry\"] intersects \"poetry\"",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-two-strings",
+    "source": "\"abc\" intersects \"cde\"",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-number",
+    "source": "1 intersects [1]",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-boolean",
+    "source": "[true] intersects true",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-null-operand",
+    "source": "shelf intersects [1]",
+    "context": {
+      "shelf": null
+    },
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-date",
+    "source": "#2026-03-01# intersects [#2026-03-01#]",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-datetime",
+    "source": "[1] intersects #2026-03-01T09:00:00Z#",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-duration",
+    "source": "3d intersects [3]",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
+  },
+  {
+    "id": "membership/intersects-object",
+    "source": "{a: 1} intersects [1]",
+    "expected": {
+      "result": {
+        "$type": "undefined"
+      }
+    }
   }
 ]

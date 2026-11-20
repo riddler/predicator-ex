@@ -44,6 +44,7 @@ defmodule Predicator.Conformance.Features do
     "unary_minus" => ~w(arithmetic),
     "in" => ~w(membership),
     "contains" => ~w(membership),
+    "intersects" => ~w(membership),
     "access" => ~w(access),
     "bracket_access" => ~w(access),
     "make_list" => ~w(access),
