@@ -285,9 +285,9 @@ defmodule Predicator.Vocabulary do
 
     # Membership
     {"in", :in_op, :membership, "a in [b, c]",
-     "True when the left value is a member of the right list, or occurs in the right string"},
+     "True when the left value is a member of the right"},
     {"IN", :in_op, :membership, "a IN [b, c]",
-     "True when the left value is a member of the right list, or occurs in the right string"},
+     "True when the left value is a member of the right"},
     {"contains", :contains_op, :membership, "a contains b",
      "True when the left collection or string holds the right value"},
     {"CONTAINS", :contains_op, :membership, "a CONTAINS b",
