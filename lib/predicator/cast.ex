@@ -102,10 +102,20 @@ defmodule Predicator.Cast do
     end
   end
 
+  # docs/isa.md section 3: a datetime is an instant from
+  # 0000-01-01T00:00:00Z through 9999-12-31T23:59:59.999999Z, and an offset
+  # can carry a string naming a time inside those years to an instant outside
+  # them. DateTime.from_iso8601/1 answers in UTC, so the year is the test.
   def cast(value, "datetime") when is_binary(value) do
     case DateTime.from_iso8601(value) do
-      {:ok, datetime, _offset} -> normalize_to_utc(datetime)
-      {:error, _reason} -> :undefined
+      {:ok, %DateTime{year: year} = datetime, _offset} when year in 0..9999 ->
+        normalize_to_utc(datetime)
+
+      {:ok, _out_of_range, _offset} ->
+        :undefined
+
+      {:error, _reason} ->
+        :undefined
     end
   end
 

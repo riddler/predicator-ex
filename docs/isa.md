@@ -187,6 +187,10 @@ change to this specification. `Predicator.execute/2` is that entry point.
 
 The value domain the opcodes operate over: integer, float, string, boolean,
 list, map (object), `Date`, `DateTime`, duration, `null`, and `:undefined`.
+A `DateTime` is an instant from `0000-01-01T00:00:00Z` through
+`9999-12-31T23:59:59.999999Z` in UTC and nothing outside that range is one,
+so a `::datetime` cast of a string naming such an instant is `:undefined` and
+a datetime literal naming one is a malformed literal.
 
 `null` and `:undefined` are both first-class values and neither is the
 other: `:undefined` is an absence - no value was ever supplied - while

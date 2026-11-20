@@ -290,6 +290,27 @@ defmodule Predicator.LexerLiteralsTest do
                Lexer.tokenize("#2024-01-15T25:00:00Z#")
     end
 
+    test "refuses a datetime literal whose UTC instant is past the top of the range" do
+      assert {:error, "Invalid datetime format: 9999-12-31T23:59:59-05:00", 1, 7,
+              {{1, 7}, {1, 34}}} = Lexer.tokenize("due < #9999-12-31T23:59:59-05:00#")
+    end
+
+    test "refuses a datetime literal whose UTC instant is below the bottom of the range" do
+      assert {:error, "Invalid datetime format: 0000-01-01T00:00:00+05:00", 1, 1,
+              {{1, 1}, {1, 28}}} = Lexer.tokenize("#0000-01-01T00:00:00+05:00#")
+
+      assert {:error, "Invalid datetime format: -0001-12-31T23:59:59Z", 1, 1, {{1, 1}, {1, 24}}} =
+               Lexer.tokenize("#-0001-12-31T23:59:59Z#")
+    end
+
+    test "accepts a datetime literal at either bound of the range" do
+      assert {:ok, [{:datetime, 1, 1, 29, ~U[9999-12-31 23:59:59.999999Z]}, _eof]} =
+               Lexer.tokenize("#9999-12-31T23:59:59.999999Z#")
+
+      assert {:ok, [{:datetime, 1, 1, 27, ~U[0000-01-01 00:00:00Z]}, _eof]} =
+               Lexer.tokenize("#0000-01-01T05:00:00+05:00#")
+    end
+
     test "returns error for unterminated date literal" do
       assert {:error, "Unterminated date literal", 1, 1, {{1, 1}, {1, 12}}} =
                Lexer.tokenize("#2024-01-15")

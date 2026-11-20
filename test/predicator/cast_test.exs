@@ -230,6 +230,55 @@ defmodule Predicator.CastTest do
     end
   end
 
+  describe "cast/2 to datetime - the UTC range 0000-01-01T00:00:00Z..9999-12-31T23:59:59.999999Z" do
+    test "the last in-range instant parses, with a zero and with a negative offset" do
+      assert "9999-12-31T23:59:59.999999Z" |> Cast.cast("datetime") |> Cast.cast("string") ==
+               "9999-12-31T23:59:59.999999Z"
+
+      assert "9999-12-31T18:59:59.999999-05:00" |> Cast.cast("datetime") |> Cast.cast("string") ==
+               "9999-12-31T23:59:59.999999Z"
+    end
+
+    test "an offset that carries the instant past the top answers :undefined, never a raise" do
+      assert Cast.cast("9999-12-31T23:59:59-05:00", "datetime") == :undefined
+      assert Cast.cast("9999-12-31T23:59:59.999999-00:01", "datetime") == :undefined
+      assert Cast.cast("9999-12-31T19:00:00-05:00", "datetime") == :undefined
+    end
+
+    test "the first in-range instant parses, with a zero and with a positive offset" do
+      assert "0000-01-01T00:00:00Z" |> Cast.cast("datetime") |> Cast.cast("string") ==
+               "0000-01-01T00:00:00Z"
+
+      assert "0000-01-01T05:00:00+05:00" |> Cast.cast("datetime") |> Cast.cast("string") ==
+               "0000-01-01T00:00:00Z"
+    end
+
+    test "an offset that carries the instant below the bottom answers :undefined" do
+      assert Cast.cast("0000-01-01T00:00:00+05:00", "datetime") == :undefined
+      assert Cast.cast("0000-01-01T04:59:59.999999+05:00", "datetime") == :undefined
+      assert Cast.cast("-0001-12-31T23:59:59Z", "datetime") == :undefined
+    end
+
+    test "no string input raises across every offset at both bounds" do
+      for edge <- ["9999-12-31T23:59:59", "0000-01-01T00:00:00"],
+          sign <- ["+", "-"],
+          hours <- 0..23,
+          minutes <- [0, 1, 30, 59] do
+        offset = sign <> pad2(hours) <> ":" <> pad2(minutes)
+        input = edge <> offset
+
+        result =
+          try do
+            Cast.cast(input, "datetime")
+          rescue
+            exception -> flunk("#{input}::datetime raised #{Exception.message(exception)}")
+          end
+
+        assert result == :undefined or match?(%DateTime{year: year} when year in 0..9999, result)
+      end
+    end
+  end
+
   describe "cast/2 to datetime" do
     test "identity" do
       assert Cast.cast(~U[2026-08-09T10:00:00Z], "datetime") == ~U[2026-08-09T10:00:00Z]
@@ -390,4 +439,6 @@ defmodule Predicator.CastTest do
   defp normalize_to_utc_for_test(datetime) do
     DateTime.from_unix!(DateTime.to_unix(datetime, :microsecond), :microsecond)
   end
+
+  defp pad2(number), do: number |> Integer.to_string() |> String.pad_leading(2, "0")
 end
