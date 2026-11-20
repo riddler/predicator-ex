@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.5.1] - 2026-11-20
+
+A datetime is an instant from `0000-01-01T00:00:00Z` through
+`9999-12-31T23:59:59.999999Z` in UTC. A string naming an instant outside that
+range no longer raises or yields a year outside it; every other answer is the
+one 9.5.0 gives. The conformance corpus hash moves with this release, so a
+sibling implementation re-vendors the corpus at 9.5.1. The instruction set
+version does not move.
+
+### Fixed
+
+- A string cast to `::datetime` whose instant falls outside `0000-01-01T00:00:00Z` through `9999-12-31T23:59:59.999999Z` once converted to UTC answers `:undefined` instead of raising or answering a year outside that range, and a datetime literal naming such an instant is refused as malformed instead of lexing to text that does not round-trip.
+
 ## [9.5.0] - 2026-10-13
 
 Two new public modules, `Predicator.AST` and `Predicator.Analysis`. Every
