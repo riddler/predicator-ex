@@ -104,7 +104,9 @@ defmodule Predicator.Vocabulary do
   `:and_op` - and both are enumerated, as separate entries with the same
   `:token_type`. An editor offering only one of them would be offering a house
   style the grammar does not have. `if`, `else`, `while`, and the temporal
-  words are lower-case only, and are enumerated only that way.
+  words are lower-case only, and are enumerated only that way. The presence
+  words are accepted in both cases and enumerated in both, under
+  `:presence`; `Predicator.decompile/2` writes them in lower case.
 
   Enumerating both cases leaves a caller that renders source with a question
   the enumeration alone cannot answer: of the two entries for one operator,
@@ -138,12 +140,17 @@ defmodule Predicator.Vocabulary do
 
   `:cast` holds the single `::` postfix operator (ADR-0011); `:grouping` holds
   the bracket pairs; `:punctuation` holds the separators that are neither.
+  `:presence` holds the words of the presence operators (`a is not blank`,
+  ADR-0021): each lexes as an ordinary identifier and is an operator word only
+  directly after a complete operand, so, like a duration unit, none is a
+  keyword.
   """
   @type category ::
           :comparison
           | :logical
           | :arithmetic
           | :membership
+          | :presence
           | :temporal
           | :control
           | :literal
@@ -223,6 +230,7 @@ defmodule Predicator.Vocabulary do
     :logical,
     :arithmetic,
     :membership,
+    :presence,
     :temporal,
     :control,
     :literal,
@@ -280,6 +288,20 @@ defmodule Predicator.Vocabulary do
      "True when the left collection or string holds the right value"},
     {"CONTAINS", :contains_op, :membership, "a CONTAINS b",
      "True when the left collection or string holds the right value"},
+
+    # Presence words, read by position, so each lexes as an identifier
+    {"is", :identifier, :presence, "a is blank",
+     "Opens a presence test: is, an optional not, then blank, present or defined"},
+    {"IS", :identifier, :presence, "a IS BLANK",
+     "Opens a presence test: is, an optional not, then blank, present or defined"},
+    {"blank", :identifier, :presence, "a is blank",
+     "True when the value is undefined, null, an empty or white-space string, or an empty list or object"},
+    {"BLANK", :identifier, :presence, "a IS BLANK",
+     "True when the value is undefined, null, an empty or white-space string, or an empty list or object"},
+    {"present", :identifier, :presence, "a is present", "True when the value is not blank"},
+    {"PRESENT", :identifier, :presence, "a IS PRESENT", "True when the value is not blank"},
+    {"defined", :identifier, :presence, "a is defined", "True when the value is not undefined"},
+    {"DEFINED", :identifier, :presence, "a IS DEFINED", "True when the value is not undefined"},
 
     # Temporal
     {"ago", :ago_op, :temporal, "3d ago", "A duration before now"},
@@ -529,7 +551,9 @@ defmodule Predicator.Vocabulary do
 
   Duration units are excluded. `d` is an ordinary identifier everywhere except
   immediately after a number, so treating it as a reserved word would be
-  wrong; `by_category(:duration_unit)` is where those live.
+  wrong; `by_category(:duration_unit)` is where those live. The presence words
+  are excluded for the same reason: each is an ordinary identifier everywhere
+  except directly after an operand, and `by_category(:presence)` lists them.
 
   ## Examples
 
@@ -543,7 +567,8 @@ defmodule Predicator.Vocabulary do
   @spec keywords() :: [entry() | operator_entry(), ...]
   def keywords do
     Enum.filter(@entries, fn entry ->
-      entry.category != :duration_unit and entry.lexeme =~ ~r/\A[A-Za-z]+\z/
+      entry.category not in [:duration_unit, :presence] and
+        entry.lexeme =~ ~r/\A[A-Za-z]+\z/
     end)
   end
 

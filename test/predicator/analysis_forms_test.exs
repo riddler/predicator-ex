@@ -47,7 +47,8 @@ defmodule Predicator.AnalysisFormsTest do
     "created > 1d8h ago and status == 'open'",
     "#2026-01-01# < day",
     "undefined == missing",
-    "\"text\" + suffix"
+    "\"text\" + suffix",
+    "loan.note is not blank or patron.email is defined"
   ]
 
   @programs [
@@ -170,8 +171,8 @@ defmodule Predicator.AnalysisFormsTest do
       end
 
     # Every constructor of Parser.visitable/0 (analysis_clause_coverage_test.exs
-    # counts 23).
-    assert MapSet.size(tags) == 23, inspect(Enum.sort(tags))
+    # counts 24).
+    assert MapSet.size(tags) == 24, inspect(Enum.sort(tags))
   end
 
   defp assert_agree(points, spans, instructions, with_positions, with_spans) do

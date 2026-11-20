@@ -63,7 +63,7 @@ than re-arguing it.
   Each sibling publishes the version it supports in its own repository; this
   document maintains no support matrix.
 
-Current version: **ISA v6**.
+Current version: **ISA v7**.
 
 At runtime, `Predicator.isa_version/0` returns this build's version as an
 integer, and `Predicator.Instructions.required_isa/1` returns the minimum
@@ -274,8 +274,9 @@ subsections below the table.
 Every opcode is **ISA v1** except `jump_if_falsy_or_pop`,
 `jump_if_true_or_pop`, and `make_list`, which are **v2** (ADR-0001),
 `store` and `pop`, which are **v3**, `cast`, which is **v4** (ADR-0011),
-`jump` and `pop_jump_if_falsy`, which are **v5** (ADR-0013), and
-`jump_backward`, which is **v6** (ADR-0013).
+`jump` and `pop_jump_if_falsy`, which are **v5** (ADR-0013),
+`jump_backward`, which is **v6** (ADR-0013), and `presence`, which is
+**v7** (ADR-0021).
 
 ### Tiers
 
@@ -295,6 +296,7 @@ row's tier does not depend on the value types the expression happens to use
 | 7 | casts | `cast` |
 | 8 | control flow | `jump`, `pop_jump_if_falsy` |
 | 9 | loops | `jump_backward` |
+| 10 | presence and overlap | `presence` |
 
 Tiers are defined by opcode, not by value. A date comparison
 (`[["lit", Date], ["lit", Date], ["compare", "GT"]]`) is tier 1 by opcode,
@@ -337,6 +339,7 @@ feature tags, not by tiers.
 | `jump` | offset (int > 0) | 0 | 0 | v5 | 8 | yes | - |
 | `pop_jump_if_falsy` | offset (int > 0) | 1 | 0 | v5 | 8 | yes | - |
 | `jump_backward` | offset (int > 0) | 0 | 0 | v6 | 9 | yes | - |
+| `presence` | `"blank"` or `"defined"` (string) | 1 | 1 | v7 | 10 | yes | - |
 
 `jump_if_falsy_or_pop` and `jump_if_true_or_pop` pop 0 or 1 values and push
 0: on the taken branch they leave the value on the stack (net 0 change), and
@@ -472,6 +475,36 @@ reference survives an edit above it.
   `in`; the **left** operand must be the list, and the type mismatch is
   reported against the left operand's type. `null` on the right behaves as
   it does under `in`: identity via `values_equal?/2`, not propagation.
+- **`presence`** (`execute_presence/2`, `blank?/1`) - pops one value and
+  pushes `true` or `false`; it never errors on a value (ISA v7,
+  [ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)).
+  The operand is `"blank"` or `"defined"`; any other operand is an unknown
+  instruction, and an empty stack is `EvaluationError` insufficient
+  operands.
+  - `"defined"` pushes `true` for every value except `:undefined`, so
+    `null`, `""` and `[]` are defined.
+  - `"blank"` pushes `true` for `:undefined`, `null`, a string that is empty
+    or holds only the code points listed below, a list with no members and
+    an object with no keys, and `false` for every other value: every number
+    (`0` and `0.0` included), both booleans, a `Date`, a `DateTime`, a
+    duration (a zero-length one included), a list with any member (`[""]`,
+    `[null]` and `[[]]` included) and an object with any key. Blank does not
+    recurse.
+  - The code points a blank string may hold are the Unicode White_Space set:
+    U+0009 through U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 through
+    U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. U+200B and U+FEFF
+    are not in it. The reference implementation matches this list code point
+    by code point, never through a runtime's own trim.
+  - The source spellings compile to this opcode and `not`: `x is blank` to
+    `["presence", "blank"]`; `x is not blank` and `x is present` to
+    `["presence", "blank"], ["not"]`; `x is not present` to
+    `["presence", "blank"]`; `x is defined` to `["presence", "defined"]`;
+    `x is not defined` to `["presence", "defined"], ["not"]`. `presence`
+    always pushes a boolean, so the `not` after it never rejects.
+  - The `load` of an unbound root keeps its own contract: under the default
+    `on_unbound: :undefined` it pushes `:undefined`, which is blank and not
+    defined; under `on_unbound: :error` the `load` fails before `presence`
+    runs.
 - **`add`** (`execute_arithmetic/2`) - number+number is numeric
   addition; string+string, string+number, and number+string concatenate
   (numbers are stringified); list+list concatenates; `Date`/`DateTime` +
@@ -852,6 +885,7 @@ What a reader might expect to find here and will not:
 | v4 | `cast` | - | 5.0.0 |
 | v5 | `jump`, `pop_jump_if_falsy` | - | 5.0.0 |
 | v6 | `jump_backward` | - | 5.0.0 |
+| v7 | `presence` | - | 9.6.0 |
 
 This table records the release each opcode was *introduced* in, and, now that
 an opcode has been retired, the release each was *removed* in - both ends of

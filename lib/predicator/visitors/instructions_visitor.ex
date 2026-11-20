@@ -314,6 +314,17 @@ defmodule Predicator.Visitors.InstructionsVisitor do
     left_instructions ++ right_instructions ++ op_instruction
   end
 
+  # ADR-0021: one `presence` opcode, operand "blank" or "defined"; `not`
+  # supplies the negations. `is present` is `is not blank`, so
+  # `is not present` is `is blank`. Both instructions carry the node's
+  # position.
+  defp visit_annotated({:presence, kind, negated?, operand, position}, opts) do
+    {opcode_operand, negate?} = presence_instruction(kind, negated?)
+    negation = if negate?, do: [{["not"], position}], else: []
+
+    visit_annotated(operand, opts) ++ [{["presence", opcode_operand], position}] ++ negation
+  end
+
   defp visit_annotated({:function_call, function_name, arguments, position}, opts) do
     # Post-order traversal: arguments first (in order), then function call
     arg_instructions =
@@ -536,6 +547,13 @@ defmodule Predicator.Visitors.InstructionsVisitor do
   @spec map_membership_op(Parser.membership_op()) :: binary()
   defp map_membership_op(:in), do: "in"
   defp map_membership_op(:contains), do: "contains"
+
+  # A presence node's opcode operand, and whether `not` follows it
+  # (ADR-0021's compile table).
+  @spec presence_instruction(Parser.presence_kind(), boolean()) :: {binary(), boolean()}
+  defp presence_instruction(:blank, negated?), do: {"blank", negated?}
+  defp presence_instruction(:present, negated?), do: {"blank", not negated?}
+  defp presence_instruction(:defined, negated?), do: {"defined", negated?}
 
   # Helper function to map relative direction atoms to instruction format
   @spec map_relative_direction(Parser.relative_direction()) :: binary()

@@ -11,8 +11,13 @@ defmodule Predicator.Simple do
 
   `t:t/0` is that value: a list of `t:clause/0`s joined by one
   `t:connective/0`. A clause is `{path, op, value}` - a field path, a
-  comparison or membership operator, and a literal (or a list of literals).
-  Nothing else is in the subset.
+  comparison or membership operator, and a literal (or a list of literals) -
+  or `{path, presence_op, nil}`, one of the six presence spellings
+  (`status is blank`, ADR-0021), which takes no value. Nothing else is in the
+  subset.
+
+      iex> Predicator.Simple.from_source("patron.email is not blank")
+      {:ok, %Predicator.Simple{connective: nil, clauses: [{[root: "patron", property: "email"], :is_not_blank, nil}]}}
 
       iex> {:ok, simple} = Predicator.Simple.from_source("status == 'active' AND amount >= 500")
       iex> simple.connective
@@ -124,6 +129,15 @@ defmodule Predicator.Simple do
 
   @comparison_ops [:gt, :gte, :lt, :lte, :equal_equal, :ne, :strict_eq, :strict_ne]
   @membership_ops [:in, :contains]
+  @presence_ops %{
+    is_blank: {:blank, false},
+    is_not_blank: {:blank, true},
+    is_present: {:present, false},
+    is_not_present: {:present, true},
+    is_defined: {:defined, false},
+    is_not_defined: {:defined, true}
+  }
+  @presence_op_names Map.keys(@presence_ops)
   @ops @comparison_ops ++ @membership_ops
   @quote_styles [:single, :double]
   @directions [:ago, :future, :next, :last]
@@ -149,6 +163,18 @@ defmodule Predicator.Simple do
           | :strict_ne
           | :in
           | :contains
+
+  @typedoc """
+  A presence test, spelled after its source: `:is_not_blank` is
+  `path is not blank`. A clause carrying one has `nil` for its value.
+  """
+  @type presence_op ::
+          :is_blank
+          | :is_not_blank
+          | :is_present
+          | :is_not_present
+          | :is_defined
+          | :is_not_defined
 
   @typedoc """
   One step along a field path.
@@ -186,8 +212,11 @@ defmodule Predicator.Simple do
   @typedoc "The right-hand side of a clause: one scalar, or a list of them."
   @type value :: scalar() | {:list, [scalar()]}
 
-  @typedoc "One row of the editor: a field path, an operator, and a value."
-  @type clause :: {path(), op(), value()}
+  @typedoc """
+  One row of the editor: a field path, an operator, and a value - or a field
+  path and a presence test, with no value.
+  """
+  @type clause :: {path(), op(), value()} | {path(), presence_op(), nil}
 
   @typedoc """
   The subset value: clauses joined by one connective.
@@ -506,6 +535,15 @@ defmodule Predicator.Simple do
   defp clause_from_ast({:membership, op, left, right, _pos}) when op in @membership_ops,
     do: build_clause(left, op, right)
 
+  defp clause_from_ast({:presence, kind, negated?, operand, _pos}) do
+    with {:ok, path} <- path_from_ast(operand),
+         {op, _spelling} <- Enum.find(@presence_ops, &(elem(&1, 1) == {kind, negated?})) do
+      {:ok, {path, op, nil}}
+    else
+      _outside -> :outside
+    end
+  end
+
   defp clause_from_ast(_other), do: :outside
 
   @spec build_clause(Parser.ast(), op(), Parser.ast()) :: {:ok, clause()} | :outside
@@ -589,6 +627,11 @@ defmodule Predicator.Simple do
   # -- to_ast -----------------------------------------------------------------
 
   @spec clause_to_ast(clause()) :: Parser.ast()
+  defp clause_to_ast({path, op, nil}) when op in @presence_op_names do
+    {kind, negated?} = Map.fetch!(@presence_ops, op)
+    {:presence, kind, negated?, path_to_ast(path), nil}
+  end
+
   defp clause_to_ast({path, op, value}) when op in @membership_ops,
     do: {:membership, op, path_to_ast(path), value_to_ast(value), nil}
 
@@ -629,6 +672,7 @@ defmodule Predicator.Simple do
 
   @spec clause?(term()) :: boolean()
   defp clause?({path, op, value}) when op in @ops, do: path?(path) and value?(value)
+  defp clause?({path, op, nil}) when op in @presence_op_names, do: path?(path)
   defp clause?(_other), do: false
 
   @spec path?(term()) :: boolean()

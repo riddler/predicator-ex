@@ -180,6 +180,57 @@ defmodule Predicator.VocabularySyncTest do
     end
   end
 
+  describe "Vocabulary versus the parser's presence words" do
+    setup do
+      {:ok, source: File.read!("lib/predicator/parser.ex")}
+    end
+
+    # The presence words are no lexer keyword - each lexes as an identifier
+    # and is an operator word only directly after an operand (ADR-0021) - so
+    # neither angle above reaches them. Their one list is the parser's
+    # presence_word/1 clause heads.
+    #
+    # sabotage (vocabulary side): deleted the `{"present", :identifier,
+    # :presence, ...}` row from @tokens -> one failure, this test, on the
+    # assertion naming ["present"] as read by the parser and not enumerated;
+    # restored, confirmed green
+    #
+    # sabotage (parser side): deleted the `presence_word("DEFINED")` clause
+    # -> one failure, this test, on the assertion naming ["DEFINED"] as
+    # enumerated and not read; restored, confirmed green
+    test "the presence words match presence_word/1's clause heads, both ways", %{
+      source: source
+    } do
+      words = presence_word_clauses(source)
+
+      assert words != MapSet.new(),
+             "parsing lib/predicator/parser.ex found no presence_word/1 clause " <>
+               "heads - the source-parsing logic in this test likely needs " <>
+               "updating to match the module's shape"
+
+      enumerated = MapSet.new(Vocabulary.by_category(:presence), & &1.lexeme)
+
+      assert MapSet.difference(words, enumerated) == MapSet.new(),
+             "the parser reads presence word(s) " <>
+               "#{inspect(Enum.sort(MapSet.difference(words, enumerated)))} that " <>
+               "Predicator.Vocabulary does not enumerate"
+
+      assert MapSet.difference(enumerated, words) == MapSet.new(),
+             "Predicator.Vocabulary enumerates presence word(s) " <>
+               "#{inspect(Enum.sort(MapSet.difference(enumerated, words)))} that " <>
+               "the parser does not read"
+    end
+
+    test "no presence word is offered as a keyword, and each lexes as an identifier" do
+      keywords = MapSet.new(Vocabulary.keywords(), & &1.lexeme)
+
+      for entry <- Vocabulary.by_category(:presence) do
+        refute entry.lexeme in keywords
+        assert entry.token_type == :identifier
+      end
+    end
+  end
+
   describe "round-tripping the vocabulary through the lexer" do
     # sabotage: changed the `{"===", :strict_equal, ...}` row's token type to
     # `:equal_equal` -> two failures: this one naming "===" and both types,
@@ -371,6 +422,19 @@ defmodule Predicator.VocabularySyncTest do
 
       _other_clause ->
         []
+    end)
+    |> MapSet.new()
+  end
+
+  # Parses `source` and collects the literal binary of every `presence_word/1`
+  # clause answering a word. The catch-all answers nil and is dropped.
+  @spec presence_word_clauses(String.t()) :: MapSet.t(binary())
+  defp presence_word_clauses(source) do
+    source
+    |> private_clauses(:presence_word)
+    |> Enum.flat_map(fn
+      {word, kind} when is_binary(word) and is_atom(kind) and kind != nil -> [word]
+      _other_clause -> []
     end)
     |> MapSet.new()
   end

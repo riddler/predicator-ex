@@ -193,6 +193,11 @@ defmodule Predicator.AST do
     {{:membership, op, left, right, pos}, acc}
   end
 
+  defp map_children({:presence, kind, negated?, operand, pos}, acc, walk) do
+    {operand, acc} = walk.(operand, acc)
+    {{:presence, kind, negated?, operand, pos}, acc}
+  end
+
   defp map_children({:unary, op, operand, pos}, acc, walk) do
     {operand, acc} = walk.(operand, acc)
     {{:unary, op, operand, pos}, acc}
