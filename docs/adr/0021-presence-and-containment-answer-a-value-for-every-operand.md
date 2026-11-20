@@ -7,9 +7,12 @@ Status: proposed (2026-11-20)
 A condition often needs to ask whether a value was supplied at all, and
 predicator has no direct way to say it. A chain of `==` tests does not
 serve, because a non-strict comparison involving `:undefined` or `null`
-pushes `:undefined` (`docs/isa.md` section 5, the `compare` bullet), so the
-remaining route is a builtin call. A host that runs with `builtins: false`
-has no builtin to call.
+pushes `:undefined` (`docs/isa.md` section 5, the `compare` bullet). `===`
+and `!==` work over every value, `:undefined` included (the same bullet),
+so `x !== undefined` already answers whether `x` is defined; but a `===`
+chain has to name every blank value one by one, and it cannot test a
+string that holds only white space without the `trim` builtin, which a
+host that runs with `builtins: false` does not have.
 
 Containment has the opposite problem: it refuses where a condition wants an
 answer. At ISA v6 the `in` and `contains` opcodes require a list container
@@ -154,11 +157,20 @@ spelling the author wrote.
 | `presence` | `"blank"` or `"defined"` (string) | 1 | 1 (a boolean) | v7 | 10 |
 | `intersects` | - | 2 | 1 | v7 | 10 |
 
-`x is blank` compiles to `["presence", "blank"]` and `x is defined` to
-`["presence", "defined"]`. `is present` and every negated spelling compile
-to that opcode followed by the existing `not`; `presence` always pushes a
-boolean, so that `not` never rejects. `a intersects b` compiles its two
-operands, left first, followed by `["intersects"]`.
+After its operand, each spelling compiles to:
+
+| Spelling | Instructions |
+|---|---|
+| `x is blank` | `["presence", "blank"]` |
+| `x is not blank` | `["presence", "blank"]`, `["not"]` |
+| `x is present` | `["presence", "blank"]`, `["not"]` |
+| `x is not present` | `["presence", "blank"]` |
+| `x is defined` | `["presence", "defined"]` |
+| `x is not defined` | `["presence", "defined"]`, `["not"]` |
+
+`presence` always pushes a boolean, so the `not` after it never rejects.
+`a intersects b` compiles its two operands, left first, followed by
+`["intersects"]`.
 
 ### One version, a minor release
 
