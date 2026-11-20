@@ -773,9 +773,16 @@ defmodule Predicator.Lexer do
   defp parse_date_content(content) do
     if String.contains?(content, "T") do
       # Check for DateTime first (contains T)
+      # A datetime is an instant from 0000-01-01T00:00:00Z through
+      # 9999-12-31T23:59:59.999999Z (docs/isa.md section 3). An offset can
+      # carry a literal outside it, whose decompiled text would not lex, so
+      # such a literal is malformed. DateTime.from_iso8601/1 answers in UTC.
       case DateTime.from_iso8601(content) do
-        {:ok, datetime, _offset} -> {:ok, datetime, :datetime}
-        {:error, _reason} -> {:error, "Invalid datetime format: #{content}"}
+        {:ok, %DateTime{year: year} = datetime, _offset} when year in 0..9999 ->
+          {:ok, datetime, :datetime}
+
+        _out_of_range_or_error ->
+          {:error, "Invalid datetime format: #{content}"}
       end
     else
       # Try Date format

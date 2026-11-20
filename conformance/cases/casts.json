@@ -348,6 +348,30 @@
     "notes": "the totality rule applied to the datetime parse target"
   },
   {
+    "id": "casts/string-to-datetime-last-in-range-instant",
+    "source": "\"9999-12-31T23:59:59.999999Z\"::datetime::string",
+    "expected": { "result": "9999-12-31T23:59:59.999999Z" },
+    "notes": "the last instant of the datetime range (docs/isa.md section 3) parses: the range is 0000-01-01T00:00:00Z through 9999-12-31T23:59:59.999999Z in UTC, inclusive at both ends"
+  },
+  {
+    "id": "casts/string-to-datetime-offset-past-the-top-is-undefined",
+    "source": "\"9999-12-31T23:59:59-05:00\"::datetime",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "a negative offset carries this local time past 9999-12-31T23:59:59.999999Z once converted to UTC, so the string names no datetime and the cast is :undefined, the answer an unreadable string gets - never an error"
+  },
+  {
+    "id": "casts/string-to-datetime-offset-below-the-bottom-is-undefined",
+    "source": "\"0000-01-01T00:00:00+05:00\"::datetime",
+    "expected": { "result": { "$type": "undefined" } },
+    "notes": "a positive offset carries this local time below 0000-01-01T00:00:00Z once converted to UTC, so the string names no datetime and the cast is :undefined"
+  },
+  {
+    "id": "casts/string-to-datetime-offset-at-the-bottom-is-in-range",
+    "source": "\"0000-01-01T05:00:00+05:00\"::datetime::string",
+    "expected": { "result": "0000-01-01T00:00:00Z" },
+    "notes": "the in-range neighbour of the case above: the same offset five hours later names exactly the first instant of the range, which parses and formats in UTC"
+  },
+  {
     "id": "casts/string-to-duration-unconvertible-is-undefined",
     "source": "\"not-a-duration\"::duration",
     "expected": { "result": { "$type": "undefined" } },
