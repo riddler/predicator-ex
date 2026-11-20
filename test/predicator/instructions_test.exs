@@ -7,8 +7,8 @@ defmodule Predicator.InstructionsTest do
   alias Predicator.Instructions
 
   describe "isa_version/0" do
-    test "returns 6" do
-      assert Instructions.isa_version() == 6
+    test "returns 7" do
+      assert Instructions.isa_version() == 7
     end
 
     test "returns an integer, not a string or a Version struct" do
@@ -68,11 +68,19 @@ defmodule Predicator.InstructionsTest do
       assert MapSet.size(Instructions.opcode_set(2)) == 25
     end
 
-    test "opcode_set(2) equals Map.keys(opcodes()) minus the v3-, v4-, v5-, and v6-only opcodes - and/or are still members of v2's set" do
+    test "opcode_set(2) equals Map.keys(opcodes()) minus the v3-, v4-, v5-, v6- and v7-only opcodes - and/or are still members of v2's set" do
       assert Instructions.opcode_set(2) ==
                MapSet.new(
                  Map.keys(Instructions.opcodes()) --
-                   ["store", "pop", "cast", "jump", "pop_jump_if_falsy", "jump_backward"]
+                   [
+                     "store",
+                     "pop",
+                     "cast",
+                     "jump",
+                     "pop_jump_if_falsy",
+                     "jump_backward",
+                     "presence"
+                   ]
                )
     end
 
@@ -231,6 +239,17 @@ defmodule Predicator.InstructionsTest do
     test "opcode_set(5) excludes jump_backward and opcode_set(6) includes it" do
       refute MapSet.member?(Instructions.opcode_set(5), "jump_backward")
       assert MapSet.member?(Instructions.opcode_set(6), "jump_backward")
+    end
+
+    # ISA v7, ADR-0021: presence answers a boolean for every value, tier 10.
+    test "presence is an ISA v7 tier-10 opcode" do
+      assert {:ok, 7} = Instructions.required_isa([["load", "x"], ["presence", "blank"]])
+      assert {:ok, 10} = Instructions.tier("presence")
+    end
+
+    test "opcode_set(6) excludes presence and opcode_set(7) includes it" do
+      refute MapSet.member?(Instructions.opcode_set(6), "presence")
+      assert MapSet.member?(Instructions.opcode_set(7), "presence")
     end
 
     test "the first bad opcode wins when there are two" do

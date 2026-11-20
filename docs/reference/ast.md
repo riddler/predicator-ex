@@ -48,6 +48,7 @@ trailing slot last:
 {:arithmetic, op, left, right, pos}
 {:unary, op, operand, pos}
 {:membership, op, left, right, pos}
+{:presence, kind, negated?, expr, pos}
 {:logical_and, left, right, pos}
 {:logical_or, left, right, pos}
 {:logical_not, operand, pos}
@@ -67,6 +68,11 @@ held as a binary; the parser rejects any other name, so a `cast` node can
 never carry an invalid target. The names are contextual identifiers, not
 keywords - they are only special immediately after `::`
 ([ADR-0011](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0011-casts-are-an-opcode.md)).
+
+In a `presence` node, `kind` is `:blank`, `:present` or `:defined`, and
+`negated?` is `true` when the author wrote `not` after `is`; the two together
+record which of the six spellings was written
+([ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)).
 
 ## Object keys
 
@@ -223,6 +229,7 @@ key's own blame position only when the key is a single token, as in
 | `literal`, `string_literal`, `identifier`, `object_key` | own token |
 | `comparison`, `arithmetic`, `membership`, `logical_and`, `logical_or` | the operator |
 | `unary`, `logical_not` | the operator |
+| `presence` | the `is` token |
 | `list`, `object` | the opening bracket or brace |
 | `function_call` | the name token |
 | `bracket_access` | the first token of the key expression |
@@ -278,6 +285,7 @@ characters to *underline*. A new node type needs a row in both:
 | `arithmetic` | left operand start | right operand end |
 | `logical_and`, `logical_or` | left operand start | right operand end |
 | `unary`, `logical_not` | the operator token | operand end |
+| `presence` | operand start | past the `blank`, `present` or `defined` token |
 | `list` | the `[` token | past the `]` token |
 | `object` | the `{` token | past the `}` token |
 | `function_call` | the name token | past the `)` token |

@@ -570,6 +570,12 @@ defmodule Predicator.Evaluator do
     execute_membership(evaluator, :contains)
   end
 
+  # Presence instruction (ISA v7, ADR-0021): answers a boolean for every value
+  defp execute_instruction(%__MODULE__{} = evaluator, ["presence", kind])
+       when kind in ["blank", "defined"] do
+    execute_presence(evaluator, kind)
+  end
+
   # Arithmetic instructions
   defp execute_instruction(%__MODULE__{} = evaluator, ["add"]) do
     execute_arithmetic(evaluator, :add)
@@ -994,6 +1000,44 @@ defmodule Predicator.Evaluator do
   defp execute_membership(%__MODULE__{stack: stack}, operation) do
     {:error, EvaluationError.insufficient_operands(operation, length(stack), 2)}
   end
+
+  @spec execute_presence(t(), binary()) :: {:ok, t()} | {:error, term()}
+  defp execute_presence(%__MODULE__{stack: [value | rest]} = evaluator, "blank"),
+    do: {:ok, %__MODULE__{evaluator | stack: [blank?(value) | rest]}}
+
+  defp execute_presence(%__MODULE__{stack: [value | rest]} = evaluator, "defined"),
+    do: {:ok, %__MODULE__{evaluator | stack: [value != :undefined | rest]}}
+
+  defp execute_presence(%__MODULE__{stack: []}, _kind) do
+    {:error, EvaluationError.insufficient_operands(:presence, 0, 1)}
+  end
+
+  # ADR-0021's table, per value kind, with no recursion: `false`, `0`, a
+  # date, a datetime and a duration (a map with the seven duration keys,
+  # zero-length included) are never blank.
+  @spec blank?(term()) :: boolean()
+  defp blank?(:undefined), do: true
+  defp blank?(nil), do: true
+  defp blank?(value) when is_binary(value), do: blank_string?(value)
+  defp blank?([]), do: true
+  defp blank?(value) when is_map(value) and not is_struct(value), do: map_size(value) == 0
+  defp blank?(_value), do: false
+
+  # The Unicode White_Space code points, listed by code point in docs/isa.md
+  # section 5 (`presence`) so a sibling implements the list rather than its
+  # own language's trim. Matched here one code point at a time rather than
+  # through `String.trim/1`, so the answer does not depend on the Unicode
+  # tables of the running Elixir.
+  @white_space [0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0x85, 0xA0, 0x1680] ++
+                 Enum.to_list(0x2000..0x200A) ++ [0x2028, 0x2029, 0x202F, 0x205F, 0x3000]
+
+  @spec blank_string?(binary()) :: boolean()
+  defp blank_string?(<<>>), do: true
+
+  defp blank_string?(<<code_point::utf8, rest::binary>>) when code_point in @white_space,
+    do: blank_string?(rest)
+
+  defp blank_string?(_not_white_space), do: false
 
   @spec execute_arithmetic(t(), :add | :subtract | :multiply | :divide | :modulo) ::
           {:ok, t()} | {:error, term()}

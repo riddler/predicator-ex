@@ -45,7 +45,7 @@ defmodule Predicator.VisitorClauseCoverageTest do
   # silently walks past most of the union - or a source parse that silently
   # matches nothing - fails loudly instead of passing vacuously, the same
   # guard `isa_sync_test.exs` uses for `@opcode_count`.
-  @constructor_count 23
+  @constructor_count 24
 
   describe "Parser.visitable/0's constructor set" do
     setup do
@@ -58,7 +58,7 @@ defmodule Predicator.VisitorClauseCoverageTest do
     # sabotage: added `| {:sabotage_probe, ast(), block(), position()}` to
     # visitable/0's expansion (via a throwaway member on ast/0) -> constructor
     # count went to 24 -> red, naming :sabotage_probe as unexpected
-    test "expands to exactly the 23 known tuple constructors", %{parser_types: parser_types} do
+    test "expands to exactly the 24 known tuple constructors", %{parser_types: parser_types} do
       constructors = visitable_constructors(parser_types)
 
       assert constructors != MapSet.new(),

@@ -42,7 +42,7 @@ defmodule Predicator.Instructions do
   alias Predicator.Types
 
   # The ISA version this build emits and can run (docs/isa.md, section 1).
-  @isa_version 6
+  @isa_version 7
 
   @typedoc """
   One opcode's table entry: the ISA version that introduced it, its conformance
@@ -92,7 +92,8 @@ defmodule Predicator.Instructions do
     "cast" => %{isa: 4, tier: 7},
     "jump" => %{isa: 5, tier: 8},
     "pop_jump_if_falsy" => %{isa: 5, tier: 8},
-    "jump_backward" => %{isa: 6, tier: 9}
+    "jump_backward" => %{isa: 6, tier: 9},
+    "presence" => %{isa: 7, tier: 10}
   }
 
   @doc """
@@ -283,11 +284,15 @@ defmodule Predicator.Instructions do
       iex> Predicator.Instructions.required_isa(instructions)
       {:ok, 2}
 
+      iex> {:ok, instructions} = Predicator.compile("a is blank")
+      iex> Predicator.Instructions.required_isa(instructions)
+      {:ok, 7}
+
       iex> Predicator.Instructions.required_isa([])
       {:ok, 1}
 
       iex> Predicator.Instructions.required_isa([["nope"]])
-      {:error, %Predicator.Errors.EvaluationError{reason: "unknown_opcode", message: "Unknown opcode \\"nope\\"; this build supports ISA v6", operation: :required_isa}}
+      {:error, %Predicator.Errors.EvaluationError{reason: "unknown_opcode", message: "Unknown opcode \\"nope\\"; this build supports ISA v7", operation: :required_isa}}
   """
   @spec required_isa(Types.instruction_list()) ::
           {:ok, pos_integer()} | {:error, EvaluationError.t()}

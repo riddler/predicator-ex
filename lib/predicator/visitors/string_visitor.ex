@@ -239,6 +239,24 @@ defmodule Predicator.Visitors.StringVisitor do
     format_binary(left, right, format_membership_operator(op), opts, @level_comparison, :none)
   end
 
+  # ADR-0021: the decompiler writes the spelling the author wrote, in lower
+  # case and with single spaces whatever `:spacing` says, since the words
+  # need a space to lex apart. The operand binds at the comparison level and
+  # does not chain, so an operand at that level or looser is wrapped.
+  defp do_visit({:presence, kind, negated?, operand, _position}, opts) do
+    mode = get_parentheses_mode(opts)
+
+    operand_str =
+      maybe_wrap_child(do_visit(operand, opts), operand, @level_comparison, :none, :left, mode)
+
+    joined = "#{operand_str} is #{if negated?, do: "not ", else: ""}#{kind}"
+
+    case mode do
+      :explicit -> "(#{joined})"
+      _other -> joined
+    end
+  end
+
   defp do_visit({:function_call, function_name, arguments, _position}, opts) do
     arg_strings = Enum.map(arguments, fn arg -> do_visit(arg, opts) end)
     args_str = Enum.join(arg_strings, ", ")
@@ -424,6 +442,7 @@ defmodule Predicator.Visitors.StringVisitor do
   defp precedence({:logical_not, _operand, _position}), do: @level_logical_not
   defp precedence({:comparison, _op, _left, _right, _position}), do: @level_comparison
   defp precedence({:membership, _op, _left, _right, _position}), do: @level_comparison
+  defp precedence({:presence, _kind, _negated?, _operand, _position}), do: @level_comparison
 
   defp precedence({:arithmetic, op, _left, _right, _position}) do
     {level, _assoc} = arithmetic_precedence(op)

@@ -23,10 +23,10 @@ defmodule Predicator.AnalysisClauseCoverageTest do
 
   # The 18 members of `ast/0` plus program, assignment, if, while and block,
   # the literal `ast_clause_coverage_test.exs` asserts.
-  @constructor_count 23
+  @constructor_count 24
 
   # Every row of docs/isa.md section 4's opcode table, retired rows included.
-  @opcode_count 31
+  @opcode_count 32
 
   setup do
     {:ok, types} = Code.Typespec.fetch_types(Parser)

@@ -174,6 +174,43 @@ could never be compared against one.
 | `in`     | Element in collection | `step in ['payment', 'review']` |
 | `contains` | Collection contains element | `[1, 2, 3] contains 2` |
 
+## Presence Operators
+
+`expr is blank`, `expr is present` and `expr is defined`, each with an
+optional `not` after `is`, answer `true` or `false` for every value and never
+an error ([ADR-0021](https://github.com/riddler/predicator-ex/blob/main/docs/adr/0021-presence-and-containment-answer-a-value-for-every-operand.md)):
+
+| Value | Blank | Defined |
+|---|---|---|
+| `:undefined` (an unbound root under the default `on_unbound`, a missing path) | yes | no |
+| `null` | yes | yes |
+| a string that is empty, or holds only Unicode White_Space | yes | yes |
+| any other string | no | yes |
+| a number, `0` and `0.0` included | no | yes |
+| a boolean, `false` included | no | yes |
+| a list with no members | yes | yes |
+| a list with any member (`[""]`, `[null]` and `[[]]` included) | no | yes |
+| an object with no keys | yes | yes |
+| an object with any key | no | yes |
+| a `Date` or a `DateTime` | no | yes |
+| a duration, a zero-length one included | no | yes |
+
+`x is present` is exactly `x is not blank`, and `x is defined` is exactly "x
+is not `:undefined`". The White_Space code points are listed in
+[`docs/isa.md`](../isa.md) section 5, under `presence`.
+
+```elixir
+iex> Predicator.evaluate("patron.email is not blank", %{"patron" => %{"email" => " "}})
+{:ok, false}
+iex> Predicator.evaluate("loan.note is defined", %{"loan" => %{"note" => nil}})
+{:ok, true}
+```
+
+The operators sit at the precedence of the comparison operators and do not
+chain. `is`, `blank`, `present` and `defined` are operator words only directly
+after an operand; everywhere else they are ordinary identifiers, accepted in
+lower case and in upper case.
+
 ## Type Casts
 
 `expr::type` converts `expr`'s value to a named type. The seven legal target
@@ -919,6 +956,7 @@ others treat it as a type error.
 | `AND`, `OR` | propagated, treated as falsy | short-circuits or falls through |
 | `NOT` | rejected | error (type mismatch) |
 | `in`, `contains` | propagated | `:undefined` |
+| `is [not] blank`, `present`, `defined` | handled, not rejected | ordinary `true`/`false` |
 
 Dot access, bracket access, and function arguments are not in this table
 because they don't reject or propagate an *incoming* `:undefined` the way an

@@ -266,6 +266,7 @@ defmodule Predicator.Analysis do
   defp node_step({:comparison, _op, _left, _right, _pos} = node, acc), do: {node, acc}
   defp node_step({:arithmetic, _op, _left, _right, _pos} = node, acc), do: {node, acc}
   defp node_step({:membership, _op, _left, _right, _pos} = node, acc), do: {node, acc}
+  defp node_step({:presence, _kind, _negated?, _operand, _pos} = node, acc), do: {node, acc}
   defp node_step({:unary, _op, _operand, _pos} = node, acc), do: {node, acc}
   defp node_step({:logical_and, _left, _right, _pos} = node, acc), do: {node, acc}
   defp node_step({:logical_or, _left, _right, _pos} = node, acc), do: {node, acc}
@@ -513,6 +514,9 @@ defmodule Predicator.Analysis do
 
   defp step(["jump_backward", offset], _i, state) when is_integer(offset) and offset > 0,
     do: {:ok, state}
+
+  defp step(["presence", kind], i, state) when kind in ["blank", "defined"],
+    do: {:ok, combine(state, 1, i)}
 
   defp step(_instruction, _i, _state), do: :unreadable
 

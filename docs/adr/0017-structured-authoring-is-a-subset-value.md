@@ -266,3 +266,20 @@ intended one. It was raised by the direction review on
 [#218](https://github.com/riddler/predicator-ex/pull/218), which accepted this
 record, and recorded by
 [#221](https://github.com/riddler/predicator-ex/pull/221) under **px-353**.
+
+### 2026-11-20: the six presence spellings are a clause with no value
+
+[ADR-0021](0021-presence-and-containment-answer-a-value-for-every-operand.md)
+adds the presence operators: `path is blank`, `path is not blank`,
+`path is present`, `path is not present`, `path is defined` and
+`path is not defined`. `Predicator.Simple` admits each of the six on a field
+path as a clause of its own, `{path, op, nil}`, where `op` is spelled after
+the source (`:is_blank`, `:is_not_blank`, `:is_present`, `:is_not_present`,
+`:is_defined`, `:is_not_defined`) and the value is `nil`, because the test
+takes none. `from_ast/1`, `to_ast/1` and `well_formed?/1` read and write the
+shape (`clause_from_ast/1` and `clause_to_ast/1` in `lib/predicator/simple.ex`).
+A presence test on anything other than a field path stays outside the subset.
+`operators/1` is unchanged: it answers per kind of value, and a presence
+clause has none.
+
+Nothing above changes; the subset grows by these clauses only.

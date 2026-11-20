@@ -21,7 +21,7 @@ defmodule Predicator.ASTClauseCoverageTest do
   # The 18 members of `ast/0` plus program, assignment, if, while and block,
   # the same literal `visitor_clause_coverage_test.exs` asserts, so an
   # expansion that silently matches nothing fails loudly.
-  @constructor_count 23
+  @constructor_count 24
 
   setup do
     {:ok, types} = Code.Typespec.fetch_types(Parser)

@@ -1,0 +1,1629 @@
+[
+  {
+    "id": "presence/is-blank-unbound",
+    "source": "value is blank",
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-undefined",
+    "source": "value is blank",
+    "context": {
+      "value": {
+        "$type": "undefined"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-null",
+    "source": "value is blank",
+    "context": {
+      "value": null
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-empty-string",
+    "source": "value is blank",
+    "context": {
+      "value": ""
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-spaces",
+    "source": "value is blank",
+    "context": {
+      "value": "   "
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-no-break-space",
+    "source": "value is blank",
+    "context": {
+      "value": "\u00a0"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-ideographic-space",
+    "source": "value is blank",
+    "context": {
+      "value": "\u3000"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-zero-width-space",
+    "source": "value is blank",
+    "context": {
+      "value": "\u200b"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-string",
+    "source": "value is blank",
+    "context": {
+      "value": "Dune"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-integer-zero",
+    "source": "value is blank",
+    "context": {
+      "value": 0
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-float-zero",
+    "source": "value is blank",
+    "context": {
+      "value": 0.0
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-integer-one",
+    "source": "value is blank",
+    "context": {
+      "value": 1
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-true",
+    "source": "value is blank",
+    "context": {
+      "value": true
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-false",
+    "source": "value is blank",
+    "context": {
+      "value": false
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-empty-list",
+    "source": "value is blank",
+    "context": {
+      "value": []
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-list-of-empty-string",
+    "source": "value is blank",
+    "context": {
+      "value": [
+        ""
+      ]
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-list-of-null",
+    "source": "value is blank",
+    "context": {
+      "value": [
+        null
+      ]
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-empty-object",
+    "source": "value is blank",
+    "context": {
+      "value": {}
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-blank-one-key-object",
+    "source": "value is blank",
+    "context": {
+      "value": {
+        "title": "Dune"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-date",
+    "source": "value is blank",
+    "context": {
+      "value": {
+        "$type": "date",
+        "value": "2026-11-20"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-datetime",
+    "source": "value is blank",
+    "context": {
+      "value": {
+        "$type": "datetime",
+        "value": "2026-11-20T09:30:00Z"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-zero-duration",
+    "source": "value is blank",
+    "context": {
+      "value": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-unbound",
+    "source": "value is not blank",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-undefined",
+    "source": "value is not blank",
+    "context": {
+      "value": {
+        "$type": "undefined"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-null",
+    "source": "value is not blank",
+    "context": {
+      "value": null
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-empty-string",
+    "source": "value is not blank",
+    "context": {
+      "value": ""
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-spaces",
+    "source": "value is not blank",
+    "context": {
+      "value": "   "
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-no-break-space",
+    "source": "value is not blank",
+    "context": {
+      "value": "\u00a0"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-ideographic-space",
+    "source": "value is not blank",
+    "context": {
+      "value": "\u3000"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-zero-width-space",
+    "source": "value is not blank",
+    "context": {
+      "value": "\u200b"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-string",
+    "source": "value is not blank",
+    "context": {
+      "value": "Dune"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-integer-zero",
+    "source": "value is not blank",
+    "context": {
+      "value": 0
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-float-zero",
+    "source": "value is not blank",
+    "context": {
+      "value": 0.0
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-integer-one",
+    "source": "value is not blank",
+    "context": {
+      "value": 1
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-true",
+    "source": "value is not blank",
+    "context": {
+      "value": true
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-false",
+    "source": "value is not blank",
+    "context": {
+      "value": false
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-empty-list",
+    "source": "value is not blank",
+    "context": {
+      "value": []
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-list-of-empty-string",
+    "source": "value is not blank",
+    "context": {
+      "value": [
+        ""
+      ]
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-list-of-null",
+    "source": "value is not blank",
+    "context": {
+      "value": [
+        null
+      ]
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-empty-object",
+    "source": "value is not blank",
+    "context": {
+      "value": {}
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-blank-one-key-object",
+    "source": "value is not blank",
+    "context": {
+      "value": {
+        "title": "Dune"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-date",
+    "source": "value is not blank",
+    "context": {
+      "value": {
+        "$type": "date",
+        "value": "2026-11-20"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-datetime",
+    "source": "value is not blank",
+    "context": {
+      "value": {
+        "$type": "datetime",
+        "value": "2026-11-20T09:30:00Z"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-zero-duration",
+    "source": "value is not blank",
+    "context": {
+      "value": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-unbound",
+    "source": "value is present",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-undefined",
+    "source": "value is present",
+    "context": {
+      "value": {
+        "$type": "undefined"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-null",
+    "source": "value is present",
+    "context": {
+      "value": null
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-empty-string",
+    "source": "value is present",
+    "context": {
+      "value": ""
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-spaces",
+    "source": "value is present",
+    "context": {
+      "value": "   "
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-no-break-space",
+    "source": "value is present",
+    "context": {
+      "value": "\u00a0"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-ideographic-space",
+    "source": "value is present",
+    "context": {
+      "value": "\u3000"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-zero-width-space",
+    "source": "value is present",
+    "context": {
+      "value": "\u200b"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-string",
+    "source": "value is present",
+    "context": {
+      "value": "Dune"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-integer-zero",
+    "source": "value is present",
+    "context": {
+      "value": 0
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-float-zero",
+    "source": "value is present",
+    "context": {
+      "value": 0.0
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-integer-one",
+    "source": "value is present",
+    "context": {
+      "value": 1
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-true",
+    "source": "value is present",
+    "context": {
+      "value": true
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-false",
+    "source": "value is present",
+    "context": {
+      "value": false
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-empty-list",
+    "source": "value is present",
+    "context": {
+      "value": []
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-list-of-empty-string",
+    "source": "value is present",
+    "context": {
+      "value": [
+        ""
+      ]
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-list-of-null",
+    "source": "value is present",
+    "context": {
+      "value": [
+        null
+      ]
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-empty-object",
+    "source": "value is present",
+    "context": {
+      "value": {}
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-one-key-object",
+    "source": "value is present",
+    "context": {
+      "value": {
+        "title": "Dune"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-date",
+    "source": "value is present",
+    "context": {
+      "value": {
+        "$type": "date",
+        "value": "2026-11-20"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-datetime",
+    "source": "value is present",
+    "context": {
+      "value": {
+        "$type": "datetime",
+        "value": "2026-11-20T09:30:00Z"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-present-zero-duration",
+    "source": "value is present",
+    "context": {
+      "value": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-unbound",
+    "source": "value is not present",
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-undefined",
+    "source": "value is not present",
+    "context": {
+      "value": {
+        "$type": "undefined"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-null",
+    "source": "value is not present",
+    "context": {
+      "value": null
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-empty-string",
+    "source": "value is not present",
+    "context": {
+      "value": ""
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-spaces",
+    "source": "value is not present",
+    "context": {
+      "value": "   "
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-no-break-space",
+    "source": "value is not present",
+    "context": {
+      "value": "\u00a0"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-ideographic-space",
+    "source": "value is not present",
+    "context": {
+      "value": "\u3000"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-zero-width-space",
+    "source": "value is not present",
+    "context": {
+      "value": "\u200b"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-string",
+    "source": "value is not present",
+    "context": {
+      "value": "Dune"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-integer-zero",
+    "source": "value is not present",
+    "context": {
+      "value": 0
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-float-zero",
+    "source": "value is not present",
+    "context": {
+      "value": 0.0
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-integer-one",
+    "source": "value is not present",
+    "context": {
+      "value": 1
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-true",
+    "source": "value is not present",
+    "context": {
+      "value": true
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-false",
+    "source": "value is not present",
+    "context": {
+      "value": false
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-empty-list",
+    "source": "value is not present",
+    "context": {
+      "value": []
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-list-of-empty-string",
+    "source": "value is not present",
+    "context": {
+      "value": [
+        ""
+      ]
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-list-of-null",
+    "source": "value is not present",
+    "context": {
+      "value": [
+        null
+      ]
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-empty-object",
+    "source": "value is not present",
+    "context": {
+      "value": {}
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-present-one-key-object",
+    "source": "value is not present",
+    "context": {
+      "value": {
+        "title": "Dune"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-date",
+    "source": "value is not present",
+    "context": {
+      "value": {
+        "$type": "date",
+        "value": "2026-11-20"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-datetime",
+    "source": "value is not present",
+    "context": {
+      "value": {
+        "$type": "datetime",
+        "value": "2026-11-20T09:30:00Z"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-zero-duration",
+    "source": "value is not present",
+    "context": {
+      "value": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-defined-unbound",
+    "source": "value is defined",
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-defined-undefined",
+    "source": "value is defined",
+    "context": {
+      "value": {
+        "$type": "undefined"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-defined-null",
+    "source": "value is defined",
+    "context": {
+      "value": null
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-empty-string",
+    "source": "value is defined",
+    "context": {
+      "value": ""
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-spaces",
+    "source": "value is defined",
+    "context": {
+      "value": "   "
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-no-break-space",
+    "source": "value is defined",
+    "context": {
+      "value": "\u00a0"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-ideographic-space",
+    "source": "value is defined",
+    "context": {
+      "value": "\u3000"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-zero-width-space",
+    "source": "value is defined",
+    "context": {
+      "value": "\u200b"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-string",
+    "source": "value is defined",
+    "context": {
+      "value": "Dune"
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-integer-zero",
+    "source": "value is defined",
+    "context": {
+      "value": 0
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-float-zero",
+    "source": "value is defined",
+    "context": {
+      "value": 0.0
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-integer-one",
+    "source": "value is defined",
+    "context": {
+      "value": 1
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-true",
+    "source": "value is defined",
+    "context": {
+      "value": true
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-false",
+    "source": "value is defined",
+    "context": {
+      "value": false
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-empty-list",
+    "source": "value is defined",
+    "context": {
+      "value": []
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-list-of-empty-string",
+    "source": "value is defined",
+    "context": {
+      "value": [
+        ""
+      ]
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-list-of-null",
+    "source": "value is defined",
+    "context": {
+      "value": [
+        null
+      ]
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-empty-object",
+    "source": "value is defined",
+    "context": {
+      "value": {}
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-one-key-object",
+    "source": "value is defined",
+    "context": {
+      "value": {
+        "title": "Dune"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-date",
+    "source": "value is defined",
+    "context": {
+      "value": {
+        "$type": "date",
+        "value": "2026-11-20"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-datetime",
+    "source": "value is defined",
+    "context": {
+      "value": {
+        "$type": "datetime",
+        "value": "2026-11-20T09:30:00Z"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-zero-duration",
+    "source": "value is defined",
+    "context": {
+      "value": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-defined-unbound",
+    "source": "value is not defined",
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-defined-undefined",
+    "source": "value is not defined",
+    "context": {
+      "value": {
+        "$type": "undefined"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-defined-null",
+    "source": "value is not defined",
+    "context": {
+      "value": null
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-empty-string",
+    "source": "value is not defined",
+    "context": {
+      "value": ""
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-spaces",
+    "source": "value is not defined",
+    "context": {
+      "value": "   "
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-no-break-space",
+    "source": "value is not defined",
+    "context": {
+      "value": "\u00a0"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-ideographic-space",
+    "source": "value is not defined",
+    "context": {
+      "value": "\u3000"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-zero-width-space",
+    "source": "value is not defined",
+    "context": {
+      "value": "\u200b"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-string",
+    "source": "value is not defined",
+    "context": {
+      "value": "Dune"
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-integer-zero",
+    "source": "value is not defined",
+    "context": {
+      "value": 0
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-float-zero",
+    "source": "value is not defined",
+    "context": {
+      "value": 0.0
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-integer-one",
+    "source": "value is not defined",
+    "context": {
+      "value": 1
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-true",
+    "source": "value is not defined",
+    "context": {
+      "value": true
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-false",
+    "source": "value is not defined",
+    "context": {
+      "value": false
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-empty-list",
+    "source": "value is not defined",
+    "context": {
+      "value": []
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-list-of-empty-string",
+    "source": "value is not defined",
+    "context": {
+      "value": [
+        ""
+      ]
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-list-of-null",
+    "source": "value is not defined",
+    "context": {
+      "value": [
+        null
+      ]
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-empty-object",
+    "source": "value is not defined",
+    "context": {
+      "value": {}
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-one-key-object",
+    "source": "value is not defined",
+    "context": {
+      "value": {
+        "title": "Dune"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-date",
+    "source": "value is not defined",
+    "context": {
+      "value": {
+        "$type": "date",
+        "value": "2026-11-20"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-datetime",
+    "source": "value is not defined",
+    "context": {
+      "value": {
+        "$type": "datetime",
+        "value": "2026-11-20T09:30:00Z"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-zero-duration",
+    "source": "value is not defined",
+    "context": {
+      "value": {
+        "$type": "duration",
+        "value": {
+          "years": 0,
+          "months": 0,
+          "weeks": 0,
+          "days": 0,
+          "hours": 0,
+          "minutes": 0,
+          "seconds": 0
+        }
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-blank-missed-path",
+    "source": "loan.note is blank",
+    "context": {
+      "loan": {}
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-not-blank-missed-path",
+    "source": "loan.note is not blank",
+    "context": {
+      "loan": {}
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-present-missed-path",
+    "source": "loan.note is present",
+    "context": {
+      "loan": {}
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-present-missed-path",
+    "source": "loan.note is not present",
+    "context": {
+      "loan": {}
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/is-defined-missed-path",
+    "source": "loan.note is defined",
+    "context": {
+      "loan": {}
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/is-not-defined-missed-path",
+    "source": "loan.note is not defined",
+    "context": {
+      "loan": {}
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/and-binds-looser",
+    "source": "loan.note is blank AND patron.email is present",
+    "context": {
+      "loan": {
+        "note": ""
+      },
+      "patron": {
+        "email": "reader@example.com"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/or-binds-looser",
+    "source": "loan.note is not blank OR patron.email is not defined",
+    "context": {
+      "loan": {
+        "note": ""
+      },
+      "patron": {
+        "email": "reader@example.com"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/not-binds-looser",
+    "source": "not loan.note is blank",
+    "context": {
+      "loan": {
+        "note": ""
+      },
+      "patron": {
+        "email": "reader@example.com"
+      }
+    },
+    "expected": {
+      "result": false
+    },
+    "notes": "not x is blank is not (x is blank)"
+  },
+  {
+    "id": "presence/not-before-negated-spelling",
+    "source": "NOT patron.email is not defined",
+    "context": {
+      "loan": {
+        "note": ""
+      },
+      "patron": {
+        "email": "reader@example.com"
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/parenthesised-operand",
+    "source": "(loan.days + 1) is defined",
+    "context": {
+      "loan": {
+        "days": 14
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  },
+  {
+    "id": "presence/upper-case-spelling",
+    "source": "loan.note IS NOT BLANK",
+    "context": {
+      "loan": {
+        "note": ""
+      },
+      "patron": {
+        "email": "reader@example.com"
+      }
+    },
+    "expected": {
+      "result": false
+    }
+  },
+  {
+    "id": "presence/words-as-variable-names",
+    "source": "is is blank AND blank is present AND present is defined AND defined is not defined",
+    "context": {
+      "is": "",
+      "blank": "Dune",
+      "present": null
+    },
+    "expected": {
+      "result": true
+    },
+    "notes": "is, blank, present and defined are ordinary identifiers outside the operator position"
+  },
+  {
+    "id": "presence/words-as-property-names",
+    "source": "parcel.is.blank is defined",
+    "context": {
+      "parcel": {
+        "is": {
+          "blank": 0
+        }
+      }
+    },
+    "expected": {
+      "result": true
+    }
+  }
+]

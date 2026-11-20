@@ -151,6 +151,9 @@ defmodule Predicator.Parser do
   - `{:list, elements, pos}` - A list literal
   - `{:object, entries, pos}` - An object literal whose keys are `t:object_key/0`
   - `{:membership, operator, left, right, pos}` - A membership operation (in/contains)
+  - `{:presence, kind, negated?, expr, pos}` - A presence test (`expr is [not] blank`,
+    `present` or `defined`); `kind` is `:blank`, `:present` or `:defined`, and
+    `negated?` records whether the author wrote `not` (ADR-0021)
   - `{:function_call, name, arguments, pos}` - A function call with arguments
   - `{:bracket_access, object, key, pos}` - A bracket access expression (obj[key])
   - `{:property_access, object, property, pos}` - A property access expression (obj.prop)
@@ -167,6 +170,7 @@ defmodule Predicator.Parser do
           | {:arithmetic, arithmetic_op(), ast(), ast(), position()}
           | {:unary, unary_op(), ast(), position()}
           | {:membership, membership_op(), ast(), ast(), position()}
+          | {:presence, presence_kind(), boolean(), ast(), position()}
           | {:logical_and, ast(), ast(), position()}
           | {:logical_or, ast(), ast(), position()}
           | {:logical_not, ast(), position()}
@@ -305,6 +309,11 @@ defmodule Predicator.Parser do
   Membership operators in the AST.
   """
   @type membership_op :: :in | :contains
+
+  @typedoc """
+  The word after `is` (and an optional `not`) in a presence test (ADR-0021).
+  """
+  @type presence_kind :: :blank | :present | :defined
 
   @typedoc """
   Relative date directions in the AST.
@@ -1055,6 +1064,24 @@ defmodule Predicator.Parser do
                 error
             end
 
+          # Presence operators (ADR-0021): `is [not] blank`, `present` or
+          # `defined`. The words are read by position - only here, directly
+          # after a complete operand - so each stays an ordinary identifier
+          # everywhere else. A sequence that is not a whole presence suffix
+          # falls through, unconsumed, to the error every such sequence already
+          # answered.
+          {:identifier, op_line, op_col, _len, _word} = token ->
+            case presence_suffix(new_state, token) do
+              {:ok, kind, negated?, last, final_state} ->
+                location =
+                  loc(state, {op_line, op_col}, fn -> {node_start(left), token_end(last)} end)
+
+                {:ok, {:presence, kind, negated?, left, location}, final_state}
+
+              :no_match ->
+                {:ok, left, new_state}
+            end
+
           # Not a comparison, return the addition expression
           _token ->
             {:ok, left, new_state}
@@ -1673,6 +1700,48 @@ defmodule Predicator.Parser do
   defp paren_loc(%{spans?: true}, node, open, close) do
     put_elem(node, tuple_size(node) - 1, {token_start(open), token_end(close)})
   end
+
+  # Reads `is [not] (blank | present | defined)` starting at `is_token`, the
+  # unconsumed token at `state`. Answers the kind, whether `not` was written,
+  # the last token of the suffix and the state past it - or `:no_match`, which
+  # consumes nothing.
+  @spec presence_suffix(parser_state(), Lexer.token()) ::
+          {:ok, presence_kind(), boolean(), Lexer.token(), parser_state()} | :no_match
+  defp presence_suffix(state, {:identifier, _line, _col, _len, is_word}) do
+    {negated?, word_state} = presence_negation(advance(state))
+
+    with :is <- presence_word(is_word),
+         {:identifier, _line, _col, _len, word} = word_token <- peek_token(word_state),
+         kind when kind in [:blank, :present, :defined] <- presence_word(word) do
+      {:ok, kind, negated?, word_token, advance(word_state)}
+    else
+      _no_match -> :no_match
+    end
+  end
+
+  @spec presence_negation(parser_state()) :: {boolean(), parser_state()}
+  defp presence_negation(state) do
+    case peek_token(state) do
+      {:not_op, _line, _col, _len, _value} -> {true, advance(state)}
+      _other -> {false, state}
+    end
+  end
+
+  # The presence words, in the two letter cases the lexer accepts for a word
+  # operator (`in` and `IN`). They are not lexer keywords - each lexes as an
+  # ordinary identifier - so this is their one list;
+  # test/predicator/vocabulary_sync_test.exs reads these clause heads against
+  # Predicator.Vocabulary's presence entries.
+  @spec presence_word(binary()) :: :is | presence_kind() | nil
+  defp presence_word("is"), do: :is
+  defp presence_word("IS"), do: :is
+  defp presence_word("blank"), do: :blank
+  defp presence_word("BLANK"), do: :blank
+  defp presence_word("present"), do: :present
+  defp presence_word("PRESENT"), do: :present
+  defp presence_word("defined"), do: :defined
+  defp presence_word("DEFINED"), do: :defined
+  defp presence_word(_other), do: nil
 
   @spec map_membership_operator(atom()) :: membership_op()
   defp map_membership_operator(:in_op), do: :in
