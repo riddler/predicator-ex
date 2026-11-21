@@ -22,7 +22,7 @@
 | [0018](0018-the-release-workflow-publishes-on-the-tag-push.md) | The release workflow publishes on the tag push; no agent or session runs `mix hex.publish` (supersedes ADR-0006's publish sentences) | accepted |
 | [0019](0019-chronological-members-order-by-instant.md) | Two dates, or two datetimes, inside lists and maps order by instant, as the top level does | accepted |
 | [0020](0020-analysis-is-a-reading-surface-over-both-forms.md) | Analysis is a reading surface over both forms of a program: references, calls and assignments from the AST or the instruction list | accepted |
-| [0021](0021-presence-and-containment-answer-a-value-for-every-operand.md) | Presence and containment answer a value for every operand: `is blank`, `is present`, `is defined`, total `in` and `contains`, and `intersects` (ISA v7, tier 10) | proposed |
+| [0021](0021-presence-and-containment-answer-a-value-for-every-operand.md) | Presence and containment answer a value for every operand: `is blank`, `is present`, `is defined`, total `in` and `contains`, and `intersects` (ISA v7, tier 10) | accepted |
 
 Link form is load-bearing: ADRs are not published to hexdocs, so a published
 extra (README.md, docs/isa.md, ...) cites an ADR by absolute GitHub URL - a

@@ -1,6 +1,6 @@
 # ADR-0021: Presence and containment answer a value for every operand
 
-Status: proposed (2026-11-20)
+Status: accepted (2026-11-21, predicator 9.6.0; proposed 2026-11-20)
 
 ## Context
 
@@ -243,3 +243,61 @@ corpus.
   which its registry no longer matches until it implements the widening.
 - **No status line moves here.** This record stays proposed until the code
   it decides ships in a published version.
+
+## Notes
+
+### 2026-11-21: the status is now `accepted`
+
+This record stayed proposed until the code it decides had shipped in a
+published version, and it has. predicator 9.6.0 carries it: this record
+landed in [#257](https://github.com/riddler/predicator-ex/pull/257) at
+`4b71ed2`, the presence operators in
+[#258](https://github.com/riddler/predicator-ex/pull/258) at `b4f2aad`, total
+containment and `intersects` in
+[#259](https://github.com/riddler/predicator-ex/pull/259) at `c269e4f` and
+`4d1bb30`, the
+9.6.0 release prep ([#260](https://github.com/riddler/predicator-ex/pull/260))
+merged at `8d5081e`, and the tag `v9.6.0` on that commit started
+<https://github.com/riddler/predicator-ex/actions/runs/44942037795>, which
+succeeded; Hex shows 9.6.0. The flip was decided by the conductor under a
+standing consent, 2026-11-21. The consequence above that reads "This record
+stays proposed until the code it decides ships in a published version" is met
+here: the flip is this separate change, made once the code shipped.
+
+Every claim above was re-verified on 2026-11-21 against `origin/main` at
+`8d5081e`, the tagged commit, which no commit has followed. The Context's
+statements about ISA v6 are read at the SHA they cite, `330dab6`, and hold
+there. On `main`: the `presence` and `intersects` rows, operands, pop and push
+counts, ISA v7 and tier 10 ("presence and overlap") in `docs/isa.md` section 4
+and in `Predicator.Instructions`, with tiers 1 through 9 keeping the opcode
+sets they had at `330dab6` and `in` and `contains` still tier 3;
+`Predicator.isa_version/0` answering 7 and the manifest's `isa_version` 7;
+`execute_presence/2` and `blank?/1` in `lib/predicator/evaluator.ex` answering
+the blank and defined table per value kind, without recursion, over the
+listed White_Space code points, with the `load` of an unbound root keeping its
+contract under both `on_unbound` settings; `containment/2` answering the
+containment table per pairing, with no `TypeMismatchError` and the arithmetic
+opcodes unchanged; `intersects/2` answering its table under `values_equal?/2`;
+each of the six spellings compiling to the instructions in the table above,
+`x is not present` to `["presence", "blank"]` alone; the words read by
+position, in either case, at comparison precedence without chaining, with the
+`{:presence, kind, negated?, expr, pos}` node and the decompiler keeping the
+spelling; the two corpus cases that expected a containment
+`TypeMismatchError` removed and their sources re-added under new ids, with no
+case edited in place; and the Changed entry with its upgrading note in the
+9.6.0 section of `CHANGELOG.md`. The `trim` builtin's `String.trim/1` strips
+exactly the 25 listed code points on Elixir 1.18.3.
+
+One sentence is superseded. The consequence "new containment cases go in
+tier 3" no longer holds in full: `c269e4f`
+([#259](https://github.com/riddler/predicator-ex/pull/259)) put four new
+containment cases in tier 4, as its commit message states ("new substring,
+wrong-shape and intersects cases go in tiers 3, 4 and 10"). They are
+`membership/contains-duration-container`, `membership/contains-object-container`,
+`membership/in-duration-container` and `membership/in-object-container`,
+whose container literals compile to the tier 4 opcodes `duration`, or
+`object_new` and `object_set`; a case's tier is the highest tier among its
+opcodes (`compute_tier/1` in `lib/predicator/conformance/generator.ex`). Every
+other new containment case is in tier 3, `in` and `contains` themselves stay
+tier 3 as the Tier 10 section decides, and both removed cases were tier 3, so
+the sibling consequence holds. No other sentence above is superseded.
