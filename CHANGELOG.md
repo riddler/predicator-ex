@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [9.6.0] - 2026-11-21
+
+Presence tests, an overlap operator, and containment that answers a value for
+every pairing. The instruction set version moves from 6 to 7: two new opcodes,
+`presence` and `intersects`, and a new conformance tier 10 that holds them.
+Every ISA v6 instruction list still runs unchanged. The conformance corpus hash
+moves with this release, so a sibling implementation re-vendors the corpus at
+9.6.0. The public sets that grow are the opcode list (`presence`,
+`intersects`), the parsed-expression node union (a `:presence` node and an
+`:intersects` membership operator in `Predicator.Parser`'s types), the
+`Predicator.Vocabulary` category list (`:presence`) and the
+`Predicator.Simple` operator and clause types (`:intersects` and the six
+presence spellings, with `nil` for the value); a host that matches those
+exhaustively adds a clause.
+
+### Added
+
+- `expr is blank`, `expr is present` and `expr is defined`, each with an optional `not` after `is`, answer `true` or `false` for every value: blank is undefined, null, a string that is empty or holds only Unicode White_Space, an empty list or an empty object; present is not blank; defined is not undefined. The words stay ordinary identifiers everywhere but directly after an operand. They compile to the new `presence` opcode at ISA v7, in a new conformance tier 10, and `Predicator.Vocabulary`, `Predicator.Analysis`, `Predicator.AST` and `Predicator.Simple` know them.
+- `in` and `contains` on two strings are a substring test: `"cd" in "abcdef"` and `"abcdef" contains "cd"` answer `true`. The test is case-sensitive and by code point, with no normalization, and the empty string is contained in every string; a string inside a list is still matched whole.
+- `a intersects b` answers `true` when the two lists share a member under the equality `in` uses, `false` otherwise (an empty list on either side included), and `:undefined` for an `:undefined` operand or an operand that is not a list. `intersects` is read as an operator only directly after an operand, so it stays an ordinary identifier everywhere else, and it is accepted in lower and upper case. It compiles to the new `intersects` opcode at ISA v7, in conformance tier 10, and `Predicator.Vocabulary`, `Predicator.Analysis`, `Predicator.AST` and `Predicator.Simple` know it.
+
+### Changed
+
+- `Predicator.isa_version/0` answers 7. Every ISA v6 instruction list still runs unchanged; a list holding `presence` requires ISA v7.
+- `in` and `contains` no longer produce a `TypeMismatchError`. A `null`, number, boolean, date, datetime, duration or object container, or a string container with a needle that is not a string, answers `:undefined` where 9.5.x answered `TypeMismatchError` (operation `in` or `contains`, expected `list`); a list container and an `:undefined` operand answer as before. Upgrading: code that matched that `TypeMismatchError` to detect a container that is not a list now receives `:undefined`, or `true` or `false` for two strings, and the program goes on running, so an `OR` whose other side answers is no longer stopped by it.
+
 ## [9.5.1] - 2026-11-20
 
 A datetime is an instant from `0000-01-01T00:00:00Z` through
