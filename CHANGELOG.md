@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Presence tests, an overlap operator, and containment that answers a value for
 every pairing. The instruction set version moves from 6 to 7: two new opcodes,
 `presence` and `intersects`, and a new conformance tier 10 that holds them.
-Every ISA v6 instruction list still runs unchanged. The conformance corpus hash
+An ISA v6 instruction list still runs, and only a list holding `presence` or
+`intersects` needs v7; the answers of `in` and `contains` change, as below.
+The conformance corpus hash
 moves with this release, so a sibling implementation re-vendors the corpus at
 9.6.0. The public sets that grow are the opcode list (`presence`,
 `intersects`), the parsed-expression node union (a `:presence` node and an
